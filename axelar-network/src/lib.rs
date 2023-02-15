@@ -17,7 +17,9 @@ impl Contract {
         sourceEventIndex: u128
     ) {
         // implement
-        // use events to emit events.
+
+        let data = map![&env, (1, sourceChain), (2, sourceAddress), (3, contractAddress), (4, sourceTxHash), (5, sourceEventIndex)];
+        env.events().publish((commandId, contractAddress, payloadHash), data);
     }
 
     pub fn transferOp( // transferOperatorship
@@ -25,7 +27,7 @@ impl Contract {
         newOperatorsData: Bytes
     ) {
         // implement
-        // use events to emit events.
+        env.events().publish(1, newOperatorsData);
     }
 
 }
