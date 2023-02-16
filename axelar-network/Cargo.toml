@@ -11,6 +11,8 @@ testutils = ["soroban-sdk/testutils"]
 
 [dependencies]
 soroban-sdk = "0.4.2"
+ethabi = { version = "18.0.0", default-features = false }
+sha3 = { version = "0.9.1", default-features = false }
 
 [dev_dependencies]
 soroban-sdk = { version = "0.4.2", features = ["testutils"] }
