@@ -9,7 +9,7 @@ use ethabi::Address;
 use ethabi::ParamType;
 use ethabi::Token;
 use sha3::{Digest, Keccak256};
-use uint::hex;
+use soroban_sdk::{Bytes};
 
 /// It takes a hash and a signature, and returns the address that signed the hash
 ///
@@ -107,9 +107,16 @@ pub fn abi_encode(tokens: Vec<Token>) -> Vec<u8> {
 /// Returns:
 ///
 /// A vector of bytes
-pub fn clean_payload(payload: String) -> Vec<u8> {
-    let clean_payload = &payload[2..payload.len()];
-    hex::decode(clean_payload).unwrap()
+pub fn clean_payload(payload: Bytes) -> Vec<u8> {
+    payload.remove(0);
+    payload.remove(1);
+    let clean_payload: Vec<u8> = Vec::new();
+    for element in payload {
+        clean_payload.push(element)
+    }
+    return clean_payload;
+    
+
 }
 
 /// It takes a string, removes the first two characters, and then converts the remaining string into a
