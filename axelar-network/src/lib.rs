@@ -1,14 +1,14 @@
-#![no_std]
-use soroban_sdk::{contractimpl, Bytes, BytesN, Env, Symbol, Vec, vec, Address, map};
+//#![no_std]
+use soroban_sdk::{contractimpl, Bytes, BytesN, Env, Symbol, vec, Address, map};
 use ethabi::{encode, decode, ParamType};
-use crate::utils::{self, abi_encode, abi_decode, clean_payload};
+use utils::{abi_encode, abi_decode, clean_payload};
 use sha3::Keccak256;
 
 const SELECTOR_TRANSFER_OPERATORSHIP: u8 = 0;
 const SELECTOR_APPROVE_CONTRACT_CALL: u8 = 1;
 
 pub struct Contract;
-
+mod utils;
 #[contractimpl]
 impl Contract {
     pub fn execute(
@@ -19,9 +19,10 @@ impl Contract {
         // commands: Vec<u32>,
         // params: Vec<Bytes>
     ) {
-        //let payload = clean_payload(input.clone());
+        
+        let payload = clean_payload(input.clone());
         // Assume that input is a cleaned payload. That is, a payload without the 0x at the start.
-        let tokens = abi_decode(&payload, &[ParamType::Bytes]);//.unwrap();
+        let tokens = abi_decode(&payload, &[ParamType::Bytes]).unwrap();
         // current issue: the type of payload doesn't match up with the parameter type for abi_decode.
 
         let data = tokens[0].clone().into_bytes().unwrap();
