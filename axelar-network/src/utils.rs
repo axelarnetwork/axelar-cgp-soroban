@@ -78,10 +78,10 @@ where
 ///
 /// A vector of bytes
 pub fn clean_payload(payload: Bytes) -> alloc::vec::Vec<u8>  {
-    let mut payload_copy = payload.clone();
+    let mut payload_copy: Bytes = payload.clone();
     payload_copy.remove(0);
     payload_copy.remove(1);
-    let mut clean_payload = alloc::vec![];
+    let mut clean_payload: Vec<u8> = alloc::vec![];
     for element in payload_copy {
         clean_payload.push(element)
     }

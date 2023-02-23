@@ -20,9 +20,9 @@ impl Contract {
         input: Bytes
     ) -> Vec<Token> {
 
-        let payload = clean_payload(input);
+        let payload: Vec<u8> = clean_payload(input);
         // Assume that input is a cleaned payload. That is, a payload without the 0x at the start.
-        let tokens = decode(&alloc::vec![ParamType::Bytes, ParamType::Bytes], &payload).unwrap();
+        let tokens: Vec<Token>  = decode(&alloc::vec![ParamType::Bytes, ParamType::Bytes], &payload).unwrap();
         // current issue: the type of payload doesn't match up with the parameter type for abi_decode.
         
         //let data = tokens[0].clone().into_bytes().unwrap();
