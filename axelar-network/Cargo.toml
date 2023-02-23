@@ -10,12 +10,12 @@ crate-type = ["cdylib"]
 testutils = ["soroban-sdk/testutils"]
 
 [dependencies]
-soroban-sdk = "0.4.2"
+soroban-sdk = { version = "0.4.2", features = ["alloc"] }
 ethabi = { version = "18.0.0", default-features = false }
 sha3 = { version = "0.9.1", default-features = false }
 
 [dev_dependencies]
-soroban-sdk = { version = "0.4.2", features = ["testutils"] }
+soroban-sdk = { version = "0.4.2", features = ["testutils", "alloc"] }
 
 [profile.release]
 opt-level = "z"
