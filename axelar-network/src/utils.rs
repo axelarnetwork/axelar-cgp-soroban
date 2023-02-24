@@ -9,7 +9,11 @@ use ethabi::Address;
 use ethabi::ParamType;
 use ethabi::Token;
 use sha3::{Digest, Keccak256};
-use soroban_sdk::{Bytes, Vec};
+use soroban_sdk::{Bytes};
+use alloc::vec::Vec;
+
+use std::println;
+extern crate std;
 
 extern crate alloc;
 
@@ -81,7 +85,7 @@ pub fn clean_payload(payload: Bytes) -> alloc::vec::Vec<u8>  {
     let mut payload_copy: Bytes = payload.clone();
     payload_copy.remove(0);
     payload_copy.remove(1);
-    let mut clean_payload: Vec<u8> = alloc::vec![];
+    let mut clean_payload: Vec<u8> = Vec::new();
     for element in payload_copy {
         clean_payload.push(element)
     }
