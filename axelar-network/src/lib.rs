@@ -1,8 +1,5 @@
 #![no_std]
-use soroban_sdk::{contractimpl, contracttype, bytes, Bytes, BytesN, Env, Symbol, vec, Address, map, Vec, crypto};
-use ethabi::{encode, decode, ParamType, Token};
-use utils::{clean_payload};
-use sha3::Keccak256;
+use soroban_sdk::{contractimpl, contracttype, bytes, Bytes, BytesN, Env, Symbol, vec, Address, map, Vec, crypto, bytesn};
 //use alloc::vec::Vec;
 
 extern crate alloc;
@@ -24,9 +21,6 @@ pub struct Input {
     pub proof: Bytes
 }
 
-const SELECTOR_TRANSFER_OPERATORSHIP: u8 = 0;
-const SELECTOR_APPROVE_CONTRACT_CALL: u8 = 1;
-
 pub struct Contract;
 mod utils;
 mod test;
@@ -37,14 +31,15 @@ impl Contract {
         env: Env,
         input: Input
     ) {
-
-        //let payload: Vec<u8> = clean_payload(input);
-        // Assume that input is a cleaned payload. That is, a payload without the 0x at the start.
-        // let tokens: Vec<Token>  = decode(&alloc::vec![ParamType::Bytes, ParamType::Bytes], &payload).unwrap();
-        // // current issue: the type of payload doesn't match up with the parameter type for abi_decode.
+        
+        // dummy values below
+        let SELECTOR_TRANSFER_OPERATORSHIP: BytesN<32> = bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d);
+        let SELECTOR_APPROVE_CONTRACT_CALL: BytesN<32> = bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d);
         
         let data: Data = input.data;
         let proof: Bytes = input.proof;
+
+        let mut allowOperatorshipTransfer: bool = false; // implement
 
         let chain_id: u64 = data.chain_id;
         let command_ids: Vec<Bytes> = data.commandids;
@@ -60,8 +55,19 @@ impl Contract {
         for i in 0..commands_length {
             let command_id: Bytes = command_ids.get(i).unwrap().unwrap();
 
-            let commandSelector: BytesN<4>;
-            //env.crypto().sha256(&command_id);
+            let command_selector: BytesN<4>;
+            let command_hash: BytesN<32> = env.crypto().sha256(&command_id);
+
+            if command_hash == SELECTOR_TRANSFER_OPERATORSHIP {
+                if (!allowOperatorshipTransfer) {
+                    continue;
+                }
+                allowOperatorshipTransfer = false;
+                // implement
+            }
+            else if command_hash == SELECTOR_APPROVE_CONTRACT_CALL {
+                // implement
+            }
 
             // implement
         }
