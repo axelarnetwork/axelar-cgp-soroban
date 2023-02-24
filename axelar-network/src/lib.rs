@@ -1,9 +1,9 @@
 #![no_std]
-use soroban_sdk::{contractimpl, contracttype, bytes, Bytes, BytesN, Env, Symbol, vec, Address, map};
+use soroban_sdk::{contractimpl, contracttype, bytes, Bytes, BytesN, Env, Symbol, vec, Address, map, Vec, crypto};
 use ethabi::{encode, decode, ParamType, Token};
 use utils::{clean_payload};
 use sha3::Keccak256;
-use alloc::vec::Vec;
+//use alloc::vec::Vec;
 
 extern crate alloc;
 
@@ -12,9 +12,9 @@ extern crate alloc;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Data {
     pub chain_id: u64,
-    pub commandids: Bytes,
-    pub commands: Bytes, //instead of String
-    pub params: Bytes
+    pub commandids: Vec<Bytes>,
+    pub commands: Vec<Bytes>, //instead of String
+    pub params: Vec<Bytes>
 }
 
 #[contracttype]
@@ -47,20 +47,21 @@ impl Contract {
         let proof: Bytes = input.proof;
 
         let chain_id: u64 = data.chain_id;
-        let command_ids: Bytes = data.commandids;
-        let commands: Bytes = data.commands;
-        let params: Bytes = data.params;
+        let command_ids: Vec<Bytes> = data.commandids;
+        let commands: Vec<Bytes> = data.commands;
+        let params: Vec<Bytes> = data.params;
 
         let commands_length: u32 = command_ids.len();
+
 
         // if (commandsLength != commands.len() || commandsLength != params.len()) {
         //     // implement
         // }
-
         for i in 0..commands_length {
-            //let commandId: u8 = command_ids.get(i);
+            let command_id: Bytes = command_ids.get(i).unwrap().unwrap();
 
-            //let commandSelector: BytesN<4>;
+            let commandSelector: BytesN<4>;
+            //env.crypto().sha256(&command_id);
 
             // implement
         }
