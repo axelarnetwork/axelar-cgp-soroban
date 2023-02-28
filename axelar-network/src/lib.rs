@@ -10,7 +10,7 @@ extern crate alloc;
 pub struct Data {
     pub chain_id: u64,
     pub commandids: Vec<Bytes>,
-    pub commands: Vec<Bytes>, //instead of String
+    pub commands: Vec<Bytes>, //instead of Vec<String>
     pub params: Vec<Bytes>
 }
 
@@ -19,6 +19,17 @@ pub struct Data {
 pub struct Input {
     pub data: Data,
     pub proof: Bytes
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ContractPayload {
+    pub src_chain: Bytes,
+    pub src_add: Bytes,
+    pub contract: Bytes, // contract address
+    pub payload_ha: BytesN<32>, // payload hash
+    pub src_tx_ha: BytesN<32>, // source tx hash
+    pub src_evnt: u64 // source event index // do u256 instead?
 }
 
 pub struct Contract;
@@ -78,13 +89,7 @@ impl Contract {
 
     pub fn approve( // approveContractCall
         env: Env,
-        commandId: BytesN<32>,
-        sourceChain: Symbol,
-        sourceAddress: Address,
-        contractAddress: Address,
-        payloadHash: BytesN<32>,
-        sourceTxHash: BytesN<32>,
-        sourceEventIndex: u128
+        payload: ContractPayload
     ) {
         // implement
 
