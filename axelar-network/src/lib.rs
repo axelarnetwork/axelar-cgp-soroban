@@ -32,6 +32,18 @@ pub struct ContractPayload {
     pub src_evnt: u64 // source event index // do u256 instead?
 }
 
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ContractCallApprovedEvent {
+    //pub command_id: Bytes,
+    pub src_chain: Bytes,
+    pub src_addr: Bytes,
+    //pub contract: Bytes, // contract address
+    //pub payload: Bytes,
+    pub src_tx: Bytes,
+    pub src_event: u64
+}
+
 pub struct Contract;
 mod utils;
 mod test;
@@ -77,6 +89,7 @@ impl Contract {
                 // implement
             }
             else if command_hash == SELECTOR_APPROVE_CONTRACT_CALL {
+                approve(env, );
                 // implement
             }
 
@@ -89,12 +102,20 @@ impl Contract {
 
     pub fn approve( // approveContractCall
         env: Env,
-        payload: ContractPayload
+        payload: ContractPayload,
+        command_id: Bytes
+        // src_chain: Bytes,
+        // src_add: Bytes,
+        // contract: Bytes,
+        // payload_ha: BytesN<32>,
+        // src_tx_ha: BytesN<32>,
+        // src_evnt: u64
     ) {
-        // implement
+        env.storage().set(&payload, &true);
+        // hash the payload, use storage.set() with hash as key, and set as true.
 
         // let data = map![&env, (1, sourceChain), (2, sourceAddress), (3, contractAddress), (4, sourceTxHash), (5, sourceEventIndex)];
-        // env.events().publish((commandId, contractAddress, payloadHash), data);
+        env.events().publish((command_id, payload.contract, payload.payload_ha), payload);
     }
 
     pub fn transferOp( // transferOperatorship
