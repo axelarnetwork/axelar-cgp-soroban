@@ -186,9 +186,9 @@ impl Contract {
             dest_addr,
             payload
         };
-        let payload_ha; // implement
+        let sender: Address; // implement
 
-        env.events().publish((address(this), payload_ha), data);
+        env.events().publish((sender, env.crypto().sha256(&payload)), data);
     }
 
 }
