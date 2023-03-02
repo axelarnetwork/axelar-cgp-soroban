@@ -1,6 +1,7 @@
 #![no_std]
 use soroban_sdk::{contractimpl, contracttype, bytes, Bytes, BytesN, Env, Symbol, vec, Address, map, Vec, crypto, bytesn};
 //use alloc::vec::Vec;
+use stellar_xdr;
 
 extern crate alloc;
 
@@ -110,7 +111,7 @@ impl Contract {
 
     pub fn approve( // approveContractCall
         env: Env,
-        payload: ContractPayload,
+        payload: Bytes,//ContractPayload,
         command_id: Bytes
         // src_chain: Bytes,
         // src_add: Bytes,
@@ -119,6 +120,7 @@ impl Contract {
         // src_tx_ha: BytesN<32>,
         // src_evnt: u64
     ) {
+        ContractPayload::from_xdr(env, payload);
         env.storage().set(&payload, &true);
         // hash the payload, use storage.set() with hash as key, and set as true.
 
