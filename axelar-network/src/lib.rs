@@ -1,5 +1,5 @@
 #![no_std]
-use soroban_sdk::{contractimpl, contracttype, bytes, Bytes, BytesN, Env, Symbol, vec, Address, map, Vec, crypto, bytesn,
+use soroban_sdk::{contractimpl, contracttype, bytes, Bytes, BytesN, Env, Symbol, symbol, vec, Address, map, Vec, crypto, bytesn,
     serde::{Deserialize, Serialize}
 };
 //use alloc::vec::Vec;
@@ -43,8 +43,18 @@ pub struct ContractCallApprovedEvent {
     pub src_addr: Bytes,
     //pub contract: Bytes, // contract address
     //pub payload: Bytes,
-    pub src_tx: Bytes,
+    pub src_tx: BytesN<32>, // source tx hash
     pub src_event: u64
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ContractCallApprovedKey {
+    pub approved: Symbol,
+    pub src_chain: Bytes,
+    pub src_addr: Bytes,
+    pub contract: Bytes, // contract address
+    pub payload_ha: BytesN<32>,
 }
 
 #[contracttype]
@@ -100,7 +110,7 @@ impl Contract {
                 // implement
             }
             else if command_hash == SELECTOR_APPROVE_CONTRACT_CALL {
-                approve(env, );
+                //approve(env, );
                 // implement
             }
 
@@ -114,7 +124,7 @@ impl Contract {
     pub fn approve( // approveContractCall
         env: Env,
         params: Bytes,//ContractPayload,
-        command_id: Bytes
+        command_id: BytesN<32>
         // src_chain: Bytes,
         // src_add: Bytes,
         // contract: Bytes,
@@ -124,17 +134,37 @@ impl Contract {
     ) {
         let decoded: ContractPayload = ContractPayload::deserialize(&env, &params).unwrap();
         let src_chain: Bytes = decoded.src_chain;
-        let src_add: Bytes = decoded.src_add;
+        let src_addr: Bytes = decoded.src_add;
         let contract: Bytes = decoded.contract;
         let payload_ha: BytesN<32> = decoded.payload_ha;
-        let src_tx_ha: BytesN<32> = decoded.src_tx_ha;
-        let src_evnt: u64 = decoded.src_evnt;
+        let src_tx: BytesN<32> = decoded.src_tx_ha;
+        let src_event: u64 = decoded.src_evnt;
         
-        env.storage().set(&payload, &true);
-        // hash the payload, use storage.set() with hash as key, and set as true.
+        Self::_setContractCallApproved(env, command_id, src_chain, src_addr, contract, payload_ha);
+
+        let event: ContractCallApprovedEvent = ContractCallApprovedEvent { src_chain, src_addr, src_tx, src_event};
+        // hash the payload, use storage.set() with hash as key, and set as true?
 
         // let data = map![&env, (1, sourceChain), (2, sourceAddress), (3, contractAddress), (4, sourceTxHash), (5, sourceEventIndex)];
-        env.events().publish((command_id, payload.contract, payload.payload_ha), payload);
+        env.events().publish((command_id, contract, payload_ha), event);
+    }
+    
+    fn _setContractCallApproved( // how do I make this functio internal / protected
+        env: Env,
+        commandId: BytesN<32>,
+        sourceChain: Bytes,
+        sourceAddress: Bytes,
+        contractAddress: Bytes, // Address instead of Bytes?
+        payloadHash: BytesN<32>
+    ) {
+        let data: ContractCallApprovedKey = ContractCallApprovedKey{approved: symbol!("approved"), 
+            src_chain: sourceChain, 
+            src_addr: sourceAddress, 
+            contract: contractAddress,
+            payload_ha: payloadHash
+        };
+        let key: BytesN<32> = env.crypto().sha256(&data.serialize(&env));
+        env.storage().set(key, true); // .set(&key, &true)?
     }
 
     pub fn transferOp( // transferOperatorship
