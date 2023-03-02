@@ -44,6 +44,14 @@ pub struct ContractCallApprovedEvent {
     pub src_event: u64
 }
 
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ContractCall {
+    pub dest_chain: Bytes,
+    pub dest_addr: Bytes,
+    pub payload: Bytes
+}
+
 pub struct Contract;
 mod utils;
 mod test;
@@ -124,6 +132,22 @@ impl Contract {
     ) {
         // implement
         // env.events().publish(1, newOperatorsData);
+    }
+
+    pub fn call_con(
+        env: Env,
+        dest_chain: Bytes,
+        dest_addr: Bytes,
+        payload: Bytes // payload hash
+    ) {
+        let data: ContractCall = ContractCall {
+            dest_chain,
+            dest_addr,
+            payload
+        };
+        let payload_ha; // implement
+
+        env.events().publish((address(this), payload_ha), data);
     }
 
 }
