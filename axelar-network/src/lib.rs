@@ -125,12 +125,6 @@ impl Contract {
         env: Env,
         params: Bytes,//ContractPayload,
         command_id: BytesN<32>
-        // src_chain: Bytes,
-        // src_add: Bytes,
-        // contract: Bytes,
-        // payload_ha: BytesN<32>,
-        // src_tx_ha: BytesN<32>,
-        // src_evnt: u64
     ) {
         let decoded: ContractPayload = ContractPayload::deserialize(&env, &params).unwrap();
         let src_chain: Bytes = decoded.src_chain;
@@ -140,7 +134,7 @@ impl Contract {
         let src_tx: BytesN<32> = decoded.src_tx_ha;
         let src_event: u64 = decoded.src_evnt;
         
-        Self::_setContractCallApproved(env, command_id, src_chain, src_addr, contract, payload_ha);
+        Self::_setContractCallApproved(env.clone(), command_id.clone(), src_chain.clone(), src_addr.clone(), contract.clone(), payload_ha.clone());
 
         let event: ContractCallApprovedEvent = ContractCallApprovedEvent { src_chain, src_addr, src_tx, src_event};
         // hash the payload, use storage.set() with hash as key, and set as true?
@@ -184,7 +178,7 @@ impl Contract {
         let data: ContractCall = ContractCall {
             dest_chain,
             dest_addr,
-            payload
+            payload: payload.clone()
         };
         let sender: Address; // implement
 
