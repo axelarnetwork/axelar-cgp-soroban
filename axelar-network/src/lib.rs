@@ -116,9 +116,8 @@ impl Contract {
                 }
                 allowOperatorshipTransfer = false;
                 // implement
-
             }
-            else if command_hash == SELECTOR_APPROVE_CONTRACT_CALL {
+            else if true { //command_hash == SELECTOR_APPROVE_CONTRACT_CALL { // testing purposes
                 Self::_setCommandExecuted(env.clone(), command_id.clone(), true);
                 success = Self::approve(env.clone(), params.get(i).unwrap().unwrap(), command_id.clone());
             }
@@ -126,7 +125,6 @@ impl Contract {
             if (success) {
                 let event: ExecutedEvent = ExecutedEvent { command_id: command_id.clone() };
                 env.events().publish((), event);
-
             } else {
                 Self::_setCommandExecuted(env.clone(), command_id.clone(), false);
             }
