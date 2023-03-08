@@ -81,15 +81,16 @@ impl Contract {
 
     pub fn execute (
         env: Env,
-        input: Input
+        input: Bytes
     ) {
         
         // dummy values below
         let SELECTOR_TRANSFER_OPERATORSHIP: BytesN<32> = bytesn!(&env, 0xabcd3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d);
         let SELECTOR_APPROVE_CONTRACT_CALL: BytesN<32> = bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d);
         
-        let data: Data = input.data;
-        let proof: Bytes = input.proof;
+        let decoded: Input = Input::deserialize(&env, &input).unwrap();
+        let data: Data = decoded.data;
+        let proof: Bytes = decoded.proof; // implement proof check
 
         let mut allowOperatorshipTransfer: bool = false; // implement
 
