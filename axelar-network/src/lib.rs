@@ -51,6 +51,7 @@ pub struct ContractCallApprovedEvent {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ContractCallApprovedKey {
     pub approved: Symbol,
+    pub command_id: BytesN<32>,
     pub src_chain: Bytes,
     pub src_addr: Bytes,
     pub contract: Bytes, // contract address
@@ -151,14 +152,16 @@ impl Contract {
         contractAddress: Bytes, // Address instead of Bytes?
         payloadHash: BytesN<32>
     ) {
-        let data: ContractCallApprovedKey = ContractCallApprovedKey{approved: symbol!("approved"), 
+        let data: ContractCallApprovedKey = ContractCallApprovedKey{
+            approved: symbol!("approved"), 
+            command_id: commandId,
             src_chain: sourceChain, 
             src_addr: sourceAddress, 
             contract: contractAddress,
             payload_ha: payloadHash
         };
         let key: BytesN<32> = env.crypto().sha256(&data.serialize(&env));
-        env.storage().set(key, true); // .set(&key, &true)?
+        env.storage().set(&key, &true);
     }
 
     pub fn transferOp( // transferOperatorship
