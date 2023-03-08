@@ -180,9 +180,9 @@ impl Contract {
             dest_addr,
             payload: payload.clone()
         };
-        let sender: Address; // implement
+        //let sender: Address; // implement
 
-        env.events().publish((sender, env.crypto().sha256(&payload)), data);
+        env.events().publish((env.crypto().sha256(&payload),), data);
     }
 
 }
