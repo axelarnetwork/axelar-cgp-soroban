@@ -1,6 +1,6 @@
 #![no_std]
 use soroban_sdk::{contractimpl, contracttype, bytes, Bytes, BytesN, Env, Symbol, symbol, vec, Address, map, Vec, crypto, bytesn,
-    serde::{Deserialize, Serialize}
+    serde::{Deserialize, Serialize}, xdr::Uint256
 };
 //use alloc::vec::Vec;
 use stellar_xdr;
@@ -72,6 +72,13 @@ pub struct ExecutedEvent {
     pub command_id: BytesN<32>
 }
 
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Operatorship {
+    pub new_ops: Vec<Address>, // new_operators
+    pub new_wghts: Vec<u128>, // new_weights change to Uint256
+    pub new_thres: u128 // new_threshold change to Uint256
+}
 
 pub struct Contract;
 mod utils;
@@ -185,10 +192,37 @@ impl Contract {
 
     pub fn transferOp( // transferOperatorship
         env: Env,
-        newOperatorsData: Bytes
+        params: Bytes
     ) {
-        // implement
-        // env.events().publish(1, newOperatorsData);
+        let tokens: Operatorship = Operatorship::deserialize(&env, &params).unwrap();
+        let new_operators: Vec<Address> = tokens.new_ops;
+        let new_weights: Vec<u128> = tokens.new_wghts;
+        let new_threshold: u128 = tokens.new_thres;
+        
+        let operators_length: u32 = new_operators.len();
+        let weights_length: u32 = new_weights.len();
+
+        if operators_length == 0
+        {
+            // implement
+        }
+
+        if weights_length != operators_length {
+            // implement
+        }
+
+        let mut total_weight: u128 = 0;
+
+        for i in 0..weights_length {
+            total_weight += new_weights.get(i).unwrap().unwrap();
+        }
+
+        if new_threshold == 0 || total_weight < new_threshold {
+            // implement
+        }
+
+        let new_operators_hash: BytesN<32> = env.crypto().sha256(&params);
+        
     }
 
     pub fn call_con(
