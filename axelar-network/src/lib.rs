@@ -1,9 +1,12 @@
 #![no_std]
-use soroban_sdk::{contractimpl, contracttype, bytes, Bytes, BytesN, Env, Symbol, symbol, vec, Address, map, Vec, crypto, bytesn,
+use soroban_sdk::{contractimpl, contracttype, bytes, Bytes, BytesN, Env, Symbol, symbol, vec, Address, Map, map, Vec, crypto, bytesn,
     serde::{Deserialize, Serialize}, xdr::Uint256
 };
 //use alloc::vec::Vec;
 use stellar_xdr;
+
+mod auth;
+use auth::Axelar::transferOp;
 
 extern crate alloc;
 
@@ -188,41 +191,6 @@ impl Contract {
     ) {
         let key: BytesN<32> = env.crypto().sha256(&command_id.serialize(&env));
         env.storage().set(&key, &executed);
-    }
-
-    pub fn transferOp( // transferOperatorship
-        env: Env,
-        params: Bytes
-    ) {
-        let tokens: Operatorship = Operatorship::deserialize(&env, &params).unwrap();
-        let new_operators: Vec<Address> = tokens.new_ops;
-        let new_weights: Vec<u128> = tokens.new_wghts;
-        let new_threshold: u128 = tokens.new_thres;
-        
-        let operators_length: u32 = new_operators.len();
-        let weights_length: u32 = new_weights.len();
-
-        if operators_length == 0
-        {
-            // implement
-        }
-
-        if weights_length != operators_length {
-            // implement
-        }
-
-        let mut total_weight: u128 = 0;
-
-        for i in 0..weights_length {
-            total_weight += new_weights.get(i).unwrap().unwrap();
-        }
-
-        if new_threshold == 0 || total_weight < new_threshold {
-            // implement
-        }
-
-        let new_operators_hash: BytesN<32> = env.crypto().sha256(&params);
-        
     }
 
     pub fn call_con(
