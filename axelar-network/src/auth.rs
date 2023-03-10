@@ -1,4 +1,6 @@
-#![no_std]
+use soroban_sdk::{contractimpl, contracttype, bytes, Bytes, BytesN, Env, Address, Map, Vec, crypto,
+    serde::{Deserialize, Serialize}, xdr::Uint256
+};
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -9,6 +11,7 @@ pub struct Axelar {
     epoch_hash: Map<BytesN<32>, u64>, // epoch_for_hash
 }
 
+#[contractimpl]
 impl Axelar {
     pub fn transferOp( // transferOperatorship
         env: Env,
