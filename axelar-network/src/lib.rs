@@ -6,7 +6,7 @@ use soroban_sdk::{contractimpl, contracttype, bytes, Bytes, BytesN, Env, Symbol,
 use stellar_xdr;
 
 mod auth;
-use auth::Axelar::transferOp;
+
 
 extern crate alloc;
 
@@ -84,17 +84,25 @@ pub struct Operatorship {
 }
 
 pub struct Contract;
+//  {
+//     // Auth Weighted
+//     crnt_epoch: u64, //current_epoch
+//     hash_epoch: Map<u64, BytesN<32>>, // hash_for_epoch
+//     epoch_hash: Map<BytesN<32>, u64> // epoch_for_hash
+
+// }
+
 mod utils;
 mod test;
 #[contractimpl]
 impl Contract {
-
     pub fn execute (
         env: Env,
         input: Bytes
     ) {
         
         // dummy values below
+        // HASH THE SHA256 value seprately outside, and leave what got hashed as a comment, and place the bytes below.
         let SELECTOR_TRANSFER_OPERATORSHIP: BytesN<32> = bytesn!(&env, 0xabcd3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d);
         let SELECTOR_APPROVE_CONTRACT_CALL: BytesN<32> = bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d);
         

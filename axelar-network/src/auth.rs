@@ -11,8 +11,6 @@ pub struct Axelar {
     epoch_hash: Map<BytesN<32>, u64>, // epoch_for_hash
 }
 
-#[contractimpl]
-impl Axelar {
     pub fn transferOp( // transferOperatorship
         env: Env,
         params: Bytes
@@ -45,7 +43,32 @@ impl Axelar {
         }
 
         let new_operators_hash: BytesN<32> = env.crypto().sha256(&params);
+        // create function that adds a prefix to new_operators_hash.
+
+        //if env.storage().get(new_operators_hash) > 0 {
+            //implementation: make variables all in one big hash, but the hash for epoch map is prefixed.
+            
+
+        }//
 
     }
+
+fn toSignedMsgHsh(
+    hash: BytesN<32>
+) {
+    // return keccak256(abi.encodePacked('Soroban Signed Message:', hash));
+    // can change prefix to whatever I want.
+// can then use this for the validateProof & it wont have an impact as it's also made up on axelar side
+}
+
+fn validateProof() {
+
+}
+
+fn validateSig(
+    hash: BytesN<32>,
+    proof: Bytes
+) {
+    // what is ECDSA.recover()?
 
 }
