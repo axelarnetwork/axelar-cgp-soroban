@@ -1,5 +1,5 @@
-use soroban_sdk::{contractimpl, contracttype, bytes, Bytes, BytesN, Env, Address, Map, Vec, crypto,
-    serde::{Deserialize, Serialize}, xdr::Uint256, symbol, Symbol
+use soroban_sdk::{contracterror, contractimpl, contracttype, bytes, Bytes, BytesN, Env, Address, Map, Vec, crypto,
+    serde::{Deserialize, Serialize}, xdr::Uint256, symbol, Symbol, panic_with_error, bytesn
 };
 
 use crate::Operatorship;
@@ -29,6 +29,17 @@ pub struct SignedMsg {
     pub hash: BytesN<32>,
 }
 
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum Error {
+    InvalidOperators = 1,
+    InvalidWeights = 2,
+    InvalidThreshold = 3,
+    DuplicateOperators = 4,
+    LowSignaturesWeight = 5,
+}
+
 pub fn transferOp( // transferOperatorship
     env: Env,
     params: Bytes
@@ -41,13 +52,14 @@ pub fn transferOp( // transferOperatorship
     let operators_length: u32 = new_operators.len();
     let weights_length: u32 = new_weights.len();
 
-    if operators_length == 0
+    if operators_length == 0 || is_sorted_asc_no_dup(env, new_operators)// implement 2nd condition
     {
-        // implement
+        panic_with_error!(env, Error::InvalidOperators);
+
     }
 
     if weights_length != operators_length {
-        // implement
+        panic_with_error!(env, Error::InvalidWeights);
     }
 
     let mut total_weight: u128 = 0;
@@ -57,17 +69,17 @@ pub fn transferOp( // transferOperatorship
     }
 
     if new_threshold == 0 || total_weight < new_threshold {
-        // implement
+        panic_with_error!(env, Error::InvalidThreshold);
     }
 
     let new_operators_hash: BytesN<32> = env.crypto().sha256(&params);
-    // create function that adds a prefix to new_operators_hash.
+    // create function that adds a prefix to new_operators_hash?
 
-    //if env.storage().get(new_operators_hash) > 0 {
+    if env.storage().get<_ u32>(&new_operators_hash).unwrap().unwrap() > 0 {
         //implementation: make variables all in one big hash, but the hash for epoch map is prefixed.
-        
+        panic_with_error!(env, Error::DuplicateOperators);
 
-    //}
+    }
 
 }
 
@@ -107,7 +119,7 @@ pub fn validate_proof(
     let epoch: u128 = env.storage().get(symbol!("cur_epoch")).unwrap().unwrap(); //uint256
 
     if (operators_epoch == 0 || epoch - operators_epoch >= 16) {
-        // implement
+        panic_with_error!(env, Error::InvalidOperators);
     }
 
     validate_sig(env, msghash, operators, weights, threshold, signatures);
@@ -128,24 +140,38 @@ fn validate_sig(
 ) {
     // CHANGE ALL u128 TO UINT256
     let mut weight: u128 = 0;
+    let msg_hash: Bytes = msghash.into(); // convert into Bytes
 
     for i in 0..signatures.len() {
         let public_key_idx: u32 = signatures.get(i).unwrap().unwrap().0;
         
         env.crypto().ed25519_verify(
             &public_keys.get(public_key_idx).unwrap().unwrap(), 
-            &msghash.into(), 
+            &msg_hash, 
             &signatures.get(i).unwrap().unwrap().1);
-        // looping through remaining operators to find a match
    
         // return if weight sum above threshold
         weight += weights.get(public_key_idx).unwrap().unwrap();
         // weight needs to reach or surpass threshold
         if (weight >= threshold) {
-            //return; // IMPLEMENT
+            return; 
         }
     }
     // if weight sum below threshold
-    //revert LowSignaturesWeight(); // IMPLEMENT
+    panic_with_error!(env, Error::LowSignaturesWeight);
 
+}
+
+fn is_sorted_asc_no_dup(
+    env: Env,
+    accounts: Vec<BytesN<32>>
+) -> bool {
+    for i in 0..accounts.len()-1 {
+        if accounts.get(i).unwrap().unwrap() >= accounts.get(i+1).unwrap().unwrap() {
+            return false;
+        }
+    }
+
+    // can the 0th index of accounts even equal the "0 address" in the rhs?
+    return accounts.get(0).unwrap().unwrap() != bytesn!(&env, 0x000000000000000000000000000000000000000000000000000000000000000);
 }
