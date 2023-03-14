@@ -1,5 +1,3 @@
-use core::num::flt2dec::Sign;
-
 use soroban_sdk::{contractimpl, contracttype, bytes, Bytes, BytesN, Env, Address, Map, Vec, crypto,
     serde::{Deserialize, Serialize}, xdr::Uint256, symbol, Symbol
 };
@@ -31,47 +29,47 @@ pub struct SignedMsg {
     pub hash: BytesN<32>,
 }
 
-    pub fn transferOp( // transferOperatorship
-        env: Env,
-        params: Bytes
-    ) {
-        let tokens: Operatorship = Operatorship::deserialize(&env, &params).unwrap();
-        let new_operators: Vec<BytesN<32>> = tokens.new_ops;
-        let new_weights: Vec<u128> = tokens.new_wghts;
-        let new_threshold: u128 = tokens.new_thres;
-        
-        let operators_length: u32 = new_operators.len();
-        let weights_length: u32 = new_weights.len();
+pub fn transferOp( // transferOperatorship
+    env: Env,
+    params: Bytes
+) {
+    let tokens: Operatorship = Operatorship::deserialize(&env, &params).unwrap();
+    let new_operators: Vec<BytesN<32>> = tokens.new_ops;
+    let new_weights: Vec<u128> = tokens.new_wghts;
+    let new_threshold: u128 = tokens.new_thres;
+    
+    let operators_length: u32 = new_operators.len();
+    let weights_length: u32 = new_weights.len();
 
-        if operators_length == 0
-        {
-            // implement
-        }
-
-        if weights_length != operators_length {
-            // implement
-        }
-
-        let mut total_weight: u128 = 0;
-
-        for i in 0..weights_length {
-            total_weight += new_weights.get(i).unwrap().unwrap();
-        }
-
-        if new_threshold == 0 || total_weight < new_threshold {
-            // implement
-        }
-
-        let new_operators_hash: BytesN<32> = env.crypto().sha256(&params);
-        // create function that adds a prefix to new_operators_hash.
-
-        //if env.storage().get(new_operators_hash) > 0 {
-            //implementation: make variables all in one big hash, but the hash for epoch map is prefixed.
-            
-
-        //}
-
+    if operators_length == 0
+    {
+        // implement
     }
+
+    if weights_length != operators_length {
+        // implement
+    }
+
+    let mut total_weight: u128 = 0;
+
+    for i in 0..weights_length {
+        total_weight += new_weights.get(i).unwrap().unwrap();
+    }
+
+    if new_threshold == 0 || total_weight < new_threshold {
+        // implement
+    }
+
+    let new_operators_hash: BytesN<32> = env.crypto().sha256(&params);
+    // create function that adds a prefix to new_operators_hash.
+
+    //if env.storage().get(new_operators_hash) > 0 {
+        //implementation: make variables all in one big hash, but the hash for epoch map is prefixed.
+        
+
+    //}
+
+}
 
 pub fn to_signed_msg_hsh(
     env: Env,
