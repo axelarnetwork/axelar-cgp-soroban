@@ -1,5 +1,7 @@
+use core::num::flt2dec::Sign;
+
 use soroban_sdk::{contractimpl, contracttype, bytes, Bytes, BytesN, Env, Address, Map, Vec, crypto,
-    serde::{Deserialize, Serialize}, xdr::Uint256, symbol
+    serde::{Deserialize, Serialize}, xdr::Uint256, symbol, Symbol
 };
 
 use crate::Operatorship;
@@ -20,6 +22,13 @@ pub struct Validate {
     pub weights: Vec<u128>, // uint256
     pub threshold: u128, // uint256
     pub signatures: Vec<(u32, BytesN<64>)>
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SignedMsg {
+    pub text: Symbol,
+    pub hash: BytesN<32>,
 }
 
     pub fn transferOp( // transferOperatorship
@@ -64,9 +73,15 @@ pub struct Validate {
 
     }
 
-fn toSignedMsgHsh(
+pub fn to_signed_msg_hsh(
+    env: Env,
     hash: BytesN<32>
-) {
+) -> BytesN<32> {
+    let data: SignedMsg = SignedMsg {
+        text: symbol!("Soroban"),
+        hash: hash
+    };
+    return env.crypto().sha256(&data.serialize(&env));
     // return keccak256(abi.encodePacked('Soroban Signed Message:', hash));
     // can change prefix to whatever I want.
 // can then use this for the validateProof & it wont have an impact as it's also made up on axelar side
@@ -74,7 +89,7 @@ fn toSignedMsgHsh(
 
 pub fn validate_proof(
     env: Env,
-    msghash: Bytes,
+    msghash: BytesN<32>,
     proof: Bytes
 ) -> bool {
     let tokens: Validate = Validate::deserialize(&env, &proof).unwrap();
@@ -106,7 +121,7 @@ pub fn validate_proof(
 
 fn validate_sig(
     env: Env,
-    msghash: Bytes,
+    msghash: BytesN<32>,
     public_keys: Vec<BytesN<32>>, // operators
     weights: Vec<u128>, //uint256
     threshold: u128, //uint256
@@ -121,7 +136,7 @@ fn validate_sig(
         
         env.crypto().ed25519_verify(
             &public_keys.get(public_key_idx).unwrap().unwrap(), 
-            &msghash, 
+            &msghash.into(), 
             &signatures.get(i).unwrap().unwrap().1);
         // looping through remaining operators to find a match
    

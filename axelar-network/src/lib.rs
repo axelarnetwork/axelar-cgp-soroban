@@ -1,4 +1,5 @@
 #![no_std]
+use auth::{to_signed_msg_hsh, validate_proof};
 use soroban_sdk::{contractimpl, contracttype, bytes, Bytes, BytesN, Env, Symbol, symbol, vec, Address, Map, map, Vec, crypto, bytesn,
     serde::{Deserialize, Serialize}, xdr::Uint256
 };
@@ -108,10 +109,11 @@ impl Contract {
         
         let decoded: Input = Input::deserialize(&env, &input).unwrap();
         let data: Data = decoded.data;
-        let proof: Bytes = decoded.proof; // implement proof check
+        let proof: Bytes = decoded.proof;
 
-        let mut allowOperatorshipTransfer: bool = false; // implement
-
+        let message_hash: BytesN<32> = to_signed_msg_hsh(env, env.crypto().sha256(&data.serialize(&env)));
+        let mut allowOperatorshipTransfer: bool = validate_proof(env, message_hash, proof.serialize(&env));
+        
         let chain_id: u64 = data.chain_id;
         let command_ids: Vec<BytesN<32>> = data.commandids;
         let commands: Vec<Bytes> = data.commands;
@@ -135,7 +137,7 @@ impl Contract {
                 allowOperatorshipTransfer = false;
                 // implement
             }
-            else if true { //command_hash == SELECTOR_APPROVE_CONTRACT_CALL { // testing purposes
+            else if command_hash == SELECTOR_APPROVE_CONTRACT_CALL { // testing purposes
                 Self::_setCommandExecuted(env.clone(), command_id.clone(), true);
                 success = Self::approve(env.clone(), params.get(i).unwrap().unwrap(), command_id.clone());
             }
