@@ -16,10 +16,10 @@ pub struct Axelar {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Validate {
-    pub operators: Vec<Address>,
+    pub operators: Vec<BytesN<32>>,
     pub weights: Vec<u128>, // uint256
     pub threshold: u128, // uint256
-    pub signatures: Vec<Bytes>
+    pub signatures: Vec<(u32, BytesN<64>)>
 }
 
     pub fn transferOp( // transferOperatorship
@@ -27,7 +27,7 @@ pub struct Validate {
         params: Bytes
     ) {
         let tokens: Operatorship = Operatorship::deserialize(&env, &params).unwrap();
-        let new_operators: Vec<Address> = tokens.new_ops;
+        let new_operators: Vec<BytesN<32>> = tokens.new_ops;
         let new_weights: Vec<u128> = tokens.new_wghts;
         let new_threshold: u128 = tokens.new_thres;
         
@@ -72,16 +72,16 @@ fn toSignedMsgHsh(
 // can then use this for the validateProof & it wont have an impact as it's also made up on axelar side
 }
 
-fn validate_proof(
+pub fn validate_proof(
     env: Env,
-    msghash: BytesN<32>,
+    msghash: Bytes,
     proof: Bytes
 ) -> bool {
     let tokens: Validate = Validate::deserialize(&env, &proof).unwrap();
-    let operators: Vec<Address> = tokens.operators;
+    let operators: Vec<BytesN<32>> = tokens.operators;
     let weights: Vec<u128> = tokens.weights;
     let threshold: u128 = tokens.threshold;
-    let signatures: Vec<Bytes> = tokens.signatures;
+    let signatures: Vec<(u32, BytesN<64>)> = tokens.signatures;
 
     let operator: Operatorship = Operatorship {
         new_ops: operators.clone(),
@@ -97,21 +97,42 @@ fn validate_proof(
         // implement
     }
 
-    validateSig(env, msghash, operators, weights, threshold, signatures);
+    validate_sig(env, msghash, operators, weights, threshold, signatures);
 
     return operators_epoch == epoch;
     
 
 }
 
-fn validateSig(
+fn validate_sig(
     env: Env,
-    msghash: BytesN<32>,
-    operators: Vec<Address>,
+    msghash: Bytes,
+    public_keys: Vec<BytesN<32>>, // operators
     weights: Vec<u128>, //uint256
     threshold: u128, //uint256
-    signatures: Vec<Bytes> 
+    signatures: Vec<(u32, BytesN<64>)> 
+
 ) {
-    // what is ECDSA.recover()?
+    // CHANGE ALL u128 TO UINT256
+    let mut weight: u128 = 0;
+
+    for i in 0..signatures.len() {
+        let public_key_idx: u32 = signatures.get(i).unwrap().unwrap().0;
+        
+        env.crypto().ed25519_verify(
+            &public_keys.get(public_key_idx).unwrap().unwrap(), 
+            &msghash, 
+            &signatures.get(i).unwrap().unwrap().1);
+        // looping through remaining operators to find a match
+   
+        // return if weight sum above threshold
+        weight += weights.get(public_key_idx).unwrap().unwrap();
+        // weight needs to reach or surpass threshold
+        if (weight >= threshold) {
+            //return; // IMPLEMENT
+        }
+    }
+    // if weight sum below threshold
+    //revert LowSignaturesWeight(); // IMPLEMENT
 
 }

@@ -78,7 +78,7 @@ pub struct ExecutedEvent {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Operatorship {
-    pub new_ops: Vec<Address>, // new_operators
+    pub new_ops: Vec<BytesN<32>>, // new_operators
     pub new_wghts: Vec<u128>, // new_weights change to Uint256
     pub new_thres: u128 // new_threshold change to Uint256
 }
