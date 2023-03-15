@@ -1,5 +1,5 @@
 #![no_std]
-use auth::{to_signed_msg_hsh, validate_proof};
+use auth::{to_signed_msg_hsh, validate_proof, transfer_op};
 use soroban_sdk::{contractimpl, contracttype, bytes, Bytes, BytesN, Env, Symbol, symbol, vec, Address, Map, map, Vec, crypto, bytesn,
     serde::{Deserialize, Serialize}, xdr::Uint256
 };
@@ -110,9 +110,9 @@ impl Contract {
         let decoded: Input = Input::deserialize(&env, &input).unwrap();
         let data: Data = decoded.data;
         let proof: Bytes = decoded.proof;
-
-        let message_hash: BytesN<32> = to_signed_msg_hsh(env, env.crypto().sha256(&data.serialize(&env)));
-        let mut allowOperatorshipTransfer: bool = validate_proof(env, message_hash, proof.serialize(&env));
+        let hash: BytesN<32> = env.crypto().sha256(&data.clone().serialize(&env));
+        let signed_message_hash: BytesN<32> = to_signed_msg_hsh(env.clone(), hash);
+        let mut allowOperatorshipTransfer: bool = validate_proof(env.clone(), signed_message_hash, proof.serialize(&env));
         
         let chain_id: u64 = data.chain_id;
         let command_ids: Vec<BytesN<32>> = data.commandids;
@@ -135,7 +135,8 @@ impl Contract {
                     continue;
                 }
                 allowOperatorshipTransfer = false;
-                // implement
+                Self::_setCommandExecuted(env.clone(), command_id.clone(), true);
+                success = transfer_op(env.clone(), params.get(i).unwrap().unwrap());
             }
             else if command_hash == SELECTOR_APPROVE_CONTRACT_CALL { // testing purposes
                 Self::_setCommandExecuted(env.clone(), command_id.clone(), true);

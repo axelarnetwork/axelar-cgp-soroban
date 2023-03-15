@@ -40,10 +40,12 @@ pub enum Error {
     LowSignaturesWeight = 5,
 }
 
-pub fn transferOp( // transferOperatorship
+pub fn transfer_op( // transferOperatorship
     env: Env,
     params: Bytes
-) {
+) -> bool {
+    // IMPLEMENT REQUIRE OWNER?
+
     let tokens: Operatorship = Operatorship::deserialize(&env, &params).unwrap();
     let new_operators: Vec<BytesN<32>> = tokens.new_ops;
     let new_weights: Vec<u128> = tokens.new_wghts;
@@ -52,7 +54,7 @@ pub fn transferOp( // transferOperatorship
     let operators_length: u32 = new_operators.len();
     let weights_length: u32 = new_weights.len();
 
-    if operators_length == 0 || is_sorted_asc_no_dup(env.clone(), new_operators)// implement 2nd condition
+    if operators_length == 0 || is_sorted_asc_no_dup(env.clone(), new_operators.clone())// implement 2nd condition
     {
         panic_with_error!(env, Error::InvalidOperators);
 
@@ -74,12 +76,23 @@ pub fn transferOp( // transferOperatorship
 
     let new_operators_hash: BytesN<32> = env.crypto().sha256(&params);
     // create function that adds a prefix to new_operators_hash?
-
-    if env.storage().get::<&soroban_sdk::BytesN<32>, u32>(&new_operators_hash).unwrap().unwrap() > 0 {
+    
+    let existing_epoch: u64 = env.storage().get::<&soroban_sdk::BytesN<32>, u64>(&new_operators_hash).unwrap().unwrap_or(0);
+    
+    if existing_epoch > 0 {
         //implementation: make variables all in one big hash, but the hash for epoch map is prefixed.
         panic_with_error!(env, Error::DuplicateOperators);
-
     }
+
+    let epoch: u64 = env.storage().get::<soroban_sdk::Symbol, u64>(symbol!("cur_epoch")).unwrap().unwrap() + 1;
+    env.storage().set(&symbol!("cur_epoch"), &epoch);
+    env.storage().set(&epoch, &new_operators_hash);
+    env.storage().set(&new_operators_hash, &epoch);
+
+    let event: Operatorship = Operatorship { new_ops: new_operators, new_wghts: new_weights, new_thres: new_threshold};
+    env.events().publish((), event);
+
+    return true;
 
 }
 
