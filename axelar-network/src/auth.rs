@@ -52,7 +52,7 @@ pub fn transferOp( // transferOperatorship
     let operators_length: u32 = new_operators.len();
     let weights_length: u32 = new_weights.len();
 
-    if operators_length == 0 || is_sorted_asc_no_dup(env, new_operators)// implement 2nd condition
+    if operators_length == 0 || is_sorted_asc_no_dup(env.clone(), new_operators)// implement 2nd condition
     {
         panic_with_error!(env, Error::InvalidOperators);
 
@@ -75,7 +75,7 @@ pub fn transferOp( // transferOperatorship
     let new_operators_hash: BytesN<32> = env.crypto().sha256(&params);
     // create function that adds a prefix to new_operators_hash?
 
-    if env.storage().get<_ u32>(&new_operators_hash).unwrap().unwrap() > 0 {
+    if env.storage().get::<&soroban_sdk::BytesN<32>, u32>(&new_operators_hash).unwrap().unwrap() > 0 {
         //implementation: make variables all in one big hash, but the hash for epoch map is prefixed.
         panic_with_error!(env, Error::DuplicateOperators);
 
