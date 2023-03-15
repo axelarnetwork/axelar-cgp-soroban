@@ -93,7 +93,7 @@ pub struct Contract;
 
 // }
 
-mod utils;
+//mod utils;
 mod test;
 #[contractimpl]
 impl Contract {
