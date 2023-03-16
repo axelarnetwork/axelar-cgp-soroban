@@ -102,10 +102,10 @@ impl Contract {
         input: Bytes
     ) {
         
-        // dummy values below
-        // HASH THE SHA256 value seprately outside, and leave what got hashed as a comment, and place the bytes below.
-        let SELECTOR_TRANSFER_OPERATORSHIP: BytesN<32> = bytesn!(&env, 0xabcd3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d);
-        let SELECTOR_APPROVE_CONTRACT_CALL: BytesN<32> = bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d);
+        // transferOperatorship converted into Bytes, and then sha256 hashed.
+        let SELECTOR_TRANSFER_OPERATORSHIP: BytesN<32> = env.crypto().sha256(&bytes!(&env, 0x7472616e736665724f70657261746f7273686970));
+        // approveContractCall converted into Bytes, and then sha256 hashed.
+        let SELECTOR_APPROVE_CONTRACT_CALL: BytesN<32> = env.crypto().sha256(&bytes!(&env, 0x617070726f7665436f6e747261637443616c6c));
         
         let decoded: Input = Input::deserialize(&env, &input).unwrap();
         let data: Data = decoded.data;
