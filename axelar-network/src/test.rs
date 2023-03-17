@@ -1,5 +1,7 @@
 #![cfg(test)]
 
+use crate::auth::Validate;
+
 use super::*;
 use soroban_sdk::{testutils::Events, bytes, vec, Env, IntoVal};
 extern crate std;
@@ -9,6 +11,11 @@ fn test() {
     let env = Env::default();
     let contract_id = env.register_contract(None, Contract);
     let client = ContractClient::new(&env, &contract_id);
+
+    // transferOperatorship converted into Bytes, and then sha256 hashed.
+    let SELECTOR_TRANSFER_OPERATORSHIP: BytesN<32> = env.crypto().sha256(&bytes!(&env, 0x7472616e736665724f70657261746f7273686970));
+    // approveContractCall converted into Bytes, and then sha256 hashed.
+    let SELECTOR_APPROVE_CONTRACT_CALL: BytesN<32> = env.crypto().sha256(&bytes!(&env, 0x617070726f7665436f6e747261637443616c6c));
 
     let params = ContractPayload {
         src_chain: bytes!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
@@ -22,13 +29,20 @@ fn test() {
     let data: Data = Data {
         chain_id: 1,
         commandids: vec![&env, bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d)],
-        commands: vec![&env, bytes![&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d]],
+        commands: vec![&env, bytes![&env, 0x617070726f7665436f6e747261637443616c6c]],
         params: vec![&env, params.clone().serialize(&env)]
+    };
+
+    let proof: Validate = Validate {
+        operators: vec![&env, bytesn!(&env, [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])],
+        weights: vec![&env, 0], // uint256
+        threshold: 0, // uint256
+        signatures: vec![&env, (1, bytesn!(&env, [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]))]
     };
 
     let input: Input = Input {
         data: data.clone(),
-        proof: bytes![&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d]
+        proof: proof.clone().serialize(&env)
     };
 
     let test = input.serialize(&env);
