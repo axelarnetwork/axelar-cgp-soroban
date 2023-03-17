@@ -97,6 +97,13 @@ pub struct Contract;
 mod test;
 #[contractimpl]
 impl Contract {
+
+    pub fn init_auth(env: Env, recent_ops: Vec<Bytes>) {
+        for i in 0..recent_ops.len() {
+            transfer_op(env.clone(), recent_ops.get(i).unwrap().unwrap());
+        }
+    }
+
     pub fn execute (
         env: Env,
         input: Bytes
