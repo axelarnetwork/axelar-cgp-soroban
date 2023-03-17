@@ -6,15 +6,6 @@ use crate::Operatorship;
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Axelar {
-    // Auth Weighted
-    crnt_epoch: u64, //current_epoch
-    hash_epoch: Map<u64, BytesN<32>>, // hash_for_epoch
-    epoch_hash: Map<BytesN<32>, u64>, // epoch_for_hash
-}
-
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Validate {
     pub operators: Vec<BytesN<32>>,
     pub weights: Vec<u128>, // uint256
