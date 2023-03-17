@@ -128,8 +128,8 @@ pub fn validate_proof(
     };
     let operators_hash: BytesN<32> = env.crypto().sha256(&operator.serialize(&env));
 
-    let operators_epoch: u128 = env.storage().get(operators_hash).unwrap().unwrap(); //uint256
-    let epoch: u128 = env.storage().get(symbol!("cur_epoch")).unwrap().unwrap(); //uint256
+    let operators_epoch: u128 = env.storage().get(operators_hash).unwrap_or(Ok(0)).unwrap(); //uint256
+    let epoch: u128 = env.storage().get(symbol!("cur_epoch")).unwrap_or(Ok(0)).unwrap(); //uint256
 
     if (operators_epoch == 0 || epoch - operators_epoch >= 16) {
         panic_with_error!(env, Error::InvalidOperators);
