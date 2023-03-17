@@ -68,14 +68,14 @@ pub fn transfer_op( // transferOperatorship
     let new_operators_hash: BytesN<32> = env.crypto().sha256(&params);
     // create function that adds a prefix to new_operators_hash?
     
-    let existing_epoch: u64 = env.storage().get::<&soroban_sdk::BytesN<32>, u64>(&new_operators_hash).unwrap().unwrap_or(0);
+    let existing_epoch: u64 = env.storage().get(&new_operators_hash).unwrap_or(Ok(0)).unwrap();
     
     if existing_epoch > 0 {
         //implementation: make variables all in one big hash, but the hash for epoch map is prefixed.
         panic_with_error!(env, Error::DuplicateOperators);
     }
 
-    let epoch: u64 = env.storage().get::<soroban_sdk::Symbol, u64>(symbol!("cur_epoch")).unwrap().unwrap() + 1;
+    let epoch: u64 = env.storage().get(symbol!("cur_epoch")).unwrap_or(Ok(0)).unwrap() + 1;
     env.storage().set(&symbol!("cur_epoch"), &epoch);
     env.storage().set(&epoch, &new_operators_hash);
     env.storage().set(&new_operators_hash, &epoch);
