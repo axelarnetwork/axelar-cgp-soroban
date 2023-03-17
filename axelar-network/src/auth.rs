@@ -45,7 +45,7 @@ pub fn transfer_op( // transferOperatorship
     let operators_length: u32 = new_operators.len();
     let weights_length: u32 = new_weights.len();
 
-    if operators_length == 0 || is_sorted_asc_no_dup(env.clone(), new_operators.clone())// implement 2nd condition
+    if operators_length == 0 || !is_sorted_asc_no_dup(env.clone(), new_operators.clone())
     {
         panic_with_error!(env, Error::InvalidOperators);
 

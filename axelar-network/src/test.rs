@@ -17,7 +17,17 @@ fn test() {
     // approveContractCall converted into Bytes, and then sha256 hashed.
     let SELECTOR_APPROVE_CONTRACT_CALL: BytesN<32> = env.crypto().sha256(&bytes!(&env, 0x617070726f7665436f6e747261637443616c6c));
 
-    let params = ContractPayload {
+    // Test Init Auth
+    let params_operator: Operatorship = Operatorship { 
+        new_ops: vec![&env, bytesn!(&env, [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])], 
+        new_wghts: vec![&env, 1], 
+        new_thres: 1
+    };
+
+    client.init_auth(&vec![&env, params_operator.serialize(&env)]);
+
+    // Test Contract Approve
+    let params_approve = ContractPayload {
         src_chain: bytes!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
         src_add: bytes!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
         contract: bytes!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
@@ -30,14 +40,16 @@ fn test() {
         chain_id: 1,
         commandids: vec![&env, bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d)],
         commands: vec![&env, bytes![&env, 0x617070726f7665436f6e747261637443616c6c]],
-        params: vec![&env, params.clone().serialize(&env)]
+        params: vec![&env, params_approve.clone().serialize(&env)]
     };
 
+    
+
     let proof: Validate = Validate {
-        operators: vec![&env, bytesn!(&env, [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])],
-        weights: vec![&env, 0], // uint256
-        threshold: 0, // uint256
-        signatures: vec![&env, (1, bytesn!(&env, [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]))]
+        operators: vec![&env, bytesn!(&env, [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])],
+        weights: vec![&env, 1], // uint256
+        threshold: 1, // uint256
+        signatures: vec![&env, (1, bytesn!(&env, [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]))]
     };
 
     let input: Input = Input {
@@ -47,7 +59,7 @@ fn test() {
 
     let test = input.serialize(&env);
     client.execute(&test);
-    let event: ContractCallApprovedEvent = ContractCallApprovedEvent { src_chain: params.src_chain, src_addr: params.src_add, src_tx: params.src_tx_ha, src_event: params.src_evnt};
+    let event: ContractCallApprovedEvent = ContractCallApprovedEvent { src_chain: params_approve.src_chain, src_addr: params_approve.src_add, src_tx: params_approve.src_tx_ha, src_event: params_approve.src_evnt};
     let event2: ExecutedEvent = ExecutedEvent { command_id: data.commandids.get(0).unwrap().unwrap() };
     assert_eq!(
         env.events().all(),
