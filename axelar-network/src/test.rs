@@ -19,6 +19,7 @@ fn test() {
 
     // Test Init Auth
     let params_operator: Operatorship = Operatorship { 
+        //NEXT: use public key instead of array containing 1 for new_ops
         new_ops: vec![&env, bytesn!(&env, [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])], 
         new_wghts: vec![&env, 1], 
         new_thres: 1
@@ -90,3 +91,5 @@ fn test() {
 
 
 }
+
+// next: test call_contract

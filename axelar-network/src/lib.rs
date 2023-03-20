@@ -1,10 +1,12 @@
 #![no_std]
 use auth::{to_signed_msg_hsh, validate_proof, transfer_op};
 use soroban_sdk::{contractimpl, contracttype, bytes, Bytes, BytesN, Env, Symbol, symbol, vec, Address, Map, map, Vec, crypto, bytesn,
-    serde::{Deserialize, Serialize}, xdr::Uint256
+    serde::{Deserialize, Serialize}, xdr::{Uint256}, panic_with_error
 };
 //use alloc::vec::Vec;
 use stellar_xdr;
+
+use crate::auth::Error;
 
 mod auth;
 
@@ -17,7 +19,7 @@ extern crate alloc;
 pub struct Data {
     pub chain_id: u64,
     pub commandids: Vec<BytesN<32>>,
-    pub commands: Vec<Bytes>, //instead of Vec<String>
+    pub commands: Vec<Bytes>, 
     pub params: Vec<Bytes>
 }
 
@@ -42,11 +44,8 @@ pub struct ContractPayload {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ContractCallApprovedEvent {
-    //pub command_id: Bytes,
     pub src_chain: Bytes,
     pub src_addr: Bytes,
-    //pub contract: Bytes, // contract address
-    //pub payload: Bytes,
     pub src_tx: BytesN<32>, // source tx hash
     pub src_event: u64
 }
@@ -54,7 +53,7 @@ pub struct ContractCallApprovedEvent {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ContractCallApprovedKey {
-    pub approved: Symbol,
+    pub prefix: Symbol,
     pub command_id: BytesN<32>,
     pub src_chain: Bytes,
     pub src_addr: Bytes,
@@ -65,9 +64,17 @@ pub struct ContractCallApprovedKey {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ContractCall {
+    pub prefix: Symbol,
     pub dest_chain: Bytes,
     pub dest_addr: Bytes,
     pub payload: Bytes
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CommandExecuted {
+    pub prefix: Symbol,
+    pub command_id: BytesN<32>
 }
 
 #[contracttype]
@@ -80,24 +87,17 @@ pub struct ExecutedEvent {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Operatorship {
     pub new_ops: Vec<BytesN<32>>, // new_operators
-    pub new_wghts: Vec<u128>, // new_weights change to Uint256
-    pub new_thres: u128 // new_threshold change to Uint256
+    pub new_wghts: Vec<u128>, // new_weights
+    pub new_thres: u128 // new_threshold 
 }
 
 pub struct Contract;
-//  {
-//     // Auth Weighted
-//     crnt_epoch: u64, //current_epoch
-//     hash_epoch: Map<u64, BytesN<32>>, // hash_for_epoch
-//     epoch_hash: Map<BytesN<32>, u64> // epoch_for_hash
 
-// }
-
-//mod utils;
 mod test;
 #[contractimpl]
 impl Contract {
 
+    // NEXT: ensure this can only be called once & only be called by contract deployer.
     pub fn init_auth(env: Env, recent_ops: Vec<Bytes>) {
         for i in 0..recent_ops.len() {
             transfer_op(env.clone(), recent_ops.get(i).unwrap().unwrap());
@@ -129,9 +129,10 @@ impl Contract {
         let commands_length: u32 = command_ids.len();
 
 
-        // if (commandsLength != commands.len() || commandsLength != params.len()) {
-        //     // implement
-        // }
+        if (commands_length != commands.len() || commands_length != params.len()) {
+            panic_with_error!(env, Error::InvalidCommands);
+        }
+
         for i in 0..commands_length {
             let command_id: BytesN<32> = command_ids.get(i).unwrap().unwrap();
             let command_hash: BytesN<32> = env.crypto().sha256(&commands.get(i).unwrap().unwrap());
@@ -147,7 +148,7 @@ impl Contract {
             }
             else if command_hash == SELECTOR_APPROVE_CONTRACT_CALL { 
                 Self::_setCommandExecuted(env.clone(), command_id.clone(), true);
-                success = Self::approve(env.clone(), params.get(i).unwrap().unwrap(), command_id.clone());
+                success = Self::approve_cc(env.clone(), params.get(i).unwrap().unwrap(), command_id.clone());
             }
 
             if (success) {
@@ -158,11 +159,9 @@ impl Contract {
             }
         }
 
-
-
     }
 
-    pub fn approve( // approveContractCall
+    fn approve_cc(
         env: Env,
         params: Bytes,
         command_id: BytesN<32>
@@ -182,16 +181,16 @@ impl Contract {
         true
     }
     
-    fn _setContractCallApproved( // how do I make this functio internal / protected
+    fn _setContractCallApproved( // how do I make this function internal / protected
         env: Env,
         commandId: BytesN<32>,
         sourceChain: Bytes,
         sourceAddress: Bytes,
-        contractAddress: Bytes, // Address instead of Bytes?
+        contractAddress: Bytes,
         payloadHash: BytesN<32>
     ) {
         let data: ContractCallApprovedKey = ContractCallApprovedKey{
-            approved: symbol!("approved"), 
+            prefix: symbol!("approved"), 
             command_id: commandId,
             src_chain: sourceChain, 
             src_addr: sourceAddress, 
@@ -207,7 +206,11 @@ impl Contract {
         command_id: BytesN<32>,
         executed: bool
     ) {
-        let key: BytesN<32> = env.crypto().sha256(&command_id.serialize(&env));
+        let data: CommandExecuted = CommandExecuted {
+            prefix: symbol!("executed"),
+            command_id: command_id,
+        };
+        let key: BytesN<32> = env.crypto().sha256(&data.serialize(&env));
         env.storage().set(&key, &executed);
     }
 
@@ -218,13 +221,16 @@ impl Contract {
         payload: Bytes // payload hash
     ) {
         let data: ContractCall = ContractCall {
+            prefix: symbol!("ContractC"),
             dest_chain,
             dest_addr,
             payload: payload.clone()
         };
-        //let sender: Address; // implement
+        //let sender: Address; // NEXT: represents address calling the call_contract() function. Implement
 
         env.events().publish((env.crypto().sha256(&payload),), data);
     }
 
 }
+// RENAME TO gateway.rs
+// Move auth.rs into gateway.rs to combine it.

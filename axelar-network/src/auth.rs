@@ -29,13 +29,15 @@ pub enum Error {
     InvalidThreshold = 3,
     DuplicateOperators = 4,
     LowSignaturesWeight = 5,
+    InvalidCommands = 6,
+    InvalidOrdering = 7,
 }
 
 pub fn transfer_op( // transferOperatorship
     env: Env,
     params: Bytes
 ) -> bool {
-    // IMPLEMENT REQUIRE OWNER?
+    // NEXT: IMPLEMENT REQUIRE OWNER? No need to do if I put into gateway.rs, and make this a private/internal function
 
     let tokens: Operatorship = Operatorship::deserialize(&env, &params).unwrap();
     let new_operators: Vec<BytesN<32>> = tokens.new_ops;
@@ -66,16 +68,17 @@ pub fn transfer_op( // transferOperatorship
     }
 
     let new_operators_hash: BytesN<32> = env.crypto().sha256(&params);
-    // create function that adds a prefix to new_operators_hash?
+    // NEXT: create function that adds a prefix to new_operators_hash
     
     let existing_epoch: u64 = env.storage().get(&new_operators_hash).unwrap_or(Ok(0)).unwrap();
-    
+    // NEXT: add prefix.
+
     if existing_epoch > 0 {
-        //implementation: make variables all in one big hash, but the hash for epoch map is prefixed.
         panic_with_error!(env, Error::DuplicateOperators);
     }
 
-    let epoch: u64 = env.storage().get(symbol!("cur_epoch")).unwrap_or(Ok(0)).unwrap() + 1;
+    // ADD PREFIXES for all below:
+    let epoch: u128= env.storage().get(symbol!("cur_epoch")).unwrap_or(Ok(0)).unwrap() + 1;
     env.storage().set(&symbol!("cur_epoch"), &epoch);
     env.storage().set(&epoch, &new_operators_hash);
     env.storage().set(&new_operators_hash, &epoch);
@@ -96,9 +99,6 @@ pub fn to_signed_msg_hsh(
         hash: hash
     };
     return env.crypto().sha256(&data.serialize(&env));
-    // return keccak256(abi.encodePacked('Soroban Signed Message:', hash));
-    // can change prefix to whatever I want.
-// can then use this for the validateProof & it wont have an impact as it's also made up on axelar side
 }
 
 pub fn validate_proof(
@@ -119,8 +119,8 @@ pub fn validate_proof(
     };
     let operators_hash: BytesN<32> = env.crypto().sha256(&operator.serialize(&env));
 
-    let operators_epoch: u64 = env.storage().get(operators_hash).unwrap_or(Ok(0)).unwrap(); //uint256
-    let epoch: u64 = env.storage().get(symbol!("cur_epoch")).unwrap_or(Ok(0)).unwrap(); //uint256
+    let operators_epoch: u128 = env.storage().get(operators_hash).unwrap_or(Ok(0)).unwrap(); //uint256
+    let epoch: u128 = env.storage().get(symbol!("cur_epoch")).unwrap_or(Ok(0)).unwrap(); //uint256
 
     if (operators_epoch == 0 || epoch - operators_epoch >= 16) {
         panic_with_error!(env, Error::InvalidOperators);
@@ -137,19 +137,26 @@ fn validate_sig(
     env: Env,
     msghash: BytesN<32>,
     public_keys: Vec<BytesN<32>>, // operators
-    weights: Vec<u128>, //uint256
-    threshold: u128, //uint256
+    weights: Vec<u128>,
+    threshold: u128,
     signatures: Vec<(u32, BytesN<64>)> 
 
 ) {
-    // CHANGE ALL u128 TO UINT256
     let mut weight: u128 = 0;
-    let msg_hash: Bytes = msghash.into(); // convert into Bytes
+    let msg_hash: Bytes = msghash.into(); // converts it into Bytes
 
+    
+    let mut prev_index = 0;
     for i in 0..signatures.len() {
         let public_key_idx: u32 = signatures.get(i).unwrap().unwrap().0;
         let signature_len = signatures.len();// testing
         let pk_len = public_keys.len();// testing
+
+        // check that signature's public key index is greater than the previous index, aside from first iteration
+        if i > 0 && !(public_key_idx > prev_index) {
+            panic_with_error!(env, Error::InvalidOrdering);
+        }
+        prev_index = public_key_idx;
         env.crypto().ed25519_verify(
             &public_keys.get(public_key_idx).unwrap().unwrap(), 
             &msg_hash, 
@@ -177,6 +184,7 @@ fn is_sorted_asc_no_dup(
         }
     }
 
-    // can the 0th index of accounts even equal the "0 address" in the rhs?
     return accounts.get(0).unwrap().unwrap() != bytesn!(&env, 0x000000000000000000000000000000000000000000000000000000000000000);
 }
+
+// u128 is fine instead of u256, unlikely to go above u128.
