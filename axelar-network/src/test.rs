@@ -24,7 +24,7 @@ fn test() {
         new_thres: 1
     };
 
-    client.init_auth(&vec![&env, params_operator.serialize(&env)]);
+    client.init_auth(&vec![&env, params_operator.clone().serialize(&env)]);
 
     // Test Contract Approve
     let params_approve = ContractPayload {
@@ -49,7 +49,7 @@ fn test() {
         operators: vec![&env, bytesn!(&env, [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])],
         weights: vec![&env, 1], // uint256
         threshold: 1, // uint256
-        signatures: vec![&env, (1, bytesn!(&env, [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]))]
+        signatures: vec![&env, (0, bytesn!(&env, [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]))]
     };
 
     let input: Input = Input {
@@ -59,7 +59,8 @@ fn test() {
 
     let test = input.serialize(&env);
     client.execute(&test);
-    let event: ContractCallApprovedEvent = ContractCallApprovedEvent { src_chain: params_approve.src_chain, src_addr: params_approve.src_add, src_tx: params_approve.src_tx_ha, src_event: params_approve.src_evnt};
+    let event0: Operatorship =  params_operator;
+    let event1: ContractCallApprovedEvent = ContractCallApprovedEvent { src_chain: params_approve.src_chain, src_addr: params_approve.src_add, src_tx: params_approve.src_tx_ha, src_event: params_approve.src_evnt};
     let event2: ExecutedEvent = ExecutedEvent { command_id: data.commandids.get(0).unwrap().unwrap() };
     assert_eq!(
         env.events().all(),
@@ -67,12 +68,17 @@ fn test() {
             &env,
             (
                 contract_id.clone(),
+                ().into_val(&env),
+                event0.into_val(&env)
+            ),
+            (
+                contract_id.clone(),
                 (
                 bytes!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
                 bytes!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
                 bytes!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
                 ).into_val(&env),
-                event.into_val(&env)
+                event1.into_val(&env)
             ),
             (
                 contract_id.clone(),

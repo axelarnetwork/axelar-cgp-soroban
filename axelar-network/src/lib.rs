@@ -119,7 +119,7 @@ impl Contract {
         let proof: Bytes = decoded.proof;
         let hash: BytesN<32> = env.crypto().sha256(&data.clone().serialize(&env));
         let signed_message_hash: BytesN<32> = to_signed_msg_hsh(env.clone(), hash);
-        let mut allowOperatorshipTransfer: bool = validate_proof(env.clone(), signed_message_hash, proof.clone());
+        let mut allow_operatorship_transfership: bool = validate_proof(env.clone(), signed_message_hash, proof.clone());
         
         let chain_id: u64 = data.chain_id;
         let command_ids: Vec<BytesN<32>> = data.commandids;
@@ -138,10 +138,10 @@ impl Contract {
             let mut success: bool = false;
 
             if command_hash == SELECTOR_TRANSFER_OPERATORSHIP {
-                if (!allowOperatorshipTransfer) {
+                if (!allow_operatorship_transfership) {
                     continue;
                 }
-                allowOperatorshipTransfer = false;
+                allow_operatorship_transfership = false;
                 Self::_setCommandExecuted(env.clone(), command_id.clone(), true);
                 success = transfer_op(env.clone(), params.get(i).unwrap().unwrap());
             }

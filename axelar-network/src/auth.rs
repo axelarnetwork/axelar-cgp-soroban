@@ -119,8 +119,8 @@ pub fn validate_proof(
     };
     let operators_hash: BytesN<32> = env.crypto().sha256(&operator.serialize(&env));
 
-    let operators_epoch: u128 = env.storage().get(operators_hash).unwrap_or(Ok(0)).unwrap(); //uint256
-    let epoch: u128 = env.storage().get(symbol!("cur_epoch")).unwrap_or(Ok(0)).unwrap(); //uint256
+    let operators_epoch: u64 = env.storage().get(operators_hash).unwrap_or(Ok(0)).unwrap(); //uint256
+    let epoch: u64 = env.storage().get(symbol!("cur_epoch")).unwrap_or(Ok(0)).unwrap(); //uint256
 
     if (operators_epoch == 0 || epoch - operators_epoch >= 16) {
         panic_with_error!(env, Error::InvalidOperators);
@@ -148,7 +148,8 @@ fn validate_sig(
 
     for i in 0..signatures.len() {
         let public_key_idx: u32 = signatures.get(i).unwrap().unwrap().0;
-        
+        let signature_len = signatures.len();// testing
+        let pk_len = public_keys.len();// testing
         env.crypto().ed25519_verify(
             &public_keys.get(public_key_idx).unwrap().unwrap(), 
             &msg_hash, 
