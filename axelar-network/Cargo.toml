@@ -11,7 +11,6 @@ testutils = ["soroban-sdk/testutils"]
 
 [dependencies]
 soroban-sdk = { version = "0.6.0", features = ["alloc"] }
-stellar-xdr = { version = "0.0.14", default-features = true, features = [] }
 
 [dev_dependencies]
 soroban-sdk = { version = "0.6.0", features = ["testutils", "alloc"] }

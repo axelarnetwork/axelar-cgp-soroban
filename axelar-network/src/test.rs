@@ -1,7 +1,5 @@
 #![cfg(test)]
 
-use crate::auth::Validate;
-
 use super::*;
 use soroban_sdk::{testutils::Events, bytes, vec, Env, IntoVal};
 extern crate std;
@@ -92,4 +90,4 @@ fn test() {
 
 }
 
-// next: test call_contract
+// NEXT: test call_contract
