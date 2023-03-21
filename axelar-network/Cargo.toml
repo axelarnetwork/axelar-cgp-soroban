@@ -10,11 +10,11 @@ crate-type = ["cdylib"]
 testutils = ["soroban-sdk/testutils"]
 
 [dependencies]
-soroban-sdk = { version = "0.4.2", features = ["alloc"] }
+soroban-sdk = { version = "0.6.0", features = ["alloc"] }
 stellar-xdr = { version = "0.0.14", default-features = true, features = [] }
 
 [dev_dependencies]
-soroban-sdk = { version = "0.4.2", features = ["testutils", "alloc"] }
+soroban-sdk = { version = "0.6.0", features = ["testutils", "alloc"] }
 
 [profile.release]
 opt-level = "z"

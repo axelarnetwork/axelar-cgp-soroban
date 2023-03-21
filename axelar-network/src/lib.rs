@@ -99,6 +99,7 @@ impl Contract {
 
     // NEXT: ensure this can only be called once & only be called by contract deployer.
     pub fn init_auth(env: Env, recent_ops: Vec<Bytes>) {
+        //owner.require_auth();
         for i in 0..recent_ops.len() {
             transfer_op(env.clone(), recent_ops.get(i).unwrap().unwrap());
         }
@@ -216,19 +217,20 @@ impl Contract {
 
     pub fn call_con(
         env: Env,
+        caller: Address, // doesn't seem to be another way of getting the caller's address
         dest_chain: Bytes,
         dest_addr: Bytes,
-        payload: Bytes // payload hash
+        payload: Bytes
     ) {
+        caller.require_auth();
+
         let data: ContractCall = ContractCall {
             prefix: symbol!("ContractC"),
             dest_chain,
             dest_addr,
-            payload: payload.clone()
+            payload: payload
         };
-        //let sender: Address; // NEXT: represents address calling the call_contract() function. Implement
-
-        env.events().publish((env.crypto().sha256(&payload),), data);
+        env.events().publish((caller, env.crypto().sha256(&payload),), data);
     }
 
 }
