@@ -99,6 +99,20 @@ pub struct SignedMsg {
     pub hash: BytesN<32>,
 }
 
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PrefixHash {
+    pub prefix: Symbol,
+    pub hash: BytesN<32>,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PrefixEpoch {
+    pub prefix: Symbol,
+    pub epoch: u128,
+}
+
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
@@ -289,20 +303,18 @@ fn transfer_op( // transferOperatorship
     }
 
     let new_operators_hash: BytesN<32> = env.crypto().sha256(&params);
-    // NEXT: create function that adds a prefix to new_operators_hash
+    let new_operators_hash_key: BytesN<32> = env.crypto().sha256(&PrefixHash {prefix: symbol!("operators"), hash: new_operators_hash.clone()}.serialize(&env));
     
-    let existing_epoch: u64 = env.storage().get(&new_operators_hash).unwrap_or(Ok(0)).unwrap();
-    // NEXT: add prefix.
+    let existing_epoch: u64 = env.storage().get(&new_operators_hash_key).unwrap_or(Ok(0)).unwrap();
 
     if existing_epoch > 0 {
         panic_with_error!(env, Error::DuplicateOperators);
     }
 
-    // NEXT: ADD PREFIXES for all below:
     let epoch: u128= env.storage().get(&symbol!("cur_epoch")).unwrap_or(Ok(0)).unwrap() + 1;
     env.storage().set(&symbol!("cur_epoch"), &epoch);
-    env.storage().set(&epoch, &new_operators_hash);
-    env.storage().set(&new_operators_hash, &epoch);
+    env.storage().set(&PrefixEpoch{prefix: symbol!("epoch"), epoch}, &new_operators_hash);
+    env.storage().set(&new_operators_hash_key, &epoch);
 
     let event: Operatorship = Operatorship { new_ops: new_operators, new_wghts: new_weights, new_thres: new_threshold};
     env.events().publish((), event);
@@ -339,8 +351,9 @@ pub fn validate_proof(
         new_thres: threshold
     };
     let operators_hash: BytesN<32> = env.crypto().sha256(&operator.serialize(&env));
+    let operators_hash_key: BytesN<32> = env.crypto().sha256(&PrefixHash {prefix: symbol!("operators"), hash: operators_hash.clone()}.serialize(&env));
 
-    let operators_epoch: u128 = env.storage().get(&operators_hash).unwrap_or(Ok(0)).unwrap(); //uint256
+    let operators_epoch: u128 = env.storage().get(&operators_hash_key).unwrap_or(Ok(0)).unwrap(); //uint256
     let epoch: u128 = env.storage().get(&symbol!("cur_epoch")).unwrap_or(Ok(0)).unwrap(); //uint256
 
     if (operators_epoch == 0 || epoch - operators_epoch >= 16) {
