@@ -23,6 +23,7 @@ fn test() {
         new_thres: 1
     };
     let admin: Address = Address::random(&env);
+
     client.initialize(&admin, &vec![&env, params_operator.clone().serialize(&env)]);
 
     // Test Contract Approve
@@ -42,8 +43,6 @@ fn test() {
         params: vec![&env, params_approve.clone().serialize(&env)]
     };
 
-    
-
     let proof: Validate = Validate {
         operators: vec![&env, bytesn!(&env, [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])],
         weights: vec![&env, 1], // uint256
@@ -58,9 +57,30 @@ fn test() {
 
     let test = input.serialize(&env);
     client.execute(&test);
+
+
+    // Test Call Contract
+    let user: Address = Address::random(&env);
+    let ETHEREUM_ID: Bytes = bytes!(&env, 0x0);
+    let JUNKYARD: Bytes = bytes!(&env, 0x4EFE356BEDeCC817cb89B4E9b796dB8bC188DC59);
+    let payload: Bytes = bytes!(&env, 0x000000000000000000000000da2982fa68c3787af86475824eeb07702c4c449f00000000000000000000000000000000000000000000000000000000000003be0000000000000000000000004efe356bedecc817cb89b4e9b796db8bc188dc59);
+    client.call_con(
+        &user, 
+        &ETHEREUM_ID, 
+        &JUNKYARD, 
+        &payload
+    );
+
+
     let event0: Operatorship =  params_operator;
     let event1: ContractCallApprovedEvent = ContractCallApprovedEvent { src_chain: params_approve.src_chain, src_addr: params_approve.src_add, src_tx: params_approve.src_tx_ha, src_event: params_approve.src_evnt};
     let event2: ExecutedEvent = ExecutedEvent { command_id: data.commandids.get(0).unwrap().unwrap() };
+    let event3: ContractCall = ContractCall {
+        prefix: symbol!("ContractC"),
+        dest_chain: ETHEREUM_ID,
+        dest_addr: JUNKYARD,
+        payload: payload.clone()
+    };
     assert_eq!(
         env.events().all(),
         vec![
@@ -83,11 +103,17 @@ fn test() {
                 contract_id.clone(),
                 ().into_val(&env),
                 event2.into_val(&env)
+            ),
+            (
+                contract_id.clone(),
+                (
+                    user, 
+                    env.crypto().sha256(&payload),
+                ).into_val(&env),
+                event3.into_val(&env)
             )
         ]
     );
 
 
 }
-
-// NEXT: test call_contract

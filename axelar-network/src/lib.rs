@@ -388,8 +388,6 @@ fn validate_sig(
     let mut prev_index = 0;
     for i in 0..signatures.len() {
         let public_key_idx: u32 = signatures.get(i).unwrap().unwrap().0;
-        let signature_len = signatures.len();// testing
-        let pk_len = public_keys.len();// testing
 
         // check that signature's public key index is greater than the previous index, aside from first iteration
         if i > 0 && !(public_key_idx > prev_index) {
