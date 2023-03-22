@@ -1,14 +1,17 @@
 #![cfg(test)]
 
 use super::*;
-use soroban_sdk::{testutils::{Events, Address as _}, bytes, vec, Env, IntoVal};
 extern crate std;
+use crate::{gateway::*, GatewayClient};
+use soroban_sdk::{testutils::{Events, Address as _}, bytes, bytesn, symbol, vec, Env, IntoVal, BytesN, Bytes, Address,
+serde::{Deserialize, Serialize}};
+
 
 #[test]
 fn test() {
     let env = Env::default();
-    let contract_id = env.register_contract(None, Contract);
-    let client = ContractClient::new(&env, &contract_id);
+    let contract_id = env.register_contract(None, Gateway);
+    let client = GatewayClient::new(&env, &contract_id);
 
     // transferOperatorship converted into Bytes, and then sha256 hashed.
     let SELECTOR_TRANSFER_OPERATORSHIP: BytesN<32> = env.crypto().sha256(&bytes!(&env, 0x7472616e736665724f70657261746f7273686970));
