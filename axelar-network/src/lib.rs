@@ -1,9 +1,11 @@
 #![no_std]
+use admin::{has_administrator, write_administrator};
 use soroban_sdk::{contractimpl, contracttype, contracterror, bytes, Bytes, BytesN, Env, Symbol, symbol, vec, Address, Map, map, Vec, crypto, bytesn,
     serde::{Deserialize, Serialize}, panic_with_error
 };
 
 mod test;
+mod admin;
 
 
 #[contracttype]
@@ -131,9 +133,12 @@ pub struct Contract;
 #[contractimpl]
 impl Contract {
 
-    // NEXT: ensure this can only be called once & only be called by contract deployer.
-    pub fn init_auth(env: Env, recent_ops: Vec<Bytes>) {
-        //owner.require_auth();
+    pub fn initialize(env: Env, admin: Address, recent_ops: Vec<Bytes>) {
+        if has_administrator(&env) {
+            panic!("already initialized")
+        }
+        write_administrator(&env, &admin);
+
         for i in 0..recent_ops.len() {
             transfer_op(env.clone(), recent_ops.get(i).unwrap().unwrap());
         }

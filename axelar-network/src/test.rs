@@ -1,7 +1,7 @@
 #![cfg(test)]
 
 use super::*;
-use soroban_sdk::{testutils::Events, bytes, vec, Env, IntoVal};
+use soroban_sdk::{testutils::{Events, Address as _}, bytes, vec, Env, IntoVal};
 extern crate std;
 
 #[test]
@@ -15,15 +15,15 @@ fn test() {
     // approveContractCall converted into Bytes, and then sha256 hashed.
     let SELECTOR_APPROVE_CONTRACT_CALL: BytesN<32> = env.crypto().sha256(&bytes!(&env, 0x617070726f7665436f6e747261637443616c6c));
 
-    // Test Init Auth
+    // Test Initalize
     let params_operator: Operatorship = Operatorship { 
         //NEXT: use public key instead of array containing 1 for new_ops
         new_ops: vec![&env, bytesn!(&env, [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])], 
         new_wghts: vec![&env, 1], 
         new_thres: 1
     };
-
-    client.init_auth(&vec![&env, params_operator.clone().serialize(&env)]);
+    let admin: Address = Address::random(&env);
+    client.initialize(&admin, &vec![&env, params_operator.clone().serialize(&env)]);
 
     // Test Contract Approve
     let params_approve = ContractPayload {
