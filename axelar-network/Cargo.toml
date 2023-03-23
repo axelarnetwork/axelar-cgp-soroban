@@ -10,10 +10,14 @@ crate-type = ["cdylib"]
 testutils = ["soroban-sdk/testutils"]
 
 [dependencies]
-soroban-sdk = { version = "0.6.0", features = ["alloc"] }
+soroban-sdk = { version = "0.7.0", features = ["alloc"] }
+ed25519-dalek = { version = "1.0.1"}
+rand = { vesion = "0.8.5" }
 
 [dev_dependencies]
-soroban-sdk = { version = "0.6.0", features = ["testutils", "alloc"] }
+soroban-sdk = { version = "0.7.0", features = ["testutils", "alloc"] }
+ed25519-dalek = { version = "1.0.1"}
+rand = { vesion = "0.8.5" }
 
 [profile.release]
 opt-level = "z"

@@ -1,6 +1,6 @@
 #![no_std]
-use soroban_sdk::{contractimpl, contracttype, contracterror, bytes, Bytes, BytesN, Env, Symbol, symbol, vec, Address, Map, map, Vec, crypto, bytesn,
-    serde::{Deserialize, Serialize}, panic_with_error
+use soroban_sdk::{contractimpl, contracttype, contracterror, bytes, Bytes, BytesN, Env, Symbol, vec, Address, Map, map, Vec, crypto, bytesn,
+    xdr::{self, FromXdr, ToXdr}, panic_with_error
 };
 use crate::admin::*;
 
@@ -151,10 +151,10 @@ impl Gateway {
         // approveContractCall converted into Bytes, and then sha256 hashed.
         let SELECTOR_APPROVE_CONTRACT_CALL: BytesN<32> = env.crypto().sha256(&bytes!(&env, 0x617070726f7665436f6e747261637443616c6c));
         
-        let decoded: Input = Input::deserialize(&env, &input).unwrap();
+        let decoded: Input = Input::from_xdr(&env, &input).unwrap();
         let data: Data = decoded.data;
         let proof: Bytes = decoded.proof;
-        let hash: BytesN<32> = env.crypto().sha256(&data.clone().serialize(&env));
+        let hash: BytesN<32> = env.crypto().sha256(&data.clone().to_xdr(&env));
         let signed_message_hash: BytesN<32> = to_signed_msg_hsh(env.clone(), hash);
         let mut allow_operatorship_transfership: bool = validate_proof(env.clone(), signed_message_hash, proof.clone());
         
@@ -203,7 +203,7 @@ impl Gateway {
         params: Bytes,
         command_id: BytesN<32>
     ) -> bool {
-        let decoded: ContractPayload = ContractPayload::deserialize(&env, &params).unwrap();
+        let decoded: ContractPayload = ContractPayload::from_xdr(&env, &params).unwrap();
         let src_chain: Bytes = decoded.src_chain;
         let src_addr: Bytes = decoded.src_add;
         let contract: Bytes = decoded.contract;
@@ -227,14 +227,14 @@ impl Gateway {
         payloadHash: BytesN<32>
     ) {
         let data: ContractCallApprovedKey = ContractCallApprovedKey{
-            prefix: symbol!("approved"), 
+            prefix: Symbol::new(&env, &"approved"), 
             command_id: commandId,
             src_chain: sourceChain, 
             src_addr: sourceAddress, 
             contract: contractAddress,
             payload_ha: payloadHash
         };
-        let key: BytesN<32> = env.crypto().sha256(&data.serialize(&env));
+        let key: BytesN<32> = env.crypto().sha256(&data.to_xdr(&env));
         env.storage().set(&key, &true);
     }
 
@@ -244,10 +244,10 @@ impl Gateway {
         executed: bool
     ) {
         let data: CommandExecuted = CommandExecuted {
-            prefix: symbol!("executed"),
+            prefix: Symbol::new(&env, &"executed"),
             command_id: command_id,
         };
-        let key: BytesN<32> = env.crypto().sha256(&data.serialize(&env));
+        let key: BytesN<32> = env.crypto().sha256(&data.to_xdr(&env));
         env.storage().set(&key, &executed);
     }
 
@@ -261,7 +261,7 @@ impl Gateway {
         caller.require_auth();
 
         let data: ContractCall = ContractCall {
-            prefix: symbol!("ContractC"),
+            prefix: Symbol::new(&env, &"ContractCall"),
             dest_chain,
             dest_addr,
             payload: payload.clone()
@@ -276,7 +276,7 @@ fn transfer_op( // transferOperatorship
     params: Bytes
 ) -> bool {
 
-    let tokens: Operatorship = Operatorship::deserialize(&env, &params).unwrap();
+    let tokens: Operatorship = Operatorship::from_xdr(&env, &params).unwrap();
     let new_operators: Vec<BytesN<32>> = tokens.new_ops;
     let new_weights: Vec<u128> = tokens.new_wghts;
     let new_threshold: u128 = tokens.new_thres;
@@ -305,7 +305,7 @@ fn transfer_op( // transferOperatorship
     }
 
     let new_operators_hash: BytesN<32> = env.crypto().sha256(&params);
-    let new_operators_hash_key: BytesN<32> = env.crypto().sha256(&PrefixHash {prefix: symbol!("operators"), hash: new_operators_hash.clone()}.serialize(&env));
+    let new_operators_hash_key: BytesN<32> = env.crypto().sha256(&PrefixHash {prefix: Symbol::new(&env, &"operators"), hash: new_operators_hash.clone()}.to_xdr(&env));
     
     let existing_epoch: u64 = env.storage().get(&new_operators_hash_key).unwrap_or(Ok(0)).unwrap();
 
@@ -313,9 +313,9 @@ fn transfer_op( // transferOperatorship
         panic_with_error!(env, Error::DuplicateOperators);
     }
 
-    let epoch: u128= env.storage().get(&symbol!("cur_epoch")).unwrap_or(Ok(0)).unwrap() + 1;
-    env.storage().set(&symbol!("cur_epoch"), &epoch);
-    env.storage().set(&PrefixEpoch{prefix: symbol!("epoch"), epoch}, &new_operators_hash);
+    let epoch: u128= env.storage().get(&Symbol::new(&env, &"cur_epoch")).unwrap_or(Ok(0)).unwrap() + 1;
+    env.storage().set(&Symbol::new(&env, &"cur_epoch"), &epoch);
+    env.storage().set(&PrefixEpoch{prefix: Symbol::new(&env, &"epoch"), epoch}, &new_operators_hash);
     env.storage().set(&new_operators_hash_key, &epoch);
 
     let event: Operatorship = Operatorship { new_ops: new_operators, new_wghts: new_weights, new_thres: new_threshold};
@@ -330,10 +330,10 @@ pub fn to_signed_msg_hsh(
     hash: BytesN<32>
 ) -> BytesN<32> {
     let data: SignedMsg = SignedMsg {
-        text: symbol!("Soroban"),
+        text: Symbol::new(&env, &"Soroban"),
         hash: hash
     };
-    return env.crypto().sha256(&data.serialize(&env));
+    return env.crypto().sha256(&data.to_xdr(&env));
 }
 
 pub fn validate_proof(
@@ -341,7 +341,7 @@ pub fn validate_proof(
     msghash: BytesN<32>,
     proof: Bytes
 ) -> bool {
-    let tokens: Validate = Validate::deserialize(&env, &proof).unwrap();
+    let tokens: Validate = Validate::from_xdr(&env, &proof).unwrap();
     let operators: Vec<BytesN<32>> = tokens.operators;
     let weights: Vec<u128> = tokens.weights;
     let threshold: u128 = tokens.threshold;
@@ -352,11 +352,11 @@ pub fn validate_proof(
         new_wghts: weights.clone(),
         new_thres: threshold
     };
-    let operators_hash: BytesN<32> = env.crypto().sha256(&operator.serialize(&env));
-    let operators_hash_key: BytesN<32> = env.crypto().sha256(&PrefixHash {prefix: symbol!("operators"), hash: operators_hash.clone()}.serialize(&env));
+    let operators_hash: BytesN<32> = env.crypto().sha256(&operator.to_xdr(&env));
+    let operators_hash_key: BytesN<32> = env.crypto().sha256(&PrefixHash {prefix: Symbol::new(&env, &"operators"), hash: operators_hash.clone()}.to_xdr(&env));
 
     let operators_epoch: u128 = env.storage().get(&operators_hash_key).unwrap_or(Ok(0)).unwrap(); //uint256
-    let epoch: u128 = env.storage().get(&symbol!("cur_epoch")).unwrap_or(Ok(0)).unwrap(); //uint256
+    let epoch: u128 = env.storage().get(&Symbol::new(&env, &"cur_epoch")).unwrap_or(Ok(0)).unwrap(); //uint256
 
     if (operators_epoch == 0 || epoch - operators_epoch >= 16) {
         panic_with_error!(env, Error::InvalidOperators);

@@ -3,8 +3,13 @@
 use super::*;
 extern crate std;
 use crate::{gateway::*, GatewayClient};
-use soroban_sdk::{testutils::{Events, Address as _}, bytes, bytesn, symbol, vec, Env, IntoVal, BytesN, Bytes, Address,
-serde::{Deserialize, Serialize}};
+use soroban_sdk::{testutils::{Events, Address as _}, bytes, bytesn, vec, Env, IntoVal, BytesN, Bytes, Address, Symbol,
+xdr::{self, FromXdr, ToXdr}};
+
+use ed25519_dalek::Signer;
+use rand::rngs::OsRng;
+use ed25519_dalek::Keypair;
+use ed25519_dalek::Signature;
 
 
 #[test]
@@ -27,7 +32,7 @@ fn test() {
     };
     let admin: Address = Address::random(&env);
 
-    client.initialize(&admin, &vec![&env, params_operator.clone().serialize(&env)]);
+    client.initialize(&admin, &vec![&env, params_operator.clone().to_xdr(&env)]);
 
     // Test Contract Approve
     let params_approve = ContractPayload {
@@ -43,7 +48,7 @@ fn test() {
         chain_id: 1,
         commandids: vec![&env, bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d)],
         commands: vec![&env, bytes![&env, 0x617070726f7665436f6e747261637443616c6c]],
-        params: vec![&env, params_approve.clone().serialize(&env)]
+        params: vec![&env, params_approve.clone().to_xdr(&env)]
     };
 
     let proof: Validate = Validate {
@@ -55,10 +60,10 @@ fn test() {
 
     let input: Input = Input {
         data: data.clone(),
-        proof: proof.clone().serialize(&env)
+        proof: proof.clone().to_xdr(&env)
     };
 
-    let test = input.serialize(&env);
+    let test = input.to_xdr(&env);
     client.execute(&test);
 
 
@@ -74,12 +79,14 @@ fn test() {
         &payload
     );
 
+    
+
 
     let event0: Operatorship =  params_operator;
     let event1: ContractCallApprovedEvent = ContractCallApprovedEvent { src_chain: params_approve.src_chain, src_addr: params_approve.src_add, src_tx: params_approve.src_tx_ha, src_event: params_approve.src_evnt};
     let event2: ExecutedEvent = ExecutedEvent { command_id: data.commandids.get(0).unwrap().unwrap() };
     let event3: ContractCall = ContractCall {
-        prefix: symbol!("ContractC"),
+        prefix: Symbol::new(&env, &"ContractCall"),
         dest_chain: ETHEREUM_ID,
         dest_addr: JUNKYARD,
         payload: payload.clone()
