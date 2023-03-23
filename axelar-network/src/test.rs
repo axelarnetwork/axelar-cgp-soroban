@@ -6,10 +6,9 @@ use crate::{gateway::*, GatewayClient};
 use soroban_sdk::{testutils::{Events, Address as _}, bytes, bytesn, vec, Env, IntoVal, BytesN, Bytes, Address, Symbol,
 xdr::{self, FromXdr, ToXdr}};
 
-use ed25519_dalek::Signer;
 use rand::rngs::OsRng;
-use ed25519_dalek::Keypair;
-use ed25519_dalek::Signature;
+use ed25519_dalek::SigningKey;
+use ed25519_dalek::{Signature, Signer, VerifyingKey, Verifier};
 
 
 #[test]
@@ -23,16 +22,11 @@ fn test() {
     // approveContractCall converted into Bytes, and then sha256 hashed.
     let SELECTOR_APPROVE_CONTRACT_CALL: BytesN<32> = env.crypto().sha256(&bytes!(&env, 0x617070726f7665436f6e747261637443616c6c));
 
-    // Test Initalize
-    let params_operator: Operatorship = Operatorship { 
-        //NEXT: use public key instead of array containing 1 for new_ops
-        new_ops: vec![&env, bytesn!(&env, [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])], 
-        new_wghts: vec![&env, 1], 
-        new_thres: 1
-    };
-    let admin: Address = Address::random(&env);
 
-    client.initialize(&admin, &vec![&env, params_operator.clone().to_xdr(&env)]);
+    // sign something first and then verify natively
+    let mut csprng = OsRng{};
+    let signing_key: SigningKey = SigningKey::generate(&mut csprng);
+
 
     // Test Contract Approve
     let params_approve = ContractPayload {
@@ -51,18 +45,39 @@ fn test() {
         params: vec![&env, params_approve.clone().to_xdr(&env)]
     };
 
+    // for generating public key
+    let hash: BytesN<32> = env.crypto().sha256(&data.clone().to_xdr(&env));
+    let signed_message_hash: BytesN<32> = to_signed_msg_hsh(env.clone(), hash);
+    let message: &[u8] = &signed_message_hash.to_array();
+    let signature: Signature = signing_key.sign(message);
+    let signature_bytes: BytesN<64> = BytesN::from_array(&env, &signature.to_bytes());
+    let verifying_key: VerifyingKey = signing_key.verifying_key();
+    let verifying_key_bytes: BytesN<32> = BytesN::from_array(&env, &verifying_key.to_bytes());
+    // for generating signature & public key 
+
     let proof: Validate = Validate {
-        operators: vec![&env, bytesn!(&env, [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])],
+        operators: vec![&env, verifying_key_bytes.clone()],
         weights: vec![&env, 1], // uint256
         threshold: 1, // uint256
-        signatures: vec![&env, (0, bytesn!(&env, [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]))]
+        signatures: vec![&env, (0, signature_bytes)]
     };
 
     let input: Input = Input {
         data: data.clone(),
         proof: proof.clone().to_xdr(&env)
     };
+    
+    // Test Initalize
+    let params_operator: Operatorship = Operatorship { 
+        new_ops: vec![&env, verifying_key_bytes], 
+        new_wghts: vec![&env, 1], 
+        new_thres: 1
+    };
+    let admin: Address = Address::random(&env);
+    
+    client.initialize(&admin, &vec![&env, params_operator.clone().to_xdr(&env)]);
 
+    // test Execute & Approve Contract Call
     let test = input.to_xdr(&env);
     client.execute(&test);
 
