@@ -130,15 +130,13 @@ pub struct Gateway;
 #[contractimpl]
 impl Gateway {
 
-    pub fn initialize(env: Env, admin: Address, recent_ops: Vec<Bytes>) {
+    pub fn initialize(env: Env, admin: Address, recent_ops: Bytes) {
         if has_administrator(&env) {
             panic!("already initialized")
         }
         write_administrator(&env, &admin);
 
-        for i in 0..recent_ops.len() {
-            transfer_op(env.clone(), recent_ops.get(i).unwrap().unwrap());
-        }
+        transfer_op(env.clone(), recent_ops);
     }
 
     pub fn execute (
