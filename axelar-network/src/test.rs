@@ -160,16 +160,16 @@ fn generate_test_proof(env: Env, data: Data, num_ops: u32) -> Validate {
 
 
         for j in 0..operators.len() {
-            if verifying_key_bytes.clone() > operators.get(j).unwrap().unwrap() {
-                operators.insert(j + 1, verifying_key_bytes.clone());
+            if verifying_key_bytes.clone() < operators.get(j).unwrap().unwrap() {
+                operators.insert(j, verifying_key_bytes.clone());
+                signatures.push_back((j, signature_bytes.clone()));
+                break;
+            } else if j == operators.len() - 1 {
+                // public key is bigger than all keys in operators.
+                operators.push_back(verifying_key_bytes.clone());
                 signatures.push_back((j + 1, signature_bytes.clone()));
             }
         }
-        // Insert the operators in a sorted way.
-        //operators.push_back(verifying_key_bytes);
-
-        // index below must match the operator's index.
-        //signatures.push_back((i, signature_bytes));
 
         if operators.is_empty() {
             operators.push_back(verifying_key_bytes);

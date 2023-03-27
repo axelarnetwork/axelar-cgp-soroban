@@ -389,10 +389,13 @@ fn validate_sig(
             panic_with_error!(env, Error::InvalidOrdering);
         }
         prev_index = public_key_idx;
+        let public_key = &public_keys.get(public_key_idx).unwrap().unwrap();
+        let signature = &signatures.get(i).unwrap().unwrap().1;
         env.crypto().ed25519_verify(
-            &public_keys.get(public_key_idx).unwrap().unwrap(), 
+            public_key,
             &msg_hash, 
-            &signatures.get(i).unwrap().unwrap().1);
+            signature
+        );
    
         // return if weight sum above threshold
         weight += weights.get(public_key_idx).unwrap().unwrap();
