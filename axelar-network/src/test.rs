@@ -158,11 +158,30 @@ fn generate_test_proof(env: Env, data: Data, num_ops: u32) -> Validate {
         let verifying_key: VerifyingKey = signing_key.verifying_key();
         let verifying_key_bytes: BytesN<32> = BytesN::from_array(&env, &verifying_key.to_bytes());
 
+        env.crypto().ed25519_verify(
+            &verifying_key_bytes,
+            &signed_message_hash.into(), 
+            &signature_bytes
+        );
 
         for j in 0..operators.len() {
             if verifying_key_bytes.clone() < operators.get(j).unwrap().unwrap() {
                 operators.insert(j, verifying_key_bytes.clone());
                 signatures.push_back((j, signature_bytes.clone()));
+
+                // Suppose PK #1 is inserted infront of PK #2.
+                // Then the associated signature tuple in signatures for PK #2 has the integer equal to the
+                // previous index of PK #2 which now equals the index for PK #1.
+                // To fix this, we update the integer in signature's tuple by one, for all signature tuples that
+                // had its associated PK moved in the operators vector.
+                for k in 0..signatures.len() - 1 {
+                    let mut temp = signatures.get(k).unwrap().unwrap();
+                    if temp.0 >= j {
+                        temp.0 += 1;
+                        signatures.remove(k);
+                        signatures.insert(k, temp);
+                    }
+                }
                 break;
             } else if j == operators.len() - 1 {
                 // public key is bigger than all keys in operators.
