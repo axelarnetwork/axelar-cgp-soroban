@@ -25,11 +25,6 @@ fn test() {
     let SELECTOR_APPROVE_CONTRACT_CALL: BytesN<32> = env.crypto().sha256(&bytes!(&env, 0x617070726f7665436f6e747261637443616c6c));
 
 
-    // sign something first and then verify natively
-    let mut csprng = OsRng{};
-    let signing_key: SigningKey = SigningKey::generate(&mut csprng);
-
-
     // Test Contract Approve
     let params_approve = ContractPayload {
         src_chain: bytes!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
@@ -47,7 +42,9 @@ fn test() {
         params: vec![&env, params_approve.clone().to_xdr(&env)]
     };
 
-    let proof: Validate = generate_test_proof(env.clone(), data.clone(), 10);
+    let THRESHOLD: u128 = 2;
+    let WEIGHT: u128 = 1;
+    let proof: Validate = generate_test_proof(env.clone(), data.clone(), 10, THRESHOLD, WEIGHT);
 
 
     // create helper function for generating proofs given a list of keypairs.
@@ -68,7 +65,7 @@ fn test() {
     let params_operator: Operatorship = Operatorship { 
         new_ops: proof.operators.clone(),
         new_wghts: proof.weights.clone(),
-        new_thres: 1
+        new_thres: THRESHOLD
     };
     let admin: Address = Address::random(&env);
     
@@ -138,7 +135,7 @@ fn test() {
 
 }
 
-fn generate_test_proof(env: Env, data: Data, num_ops: u32) -> Validate {
+fn generate_test_proof(env: Env, data: Data, num_ops: u32, threshold: u128, weight: u128) -> Validate {
 
     let mut operators: Vec<BytesN<32>> = Vec::new(&env);
     let mut signatures: Vec<(u32, BytesN<64>)> = Vec::new(&env);
@@ -167,40 +164,41 @@ fn generate_test_proof(env: Env, data: Data, num_ops: u32) -> Validate {
         for j in 0..operators.len() {
             if verifying_key_bytes.clone() < operators.get(j).unwrap().unwrap() {
                 operators.insert(j, verifying_key_bytes.clone());
-                signatures.push_back((j, signature_bytes.clone()));
+                signatures.insert(j, (j, signature_bytes.clone()));
+                weights.insert(j, weight);
 
                 // Suppose PK #1 is inserted infront of PK #2.
                 // Then the associated signature tuple in signatures for PK #2 has the integer equal to the
                 // previous index of PK #2 which now equals the index for PK #1.
                 // To fix this, we update the integer in signature's tuple by one, for all signature tuples that
                 // had its associated PK moved in the operators vector.
-                for k in 0..signatures.len() - 1 {
+                for k in j+1..signatures.len() {
                     let mut temp = signatures.get(k).unwrap().unwrap();
-                    if temp.0 >= j {
-                        temp.0 += 1;
-                        signatures.remove(k);
-                        signatures.insert(k, temp);
-                    }
+                    temp.0 += 1;
+                    signatures.remove(k);
+                    signatures.insert(k, temp);
                 }
                 break;
             } else if j == operators.len() - 1 {
                 // public key is bigger than all keys in operators.
                 operators.push_back(verifying_key_bytes.clone());
                 signatures.push_back((j + 1, signature_bytes.clone()));
+                weights.push_back(weight);
             }
         }
 
         if operators.is_empty() {
             operators.push_back(verifying_key_bytes);
             signatures.push_back((0, signature_bytes));
+            weights.push_back(weight);
+
         }
-        weights.push_back(1);
     }
 
     let proof: Validate = Validate {
         operators: operators.clone(),
         weights: weights.clone(),
-        threshold: 1, // uint256
+        threshold, // uint256
         signatures: signatures.clone()
     };
 

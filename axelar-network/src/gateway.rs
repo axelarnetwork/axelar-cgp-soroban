@@ -378,10 +378,11 @@ fn validate_sig(
 ) {
     let mut weight: u128 = 0;
     let msg_hash: Bytes = msghash.into(); // converts it into Bytes
+    let signatures_len: u32 = signatures.len();
 
     
     let mut prev_index = 0;
-    for i in 0..signatures.len() {
+    for i in 0..signatures_len {
         let public_key_idx: u32 = signatures.get(i).unwrap().unwrap().0;
 
         // check that signature's public key index is greater than the previous index, aside from first iteration
