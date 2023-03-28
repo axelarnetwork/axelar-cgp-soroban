@@ -251,7 +251,7 @@ impl Gateway {
 
     pub fn call_con(
         env: Env,
-        caller: Address, // doesn't seem to be another way of getting the caller's address
+        caller: Address,
         dest_chain: Bytes,
         dest_addr: Bytes,
         payload: Bytes
@@ -307,6 +307,7 @@ fn transfer_op( // transferOperatorship
     
     let existing_epoch: u64 = env.storage().get(&new_operators_hash_key).unwrap_or(Ok(0)).unwrap();
 
+    // DEAD CODE?
     if existing_epoch > 0 {
         panic_with_error!(env, Error::DuplicateOperators);
     }
@@ -406,7 +407,7 @@ fn validate_sig(
         }
     }
     // if weight sum below threshold
-    panic_with_error!(env, Error::LowSignaturesWeight);
+    panic_with_error!(env, Error::LowSignaturesWeight); // DEAD CODE?
 
 }
 
