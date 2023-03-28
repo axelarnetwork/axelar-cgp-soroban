@@ -14,7 +14,7 @@ use ed25519_dalek::{Signature, Signer, VerifyingKey, Verifier};
 
 
 #[test]
-fn test() {
+fn general() {
     let env = Env::default();
     let contract_id = env.register_contract(None, Gateway);
     let client = GatewayClient::new(&env, &contract_id);
@@ -25,7 +25,7 @@ fn test() {
     let SELECTOR_APPROVE_CONTRACT_CALL: BytesN<32> = env.crypto().sha256(&bytes!(&env, 0x617070726f7665436f6e747261637443616c6c));
 
 
-    // Test Contract Approve
+    // Data for Contract Approve
     let params_approve = ContractPayload {
         src_chain: bytes!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
         src_add: bytes!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
@@ -42,7 +42,7 @@ fn test() {
         params: vec![&env, params_approve.clone().to_xdr(&env)]
     };
 
-    let THRESHOLD: u128 = 2;
+    let THRESHOLD: u128 = 10;
     let WEIGHT: u128 = 1;
     let proof: Validate = generate_test_proof(env.clone(), data.clone(), 10, THRESHOLD, WEIGHT);
 
@@ -134,6 +134,154 @@ fn test() {
 
 
 }
+
+#[test]
+#[should_panic]
+fn no_operators() {
+    let env = Env::default();
+    let contract_id = env.register_contract(None, Gateway);
+    let client = GatewayClient::new(&env, &contract_id);
+
+    // transferOperatorship converted into Bytes, and then sha256 hashed.
+    let SELECTOR_TRANSFER_OPERATORSHIP: BytesN<32> = env.crypto().sha256(&bytes!(&env, 0x7472616e736665724f70657261746f7273686970));
+
+
+    let data: Data = Data {
+        chain_id: 1,
+        commandids: vec![&env, bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d)],
+        commands: vec![&env, bytes![&env, 0x617070726f7665436f6e747261637443616c6c]],
+        params: vec![&env, bytes![&env, 0x0]]
+    };
+
+    let THRESHOLD: u128 = 10;
+    let WEIGHT: u128 = 1;
+    let proof: Validate = generate_test_proof(env.clone(), data.clone(), 0, THRESHOLD, WEIGHT);
+
+    // Test Initalize
+    let params_operator: Operatorship = Operatorship { 
+        new_ops: proof.operators.clone(),
+        new_wghts: proof.weights.clone(),
+        new_thres: THRESHOLD
+    };
+    let admin: Address = Address::random(&env);
+    
+    client.initialize(&admin, &params_operator.clone().to_xdr(&env));
+
+}
+
+#[test]
+#[should_panic]
+fn operators_not_alphabetical() {
+    let env = Env::default();
+    let contract_id = env.register_contract(None, Gateway);
+    let client = GatewayClient::new(&env, &contract_id);
+
+    // transferOperatorship converted into Bytes, and then sha256 hashed.
+    let SELECTOR_TRANSFER_OPERATORSHIP: BytesN<32> = env.crypto().sha256(&bytes!(&env, 0x7472616e736665724f70657261746f7273686970));
+
+    // Test Initalize
+    let params_operator: Operatorship = Operatorship { 
+        new_ops: vec![&env, bytesn!(&env, 0x000000000000000000000000000000000000000000000000000000000000002), bytesn!(&env, 0x000000000000000000000000000000000000000000000000000000000000001)],
+        new_wghts: vec![&env, 1, 1],
+        new_thres: 1
+    };
+    let admin: Address = Address::random(&env);
+    
+    client.initialize(&admin, &params_operator.clone().to_xdr(&env));
+}
+
+#[test]
+#[should_panic]
+fn invalid_weights() {
+    let env = Env::default();
+    let contract_id = env.register_contract(None, Gateway);
+    let client = GatewayClient::new(&env, &contract_id);
+
+    // transferOperatorship converted into Bytes, and then sha256 hashed.
+    let SELECTOR_TRANSFER_OPERATORSHIP: BytesN<32> = env.crypto().sha256(&bytes!(&env, 0x7472616e736665724f70657261746f7273686970));
+
+    // Test Initalize
+    let params_operator: Operatorship = Operatorship { 
+        new_ops: vec![&env, bytesn!(&env, 0x000000000000000000000000000000000000000000000000000000000000001), bytesn!(&env, 0x000000000000000000000000000000000000000000000000000000000000002)],
+        new_wghts: vec![&env, 1],
+        new_thres: 1
+    };
+    let admin: Address = Address::random(&env);
+    
+    client.initialize(&admin, &params_operator.clone().to_xdr(&env));
+
+}
+
+#[test]
+#[should_panic]
+fn invalid_threshold() {
+    let env = Env::default();
+    let contract_id = env.register_contract(None, Gateway);
+    let client = GatewayClient::new(&env, &contract_id);
+
+    // transferOperatorship converted into Bytes, and then sha256 hashed.
+    let SELECTOR_TRANSFER_OPERATORSHIP: BytesN<32> = env.crypto().sha256(&bytes!(&env, 0x7472616e736665724f70657261746f7273686970));
+
+    // Test Initalize
+    let params_operator: Operatorship = Operatorship { 
+        new_ops: vec![&env, bytesn!(&env, 0x000000000000000000000000000000000000000000000000000000000000001), bytesn!(&env, 0x000000000000000000000000000000000000000000000000000000000000002)],
+        new_wghts: vec![&env, 1, 1],
+        new_thres: 3
+    };
+    let admin: Address = Address::random(&env);
+    
+    client.initialize(&admin, &params_operator.clone().to_xdr(&env));
+}
+
+// #[test]
+// //#[should_panic]
+// fn duplicate_operators() {
+//     let env = Env::default();
+//     let contract_id = env.register_contract(None, Gateway);
+//     let client = GatewayClient::new(&env, &contract_id);
+
+//     // transferOperatorship converted into Bytes, and then sha256 hashed.
+//     let SELECTOR_TRANSFER_OPERATORSHIP: BytesN<32> = env.crypto().sha256(&bytes!(&env, 0x7472616e736665724f70657261746f7273686970));
+
+//     let new_operatorship: Operatorship = Operatorship { 
+//         new_ops: vec![&env, bytesn!(&env, 0x000000000000000000000000000000000000000000000000000000000000001), bytesn!(&env, 0x000000000000000000000000000000000000000000000000000000000000002)],
+//         new_wghts: vec![&env, 1, 1],
+//         new_thres: 2
+//     };
+
+//     let data: Data = Data {
+//         chain_id: 1,
+//         commandids: vec![&env, bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d), bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d)],
+//         commands: vec![&env, bytes![&env, 0x7472616e736665724f70657261746f7273686970], bytes![&env, 0x7472616e736665724f70657261746f7273686970]],
+//         params: vec![&env, new_operatorship.clone().to_xdr(&env), new_operatorship.clone().to_xdr(&env)]
+//     };
+
+//     let THRESHOLD: u128 = 3;
+//     let WEIGHT: u128 = 1;
+//     let NUM_OPS: u32 = 3;
+//     let proof: Validate = generate_test_proof(env.clone(), data.clone(), NUM_OPS, THRESHOLD, WEIGHT);
+
+//     let input: Input = Input {
+//         data: data.clone(),
+//         proof: proof.clone().to_xdr(&env)
+//     };
+
+//     let params_operator: Operatorship = Operatorship { 
+//         new_ops: proof.operators.clone(),
+//         new_wghts: proof.weights.clone(),
+//         new_thres: THRESHOLD
+//     };
+//     let admin: Address = Address::random(&env);
+    
+//     client.initialize(&admin, &params_operator.clone().to_xdr(&env));
+
+//     // This test case shows that you having more than 1 transfer operatorship command in one Data input will ignore the second.
+//     // It also tests the Duplicate Operators error on the second execute() call.
+//     let test = input.to_xdr(&env);
+//     client.execute(&test);
+//     client.execute(&test);
+
+// }
 
 fn generate_test_proof(env: Env, data: Data, num_ops: u32, threshold: u128, weight: u128) -> Validate {
 
