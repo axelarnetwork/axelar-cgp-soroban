@@ -14,16 +14,10 @@ use ed25519_dalek::{Signature, Signer, VerifyingKey, Verifier};
 
 
 #[test]
-fn general() {
+fn approve_contract_cal() {
     let env = Env::default();
     let contract_id = env.register_contract(None, Gateway);
     let client = GatewayClient::new(&env, &contract_id);
-
-    // transferOperatorship converted into Bytes, and then sha256 hashed.
-    let SELECTOR_TRANSFER_OPERATORSHIP: BytesN<32> = env.crypto().sha256(&bytes!(&env, 0x7472616e736665724f70657261746f7273686970));
-    // approveContractCall converted into Bytes, and then sha256 hashed.
-    let SELECTOR_APPROVE_CONTRACT_CALL: BytesN<32> = env.crypto().sha256(&bytes!(&env, 0x617070726f7665436f6e747261637443616c6c));
-
 
     // Data for Contract Approve
     let params_approve = ContractPayload {
@@ -38,46 +32,37 @@ fn general() {
     let data: Data = Data {
         chain_id: 1,
         commandids: vec![&env, bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d)],
-        commands: vec![&env, bytes![&env, 0x617070726f7665436f6e747261637443616c6c]],
+        commands: vec![&env, bytes![&env, 0x617070726f7665436f6e747261637443616c6c]], // approveContractCall converted into Bytes, and then sha256 hashed.
         params: vec![&env, params_approve.clone().to_xdr(&env)]
     };
 
     let THRESHOLD: u128 = 10;
     let WEIGHT: u128 = 1;
-    let proof: Validate = generate_test_proof(env.clone(), data.clone(), 10, THRESHOLD, WEIGHT);
-
-
-    // create helper function for generating proofs given a list of keypairs.
-
-    // test cases with more operatos
-    // next test case: one where signatures is enough for threshold, and one where it isn't.
-    // couple where all errors / broken parts are tested. and then another where all working parts are tested
-    
-    
-    // after cases above: call transfer_operatorship, where batch is signed by all the existing operators.
+    let NUM_OPS: u32 = 10;
+    let proof: Validate = generate_test_proof(env.clone(), data.clone(), NUM_OPS, THRESHOLD, WEIGHT);
 
     let input: Input = Input {
         data: data.clone(),
         proof: proof.clone().to_xdr(&env)
     };
     
-    // Test Initalize
-    let params_operator: Operatorship = Operatorship { 
+    // Initalize
+    let initialize_ops: Operatorship = Operatorship { 
         new_ops: proof.operators.clone(),
         new_wghts: proof.weights.clone(),
         new_thres: THRESHOLD
     };
     let admin: Address = Address::random(&env);
     
-    client.initialize(&admin, &params_operator.clone().to_xdr(&env));
+    client.initialize(&admin, &initialize_ops.clone().to_xdr(&env));
 
-    // test Execute & Approve Contract Call
+    // test Approve Contract Call
     let test = input.to_xdr(&env);
     client.execute(&test);
 
 
     
-    let event0: Operatorship = params_operator;
+    let event0: Operatorship = initialize_ops;
     let event1: ContractCallApprovedEvent = ContractCallApprovedEvent { src_chain: params_approve.src_chain, src_addr: params_approve.src_add, src_tx: params_approve.src_tx_ha, src_event: params_approve.src_evnt};
     let event2: ExecutedEvent = ExecutedEvent { command_id: data.commandids.get(0).unwrap().unwrap() };
     assert_eq!(
