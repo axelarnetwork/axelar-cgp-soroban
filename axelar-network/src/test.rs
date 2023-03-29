@@ -76,28 +76,10 @@ fn general() {
     client.execute(&test);
 
 
-    // Test Call Contract
-    let user: Address = Address::random(&env);
-    let ETHEREUM_ID: Bytes = bytes!(&env, 0x0);
-    let JUNKYARD: Bytes = bytes!(&env, 0x4EFE356BEDeCC817cb89B4E9b796dB8bC188DC59);
-    let payload: Bytes = bytes!(&env, 0x000000000000000000000000da2982fa68c3787af86475824eeb07702c4c449f00000000000000000000000000000000000000000000000000000000000003be0000000000000000000000004efe356bedecc817cb89b4e9b796db8bc188dc59);
-    client.call_con(
-        &user, 
-        &ETHEREUM_ID, 
-        &JUNKYARD, 
-        &payload
-    );
-
     
     let event0: Operatorship = params_operator;
     let event1: ContractCallApprovedEvent = ContractCallApprovedEvent { src_chain: params_approve.src_chain, src_addr: params_approve.src_add, src_tx: params_approve.src_tx_ha, src_event: params_approve.src_evnt};
     let event2: ExecutedEvent = ExecutedEvent { command_id: data.commandids.get(0).unwrap().unwrap() };
-    let event3: ContractCall = ContractCall {
-        prefix: Symbol::new(&env, &"ContractCall"),
-        dest_chain: ETHEREUM_ID,
-        dest_addr: JUNKYARD,
-        payload: payload.clone()
-    };
     assert_eq!(
         env.events().all(),
         vec![
@@ -121,18 +103,122 @@ fn general() {
                 ().into_val(&env),
                 event2.into_val(&env)
             ),
+        ]
+    );
+
+
+}
+
+#[test]
+fn call_contract() {
+    let env = Env::default();
+    let contract_id = env.register_contract(None, Gateway);
+    let client = GatewayClient::new(&env, &contract_id);
+
+    // Test Call Contract
+    let user: Address = Address::random(&env);
+    let ETHEREUM_ID: Bytes = bytes!(&env, 0x0);
+    let JUNKYARD: Bytes = bytes!(&env, 0x4EFE356BEDeCC817cb89B4E9b796dB8bC188DC59);
+    let payload: Bytes = bytes!(&env, 0x000000000000000000000000da2982fa68c3787af86475824eeb07702c4c449f00000000000000000000000000000000000000000000000000000000000003be0000000000000000000000004efe356bedecc817cb89b4e9b796db8bc188dc59);
+    client.call_con(
+        &user, 
+        &ETHEREUM_ID, 
+        &JUNKYARD, 
+        &payload
+    );
+
+    let event: ContractCall = ContractCall {
+        prefix: Symbol::new(&env, &"ContractCall"),
+        dest_chain: ETHEREUM_ID,
+        dest_addr: JUNKYARD,
+        payload: payload.clone()
+    };
+    assert_eq!(
+        env.events().all(),
+        vec![
+            &env,
             (
                 contract_id.clone(),
                 (
                     user, 
                     env.crypto().sha256(&payload),
                 ).into_val(&env),
-                event3.into_val(&env)
+                event.into_val(&env)
             )
         ]
     );
+}
+
+#[test]
+fn transfer_operatorship() {
+    let env = Env::default();
+    let contract_id = env.register_contract(None, Gateway);
+    let client = GatewayClient::new(&env, &contract_id);
+
+    let new_operators: Operatorship = Operatorship { 
+        new_ops: vec![&env, bytesn!(&env, 0x000000000000000000000000000000000000000000000000000000000000001), bytesn!(&env, 0x000000000000000000000000000000000000000000000000000000000000002)],
+        new_wghts: vec![&env, 1, 1],
+        new_thres: 2
+    };
 
 
+    let data: Data = Data {
+        chain_id: 1,
+        commandids: vec![&env, bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d)],
+        commands: vec![&env, bytes![&env, 0x7472616e736665724f70657261746f7273686970]], // approveContractCall converted into Bytes,
+        params: vec![&env, new_operators.clone().to_xdr(&env)]
+    };
+
+    let THRESHOLD: u128 = 3;
+    let WEIGHT: u128 = 1;
+    let NUM_OPS: u32 = 3;
+    let proof: Validate = generate_test_proof(env.clone(), data.clone(), NUM_OPS, THRESHOLD, WEIGHT);
+
+    let input: Input = Input {
+        data: data.clone(),
+        proof: proof.clone().to_xdr(&env)
+    };
+
+    // Initalize with 3 random operators
+    let params_operator: Operatorship = Operatorship { 
+        new_ops: proof.operators.clone(),
+        new_wghts: proof.weights.clone(),
+        new_thres: THRESHOLD
+    };
+    let admin: Address = Address::random(&env);
+    
+    client.initialize(&admin, &params_operator.clone().to_xdr(&env));
+    
+
+    // Transfer operatorship to 2 new operators in the variable new_operators
+    let test = input.to_xdr(&env);
+    client.execute(&test);
+
+
+    let initialize_ops: Operatorship = params_operator;
+    let new_ops: Operatorship = new_operators;
+    let success: ExecutedEvent = ExecutedEvent { command_id: data.commandids.get(0).unwrap().unwrap() };
+    assert_eq!(
+        env.events().all(),
+        vec![
+            &env,
+            (
+                contract_id.clone(),
+                ().into_val(&env),
+                initialize_ops.into_val(&env)
+            ),
+            (
+                contract_id.clone(),
+                ().into_val(&env),
+                new_ops.into_val(&env)
+            ),
+            (
+                contract_id.clone(),
+                ().into_val(&env),
+                success.into_val(&env)
+            ),
+        ]
+    );
 }
 
 #[test]
