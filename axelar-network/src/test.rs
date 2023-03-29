@@ -356,58 +356,52 @@ fn duplicate_operators() {
 
 #[test]
 #[should_panic]
-fn low_signature_weight() {
+fn invalid_threshold_2() {
+    // This case differs, as while the transfer_ops() called in initialize() passes, the transfer_ops() in execute()
+    // fails as the new operators do not pass the threshold.
     let env = Env::default();
     let contract_id = env.register_contract(None, Gateway);
     let client = GatewayClient::new(&env, &contract_id);
 
-    // transferOperatorship converted into Bytes, and then sha256 hashed.
-    let SELECTOR_TRANSFER_OPERATORSHIP: BytesN<32> = env.crypto().sha256(&bytes!(&env, 0x7472616e736665724f70657261746f7273686970));
-    // approveContractCall converted into Bytes, and then sha256 hashed.
-    let SELECTOR_APPROVE_CONTRACT_CALL: BytesN<32> = env.crypto().sha256(&bytes!(&env, 0x617070726f7665436f6e747261637443616c6c));
-
-
-    // Data for Contract Approve
-    let params_approve = ContractPayload {
-        src_chain: bytes!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
-        src_add: bytes!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
-        contract: bytes!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
-        payload_ha: bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
-        src_tx_ha: bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
-        src_evnt: 1 // source event index // do u256 instead?
+    // these new operators have a signature weight that is too low.
+    let new_operators: Operatorship = Operatorship { 
+        new_ops: vec![&env, bytesn!(&env, 0x000000000000000000000000000000000000000000000000000000000000001), bytesn!(&env, 0x000000000000000000000000000000000000000000000000000000000000002)],
+        new_wghts: vec![&env, 1, 1],
+        new_thres: 4
     };
 
     let data: Data = Data {
         chain_id: 1,
         commandids: vec![&env, bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d)],
-        commands: vec![&env, bytes![&env, 0x617070726f7665436f6e747261637443616c6c]],
-        params: vec![&env, params_approve.clone().to_xdr(&env)]
+        commands: vec![&env, bytes![&env, 0x7472616e736665724f70657261746f7273686970]], // approveContractCall converted into Bytes,
+        params: vec![&env, new_operators.clone().to_xdr(&env)]
     };
 
-    let THRESHOLD: u128 = 100;
+    let THRESHOLD: u128 = 3;
     let WEIGHT: u128 = 1;
     let NUM_OPS: u32 = 3;
     let proof: Validate = generate_test_proof(env.clone(), data.clone(), NUM_OPS, THRESHOLD, WEIGHT);
-
 
     let input: Input = Input {
         data: data.clone(),
         proof: proof.clone().to_xdr(&env)
     };
-    
-    // Initalize
+
+    // Initalize with 3 random operators
     let params_operator: Operatorship = Operatorship { 
         new_ops: proof.operators.clone(),
         new_wghts: proof.weights.clone(),
-        new_thres: 3
+        new_thres: THRESHOLD
     };
     let admin: Address = Address::random(&env);
+    
     client.initialize(&admin, &params_operator.clone().to_xdr(&env));
+    
 
-    // test Execute & Approve Contract Call
+    // Transfer operatorship to 2 new operators in the variable new_operators.
+    // However, this should fail as the new operator's weights dont meet threshold.
     let test = input.to_xdr(&env);
     client.execute(&test);
-
 }
 
 #[test]

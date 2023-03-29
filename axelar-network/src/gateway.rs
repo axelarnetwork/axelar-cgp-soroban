@@ -216,7 +216,7 @@ impl Gateway {
         true
     }
     
-    fn _setContractCallApproved( // how do I make this function internal / protected
+    fn _setContractCallApproved(
         env: Env,
         commandId: BytesN<32>,
         sourceChain: Bytes,
