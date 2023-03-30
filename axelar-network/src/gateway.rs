@@ -303,18 +303,17 @@ fn transfer_op( // transferOperatorship
     }
 
     let new_operators_hash: BytesN<32> = env.crypto().sha256(&params);
-    let new_operators_hash_key: BytesN<32> = env.crypto().sha256(&PrefixHash {prefix: Symbol::new(&env, &"operators"), hash: new_operators_hash.clone()}.to_xdr(&env));
     
-    let existing_epoch: u64 = env.storage().get(&new_operators_hash_key).unwrap_or(Ok(0)).unwrap();
+    let new_operators_hash_key: BytesN<32> = env.crypto().sha256(&PrefixHash {prefix: Symbol::new(&env, &"operators_for_epoch"), hash: new_operators_hash.clone()}.to_xdr(&env));
+    let existing_epoch: u128 = env.storage().get(&new_operators_hash_key).unwrap_or(Ok(0)).unwrap();
 
-    // DEAD CODE?
     if existing_epoch > 0 {
         panic_with_error!(env, Error::DuplicateOperators);
     }
 
-    let epoch: u128= env.storage().get(&Symbol::new(&env, &"cur_epoch")).unwrap_or(Ok(0)).unwrap() + 1;
-    env.storage().set(&Symbol::new(&env, &"cur_epoch"), &epoch);
-    env.storage().set(&PrefixEpoch{prefix: Symbol::new(&env, &"epoch"), epoch}, &new_operators_hash);
+    let epoch: u128= env.storage().get(&Symbol::new(&env, &"current_epoch")).unwrap_or(Ok(0)).unwrap() + 1;
+    env.storage().set(&Symbol::new(&env, &"current_epoch"), &epoch);
+    env.storage().set(&PrefixEpoch{prefix: Symbol::new(&env, &"epoch_for_operators"), epoch}, &new_operators_hash);
     env.storage().set(&new_operators_hash_key, &epoch);
 
     let event: Operatorship = Operatorship { new_ops: new_operators, new_wghts: new_weights, new_thres: new_threshold};
@@ -352,10 +351,10 @@ pub fn validate_proof(
         new_thres: threshold
     };
     let operators_hash: BytesN<32> = env.crypto().sha256(&operator.to_xdr(&env));
-    let operators_hash_key: BytesN<32> = env.crypto().sha256(&PrefixHash {prefix: Symbol::new(&env, &"operators"), hash: operators_hash.clone()}.to_xdr(&env));
+    let operators_hash_key: BytesN<32> = env.crypto().sha256(&PrefixHash {prefix: Symbol::new(&env, &"operators_for_epoch"), hash: operators_hash.clone()}.to_xdr(&env));
 
     let operators_epoch: u128 = env.storage().get(&operators_hash_key).unwrap_or(Ok(0)).unwrap(); //uint256
-    let epoch: u128 = env.storage().get(&Symbol::new(&env, &"cur_epoch")).unwrap_or(Ok(0)).unwrap(); //uint256
+    let epoch: u128 = env.storage().get(&Symbol::new(&env, &"current_epoch")).unwrap_or(Ok(0)).unwrap(); //uint256
 
     if (operators_epoch == 0 || epoch - operators_epoch >= 16) {
         panic_with_error!(env, Error::InvalidOperators);
