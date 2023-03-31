@@ -333,15 +333,16 @@ fn duplicate_operators() {
 
     // transferOperatorship converted into Bytes, and then sha256 hashed.
     let SELECTOR_TRANSFER_OPERATORSHIP: BytesN<32> = env.crypto().sha256(&bytes!(&env, 0x7472616e736665724f70657261746f7273686970));
+    const NUM_OPS: usize = 2;
 
     let mut csprng = OsRng{};
-    let signing_keys: [SigningKey; 2] = [
+    let operators: [SigningKey; NUM_OPS] = [
         SigningKey::generate(&mut csprng),
         SigningKey::generate(&mut csprng),
         ];
     
     let new_operatorship: Operatorship = Operatorship { 
-        new_ops: generate_mock_public_keys(env.clone(), &signing_keys),
+        new_ops: generate_mock_public_keys(env.clone(), &operators),
         new_wghts: vec![&env, 1, 1],
         new_thres: 2
     };
@@ -353,10 +354,12 @@ fn duplicate_operators() {
         params: vec![&env, new_operatorship.clone().to_xdr(&env)]
     };
 
-    let THRESHOLD: u128 = 2;
-    let WEIGHT: u128 = 1;
-    let NUM_OPS: usize = 2;
-    let proof: Validate = generate_test_proof(env.clone(), &signing_keys, data.clone(), THRESHOLD, WEIGHT);
+    const THRESHOLD: u128 = 2;
+    const WEIGHTS: [u128; 1] = [1];
+    const SIGNERS: [SigningKey; NUM_OPS] = [
+        operators[0]
+        ];
+    let proof: Validate = generate_test_proof(env.clone(), data.clone(), &operators, WEIGHTS, THRESHOLD, SIGNERS);
 
     let input: Input = Input {
         data: data.clone(),
@@ -549,14 +552,32 @@ fn invalid_commands() {
 
 }
 
-fn generate_test_proof(env: Env, keys: &[SigningKey], data: Data, threshold: u128, weight: u128) -> Validate {
-    let mut operators: Vec<BytesN<32>> = Vec::new(&env);
+// UPDATE to take in array of weights
+// signers is a subset of operators that is signing the data
+// only signers with biggest weight to pass need to sign it.
+// ASSUMPTION: operators is ordered.
+fn generate_test_proof(env: Env, data: Data, operators: &[SigningKey], weights: &[u128], threshold: u128, signers: &[SigningKey]) -> Validate {
+    //let mut operators: Vec<BytesN<32>> = Vec::new(&env);
     let mut signatures: Vec<(u32, BytesN<64>)> = Vec::new(&env);
-    let mut weights: Vec<u128> = Vec::new(&env);
 
-    for i in 0..keys.len() {
+    // now looping through signers
+    for i in 0..signers.len() {
+        // NEXT: want to find index of the signers inside of operators.
+        // THEN, add the signature & that index to signature.
+        let mut operator_index: usize = usize::MAX; // is there a potential security exploit doing it this way?
+        for index in 0..operators.len() {
+            if signers[i].to_keypair_bytes() == operators[index].to_keypair_bytes() {
+                operator_index = index;
+                break;
+            }
+        }
+        
+        // signers is not a subset of operators.
+        if operator_index == usize::MAX {
+            panic!();
+        }
 
-        let signing_key: &SigningKey = &keys[i];
+        let signing_key: &SigningKey = &signers[i];
 
         let hash: BytesN<32> = env.crypto().sha256(&data.clone().to_xdr(&env));
         let signed_message_hash: BytesN<32> = to_signed_msg_hsh(env.clone(), hash);
@@ -573,6 +594,11 @@ fn generate_test_proof(env: Env, keys: &[SigningKey], data: Data, threshold: u12
             &signature_bytes
         );
 
+        //try_into().unwrap() might error
+        signatures.push_back((operator_index.try_into().unwrap(), signature_bytes.clone()));
+
+
+        // sorting ( need to move this code somewhere else? create helper function to sort operators)
         for j in 0..operators.len() {
             if verifying_key_bytes.clone() < operators.get(j).unwrap().unwrap() {
                 operators.insert(j, verifying_key_bytes.clone());

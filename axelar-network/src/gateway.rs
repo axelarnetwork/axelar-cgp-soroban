@@ -345,12 +345,13 @@ pub fn validate_proof(
     let threshold: u128 = tokens.threshold;
     let signatures: Vec<(u32, BytesN<64>)> = tokens.signatures;
 
-    let operator: Operatorship = Operatorship {
+    // Three parts of operators is treated as constant
+    let operators_data: Operatorship = Operatorship {
         new_ops: operators.clone(),
         new_wghts: weights.clone(),
         new_thres: threshold
     };
-    let operators_hash: BytesN<32> = env.crypto().sha256(&operator.to_xdr(&env));
+    let operators_hash: BytesN<32> = env.crypto().sha256(&operators_data.to_xdr(&env));
     let operators_hash_key: BytesN<32> = env.crypto().sha256(&PrefixHash {prefix: Symbol::new(&env, &"operators_for_epoch"), hash: operators_hash.clone()}.to_xdr(&env));
 
     let operators_epoch: u128 = env.storage().get(&operators_hash_key).unwrap_or(Ok(0)).unwrap(); //uint256
