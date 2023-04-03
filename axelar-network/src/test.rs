@@ -9,7 +9,7 @@ use soroban_sdk::{testutils::{Events, Address as _}, bytes, bytesn, vec, Env, In
 xdr::{self, FromXdr, ToXdr}, unwrap::UnwrapOptimized};
 
 use rand::rngs::OsRng;
-use ed25519_dalek::SigningKey;
+use ed25519_dalek::{SigningKey, ed25519::signature::Keypair};
 use ed25519_dalek::{Signature, Signer, VerifyingKey, Verifier};
 
 
@@ -552,32 +552,62 @@ fn invalid_commands() {
 
 }
 
-// UPDATE to take in array of weights
+fn generate_sorted_keypairs(env: Env, num_ops: u32) -> Vec<[u8; 64]>{
+    // what I could do instead if just keep generaating a new SigningKey, and if it's bigger then previous one I append it.
+    let mut operators: Vec<[u8; 64]> = Vec::new(&env);
+
+    if num_ops == 0 {
+        return operators;
+    }
+
+
+    let mut csprng = OsRng{};
+    operators.push_back(SigningKey::generate(&mut csprng).to_keypair_bytes());
+    
+    for i in 1..num_ops {
+        let previous_signing_key: SigningKey = SigningKey::from_keypair_bytes(&operators.get(i-1).unwrap().unwrap()).unwrap();
+        while true {
+            let signing_key: SigningKey = SigningKey::generate(&mut csprng);
+            
+            if signing_key.verifying_key().to_bytes() > previous_signing_key.verifying_key().to_bytes() {
+                operators.push_back(signing_key.to_keypair_bytes());
+                break;
+            }
+        }
+    }
+
+    return operators;
+}
+
+
 // signers is a subset of operators that is signing the data
 // only signers with biggest weight to pass need to sign it.
-// ASSUMPTION: operators is ordered.
-fn generate_test_proof(env: Env, data: Data, operators: &[SigningKey], weights: &[u128], threshold: u128, signers: &[SigningKey]) -> Validate {
-    //let mut operators: Vec<BytesN<32>> = Vec::new(&env);
+// ASSUMPTION: operators & signers are ordered.
+fn generate_test_proof(env: Env, data: Data, operators: Vec<[u8; 64]>, weights: Vec<u128>, threshold: u128, signers: Vec<[u8; 64]>) -> Validate {
+    
+    // Create signatures & weights
     let mut signatures: Vec<(u32, BytesN<64>)> = Vec::new(&env);
 
     // now looping through signers
     for i in 0..signers.len() {
         // NEXT: want to find index of the signers inside of operators.
         // THEN, add the signature & that index to signature.
-        let mut operator_index: usize = usize::MAX; // is there a potential security exploit doing it this way?
+        let mut operator_index: u32 = u32::MAX; // is there a potential security exploit doing it this way?
         for index in 0..operators.len() {
-            if signers[i].to_keypair_bytes() == operators[index].to_keypair_bytes() {
+            if signers.get(i).unwrap().unwrap() == operators.get(i).unwrap().unwrap() {
                 operator_index = index;
                 break;
             }
         }
         
         // signers is not a subset of operators.
-        if operator_index == usize::MAX {
+        if operator_index == u32::MAX {
             panic!();
         }
 
-        let signing_key: &SigningKey = &signers[i];
+        let signing_key: &SigningKey = &SigningKey::from_keypair_bytes(&signers.get(i).unwrap().unwrap()).unwrap();
+        let verifying_key: VerifyingKey = signing_key.verifying_key();
+        let verifying_key_bytes: BytesN<32> = BytesN::from_array(&env, &verifying_key.to_bytes());
 
         let hash: BytesN<32> = env.crypto().sha256(&data.clone().to_xdr(&env));
         let signed_message_hash: BytesN<32> = to_signed_msg_hsh(env.clone(), hash);
@@ -585,59 +615,35 @@ fn generate_test_proof(env: Env, data: Data, operators: &[SigningKey], weights: 
 
         let signature: Signature = signing_key.sign(message);
         let signature_bytes: BytesN<64> = BytesN::from_array(&env, &signature.to_bytes());
-        let verifying_key: VerifyingKey = signing_key.verifying_key();
-        let verifying_key_bytes: BytesN<32> = BytesN::from_array(&env, &verifying_key.to_bytes());
-
+        
         env.crypto().ed25519_verify(
             &verifying_key_bytes,
             &signed_message_hash.into(), 
             &signature_bytes
         );
 
-        //try_into().unwrap() might error
-        signatures.push_back((operator_index.try_into().unwrap(), signature_bytes.clone()));
 
+        signatures.push_back((operator_index, signature_bytes));
 
-        // sorting ( need to move this code somewhere else? create helper function to sort operators)
-        for j in 0..operators.len() {
-            if verifying_key_bytes.clone() < operators.get(j).unwrap().unwrap() {
-                operators.insert(j, verifying_key_bytes.clone());
-                signatures.insert(j, (j, signature_bytes.clone()));
-                weights.insert(j, weight);
+    }
 
-                // Suppose PK #1 is inserted infront of PK #2.
-                // Then the associated signature tuple in signatures for PK #2 has the integer equal to the
-                // previous index of PK #2 which now equals the index for PK #1.
-                // To fix this, we update the integer in signature's tuple by one, for all signature tuples that
-                // had its associated PK moved in the operators vector.
-                for k in j+1..signatures.len() {
-                    let mut temp = signatures.get(k).unwrap().unwrap();
-                    temp.0 += 1;
-                    signatures.remove(k);
-                    signatures.insert(k, temp);
-                }
-                break;
-            } else if j == operators.len() - 1 {
-                // public key is bigger than all keys in operators.
-                operators.push_back(verifying_key_bytes.clone());
-                signatures.push_back((j + 1, signature_bytes.clone()));
-                weights.push_back(weight);
-            }
-        }
+    // Create operators
+    let mut operators_pk: Vec<BytesN<32>> = Vec::new(&env);
 
-        if operators.is_empty() {
-            operators.push_back(verifying_key_bytes);
-            signatures.push_back((0, signature_bytes));
-            weights.push_back(weight);
+    for i in 0..operators.len() {
+        let signing_key: &SigningKey = &SigningKey::from_keypair_bytes(&signers.get(i).unwrap().unwrap()).unwrap();
 
-        }
+        let verifying_key: VerifyingKey = signing_key.verifying_key();
+        let verifying_key_bytes: BytesN<32> = BytesN::from_array(&env, &verifying_key.to_bytes());
+
+        operators_pk.push_back(verifying_key_bytes);
     }
 
     let proof: Validate = Validate {
-        operators: operators.clone(),
-        weights: weights.clone(),
+        operators: operators_pk,
+        weights: weights,
         threshold, // uint256
-        signatures: signatures.clone()
+        signatures: signatures
     };
 
     proof
