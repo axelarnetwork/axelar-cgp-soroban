@@ -425,63 +425,55 @@ fn invalid_threshold_2() {
     client.execute(&test);
 }
 
-// #[test]
-// //#[should_panic]
-// fn low_signatures_weight() {
-//     // This case differs, as while the transfer_ops() called in initialize() passes, the transfer_ops() in execute()
-//     // fails as the new operators do not pass the threshold.
-//     let env = Env::default();
-//     let contract_id = env.register_contract(None, Gateway);
-//     let client = GatewayClient::new(&env, &contract_id);
+#[test]
+#[should_panic]
+fn low_signatures_weight() {
+    let env = Env::default();
+    let contract_id = env.register_contract(None, Gateway);
+    let client = GatewayClient::new(&env, &contract_id);
 
-//     // these new operators have a signature weight that is too low.
-//     let new_operators: Operatorship = Operatorship { 
-//         new_ops: vec![&env, bytesn!(&env, 0x000000000000000000000000000000000000000000000000000000000000001), bytesn!(&env, 0x000000000000000000000000000000000000000000000000000000000000002)],
-//         new_wghts: vec![&env, 1, 1],
-//         new_thres: 4
-//     };
-
-//     let data: Data = Data {
-//         chain_id: 1,
-//         commandids: vec![&env, bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d)],
-//         commands: vec![&env, bytes![&env, 0x7472616e736665724f70657261746f7273686970]], // approveContractCall converted into Bytes,
-//         params: vec![&env, new_operators.clone().to_xdr(&env)]
-//     };
-
-//     const THRESHOLD: u128 = 3;
-//     const WEIGHT: u128 = 1;
-//     const NUM_OPS: usize = 3;
-
-//     let mut csprng = OsRng{};
-//     let signing_keys: [SigningKey; NUM_OPS] = [
-//         SigningKey::generate(&mut csprng),
-//         SigningKey::generate(&mut csprng),
-//         SigningKey::generate(&mut csprng),
-//         ];
-
-//     let proof: Validate = generate_test_proof(env.clone(), &signing_keys, data.clone(), THRESHOLD, WEIGHT);
-
-//     let input: Input = Input {
-//         data: data.clone(),
-//         proof: proof.clone().to_xdr(&env)
-//     };
-
-//     // Initalize with 3 random operators
-//     let params_operator: Operatorship = Operatorship { 
-//         new_ops: proof.operators.clone(),
-//         new_wghts: proof.weights.clone(),
-//         new_thres: THRESHOLD
-//     };
-//     let admin: Address = Address::random(&env);
+    const NUM_OPS: u32 = 3;
+    const THRESHOLD: u128 = 3;
+    let WEIGHTS: Vec<u128> = vec![&env, 1, 1, 1];
     
-//     client.initialize(&admin, &params_operator.clone().to_xdr(&env));
-    
+    let keypairs: Vec<[u8; 64]> = generate_sorted_keypairs(env.clone(), NUM_OPS);
+    let mut signers: Vec<[u8; 64]> = keypairs.clone();
+    signers.remove(2); // signers no longer have enough weight to pass the threshold.
 
-//     // Transfer operatorship to 2 new operators in the variable new_operators.
-//     // However, this should fail as the new operator's weights dont meet threshold.
-//     let test = input.to_xdr(&env);
-//     client.execute(&test);
-// }
+    let new_operators: Operatorship = Operatorship { 
+        new_ops: generate_mock_public_keys(env.clone(), keypairs.clone()),
+        new_wghts: WEIGHTS.clone(),
+        new_thres: THRESHOLD
+    };
+
+    let data: Data = Data {
+        chain_id: 1,
+        commandids: vec![&env, bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d)],
+        commands: vec![&env, bytes![&env, 0x7472616e736665724f70657261746f7273686970]], // approveContractCall converted into Bytes,
+        params: vec![&env, new_operators.clone().to_xdr(&env)]
+    };
+
+    let proof: Validate = generate_test_proof(env.clone(), data.clone(), keypairs.clone(), WEIGHTS, THRESHOLD, signers.clone());
+
+    let input: Input = Input {
+        data: data.clone(),
+        proof: proof.clone().to_xdr(&env)
+    };
+
+    // Initalize with 3 random operators
+    let params_operator: Operatorship = Operatorship { 
+        new_ops: proof.operators.clone(),
+        new_wghts: proof.weights.clone(),
+        new_thres: THRESHOLD
+    };
+    let admin: Address = Address::random(&env);
+    
+    client.initialize(&admin, &params_operator.clone().to_xdr(&env));
+    
+    // As the signers do not have enough weight to pass the threshold, the proof check in execute() will error.
+    let test = input.to_xdr(&env);
+    client.execute(&test);
+}
 
 #[test]
 #[should_panic]
