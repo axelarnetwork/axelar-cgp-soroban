@@ -12,9 +12,8 @@ use rand::rngs::OsRng;
 use ed25519_dalek::{SigningKey, ed25519::signature::Keypair};
 use ed25519_dalek::{Signature, Signer, VerifyingKey, Verifier};
 
-
 #[test]
-fn approve_contract_cal() {
+fn approve_contract_call() {
     let env = Env::default();
     let contract_id = env.register_contract(None, Gateway);
     let client = GatewayClient::new(&env, &contract_id);
@@ -136,6 +135,7 @@ fn call_contract() {
     );
 }
 
+// 'validate the proof from the current operators' is tested indirectly.
 #[test]
 fn transfer_operatorship() {
     let env = Env::default();
@@ -296,7 +296,7 @@ fn invalid_weights() {
 }
 
 #[test]
-//#[should_panic]
+#[should_panic]
 fn invalid_threshold() {
     let env = Env::default();
     let contract_id = env.register_contract(None, Gateway);
@@ -425,6 +425,7 @@ fn invalid_threshold_2() {
     client.execute(&test);
 }
 
+// 'reject the proof if weights are not matching the threshold'
 #[test]
 #[should_panic]
 fn low_signatures_weight() {
@@ -532,14 +533,75 @@ fn invalid_commands() {
 
 }
 
+// 'reject the proof if signatures are invalid'
+#[test]
+#[should_panic]
+fn invalid_signers() {
+    let env = Env::default();
+    let contract_id = env.register_contract(None, Gateway);
+    let client = GatewayClient::new(&env, &contract_id);
+
+    const NUM_OPS: u32 = 3;
+    const THRESHOLD: u128 = 3;
+    let WEIGHTS: Vec<u128> = vec![&env, 1, 1, 1];
+    
+    let keypairs: Vec<[u8; 64]> = generate_sorted_keypairs(env.clone(), NUM_OPS);
+    // signers below are different from the operator keypairs above, causing the signature verification to fail successfully,
+    let signers: Vec<[u8; 64]> = generate_sorted_keypairs(env.clone(), NUM_OPS);
+
+    let new_operators: Operatorship = Operatorship { 
+        new_ops: generate_mock_public_keys(env.clone(), keypairs.clone()),
+        new_wghts: WEIGHTS.clone(),
+        new_thres: THRESHOLD
+    };
+
+    let data: Data = Data {
+        chain_id: 1,
+        commandids: vec![&env, bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d)],
+        commands: vec![&env, bytes![&env, 0x7472616e736665724f70657261746f7273686970]], // approveContractCall converted into Bytes,
+        params: vec![&env, new_operators.clone().to_xdr(&env)]
+    };
+
+    let keypairs: Vec<[u8; 64]> = generate_sorted_keypairs(env.clone(), 2);
+    let operator: SigningKey = SigningKey::from_keypair_bytes(&keypairs.get(0).unwrap().unwrap()).unwrap();
+    let incorrect_signer: SigningKey = SigningKey::from_keypair_bytes(&keypairs.get(1).unwrap().unwrap()).unwrap();
+    
+    // The signature in the proof below does not match the operator. Therefore, this test case panics sucessfully.
+    let proof: Validate = Validate {
+        operators: vec![&env, generate_public_and_signature_key(env.clone(), data.clone(), operator).0],
+        weights: vec![&env, THRESHOLD],
+        threshold: THRESHOLD,
+        signatures: vec![&env, (0, generate_public_and_signature_key(env.clone(), data.clone(), incorrect_signer).1)]
+    };
+
+    let input: Input = Input {
+        data: data.clone(),
+        proof: proof.clone().to_xdr(&env)
+    };
+
+    // Initalize with 3 random operators
+    let params_operator: Operatorship = Operatorship { 
+        new_ops: proof.operators.clone(),
+        new_wghts: proof.weights.clone(),
+        new_thres: THRESHOLD
+    };
+    let admin: Address = Address::random(&env);
+    
+    client.initialize(&admin, &params_operator.clone().to_xdr(&env));
+    
+    // As the signers do not have enough weight to pass the threshold, the proof check in execute() will error.
+    let test = input.to_xdr(&env);
+    client.execute(&test);
+}
+
+// HELPER FUNCTIONS
+
 fn generate_sorted_keypairs(env: Env, num_ops: u32) -> Vec<[u8; 64]>{
-    // what I could do instead if just keep generaating a new SigningKey, and if it's bigger then previous one I append it.
     let mut operators: Vec<[u8; 64]> = Vec::new(&env);
 
     if num_ops == 0 {
         return operators;
     }
-
 
     let mut csprng = OsRng{};
     operators.push_back(SigningKey::generate(&mut csprng).to_keypair_bytes());
@@ -563,7 +625,14 @@ fn generate_sorted_keypairs(env: Env, num_ops: u32) -> Vec<[u8; 64]>{
 // signers is a subset of operators that is signing the data
 // only signers with biggest weight to pass need to sign it.
 // ASSUMPTION: operators & signers are ordered.
-fn generate_test_proof(env: Env, data: Data, operators: Vec<[u8; 64]>, weights: Vec<u128>, threshold: u128, signers: Vec<[u8; 64]>) -> Validate {
+fn generate_test_proof(
+    env: Env, 
+    data: Data, 
+    operators: Vec<[u8; 64]>, 
+    weights: Vec<u128>, 
+    threshold: u128, 
+    signers: Vec<[u8; 64]>,
+) -> Validate {
     
     // Create signatures & weights
     let mut signatures: Vec<(u32, BytesN<64>)> = Vec::new(&env);
