@@ -311,7 +311,7 @@ fn transfer_op( // transferOperatorship
         panic_with_error!(env, Error::DuplicateOperators);
     }
 
-    let epoch: u128= env.storage().get(&Symbol::new(&env, &"current_epoch")).unwrap_or(Ok(0)).unwrap() + 1;
+    let epoch: u128 = env.storage().get(&Symbol::new(&env, &"current_epoch")).unwrap_or(Ok(0)).unwrap() + 1;
     env.storage().set(&Symbol::new(&env, &"current_epoch"), &epoch);
     env.storage().set(&PrefixEpoch{prefix: Symbol::new(&env, &"epoch_for_operators"), epoch}, &new_operators_hash);
     env.storage().set(&new_operators_hash_key, &epoch);
@@ -339,6 +339,8 @@ pub fn validate_proof(
     msghash: BytesN<32>,
     proof: Bytes
 ) -> bool {
+    const OLD_KEY_RETENTION: u128 = 16;
+
     let tokens: Validate = Validate::from_xdr(&env, &proof).unwrap();
     let operators: Vec<BytesN<32>> = tokens.operators;
     let weights: Vec<u128> = tokens.weights;
@@ -357,7 +359,7 @@ pub fn validate_proof(
     let operators_epoch: u128 = env.storage().get(&operators_hash_key).unwrap_or(Ok(0)).unwrap(); //uint256
     let epoch: u128 = env.storage().get(&Symbol::new(&env, &"current_epoch")).unwrap_or(Ok(0)).unwrap(); //uint256
 
-    if (operators_epoch == 0 || epoch - operators_epoch >= 16) {
+    if (operators_epoch == 0 || epoch - operators_epoch >= OLD_KEY_RETENTION) {
         panic_with_error!(env, Error::InvalidOperators);
     }
 
@@ -407,7 +409,7 @@ fn validate_sig(
         }
     }
     // if weight sum below threshold
-    panic_with_error!(env, Error::LowSignaturesWeight); // DEAD CODE?
+    panic_with_error!(env, Error::LowSignaturesWeight);
 
 }
 
