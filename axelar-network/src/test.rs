@@ -148,11 +148,10 @@ fn transfer_operatorship() {
         new_thres: 2
     };
 
-
     let data: Data = Data {
         chain_id: 1,
         commandids: vec![&env, bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d)],
-        commands: vec![&env, bytes![&env, 0x7472616e736665724f70657261746f7273686970]], // approveContractCall converted into Bytes,
+        commands: vec![&env, bytes![&env, 0x7472616e736665724f70657261746f7273686970]], // transferOperatorship converted into Bytes,
         params: vec![&env, new_operators.clone().to_xdr(&env)]
     };
 
@@ -592,6 +591,76 @@ fn invalid_signers() {
     // As the signers do not have enough weight to pass the threshold, the proof check in execute() will error.
     let test = input.to_xdr(&env);
     client.execute(&test);
+}
+
+// 'reject the proof from the operators older than key retention'
+#[test]
+#[should_panic]
+fn old_operators() {
+    let env = Env::default();
+    let contract_id = env.register_contract(None, Gateway);
+    let client = GatewayClient::new(&env, &contract_id);
+
+    const NUM_OPS: u32 = 3;
+    const THRESHOLD: u128 = 3;
+    let WEIGHTS: Vec<u128> = vec![&env, 1, 1, 1];
+    
+
+    let init_keypairs: Vec<[u8; 64]> = generate_sorted_keypairs(env.clone(), NUM_OPS);
+    let init_signers: Vec<[u8; 64]> = init_keypairs.clone();
+
+    let mut prev_keypairs: Vec<[u8; 64]> = init_keypairs.clone();
+    let mut prev_signers: Vec<[u8; 64]> = init_signers.clone();
+
+    let initialize: Operatorship = Operatorship { 
+        new_ops: generate_mock_public_keys(env.clone(), init_keypairs.clone()),
+        new_wghts: WEIGHTS.clone(),
+        new_thres: THRESHOLD
+    };
+
+    let admin: Address = Address::random(&env);
+    client.initialize(&admin, &initialize.clone().to_xdr(&env));
+
+    for i in 0..17 {
+        env.budget().reset_default();
+        let new_keypairs: Vec<[u8; 64]> = generate_sorted_keypairs(env.clone(), NUM_OPS);
+        let new_signers: Vec<[u8; 64]> = new_keypairs.clone();
+
+        let new_operators: Operatorship = Operatorship { 
+            new_ops: generate_mock_public_keys(env.clone(), new_keypairs.clone()),
+            new_wghts: WEIGHTS.clone(),
+            new_thres: THRESHOLD
+        };
+
+        let data: Data = Data {
+            chain_id: 1,
+            commandids: vec![&env, bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d)],
+            commands: vec![&env, bytes![&env, 0x7472616e736665724f70657261746f7273686970]], // transferOperatorship converted into Bytes,
+            params: vec![&env, new_operators.clone().to_xdr(&env)]
+        };
+
+        // after the 17th operator, switch the proof back to using the initial keypairs so the proof fails from epoch - operators_epoch >= 16
+        let proof: Validate;
+        if i >= 16 {
+            proof = generate_test_proof(env.clone(), data.clone(), init_keypairs.clone(), WEIGHTS.clone(), THRESHOLD, init_signers.clone());
+        }
+        else {
+            proof = generate_test_proof(env.clone(), data.clone(), prev_keypairs.clone(), WEIGHTS.clone(), THRESHOLD, prev_signers.clone());
+        }
+
+        let input: Input = Input {
+            data: data.clone(),
+            proof: proof.clone().to_xdr(&env)
+        };
+        
+        // Transfer operatorship to new operators in the variable new_operators
+        let test = input.to_xdr(&env);
+        client.execute(&test);
+
+        prev_keypairs = new_keypairs.clone();
+        prev_signers = new_signers.clone();
+    }
+
 }
 
 // HELPER FUNCTIONS
