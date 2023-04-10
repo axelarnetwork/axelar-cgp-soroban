@@ -212,6 +212,78 @@ fn transfer_operatorship() {
     );
 }
 
+// 'validate the proof for a single signer & operator.
+#[test]
+fn single_operator_signer() {
+    let env = Env::default();
+    let contract_id = env.register_contract(None, Gateway);
+    let client = GatewayClient::new(&env, &contract_id);
+
+    const NUM_OPS: u32 = 1;
+    const THRESHOLD: u128 = 1;
+    let WEIGHTS: Vec<u128> = vec![&env, 1];
+    
+    let new_keypairs: Vec<[u8; 64]> = generate_sorted_keypairs(env.clone(), NUM_OPS);
+
+    let keypairs: Vec<[u8; 64]> = generate_sorted_keypairs(env.clone(), NUM_OPS);
+    let signers: Vec<[u8; 64]> = keypairs.clone();
+
+    let new_operatorship: Operatorship = Operatorship { 
+        new_ops: generate_mock_public_keys(env.clone(), new_keypairs.clone()),
+        new_wghts: WEIGHTS.clone(),
+        new_thres: THRESHOLD
+    };
+
+    let data: Data = Data {
+        chain_id: 1,
+        commandids: vec![&env, bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d)],
+        commands: vec![&env, bytes![&env, 0x7472616e736665724f70657261746f7273686970]], // transferOperatorship converted into Bytes
+        params: vec![&env, new_operatorship.clone().to_xdr(&env)]
+    };
+    
+    let proof: Validate = generate_test_proof(env.clone(), data.clone(), keypairs.clone(), WEIGHTS.clone(), THRESHOLD, signers.clone());
+
+    let input: Input = Input {
+        data: data.clone(),
+        proof: proof.clone().to_xdr(&env)
+    };
+
+    // Initalize with 1 random operator
+    let initialize_operators: Operatorship = Operatorship { 
+        new_ops: generate_mock_public_keys(env.clone(), keypairs.clone()),
+        new_wghts: WEIGHTS.clone(),
+        new_thres: THRESHOLD
+    };
+    let admin: Address = Address::random(&env);
+    
+    client.initialize(&admin, &initialize_operators.clone().to_xdr(&env));
+    client.execute(&input.to_xdr(&env));
+
+
+    let success: ExecutedEvent = ExecutedEvent { command_id: data.commandids.get(0).unwrap().unwrap() };
+    assert_eq!(
+        env.events().all(),
+        vec![
+            &env,
+            (
+                contract_id.clone(),
+                ().into_val(&env),
+                initialize_operators.into_val(&env)
+            ),
+            (
+                contract_id.clone(),
+                ().into_val(&env),
+                new_operatorship.into_val(&env)
+            ),
+            (
+                contract_id.clone(),
+                ().into_val(&env),
+                success.into_val(&env)
+            ),
+        ]
+    );
+}
+
 #[test]
 #[should_panic]
 fn no_operators() {
@@ -251,9 +323,10 @@ fn no_operators() {
 
 }
 
+// 'should not allow transferring operatorship to unsorted operators'
 #[test]
 #[should_panic]
-fn operators_not_alphabetical() {
+fn operators_not_sorted() {
     let env = Env::default();
     let contract_id = env.register_contract(None, Gateway);
     let client = GatewayClient::new(&env, &contract_id);
@@ -272,6 +345,7 @@ fn operators_not_alphabetical() {
     client.initialize(&admin, &params_operator.clone().to_xdr(&env));
 }
 
+// 'should not allow transferring operatorship with invalid number of weights'
 #[test]
 #[should_panic]
 fn invalid_weights() {
@@ -282,11 +356,18 @@ fn invalid_weights() {
     // transferOperatorship converted into Bytes, and then sha256 hashed.
     let SELECTOR_TRANSFER_OPERATORSHIP: BytesN<32> = env.crypto().sha256(&bytes!(&env, 0x7472616e736665724f70657261746f7273686970));
 
+    const NUM_OPS: u32 = 2;
+    const THRESHOLD: u128 = 1;
+    let WEIGHTS: Vec<u128> = vec![&env, 1];
+    
+    let keypairs: Vec<[u8; 64]> = generate_sorted_keypairs(env.clone(), NUM_OPS);
+    let signers: Vec<[u8; 64]> = keypairs.clone();
+
     // Test Initalize
     let params_operator: Operatorship = Operatorship { 
-        new_ops: vec![&env, bytesn!(&env, 0x000000000000000000000000000000000000000000000000000000000000001), bytesn!(&env, 0x000000000000000000000000000000000000000000000000000000000000002)],
-        new_wghts: vec![&env, 1],
-        new_thres: 1
+        new_ops: generate_mock_public_keys(env.clone(), keypairs.clone()),
+        new_wghts: WEIGHTS,
+        new_thres: THRESHOLD
     };
     let admin: Address = Address::random(&env);
     
@@ -294,6 +375,7 @@ fn invalid_weights() {
 
 }
 
+// 'should not allow transferring operatorship with invalid threshold'
 #[test]
 #[should_panic]
 fn invalid_threshold() {
@@ -308,7 +390,7 @@ fn invalid_threshold() {
     let WEIGHTS: Vec<u128> = vec![&env, 1, 1];
     
     let keypairs: Vec<[u8; 64]> = generate_sorted_keypairs(env.clone(), NUM_OPS);
-    let mut signers: Vec<[u8; 64]> = keypairs.clone();
+    let signers: Vec<[u8; 64]> = keypairs.clone();
 
     // Test Initalize
     let params_operator: Operatorship = Operatorship { 
@@ -321,6 +403,7 @@ fn invalid_threshold() {
     client.initialize(&admin, &params_operator.clone().to_xdr(&env));
 }
 
+// 'should not allow transferring operatorship to duplicated operators'
 #[test]
 #[should_panic]
 fn duplicate_operators() {
@@ -351,7 +434,6 @@ fn duplicate_operators() {
         params: vec![&env, new_operatorship.clone().to_xdr(&env)]
     };
     
-    
     let proof: Validate = generate_test_proof(env.clone(), data.clone(), keypairs.clone(), WEIGHTS, THRESHOLD, signers.clone());
 
 
@@ -368,6 +450,7 @@ fn duplicate_operators() {
 
 }
 
+// 'should not allow transferring operatorship with invalid threshold'
 #[test]
 #[should_panic]
 fn invalid_threshold_2() {
@@ -422,6 +505,35 @@ fn invalid_threshold_2() {
     // However, this should fail as the new operator's weights dont meet threshold.
     let test = input.to_xdr(&env);
     client.execute(&test);
+}
+
+// 'should not allow transferring operatorship with invalid threshold'
+// this case differs by having a 0 threshold.
+#[test]
+#[should_panic]
+fn invalid_threshold_3() {
+    let env = Env::default();
+    let contract_id = env.register_contract(None, Gateway);
+    let client = GatewayClient::new(&env, &contract_id);
+
+    // transferOperatorship converted into Bytes, and then sha256 hashed.
+    let SELECTOR_TRANSFER_OPERATORSHIP: BytesN<32> = env.crypto().sha256(&bytes!(&env, 0x7472616e736665724f70657261746f7273686970));
+    const NUM_OPS: u32 = 2;
+    const THRESHOLD: u128 = 0;
+    let WEIGHTS: Vec<u128> = vec![&env, 1, 1];
+    
+    let keypairs: Vec<[u8; 64]> = generate_sorted_keypairs(env.clone(), NUM_OPS);
+    let mut signers: Vec<[u8; 64]> = keypairs.clone();
+
+    // Test Initalize
+    let params_operator: Operatorship = Operatorship { 
+        new_ops: generate_mock_public_keys(env.clone(), keypairs.clone()),
+        new_wghts: WEIGHTS,
+        new_thres: THRESHOLD
+    };
+    let admin: Address = Address::random(&env);
+    
+    client.initialize(&admin, &params_operator.clone().to_xdr(&env));
 }
 
 // 'reject the proof if weights are not matching the threshold'
@@ -663,6 +775,76 @@ fn old_operators() {
 
 }
 
+// 'should not allow operatorship transfer to the previous operators '
+#[test]
+#[should_panic]
+fn previous_operator() {
+    let env = Env::default();
+    let contract_id = env.register_contract(None, Gateway);
+    let client = GatewayClient::new(&env, &contract_id);
+
+    const NUM_OPS: u32 = 3;
+    const THRESHOLD: u128 = 3;
+    let WEIGHTS: Vec<u128> = vec![&env, 1, 1, 1];
+    
+
+    let init_keypairs: Vec<[u8; 64]> = generate_sorted_keypairs(env.clone(), NUM_OPS);
+    let init_signers: Vec<[u8; 64]> = init_keypairs.clone();
+
+    let mut prev_keypairs: Vec<[u8; 64]> = init_keypairs.clone();
+    let mut prev_signers: Vec<[u8; 64]> = init_signers.clone();
+
+    let initialize: Operatorship = Operatorship { 
+        new_ops: generate_mock_public_keys(env.clone(), init_keypairs.clone()),
+        new_wghts: WEIGHTS.clone(),
+        new_thres: THRESHOLD
+    };
+
+    let admin: Address = Address::random(&env);
+    client.initialize(&admin, &initialize.clone().to_xdr(&env));
+
+    for i in 0..3 {
+        env.budget().reset_default();
+        let mut new_keypairs: Vec<[u8; 64]> = generate_sorted_keypairs(env.clone(), NUM_OPS);
+        let mut new_signers: Vec<[u8; 64]> = new_keypairs.clone();
+
+        // on second iteration, try transfering to the first operator.
+        if i == 2 {
+            new_keypairs = init_keypairs.clone();
+            new_signers = init_keypairs.clone();
+
+        }
+
+        let new_operators: Operatorship = Operatorship { 
+            new_ops: generate_mock_public_keys(env.clone(), new_keypairs.clone()),
+            new_wghts: WEIGHTS.clone(),
+            new_thres: THRESHOLD
+        };
+
+        let data: Data = Data {
+            chain_id: 1,
+            commandids: vec![&env, bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d)],
+            commands: vec![&env, bytes![&env, 0x7472616e736665724f70657261746f7273686970]], // transferOperatorship converted into Bytes,
+            params: vec![&env, new_operators.clone().to_xdr(&env)]
+        };
+
+        let proof = generate_test_proof(env.clone(), data.clone(), prev_keypairs.clone(), WEIGHTS.clone(), THRESHOLD, prev_signers.clone());
+
+        let input: Input = Input {
+            data: data.clone(),
+            proof: proof.clone().to_xdr(&env)
+        };
+        
+        // Transfer operatorship to new operators in the variable new_operators
+        let test = input.to_xdr(&env);
+        client.execute(&test);
+
+        prev_keypairs = new_keypairs.clone();
+        prev_signers = new_signers.clone();
+    }
+
+}
+
 // HELPER FUNCTIONS
 
 fn generate_sorted_keypairs(env: Env, num_ops: u32) -> Vec<[u8; 64]>{
@@ -690,6 +872,92 @@ fn generate_sorted_keypairs(env: Env, num_ops: u32) -> Vec<[u8; 64]>{
     return operators;
 }
 
+// 'should not allow transferring operatorship to address zero'
+#[test]
+#[should_panic]
+fn transfer_zero() {
+    let env = Env::default();
+    let contract_id = env.register_contract(None, Gateway);
+    let client = GatewayClient::new(&env, &contract_id);
+
+    let new_operators: Operatorship = Operatorship { 
+        new_ops: vec![&env, bytesn!(&env, 0x000000000000000000000000000000000000000000000000000000000000000), bytesn!(&env, 0x000000000000000000000000000000000000000000000000000000000000002)],
+        new_wghts: vec![&env, 1, 1],
+        new_thres: 2
+    };
+
+    let data: Data = Data {
+        chain_id: 1,
+        commandids: vec![&env, bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d)],
+        commands: vec![&env, bytes![&env, 0x7472616e736665724f70657261746f7273686970]], // transferOperatorship converted into Bytes,
+        params: vec![&env, new_operators.clone().to_xdr(&env)]
+    };
+
+    const THRESHOLD: u128 = 4;
+    const WEIGHT: u128 = 1;
+    const NUM_OPS: u32 = 3;
+
+    let keypairs: Vec<[u8; 64]> = generate_sorted_keypairs(env.clone(), NUM_OPS);
+    let mut signers: Vec<[u8; 64]> = keypairs.clone();
+    signers.remove(1);
+
+    let proof: Validate = generate_test_proof(env.clone(), data.clone(), keypairs.clone(), vec![&env, 1, 1, 3], THRESHOLD, signers.clone());
+
+    let input: Input = Input {
+        data: data.clone(),
+        proof: proof.clone().to_xdr(&env)
+    };
+
+    // Initalize with 3 random operators
+    let params_operator: Operatorship = Operatorship { 
+        new_ops: proof.operators.clone(),
+        new_wghts: proof.weights.clone(),
+        new_thres: THRESHOLD
+    };
+    let admin: Address = Address::random(&env);
+    
+    client.initialize(&admin, &params_operator.clone().to_xdr(&env));
+    
+
+    // Transfer operatorship to 2 new operators in the variable new_operators
+    let test = input.to_xdr(&env);
+    client.execute(&test);
+}
+
+// 'should expose correct hashes and epoch'
+#[test]
+fn hashForEpoch_epochForHash() {
+    let env = Env::default();
+    let contract_id = env.register_contract(None, Gateway);
+    let client = GatewayClient::new(&env, &contract_id);
+
+    const THRESHOLD: u128 = 3;
+    let WEIGHTS: Vec<u128> = vec![&env, 1, 1, 1];
+    const NUM_OPS: u32 = 3;
+    //let WEIGHTS: Vec<u128> = vec![&env, 1, 1, 1];
+    
+    let init_keypairs: Vec<[u8; 64]> = generate_sorted_keypairs(env.clone(), NUM_OPS);
+
+    let init_operators: Operatorship = Operatorship { 
+        new_ops: generate_mock_public_keys(env.clone(), init_keypairs.clone()),
+        new_wghts: WEIGHTS.clone(),
+        new_thres: THRESHOLD
+    };
+
+    let admin: Address = Address::random(&env);
+    
+    client.initialize(&admin, &init_operators.clone().to_xdr(&env));
+
+    let epoch: u128 = client.env.storage().get(&Symbol::new(&env, &"current_epoch")).unwrap_or(Ok(0)).unwrap() ;
+    let new_operators_hash: BytesN<32> = client.env.crypto().sha256(&init_operators.to_xdr(&env));
+    let new_operators_hash_key: BytesN<32> = env.crypto().sha256(&PrefixHash {prefix: Symbol::new(&env, &"operators_for_epoch"), hash: new_operators_hash.clone()}.to_xdr(&env));
+    
+    let hash_for_epoch: u128 = env.storage().get(&new_operators_hash_key).unwrap_or(Ok(0)).unwrap();
+    let epoch_for_hash: BytesN<32> = env.storage().get(&PrefixEpoch{prefix: Symbol::new(&env, &"epoch_for_operators"), epoch}).unwrap().unwrap();
+
+    assert_eq!(hash_for_epoch, epoch);
+    assert_eq!(epoch_for_hash, new_operators_hash);
+}
 
 // signers is a subset of operators that is signing the data
 // only signers with biggest weight to pass need to sign it.
