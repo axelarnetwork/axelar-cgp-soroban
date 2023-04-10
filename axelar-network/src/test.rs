@@ -948,12 +948,12 @@ fn hashForEpoch_epochForHash() {
     
     client.initialize(&admin, &init_operators.clone().to_xdr(&env));
 
-    let epoch: u128 = client.env.storage().get(&Symbol::new(&env, &"current_epoch")).unwrap_or(Ok(0)).unwrap() ;
-    let new_operators_hash: BytesN<32> = client.env.crypto().sha256(&init_operators.to_xdr(&env));
+    let epoch: u128 = env.as_contract(&contract_id, || env.storage().get(&Symbol::new(&env, &"current_epoch")).unwrap_or(Ok(0)).unwrap());
+    let new_operators_hash: BytesN<32> = env.crypto().sha256(&init_operators.to_xdr(&env));
     let new_operators_hash_key: BytesN<32> = env.crypto().sha256(&PrefixHash {prefix: Symbol::new(&env, &"operators_for_epoch"), hash: new_operators_hash.clone()}.to_xdr(&env));
     
-    let hash_for_epoch: u128 = env.storage().get(&new_operators_hash_key).unwrap_or(Ok(0)).unwrap();
-    let epoch_for_hash: BytesN<32> = env.storage().get(&PrefixEpoch{prefix: Symbol::new(&env, &"epoch_for_operators"), epoch}).unwrap().unwrap();
+    let hash_for_epoch: u128 = env.as_contract(&contract_id, || env.storage().get(&new_operators_hash_key).unwrap_or(Ok(0)).unwrap());
+    let epoch_for_hash: BytesN<32> = env.as_contract(&contract_id, || env.storage().get(&PrefixEpoch{prefix: Symbol::new(&env, &"epoch_for_operators"), epoch}).unwrap().unwrap());
 
     assert_eq!(hash_for_epoch, epoch);
     assert_eq!(epoch_for_hash, new_operators_hash);
