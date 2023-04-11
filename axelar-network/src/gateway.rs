@@ -136,7 +136,7 @@ impl Gateway {
         }
         write_administrator(&env, &admin);
 
-        transfer_op(env.clone(), recent_ops);
+        Self::transfer_op(env.clone(), recent_ops);
     }
 
     pub fn execute (
@@ -153,8 +153,8 @@ impl Gateway {
         let data: Data = decoded.data;
         let proof: Bytes = decoded.proof;
         let hash: BytesN<32> = env.crypto().sha256(&data.clone().to_xdr(&env));
-        let signed_message_hash: BytesN<32> = to_signed_msg_hsh(env.clone(), hash);
-        let mut allow_operatorship_transfership: bool = validate_proof(env.clone(), signed_message_hash, proof.clone());
+        let signed_message_hash: BytesN<32> = Self::to_signed_msg_hsh(env.clone(), hash);
+        let mut allow_operatorship_transfership: bool = Self::validate_proof(env.clone(), signed_message_hash, proof.clone());
         
         let chain_id: u64 = data.chain_id;
         let command_ids: Vec<BytesN<32>> = data.commandids;
@@ -179,7 +179,7 @@ impl Gateway {
                 }
                 allow_operatorship_transfership = false;
                 Self::_setCommandExecuted(env.clone(), command_id.clone(), true);
-                success = transfer_op(env.clone(), params.get(i).unwrap().unwrap());
+                success = Self::transfer_op(env.clone(), params.get(i).unwrap().unwrap());
             }
             else if command_hash == SELECTOR_APPROVE_CONTRACT_CALL { 
                 Self::_setCommandExecuted(env.clone(), command_id.clone(), true);
@@ -280,182 +280,179 @@ impl Gateway {
         env.events().publish((caller, env.crypto().sha256(&payload),), data);
     }
 
-}
+    fn transfer_op( // transferOperatorship
+        env: Env,
+        params: Bytes
+    ) -> bool {
 
-fn transfer_op( // transferOperatorship
-    env: Env,
-    params: Bytes
-) -> bool {
+        let tokens: Operatorship = Operatorship::from_xdr(&env, &params).unwrap();
+        let new_operators: Vec<BytesN<32>> = tokens.new_ops;
+        let new_weights: Vec<u128> = tokens.new_wghts;
+        let new_threshold: u128 = tokens.new_thres;
+        
+        let operators_length: u32 = new_operators.len();
+        let weights_length: u32 = new_weights.len();
 
-    let tokens: Operatorship = Operatorship::from_xdr(&env, &params).unwrap();
-    let new_operators: Vec<BytesN<32>> = tokens.new_ops;
-    let new_weights: Vec<u128> = tokens.new_wghts;
-    let new_threshold: u128 = tokens.new_thres;
-    
-    let operators_length: u32 = new_operators.len();
-    let weights_length: u32 = new_weights.len();
+        if operators_length == 0 || !Self::is_sorted_asc_no_dup(env.clone(), new_operators.clone())
+        {
+            panic_with_error!(env, Error::InvalidOperators);
 
-    if operators_length == 0 || !is_sorted_asc_no_dup(env.clone(), new_operators.clone())
-    {
-        panic_with_error!(env, Error::InvalidOperators);
-
-    }
-
-    if weights_length != operators_length {
-        panic_with_error!(env, Error::InvalidWeights);
-    }
-
-    let mut total_weight: u128 = 0;
-
-    for i in 0..weights_length {
-        total_weight += new_weights.get(i).unwrap().unwrap();
-    }
-
-    if new_threshold == 0 || total_weight < new_threshold {
-        panic_with_error!(env, Error::InvalidThreshold);
-    }
-
-    let new_operators_hash: BytesN<32> = env.crypto().sha256(&params);
-    
-    let new_operators_hash_key: BytesN<32> = env.crypto().sha256(&PrefixHash {prefix: Symbol::new(&env, &"operators_for_epoch"), hash: new_operators_hash.clone()}.to_xdr(&env));
-    let existing_epoch: u128 = env.storage().get(&new_operators_hash_key).unwrap_or(Ok(0)).unwrap();
-
-    if existing_epoch > 0 {
-        panic_with_error!(env, Error::DuplicateOperators);
-    }
-
-    let epoch: u128 = env.storage().get(&Symbol::new(&env, &"current_epoch")).unwrap_or(Ok(0)).unwrap() + 1;
-    env.storage().set(&Symbol::new(&env, &"current_epoch"), &epoch);
-    env.storage().set(&PrefixEpoch{prefix: Symbol::new(&env, &"epoch_for_operators"), epoch}, &new_operators_hash);
-    env.storage().set(&new_operators_hash_key, &epoch);
-
-    let event: Operatorship = Operatorship { new_ops: new_operators, new_wghts: new_weights, new_thres: new_threshold};
-    env.events().publish((), event);
-
-    return true;
-
-}
-
-fn validate_contract_call( // only called by execute in axelarexecute
-    env: Env,
-    command_id: BytesN<32>,
-    source_chain: String,
-    source_address: String,
-    contract_address: String,
-    payload_hash: BytesN<32>,
-) -> bool {
-
-    let key: BytesN<32> = Self::_getIsContractCallApprovedKey(env.clone(), command_id.clone(), source_chain.clone(), source_address.clone(), contract_address.clone(), payload_hash.clone());
-
-
-    let valid: bool = env.storage().get(&key).unwrap_or(Ok(false)).unwrap();
-
-    if valid {
-        env.storage().set(&key, &false);
-    }
-
-    valid
-}
-
-pub fn to_signed_msg_hsh(
-    env: Env,
-    hash: BytesN<32>
-) -> BytesN<32> {
-    let data: SignedMsg = SignedMsg {
-        text: Symbol::new(&env, &"Soroban"),
-        hash: hash
-    };
-    return env.crypto().sha256(&data.to_xdr(&env));
-}
-
-pub fn validate_proof(
-    env: Env,
-    msghash: BytesN<32>,
-    proof: Bytes
-) -> bool {
-    const OLD_KEY_RETENTION: u128 = 16;
-
-    let tokens: Validate = Validate::from_xdr(&env, &proof).unwrap();
-    let operators: Vec<BytesN<32>> = tokens.operators;
-    let weights: Vec<u128> = tokens.weights;
-    let threshold: u128 = tokens.threshold;
-    let signatures: Vec<(u32, BytesN<64>)> = tokens.signatures;
-
-    // Three parts of operators is treated as constant
-    let operators_data: Operatorship = Operatorship {
-        new_ops: operators.clone(),
-        new_wghts: weights.clone(),
-        new_thres: threshold
-    };
-    let operators_hash: BytesN<32> = env.crypto().sha256(&operators_data.to_xdr(&env));
-    let operators_hash_key: BytesN<32> = env.crypto().sha256(&PrefixHash {prefix: Symbol::new(&env, &"operators_for_epoch"), hash: operators_hash.clone()}.to_xdr(&env));
-
-    let operators_epoch: u128 = env.storage().get(&operators_hash_key).unwrap_or(Ok(0)).unwrap(); //uint256
-    let epoch: u128 = env.storage().get(&Symbol::new(&env, &"current_epoch")).unwrap_or(Ok(0)).unwrap(); //uint256
-
-    if (operators_epoch == 0 || epoch - operators_epoch >= OLD_KEY_RETENTION) {
-        panic_with_error!(env, Error::InvalidOperators);
-    }
-
-    validate_sig(env, msghash, operators, weights, threshold, signatures);
-
-    return operators_epoch == epoch;
-    
-
-}
-
-fn validate_sig(
-    env: Env,
-    msghash: BytesN<32>,
-    public_keys: Vec<BytesN<32>>, // operators
-    weights: Vec<u128>,
-    threshold: u128,
-    signatures: Vec<(u32, BytesN<64>)> 
-
-) {
-    let mut weight: u128 = 0;
-    let msg_hash: Bytes = msghash.into(); // converts it into Bytes
-    let signatures_len: u32 = signatures.len();
-
-    
-    let mut prev_index = 0;
-    for i in 0..signatures_len {
-        let public_key_idx: u32 = signatures.get(i).unwrap().unwrap().0;
-
-        // check that signature's public key index is greater than the previous index, aside from first iteration
-        if i > 0 && !(public_key_idx > prev_index) {
-            panic_with_error!(env, Error::InvalidOrdering);
         }
-        prev_index = public_key_idx;
-        let public_key = &public_keys.get(public_key_idx).unwrap().unwrap();
-        let signature = &signatures.get(i).unwrap().unwrap().1;
-        env.crypto().ed25519_verify(
-            public_key,
-            &msg_hash, 
-            signature
-        );
-   
-        // return if weight sum above threshold
-        weight += weights.get(public_key_idx).unwrap().unwrap();
-        // weight needs to reach or surpass threshold
-        if (weight >= threshold) {
-            return; 
+
+        if weights_length != operators_length {
+            panic_with_error!(env, Error::InvalidWeights);
         }
-    }
-    // if weight sum below threshold
-    panic_with_error!(env, Error::LowSignaturesWeight);
 
-}
+        let mut total_weight: u128 = 0;
 
-fn is_sorted_asc_no_dup(
-    env: Env,
-    accounts: Vec<BytesN<32>>
-) -> bool {
-    for i in 0..accounts.len()-1 {
-        if accounts.get(i).unwrap().unwrap() >= accounts.get(i+1).unwrap().unwrap() {
-            return false;
+        for i in 0..weights_length {
+            total_weight += new_weights.get(i).unwrap().unwrap();
         }
+
+        if new_threshold == 0 || total_weight < new_threshold {
+            panic_with_error!(env, Error::InvalidThreshold);
+        }
+
+        let new_operators_hash: BytesN<32> = env.crypto().sha256(&params);
+        
+        let new_operators_hash_key: BytesN<32> = env.crypto().sha256(&PrefixHash {prefix: Symbol::new(&env, &"operators_for_epoch"), hash: new_operators_hash.clone()}.to_xdr(&env));
+        let existing_epoch: u128 = env.storage().get(&new_operators_hash_key).unwrap_or(Ok(0)).unwrap();
+
+        if existing_epoch > 0 {
+            panic_with_error!(env, Error::DuplicateOperators);
+        }
+
+        let epoch: u128 = env.storage().get(&Symbol::new(&env, &"current_epoch")).unwrap_or(Ok(0)).unwrap() + 1;
+        env.storage().set(&Symbol::new(&env, &"current_epoch"), &epoch);
+        env.storage().set(&PrefixEpoch{prefix: Symbol::new(&env, &"epoch_for_operators"), epoch}, &new_operators_hash);
+        env.storage().set(&new_operators_hash_key, &epoch);
+
+        let event: Operatorship = Operatorship { new_ops: new_operators, new_wghts: new_weights, new_thres: new_threshold};
+        env.events().publish((), event);
+
+        return true;
+
     }
 
-    return accounts.get(0).unwrap().unwrap() != bytesn!(&env, 0x000000000000000000000000000000000000000000000000000000000000000);
+    fn validate_contract_call( // only called by execute in axelarexecute
+        env: Env,
+        command_id: BytesN<32>,
+        source_chain: String,
+        source_address: String,
+        contract_address: String,
+        payload_hash: BytesN<32>,
+    ) -> bool {
+
+        let key: BytesN<32> = Self::_getIsContractCallApprovedKey(env.clone(), command_id.clone(), source_chain.clone(), source_address.clone(), contract_address.clone(), payload_hash.clone());
+        let valid: bool = env.storage().get(&key).unwrap_or(Ok(false)).unwrap();
+
+        if valid {
+            env.storage().set(&key, &false);
+        }
+
+        valid
+    }
+
+    pub fn to_signed_msg_hsh(
+        env: Env,
+        hash: BytesN<32>
+    ) -> BytesN<32> {
+        let data: SignedMsg = SignedMsg {
+            text: Symbol::new(&env, &"Soroban"),
+            hash: hash
+        };
+        return env.crypto().sha256(&data.to_xdr(&env));
+    }
+
+    pub fn validate_proof(
+        env: Env,
+        msghash: BytesN<32>,
+        proof: Bytes
+    ) -> bool {
+        const OLD_KEY_RETENTION: u128 = 16;
+
+        let tokens: Validate = Validate::from_xdr(&env, &proof).unwrap();
+        let operators: Vec<BytesN<32>> = tokens.operators;
+        let weights: Vec<u128> = tokens.weights;
+        let threshold: u128 = tokens.threshold;
+        let signatures: Vec<(u32, BytesN<64>)> = tokens.signatures;
+
+        // Three parts of operators is treated as constant
+        let operators_data: Operatorship = Operatorship {
+            new_ops: operators.clone(),
+            new_wghts: weights.clone(),
+            new_thres: threshold
+        };
+        let operators_hash: BytesN<32> = env.crypto().sha256(&operators_data.to_xdr(&env));
+        let operators_hash_key: BytesN<32> = env.crypto().sha256(&PrefixHash {prefix: Symbol::new(&env, &"operators_for_epoch"), hash: operators_hash.clone()}.to_xdr(&env));
+
+        let operators_epoch: u128 = env.storage().get(&operators_hash_key).unwrap_or(Ok(0)).unwrap(); //uint256
+        let epoch: u128 = env.storage().get(&Symbol::new(&env, &"current_epoch")).unwrap_or(Ok(0)).unwrap(); //uint256
+
+        if (operators_epoch == 0 || epoch - operators_epoch >= OLD_KEY_RETENTION) {
+            panic_with_error!(env, Error::InvalidOperators);
+        }
+
+        Self::validate_sig(env, msghash, operators, weights, threshold, signatures);
+
+        return operators_epoch == epoch;
+        
+
+    }
+
+    fn validate_sig(
+        env: Env,
+        msghash: BytesN<32>,
+        public_keys: Vec<BytesN<32>>, // operators
+        weights: Vec<u128>,
+        threshold: u128,
+        signatures: Vec<(u32, BytesN<64>)> 
+
+    ) {
+        let mut weight: u128 = 0;
+        let msg_hash: Bytes = msghash.into(); // converts it into Bytes
+        let signatures_len: u32 = signatures.len();
+
+        
+        let mut prev_index = 0;
+        for i in 0..signatures_len {
+            let public_key_idx: u32 = signatures.get(i).unwrap().unwrap().0;
+
+            // check that signature's public key index is greater than the previous index, aside from first iteration
+            if i > 0 && !(public_key_idx > prev_index) {
+                panic_with_error!(env, Error::InvalidOrdering);
+            }
+            prev_index = public_key_idx;
+            let public_key = &public_keys.get(public_key_idx).unwrap().unwrap();
+            let signature = &signatures.get(i).unwrap().unwrap().1;
+            env.crypto().ed25519_verify(
+                public_key,
+                &msg_hash, 
+                signature
+            );
+    
+            // return if weight sum above threshold
+            weight += weights.get(public_key_idx).unwrap().unwrap();
+            // weight needs to reach or surpass threshold
+            if (weight >= threshold) {
+                return; 
+            }
+        }
+        // if weight sum below threshold
+        panic_with_error!(env, Error::LowSignaturesWeight);
+
+    }
+
+    fn is_sorted_asc_no_dup(
+        env: Env,
+        accounts: Vec<BytesN<32>>
+    ) -> bool {
+        for i in 0..accounts.len()-1 {
+            if accounts.get(i).unwrap().unwrap() >= accounts.get(i+1).unwrap().unwrap() {
+                return false;
+            }
+        }
+
+        return accounts.get(0).unwrap().unwrap() != bytesn!(&env, 0x000000000000000000000000000000000000000000000000000000000000000);
+    }
 }
