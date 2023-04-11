@@ -1,6 +1,6 @@
 #![no_std]
 use soroban_sdk::{contractimpl, contracttype, contracterror, bytes, Bytes, BytesN, Env, Symbol, vec, Address, Map, map, Vec, crypto, bytesn,
-    xdr::{self, FromXdr, ToXdr}, panic_with_error
+    xdr::{self, FromXdr, ToXdr}, panic_with_error, String
 };
 use crate::admin::*;
 
@@ -24,9 +24,9 @@ pub struct Input {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ContractPayload {
-    pub src_chain: Bytes,
-    pub src_add: Bytes,
-    pub contract: Bytes, // contract address
+    pub src_chain: String,
+    pub src_addr: String,
+    pub contract: String, // contract address
     pub payload_ha: BytesN<32>, // payload hash
     pub src_tx_ha: BytesN<32>, // source tx hash
     pub src_evnt: u64 // source event index // do u256 instead?
@@ -35,8 +35,8 @@ pub struct ContractPayload {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ContractCallApprovedEvent {
-    pub src_chain: Bytes,
-    pub src_addr: Bytes,
+    pub src_chain: String,
+    pub src_addr: String,
     pub src_tx: BytesN<32>, // source tx hash
     pub src_event: u64
 }
@@ -46,9 +46,9 @@ pub struct ContractCallApprovedEvent {
 pub struct ContractCallApprovedKey {
     pub prefix: Symbol,
     pub command_id: BytesN<32>,
-    pub src_chain: Bytes,
-    pub src_addr: Bytes,
-    pub contract: Bytes, // contract address
+    pub src_chain: String,
+    pub src_addr: String,
+    pub contract: String, // contract address
     pub payload_ha: BytesN<32>,
 }
 
@@ -202,9 +202,9 @@ impl Gateway {
         command_id: BytesN<32>
     ) -> bool {
         let decoded: ContractPayload = ContractPayload::from_xdr(&env, &params).unwrap();
-        let src_chain: Bytes = decoded.src_chain;
-        let src_addr: Bytes = decoded.src_add;
-        let contract: Bytes = decoded.contract;
+        let src_chain: String = decoded.src_chain;
+        let src_addr: String = decoded.src_addr;
+        let contract: String = decoded.contract;
         let payload_ha: BytesN<32> = decoded.payload_ha;
         let src_tx: BytesN<32> = decoded.src_tx_ha;
         let src_event: u64 = decoded.src_evnt;
@@ -219,11 +219,23 @@ impl Gateway {
     fn _setContractCallApproved(
         env: Env,
         commandId: BytesN<32>,
-        sourceChain: Bytes,
-        sourceAddress: Bytes,
-        contractAddress: Bytes,
+        sourceChain: String,
+        sourceAddress: String,
+        contractAddress: String,
         payloadHash: BytesN<32>
     ) {
+        let key: BytesN<32> = Self::_getIsContractCallApprovedKey(env.clone(), commandId.clone(), sourceChain.clone(), sourceAddress.clone(), contractAddress.clone(), payloadHash.clone());
+        env.storage().set(&key, &true);
+    }
+
+    fn _getIsContractCallApprovedKey(
+        env: Env,
+        commandId: BytesN<32>,
+        sourceChain: String,
+        sourceAddress: String,
+        contractAddress: String,
+        payloadHash: BytesN<32>
+    ) -> BytesN<32> {
         let data: ContractCallApprovedKey = ContractCallApprovedKey{
             prefix: Symbol::new(&env, &"approved"), 
             command_id: commandId,
@@ -233,7 +245,8 @@ impl Gateway {
             payload_ha: payloadHash
         };
         let key: BytesN<32> = env.crypto().sha256(&data.to_xdr(&env));
-        env.storage().set(&key, &true);
+
+        key
     }
 
     fn _setCommandExecuted(
@@ -321,6 +334,27 @@ fn transfer_op( // transferOperatorship
 
     return true;
 
+}
+
+fn validate_contract_call( // only called by execute in axelarexecute
+    env: Env,
+    command_id: BytesN<32>,
+    source_chain: String,
+    source_address: String,
+    contract_address: String,
+    payload_hash: BytesN<32>,
+) -> bool {
+
+    let key: BytesN<32> = Self::_getIsContractCallApprovedKey(env.clone(), command_id.clone(), source_chain.clone(), source_address.clone(), contract_address.clone(), payload_hash.clone());
+
+
+    let valid: bool = env.storage().get(&key).unwrap_or(Ok(false)).unwrap();
+
+    if valid {
+        env.storage().set(&key, &false);
+    }
+
+    valid
 }
 
 pub fn to_signed_msg_hsh(
