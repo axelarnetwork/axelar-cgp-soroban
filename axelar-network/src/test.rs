@@ -5,7 +5,7 @@ use core::num;
 use super::*;
 extern crate std;
 use crate::{gateway::*, GatewayClient};
-use soroban_sdk::{testutils::{Events, Address as _}, bytes, bytesn, vec, Env, IntoVal, BytesN, Bytes, Address, Symbol, Vec,
+use soroban_sdk::{testutils::{Events, Address as _}, bytes, bytesn, vec, Env, IntoVal, BytesN, Bytes, Address, Symbol, Vec, String,
 xdr::{self, FromXdr, ToXdr}, unwrap::UnwrapOptimized};
 
 use rand::rngs::OsRng;
@@ -20,9 +20,9 @@ fn approve_contract_call() {
 
     // Data for Contract Approve
     let params_approve = ContractPayload {
-        src_chain: bytes!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
-        src_add: bytes!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
-        contract: bytes!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
+        src_chain: String::from_slice(&env, "0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d"),
+        src_addr: String::from_slice(&env, "0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d"),
+        contract: String::from_slice(&env, "0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d"),
         payload_ha: bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
         src_tx_ha: bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
         src_evnt: 1 // source event index // do u256 instead?
@@ -66,7 +66,7 @@ fn approve_contract_call() {
 
     
     let event0: Operatorship = initialize_ops;
-    let event1: ContractCallApprovedEvent = ContractCallApprovedEvent { src_chain: params_approve.src_chain, src_addr: params_approve.src_add, src_tx: params_approve.src_tx_ha, src_event: params_approve.src_evnt};
+    let event1: ContractCallApprovedEvent = ContractCallApprovedEvent { src_chain: params_approve.src_chain, src_addr: params_approve.src_addr, src_tx: params_approve.src_tx_ha, src_event: params_approve.src_evnt};
     let event2: ExecutedEvent = ExecutedEvent { command_id: data.commandids.get(0).unwrap().unwrap() };
     assert_eq!(
         env.events().all(),
@@ -605,9 +605,9 @@ fn invalid_commands() {
 
     // Data for Contract Approve
     let params_approve = ContractPayload {
-        src_chain: bytes!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
-        src_add: bytes!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
-        contract: bytes!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
+        src_chain: String::from_slice(&env, "ethereum"),
+        src_addr: String::from_slice(&env, "0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d"),
+        contract: String::from_slice(&env, "0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d"),
         payload_ha: bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
         src_tx_ha: bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
         src_evnt: 1 // source event index // do u256 instead?
