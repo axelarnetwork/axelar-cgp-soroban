@@ -996,7 +996,7 @@ fn generate_test_proof(
         let verifying_key_bytes: BytesN<32> = BytesN::from_array(&env, &verifying_key.to_bytes());
 
         let hash: BytesN<32> = env.crypto().sha256(&data.clone().to_xdr(&env));
-        let signed_message_hash: BytesN<32> = to_signed_msg_hsh(env.clone(), hash);
+        let signed_message_hash: BytesN<32> = Gateway::to_signed_msg_hsh(env.clone(), hash);
         let message: &[u8] = &signed_message_hash.to_array();
 
         let signature: Signature = signing_key.sign(message);
@@ -1038,7 +1038,7 @@ fn generate_test_proof(
 fn generate_public_and_signature_key(env: Env, data: Data, signing_key: SigningKey) -> (BytesN<32>, BytesN<64>) {
 
     let hash: BytesN<32> = env.crypto().sha256(&data.clone().to_xdr(&env));
-    let signed_message_hash: BytesN<32> = to_signed_msg_hsh(env.clone(), hash);
+    let signed_message_hash: BytesN<32> = Gateway::to_signed_msg_hsh(env.clone(), hash);
     let message: &[u8] = &signed_message_hash.to_array();
 
     let signature: Signature = signing_key.sign(message);
