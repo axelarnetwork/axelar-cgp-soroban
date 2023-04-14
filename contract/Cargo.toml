@@ -1,5 +1,5 @@
 [package]
-name = "axelar-network"
+name = "contract"
 version = "0.1.0"
 edition = "2021"
 
