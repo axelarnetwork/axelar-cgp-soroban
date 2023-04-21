@@ -334,7 +334,7 @@ impl Gateway {
 
     }
 
-    fn validate_contract_call( // only called by execute in axelarexecute
+    pub fn validate_contract_call(
         env: Env,
         command_id: BytesN<32>,
         source_chain: String,
@@ -342,7 +342,7 @@ impl Gateway {
         contract_address: String,
         payload_hash: BytesN<32>,
     ) -> bool {
-
+        // do require_auth here?
         let key: BytesN<32> = Self::_getIsContractCallApprovedKey(env.clone(), command_id.clone(), source_chain.clone(), source_address.clone(), contract_address.clone(), payload_hash.clone());
         let valid: bool = env.storage().get(&key).unwrap_or(Ok(false)).unwrap();
 
