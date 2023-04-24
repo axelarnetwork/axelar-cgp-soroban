@@ -16,59 +16,37 @@ pub enum Error {
 }
 
 /// This is a trait that is implemented by the contract and provides a contract-specific way to execute a command.
+#[contractclient(name = "ContractExecutableClient")]
 pub trait ContractExecutable {
     fn _execute(env: Env, source_chain: String, source_address: String, payload: Bytes);
 }
 
-pub trait Executable {
-    fn execute(
+pub struct Executable;
+
+#[contractimpl]
+impl Executable {
+
+    pub fn execute(
         env: Env,
-        contract_id: BytesN<32>,
+        gateway_contract_id: BytesN<32>,
         command_id: BytesN<32>,
         source_chain: String,
         source_address: String,
         contract_address: String, // because soroban does not have msg.sender
         payload: Bytes
-    );
+    ) {
+        let client = gateway::Client::new(&env, &gateway_contract_id);
+        let payload_hash: BytesN<32> = env.crypto().sha256(&payload);
 
-}
-
-/// A macro that is used to implement the AxelarExecutable trait for the contract.
-#[macro_export]
-macro_rules! impl_axelar_executable {
-    ($contract: ident, $contract_id: ident, $_execute: ident) => {
-
-        #[contractclient(name = "ExecuteClient")]
-        pub trait ExecuteInteface {
-        fn _execute(env: Env, source_chain: String, source_address: String, payload: Bytes);
+        if (!client.validate_contract_call(&command_id, &source_chain, &source_address, &contract_address, &payload_hash)) {
+            panic_with_error!(env, Error::NotApprovedByGateway);
         }
-
-        #[contractimpl]
-        impl Executable for $contract {
         
-            pub fn execute(
-                env: Env,
-                gateway_contract_id: BytesN<32>,
-                command_id: BytesN<32>,
-                source_chain: String,
-                source_address: String,
-                contract_address: String, // because soroban does not have msg.sender
-                payload: Bytes
-            ) {
-                let client = gateway::Client::new(&env, &gateway_contract_id);
-                let payload_hash: BytesN<32> = env.crypto().sha256(&payload);
-        
-                if (!client.validate_contract_call(&command_id, &source_chain, &source_address, &contract_address, &payload_hash)) {
-                    panic_with_error!(env, Error::NotApprovedByGateway);
-                }
+        let contract_id: BytesN<32> = env.call_stack().pop_back().unwrap().unwrap().0;
+        let execute_client = ContractExecutableClient::new(&env, &contract_id);
 
-                let execute_client = ExecuteClient::new(&env, $contract_id)
-
-                execute_client._execute(source_chain, source_address, payload);
-
-            }
-        
-        }
+        execute_client._execute(source_chain, source_address, payload);
 
     }
+
 }
