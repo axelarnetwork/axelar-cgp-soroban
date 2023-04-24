@@ -1,4 +1,4 @@
-use soroban_sdk::{contractimpl, contracttype, contracterror, bytes, Bytes, BytesN, Env, Symbol, vec, Address, Map, map, Vec, crypto, bytesn,
+use soroban_sdk::{contractimpl, contracttype, contractclient, contracterror, bytes, Bytes, BytesN, Env, Symbol, vec, Address, Map, map, Vec, crypto, bytesn,
     xdr::{self, FromXdr, ToXdr}, panic_with_error, String
 };
 
@@ -36,7 +36,12 @@ pub trait Executable {
 /// A macro that is used to implement the AxelarExecutable trait for the contract.
 #[macro_export]
 macro_rules! impl_axelar_executable {
-    ($contract: ident, $gateway_account_id: ident, $_execute: ident) => {
+    ($contract: ident, $contract_id: ident, $_execute: ident) => {
+
+        #[contractclient(name = "ExecuteClient")]
+        pub trait ExecuteInteface {
+        fn _execute(env: Env, source_chain: String, source_address: String, payload: Bytes);
+        }
 
         #[contractimpl]
         impl Executable for $contract {
@@ -57,7 +62,9 @@ macro_rules! impl_axelar_executable {
                     panic_with_error!(env, Error::NotApprovedByGateway);
                 }
 
-                // call _execute()
+                let execute_client = ExecuteClient::new(&env, $contract_id)
+
+                execute_client._execute(source_chain, source_address, payload);
 
             }
         
