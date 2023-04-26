@@ -262,7 +262,7 @@ impl Gateway {
         env.storage().set(&key, &executed);
     }
 
-    pub fn call_con(
+    pub fn call_contract(
         env: Env,
         caller: Address,
         dest_chain: Bytes,

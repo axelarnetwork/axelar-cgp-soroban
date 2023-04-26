@@ -11,46 +11,39 @@ mod axelar_executable {
     );
 }
 
- pub struct AxelarSorobanExample {
-     // pub gateway_account_id: AccountId,
-     // Example
-     pub value: Option<String>,
-     pub source_chain: Option<String>,
-     pub source_address: Option<String>,
- }
+mod gateway {
+    soroban_sdk::contractimport!(
+        file = "../contract/target/wasm32-unknown-unknown/release/contract.wasm"
+    );
+}
+
+ pub struct AxelarSorobanExample;
  
  #[contractimpl]
  impl AxelarSorobanExample {
-    //  pub fn new() -> Self {
-    //      Self {
-    //          value: None,
-    //          source_chain: None,
-    //          source_address: None,
-    //      }
-    //  }
+     pub fn get_value(env: Env) -> Bytes {
+        env.storage().get(&Symbol::new(&env, &"value"))
+     }
  
-    //  pub fn get_value(&self) -> Option<String> {
-    //      self.value.clone()
-    //  }
+     pub fn get_source_chain(env: Env) -> String {
+        env.storage().get(&Symbol::new(&env, &"source_chain"))
+     }
  
-    //  pub fn get_source_chain(&self) -> Option<String> {
-    //      self.source_chain.clone()
-    //  }
+     pub fn get_source_address(env: Env) -> String {
+        env.storage().get(&Symbol::new(&env, &"source_address"))
+     }
  
-    //  pub fn get_source_address(&self) -> Option<String> {
-    //      self.source_address.clone()
-    //  }
- 
-    //  pub fn set(&mut self, chain: String, destination_address: String, value: String) {
-    //      self.value = Some(value.clone());
-    //  }
+     pub fn set(env: Env, gateway_contract_id: BytesN<32>, caller: Address, chain: String, destination_address: String, payload: Bytes) {
+        let client = gateway::Client::new(&env, &gateway_contract_id);
+        client.call_contract(&caller, &chain, &destination_address, &payload);
+     }
  }
  
  impl ContractExecutable for AxelarSorobanExample {
-     fn _execute(&mut self, source_chain: String, source_address: String, payload: Bytes) { 
-         self.value = Some(payload);
-         self.source_chain = Some(source_chain);
-         self.source_address = Some(source_address);
+     fn _execute(env: Env, source_chain: String, source_address: String, payload: Bytes) { 
+        env.storage().set(&Symbol::new(&env, &"value"), &payload);
+        env.storage().set(&Symbol::new(&env, &"source_chain"), &source_chain);
+        env.storage().set(&Symbol::new(&env, &"source_address"), &source_address);
      }
  }
  
