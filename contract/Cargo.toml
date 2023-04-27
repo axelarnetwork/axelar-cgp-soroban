@@ -11,12 +11,12 @@ testutils = ["soroban-sdk/testutils"]
 
 [dependencies]
 soroban-sdk = { version = "0.7.0", features = ["alloc"] }
-ed25519-dalek = { version = "2.0.0-pre.0", features = ["rand_core"] }
+ed25519-dalek = { version = "2.0.0-rc.2", features = ["rand_core"] }
 rand = { vesion = "0.8.0" }
 
 [dev_dependencies]
 soroban-sdk = { version = "0.7.0", features = ["testutils", "alloc"] }
-ed25519-dalek = { version = "2.0.0-pre.0", features = ["rand_core"] }
+ed25519-dalek = { version = "2.0.0-rc.2", features = ["rand_core"] }
 rand = { vesion = "0.8.0" }
 
 [profile.release]

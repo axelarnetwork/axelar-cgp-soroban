@@ -8,6 +8,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 soroban-sdk = "0.7.0"
+axelar-executable = { path = "../executable" }
 
 [dev_dependencies]
 soroban-sdk = { version = "0.7.0", features = ["testutils"] }

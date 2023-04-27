@@ -5,7 +5,10 @@ use soroban_sdk::{contractimpl, contracttype, contractclient, contracterror, byt
 };
 
 
-mod axelar_executable {
+use axelar_executable::ContractExecutable;
+
+
+mod executable {
     soroban_sdk::contractimport!(
         file = "../executable/target/wasm32-unknown-unknown/release/executable.wasm"
     );

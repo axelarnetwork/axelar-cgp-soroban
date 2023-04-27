@@ -45,7 +45,7 @@ impl Executable {
         let contract_id: BytesN<32> = env.call_stack().pop_back().unwrap().unwrap().0;
         let execute_client = ContractExecutableClient::new(&env, &contract_id);
 
-        execute_client._execute(source_chain, source_address, payload);
+        execute_client._execute(&source_chain, &source_address, &payload);
 
     }
 

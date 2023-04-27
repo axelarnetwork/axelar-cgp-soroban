@@ -106,7 +106,7 @@ fn call_contract() {
     let ETHEREUM_ID: Bytes = bytes!(&env, 0x0);
     let JUNKYARD: Bytes = bytes!(&env, 0x4EFE356BEDeCC817cb89B4E9b796dB8bC188DC59);
     let payload: Bytes = bytes!(&env, 0x000000000000000000000000da2982fa68c3787af86475824eeb07702c4c449f00000000000000000000000000000000000000000000000000000000000003be0000000000000000000000004efe356bedecc817cb89b4e9b796db8bc188dc59);
-    client.call_con(
+    client.call_contract(
         &user, 
         &ETHEREUM_ID, 
         &JUNKYARD, 
