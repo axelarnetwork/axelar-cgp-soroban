@@ -1,5 +1,5 @@
 #![no_std]
-use soroban_sdk::{contractimpl, contracttype, contracterror, bytes, Bytes, BytesN, Env, Symbol, vec, Address, Map, map, Vec, crypto, bytesn,
+use soroban_sdk::{contract, contractimpl, contracttype, contracterror, bytes, Bytes, BytesN, Env, Symbol, vec, Address, Map, map, Vec, crypto, bytesn,
     xdr::{self, FromXdr, ToXdr}, panic_with_error, String
 };
 use crate::admin::*;
@@ -125,6 +125,7 @@ pub enum Error {
     InvalidOrdering = 7,
 }
 
+#[contract]
 pub struct Gateway;
 
 #[contractimpl]
@@ -169,8 +170,8 @@ impl Gateway {
         }
 
         for i in 0..commands_length {
-            let command_id: BytesN<32> = command_ids.get(i).unwrap().unwrap();
-            let command_hash: BytesN<32> = env.crypto().sha256(&commands.get(i).unwrap().unwrap());
+            let command_id: BytesN<32> = command_ids.get(i).unwrap();
+            let command_hash: BytesN<32> = env.crypto().sha256(&commands.get(i).unwrap());
             let mut success: bool = false;
 
             if command_hash == SELECTOR_TRANSFER_OPERATORSHIP {
@@ -179,11 +180,11 @@ impl Gateway {
                 }
                 allow_operatorship_transfership = false;
                 Self::_setCommandExecuted(env.clone(), command_id.clone(), true);
-                success = Self::transfer_op(env.clone(), params.get(i).unwrap().unwrap());
+                success = Self::transfer_op(env.clone(), params.get(i).unwrap());
             }
             else if command_hash == SELECTOR_APPROVE_CONTRACT_CALL { 
                 Self::_setCommandExecuted(env.clone(), command_id.clone(), true);
-                success = Self::approve_cc(env.clone(), params.get(i).unwrap().unwrap(), command_id.clone());
+                success = Self::approve_cc(env.clone(), params.get(i).unwrap(), command_id.clone());
             }
 
             if (success) {
@@ -225,7 +226,7 @@ impl Gateway {
         payloadHash: BytesN<32>
     ) {
         let key: BytesN<32> = Self::_getIsContractCallApprovedKey(env.clone(), commandId.clone(), sourceChain.clone(), sourceAddress.clone(), contractAddress.clone(), payloadHash.clone());
-        env.storage().set(&key, &true);
+        env.storage().instance().set(&key, &true);
     }
 
     fn _getIsContractCallApprovedKey(
@@ -259,7 +260,7 @@ impl Gateway {
             command_id: command_id,
         };
         let key: BytesN<32> = env.crypto().sha256(&data.to_xdr(&env));
-        env.storage().set(&key, &executed);
+        env.storage().instance().set(&key, &executed);
     }
 
     pub fn call_contract(
@@ -306,7 +307,7 @@ impl Gateway {
         let mut total_weight: u128 = 0;
 
         for i in 0..weights_length {
-            total_weight += new_weights.get(i).unwrap().unwrap();
+            total_weight += new_weights.get(i).unwrap();
         }
 
         if new_threshold == 0 || total_weight < new_threshold {
@@ -316,16 +317,16 @@ impl Gateway {
         let new_operators_hash: BytesN<32> = env.crypto().sha256(&params);
         
         let new_operators_hash_key: BytesN<32> = env.crypto().sha256(&PrefixHash {prefix: Symbol::new(&env, &"operators_for_epoch"), hash: new_operators_hash.clone()}.to_xdr(&env));
-        let existing_epoch: u128 = env.storage().get(&new_operators_hash_key).unwrap_or(Ok(0)).unwrap();
+        let existing_epoch: u128 = env.storage().instance().get(&new_operators_hash_key).unwrap_or(0);
 
         if existing_epoch > 0 {
             panic_with_error!(env, Error::DuplicateOperators);
         }
 
-        let epoch: u128 = env.storage().get(&Symbol::new(&env, &"current_epoch")).unwrap_or(Ok(0)).unwrap() + 1;
-        env.storage().set(&Symbol::new(&env, &"current_epoch"), &epoch);
-        env.storage().set(&PrefixEpoch{prefix: Symbol::new(&env, &"epoch_for_operators"), epoch}, &new_operators_hash);
-        env.storage().set(&new_operators_hash_key, &epoch);
+        let epoch: u128 = env.storage().instance().get(&Symbol::new(&env, &"current_epoch")).unwrap_or(0) + 1;
+        env.storage().instance().set(&Symbol::new(&env, &"current_epoch"), &epoch);
+        env.storage().instance().set(&PrefixEpoch{prefix: Symbol::new(&env, &"epoch_for_operators"), epoch}, &new_operators_hash);
+        env.storage().instance().set(&new_operators_hash_key, &epoch);
 
         let event: Operatorship = Operatorship { new_ops: new_operators, new_wghts: new_weights, new_thres: new_threshold};
         env.events().publish((), event);
@@ -344,10 +345,10 @@ impl Gateway {
     ) -> bool {
         // do require_auth here?
         let key: BytesN<32> = Self::_getIsContractCallApprovedKey(env.clone(), command_id.clone(), source_chain.clone(), source_address.clone(), contract_address.clone(), payload_hash.clone());
-        let valid: bool = env.storage().get(&key).unwrap_or(Ok(false)).unwrap();
+        let valid: bool = env.storage().instance().get(&key).unwrap_or(false);
 
         if valid {
-            env.storage().set(&key, &false);
+            env.storage().instance().set(&key, &false);
         }
 
         valid
@@ -386,8 +387,8 @@ impl Gateway {
         let operators_hash: BytesN<32> = env.crypto().sha256(&operators_data.to_xdr(&env));
         let operators_hash_key: BytesN<32> = env.crypto().sha256(&PrefixHash {prefix: Symbol::new(&env, &"operators_for_epoch"), hash: operators_hash.clone()}.to_xdr(&env));
 
-        let operators_epoch: u128 = env.storage().get(&operators_hash_key).unwrap_or(Ok(0)).unwrap(); //uint256
-        let epoch: u128 = env.storage().get(&Symbol::new(&env, &"current_epoch")).unwrap_or(Ok(0)).unwrap(); //uint256
+        let operators_epoch: u128 = env.storage().instance().get(&operators_hash_key).unwrap_or(0); //uint256
+        let epoch: u128 = env.storage().instance().get(&Symbol::new(&env, &"current_epoch")).unwrap_or(0); //uint256
 
         if (operators_epoch == 0 || epoch - operators_epoch >= OLD_KEY_RETENTION) {
             panic_with_error!(env, Error::InvalidOperators);
@@ -416,15 +417,15 @@ impl Gateway {
         
         let mut prev_index = 0;
         for i in 0..signatures_len {
-            let public_key_idx: u32 = signatures.get(i).unwrap().unwrap().0;
+            let public_key_idx: u32 = signatures.get(i).unwrap().0;
 
             // check that signature's public key index is greater than the previous index, aside from first iteration
             if i > 0 && !(public_key_idx > prev_index) {
                 panic_with_error!(env, Error::InvalidOrdering);
             }
             prev_index = public_key_idx;
-            let public_key = &public_keys.get(public_key_idx).unwrap().unwrap();
-            let signature = &signatures.get(i).unwrap().unwrap().1;
+            let public_key = &public_keys.get(public_key_idx).unwrap();
+            let signature = &signatures.get(i).unwrap().1;
             env.crypto().ed25519_verify(
                 public_key,
                 &msg_hash, 
@@ -432,7 +433,7 @@ impl Gateway {
             );
     
             // return if weight sum above threshold
-            weight += weights.get(public_key_idx).unwrap().unwrap();
+            weight += weights.get(public_key_idx).unwrap();
             // weight needs to reach or surpass threshold
             if (weight >= threshold) {
                 return; 
@@ -448,11 +449,11 @@ impl Gateway {
         accounts: Vec<BytesN<32>>
     ) -> bool {
         for i in 0..accounts.len()-1 {
-            if accounts.get(i).unwrap().unwrap() >= accounts.get(i+1).unwrap().unwrap() {
+            if accounts.get(i).unwrap() >= accounts.get(i+1).unwrap() {
                 return false;
             }
         }
 
-        return accounts.get(0).unwrap().unwrap() != bytesn!(&env, 0x000000000000000000000000000000000000000000000000000000000000000);
+        return accounts.get(0).unwrap() != bytesn!(&env, 0x000000000000000000000000000000000000000000000000000000000000000);
     }
 }

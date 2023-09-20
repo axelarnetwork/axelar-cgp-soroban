@@ -67,7 +67,7 @@ fn approve_contract_call() {
     
     let event0: Operatorship = initialize_ops;
     let event1: ContractCallApprovedEvent = ContractCallApprovedEvent { src_chain: params_approve.src_chain, src_addr: params_approve.src_addr, src_tx: params_approve.src_tx_ha, src_event: params_approve.src_evnt};
-    let event2: ExecutedEvent = ExecutedEvent { command_id: data.commandids.get(0).unwrap().unwrap() };
+    let event2: ExecutedEvent = ExecutedEvent { command_id: data.commandids.get(0).unwrap() };
     assert_eq!(
         env.events().all(),
         vec![
@@ -188,7 +188,7 @@ fn transfer_operatorship() {
 
     let initialize_ops: Operatorship = params_operator;
     let new_ops: Operatorship = new_operators;
-    let success: ExecutedEvent = ExecutedEvent { command_id: data.commandids.get(0).unwrap().unwrap() };
+    let success: ExecutedEvent = ExecutedEvent { command_id: data.commandids.get(0).unwrap() };
     assert_eq!(
         env.events().all(),
         vec![
@@ -260,7 +260,7 @@ fn single_operator_signer() {
     client.execute(&input.to_xdr(&env));
 
 
-    let success: ExecutedEvent = ExecutedEvent { command_id: data.commandids.get(0).unwrap().unwrap() };
+    let success: ExecutedEvent = ExecutedEvent { command_id: data.commandids.get(0).unwrap() };
     assert_eq!(
         env.events().all(),
         vec![
@@ -674,8 +674,8 @@ fn invalid_signers() {
     };
 
     let keypairs: Vec<[u8; 64]> = generate_sorted_keypairs(env.clone(), 2);
-    let operator: SigningKey = SigningKey::from_keypair_bytes(&keypairs.get(0).unwrap().unwrap()).unwrap();
-    let incorrect_signer: SigningKey = SigningKey::from_keypair_bytes(&keypairs.get(1).unwrap().unwrap()).unwrap();
+    let operator: SigningKey = SigningKey::from_keypair_bytes(&keypairs.get(0).unwrap()).unwrap();
+    let incorrect_signer: SigningKey = SigningKey::from_keypair_bytes(&keypairs.get(1).unwrap()).unwrap();
     
     // The signature in the proof below does not match the operator. Therefore, this test case panics sucessfully.
     let proof: Validate = Validate {
@@ -858,7 +858,7 @@ fn generate_sorted_keypairs(env: Env, num_ops: u32) -> Vec<[u8; 64]>{
     operators.push_back(SigningKey::generate(&mut csprng).to_keypair_bytes());
     
     for i in 1..num_ops {
-        let previous_signing_key: SigningKey = SigningKey::from_keypair_bytes(&operators.get(i-1).unwrap().unwrap()).unwrap();
+        let previous_signing_key: SigningKey = SigningKey::from_keypair_bytes(&operators.get(i-1).unwrap()).unwrap();
         while true {
             let signing_key: SigningKey = SigningKey::generate(&mut csprng);
             
@@ -953,7 +953,7 @@ fn hashForEpoch_epochForHash() {
     let new_operators_hash_key: BytesN<32> = env.crypto().sha256(&PrefixHash {prefix: Symbol::new(&env, &"operators_for_epoch"), hash: new_operators_hash.clone()}.to_xdr(&env));
     
     let hash_for_epoch: u128 = env.as_contract(&contract_id, || env.storage().get(&new_operators_hash_key).unwrap_or(Ok(0)).unwrap());
-    let epoch_for_hash: BytesN<32> = env.as_contract(&contract_id, || env.storage().get(&PrefixEpoch{prefix: Symbol::new(&env, &"epoch_for_operators"), epoch}).unwrap().unwrap());
+    let epoch_for_hash: BytesN<32> = env.as_contract(&contract_id, || env.storage().get(&PrefixEpoch{prefix: Symbol::new(&env, &"epoch_for_operators"), epoch}).unwrap());
 
     assert_eq!(hash_for_epoch, epoch);
     assert_eq!(epoch_for_hash, new_operators_hash);
@@ -980,7 +980,7 @@ fn generate_test_proof(
         // THEN, add the signature & that index to signature.
         let mut operator_index: u32 = u32::MAX; // is there a potential security exploit doing it this way?
         for index in 0..operators.len() {
-            if signers.get(i).unwrap().unwrap() == operators.get(index).unwrap().unwrap() {
+            if signers.get(i).unwrap() == operators.get(index).unwrap() {
                 operator_index = index;
                 break;
             }
@@ -991,7 +991,7 @@ fn generate_test_proof(
             panic!();
         }
 
-        let signing_key: &SigningKey = &SigningKey::from_keypair_bytes(&signers.get(i).unwrap().unwrap()).unwrap();
+        let signing_key: &SigningKey = &SigningKey::from_keypair_bytes(&signers.get(i).unwrap()).unwrap();
         let verifying_key: VerifyingKey = signing_key.verifying_key();
         let verifying_key_bytes: BytesN<32> = BytesN::from_array(&env, &verifying_key.to_bytes());
 
@@ -1017,7 +1017,7 @@ fn generate_test_proof(
     let mut operators_pk: Vec<BytesN<32>> = Vec::new(&env);
 
     for i in 0..operators.len() {
-        let signing_key: &SigningKey = &SigningKey::from_keypair_bytes(&operators.get(i).unwrap().unwrap()).unwrap();
+        let signing_key: &SigningKey = &SigningKey::from_keypair_bytes(&operators.get(i).unwrap()).unwrap();
 
         let verifying_key: VerifyingKey = signing_key.verifying_key();
         let verifying_key_bytes: BytesN<32> = BytesN::from_array(&env, &verifying_key.to_bytes());
@@ -1056,7 +1056,7 @@ fn generate_mock_public_keys(env: Env, signing_keys: Vec<[u8; 64]>) -> Vec<Bytes
 
 
     for i in 0..signing_keys.len() {
-        let signing_key: &SigningKey = &SigningKey::from_keypair_bytes(&signing_keys.get(i).unwrap().unwrap()).unwrap();
+        let signing_key: &SigningKey = &SigningKey::from_keypair_bytes(&signing_keys.get(i).unwrap()).unwrap();
 
         let signature: Signature = signing_key.sign(message);
         let signature_bytes: BytesN<64> = BytesN::from_array(&env, &signature.to_bytes());
@@ -1064,7 +1064,7 @@ fn generate_mock_public_keys(env: Env, signing_keys: Vec<[u8; 64]>) -> Vec<Bytes
         let verifying_key_bytes: BytesN<32> = BytesN::from_array(&env, &verifying_key.to_bytes());
 
         for j in 0..operators.len() {
-            if verifying_key_bytes.clone() < operators.get(j).unwrap().unwrap() {
+            if verifying_key_bytes.clone() < operators.get(j).unwrap() {
                 operators.insert(j, verifying_key_bytes.clone());
                 break;
             } else if j == operators.len() - 1 {
