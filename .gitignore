@@ -19,5 +19,5 @@ Cargo.lock
 # Local soroban config
 .soroban
 
-# Soroban tests
-test-snapshots
+# Rust test failures
+test_snapshots

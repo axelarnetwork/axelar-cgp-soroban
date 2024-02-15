@@ -20,9 +20,9 @@ fn approve_contract_call() {
 
     // Data for Contract Approve
     let params_approve = ContractPayload {
-        src_chain: String::from_slice(&env, "0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d"),
-        src_addr: String::from_slice(&env, "0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d"),
-        contract: String::from_slice(&env, "0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d"),
+        src_chain: String::from_str(&env, "0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d"),
+        src_addr: String::from_str(&env, "0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d"),
+        contract: String::from_str(&env, "0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d"),
         payload_ha: bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
         src_tx_ha: bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
         src_evnt: 1, // source event index // do u256 instead?
@@ -55,7 +55,7 @@ fn approve_contract_call() {
         new_wghts: proof.weights.clone(),
         new_thres: THRESHOLD,
     };
-    let admin: Address = Address::random(&env);
+    let admin: Address = Address::generate(&env);
 
     client.initialize(&admin, &initialize_ops.clone().to_xdr(&env));
 
@@ -101,7 +101,7 @@ fn call_contract() {
     let client = GatewayClient::new(&env, &contract_id);
 
     // Test Call Contract
-    let user: Address = Address::random(&env);
+    let user: Address = Address::generate(&env);
     let ETHEREUM_ID: Bytes = bytes!(&env, 0x0);
     let JUNKYARD: Bytes = bytes!(&env, 0x4EFE356BEDeCC817cb89B4E9b796dB8bC188DC59);
     let payload: Bytes = bytes!(&env, 0x000000000000000000000000da2982fa68c3787af86475824eeb07702c4c449f00000000000000000000000000000000000000000000000000000000000003be0000000000000000000000004efe356bedecc817cb89b4e9b796db8bc188dc59);
@@ -178,7 +178,7 @@ fn transfer_operatorship() {
         new_wghts: proof.weights.clone(),
         new_thres: THRESHOLD,
     };
-    let admin: Address = Address::random(&env);
+    let admin: Address = Address::generate(&env);
 
     client.initialize(&admin, &params_operator.clone().to_xdr(&env));
 
@@ -256,7 +256,7 @@ fn single_operator_signer() {
         new_wghts: WEIGHTS.clone(),
         new_thres: THRESHOLD,
     };
-    let admin: Address = Address::random(&env);
+    let admin: Address = Address::generate(&env);
 
     client.initialize(&admin, &initialize_operators.clone().to_xdr(&env));
     client.execute(&input.to_xdr(&env));
@@ -319,7 +319,7 @@ fn no_operators() {
         new_wghts: proof.weights.clone(),
         new_thres: THRESHOLD,
     };
-    let admin: Address = Address::random(&env);
+    let admin: Address = Address::generate(&env);
 
     client.initialize(&admin, &params_operator.clone().to_xdr(&env));
 }
@@ -344,7 +344,7 @@ fn operators_not_sorted() {
         new_wghts: vec![&env, 1, 1],
         new_thres: 1,
     };
-    let admin: Address = Address::random(&env);
+    let admin: Address = Address::generate(&env);
 
     client.initialize(&admin, &params_operator.clone().to_xdr(&env));
 }
@@ -373,7 +373,7 @@ fn invalid_weights() {
         new_wghts: WEIGHTS,
         new_thres: THRESHOLD,
     };
-    let admin: Address = Address::random(&env);
+    let admin: Address = Address::generate(&env);
 
     client.initialize(&admin, &params_operator.clone().to_xdr(&env));
 }
@@ -401,7 +401,7 @@ fn invalid_threshold() {
         new_wghts: WEIGHTS,
         new_thres: THRESHOLD,
     };
-    let admin: Address = Address::random(&env);
+    let admin: Address = Address::generate(&env);
 
     client.initialize(&admin, &params_operator.clone().to_xdr(&env));
 }
@@ -445,7 +445,7 @@ fn duplicate_operators() {
         proof: proof.clone().to_xdr(&env),
     };
 
-    let admin: Address = Address::random(&env);
+    let admin: Address = Address::generate(&env);
 
     client.initialize(&admin, &new_operatorship.clone().to_xdr(&env));
 
@@ -498,7 +498,7 @@ fn invalid_threshold_2() {
         new_wghts: proof.weights.clone(),
         new_thres: THRESHOLD,
     };
-    let admin: Address = Address::random(&env);
+    let admin: Address = Address::generate(&env);
 
     client.initialize(&admin, &params_operator.clone().to_xdr(&env));
 
@@ -533,7 +533,7 @@ fn invalid_threshold_3() {
         new_wghts: WEIGHTS,
         new_thres: THRESHOLD,
     };
-    let admin: Address = Address::random(&env);
+    let admin: Address = Address::generate(&env);
 
     client.initialize(&admin, &params_operator.clone().to_xdr(&env));
 }
@@ -580,7 +580,7 @@ fn low_signatures_weight() {
         new_wghts: proof.weights.clone(),
         new_thres: THRESHOLD,
     };
-    let admin: Address = Address::random(&env);
+    let admin: Address = Address::generate(&env);
 
     client.initialize(&admin, &params_operator.clone().to_xdr(&env));
 
@@ -607,9 +607,9 @@ fn invalid_commands() {
 
     // Data for Contract Approve
     let params_approve = ContractPayload {
-        src_chain: String::from_slice(&env, "ethereum"),
-        src_addr: String::from_slice(&env, "0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d"),
-        contract: String::from_slice(&env, "0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d"),
+        src_chain: String::from_str(&env, "ethereum"),
+        src_addr: String::from_str(&env, "0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d"),
+        contract: String::from_str(&env, "0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d"),
         payload_ha: bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
         src_tx_ha: bytesn!(&env, 0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d),
         src_evnt: 1, // source event index // do u256 instead?
@@ -638,7 +638,7 @@ fn invalid_commands() {
         new_wghts: proof.weights.clone(),
         new_thres: THRESHOLD,
     };
-    let admin: Address = Address::random(&env);
+    let admin: Address = Address::generate(&env);
     client.initialize(&admin, &params_operator.clone().to_xdr(&env));
 
     let test = input.to_xdr(&env);
@@ -698,7 +698,7 @@ fn invalid_signers() {
         new_wghts: proof.weights.clone(),
         new_thres: THRESHOLD,
     };
-    let admin: Address = Address::random(&env);
+    let admin: Address = Address::generate(&env);
 
     client.initialize(&admin, &params_operator.clone().to_xdr(&env));
 
@@ -732,7 +732,7 @@ fn old_operators() {
         new_thres: THRESHOLD,
     };
 
-    let admin: Address = Address::random(&env);
+    let admin: Address = Address::generate(&env);
     client.initialize(&admin, &initialize.clone().to_xdr(&env));
 
     for i in 0..17 {
@@ -800,7 +800,7 @@ fn previous_operator() {
         new_thres: THRESHOLD,
     };
 
-    let admin: Address = Address::random(&env);
+    let admin: Address = Address::generate(&env);
     client.initialize(&admin, &initialize.clone().to_xdr(&env));
 
     for i in 0..3 {
@@ -918,7 +918,7 @@ fn transfer_zero() {
         new_wghts: proof.weights.clone(),
         new_thres: THRESHOLD,
     };
-    let admin: Address = Address::random(&env);
+    let admin: Address = Address::generate(&env);
 
     client.initialize(&admin, &params_operator.clone().to_xdr(&env));
 
@@ -948,7 +948,7 @@ fn hashForEpoch_epochForHash() {
         new_thres: THRESHOLD,
     };
 
-    let admin: Address = Address::random(&env);
+    let admin: Address = Address::generate(&env);
 
     client.initialize(&admin, &init_operators.clone().to_xdr(&env));
 
@@ -1001,7 +1001,7 @@ fn generate_test_proof(
 
         let hash: BytesN<32> = env.crypto().keccak256(&data.clone().to_xdr(&env));
         let signed_message_hash: BytesN<32> = Gateway::to_signed_msg_hsh(env.clone(), hash);
-        let message = Message::from_slice(&signed_message_hash.to_array()).unwrap();
+        let message = Message::from_digest_slice(&signed_message_hash.to_array()).unwrap();
 
         let signature = secp.sign_ecdsa(&message, &secret_key);
         let signature_bytes: BytesN<64> = BytesN::from_array(&env, &signature.serialize_compact());
@@ -1041,7 +1041,7 @@ fn generate_public_and_signature_key(env: Env, data: Data, secret_key_bytes: &[u
 
     let hash: BytesN<32> = env.crypto().keccak256(&data.clone().to_xdr(&env));
     let signed_message_hash: BytesN<32> = Gateway::to_signed_msg_hsh(env.clone(), hash);
-    let message = Message::from_slice(&signed_message_hash.to_array()).unwrap();
+    let message = Message::from_digest_slice(&signed_message_hash.to_array()).unwrap();
 
     let signature = secp.sign_ecdsa(&message, &secret_key);
     let signature_bytes: BytesN<64> = BytesN::from_array(&env, &signature.serialize_compact());
