@@ -10,14 +10,14 @@ crate-type = ["cdylib"]
 testutils = ["soroban-sdk/testutils"]
 
 [dependencies]
-soroban-sdk = { version = "0.7.0", features = ["alloc"] }
-ed25519-dalek = { version = "2.0.0-rc.2", features = ["rand_core"] }
-rand = { vesion = "0.8.0" }
+soroban-sdk = { version = "20.0.0-rc2", features = ["alloc"] }
+secp256k1 = { version = "0.27.0", features = ["rand"] }
+rand = { vesion = "0.8.5" }
 
 [dev_dependencies]
-soroban-sdk = { version = "0.7.0", features = ["testutils", "alloc"] }
-ed25519-dalek = { version = "2.0.0-rc.2", features = ["rand_core"] }
-rand = { vesion = "0.8.0" }
+soroban-sdk = { version = "20.0.0-rc2", features = ["testutils", "alloc"] }
+secp256k1 = { version = "0.27.0", features = ["rand"] }
+rand = { vesion = "0.8.5" }
 
 [profile.release]
 opt-level = "z"

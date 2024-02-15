@@ -1,5 +1,7 @@
-use soroban_sdk::{contractimpl, contracttype, contractclient, contracterror, bytes, Bytes, BytesN, Env, Symbol, vec, Address, Map, map, Vec, crypto, bytesn,
-    xdr::{self, FromXdr, ToXdr}, panic_with_error, String
+use soroban_sdk::{
+    contractimpl, contracttype, contractclient, contracterror, bytes, panic_with_error,
+    Bytes, BytesN, Env, Symbol, vec, Address, Map, map, Vec, crypto, bytesn, String,
+    xdr::{self, FromXdr, ToXdr},
 };
 
 mod gateway {
@@ -25,7 +27,6 @@ pub struct Executable;
 
 #[contractimpl]
 impl Executable {
-
     pub fn execute(
         env: Env,
         gateway_contract_id: BytesN<32>,
@@ -33,20 +34,18 @@ impl Executable {
         source_chain: String,
         source_address: String,
         contract_address: String, // because soroban does not have msg.sender
-        payload: Bytes
+        payload: Bytes,
     ) {
         let client = gateway::Client::new(&env, &gateway_contract_id);
-        let payload_hash: BytesN<32> = env.crypto().sha256(&payload);
+        let payload_hash: BytesN<32> = env.crypto().keccak256(&payload);
 
         if (!client.validate_contract_call(&command_id, &source_chain, &source_address, &contract_address, &payload_hash)) {
             panic_with_error!(env, Error::NotApprovedByGateway);
         }
-        
+
         let contract_id: BytesN<32> = env.call_stack().pop_back().unwrap().unwrap().0;
         let execute_client = ContractExecutableClient::new(&env, &contract_id);
 
         execute_client._execute(&source_chain, &source_address, &payload);
-
     }
-
 }
