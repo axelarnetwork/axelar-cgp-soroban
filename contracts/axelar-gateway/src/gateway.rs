@@ -1,5 +1,5 @@
-use soroban_sdk::{contract, contractimpl, contracttype, contracterror, bytes, Bytes, BytesN, Env, Symbol, vec, Address, Map, map, Vec, crypto, bytesn,
-                  xdr::{self, FromXdr, ToXdr}, panic_with_error, String,
+use soroban_sdk::{contract, contractimpl, contracttype, contracterror, bytes, Bytes, BytesN, Env, Symbol, Address, Vec, bytesn,
+                  xdr::{FromXdr, ToXdr}, panic_with_error, String,
 };
 use crate::admin::*;
 
@@ -164,7 +164,7 @@ impl Gateway {
         let signed_message_hash: BytesN<32> = Self::to_signed_msg_hsh(env.clone(), hash);
         let mut allow_operatorship_transfership: bool = Self::validate_proof(env.clone(), signed_message_hash, proof.clone());
 
-        let chain_id: u64 = data.chain_id;
+        let _chain_id: u64 = data.chain_id;
         let command_ids: Vec<BytesN<32>> = data.commandids;
         let commands: Vec<Bytes> = data.commands;
         let params: Vec<Bytes> = data.params;
@@ -422,7 +422,7 @@ impl Gateway {
                 signature.last().unwrap() as u32 - 27,
             );
 
-            let mut public_key_idx = public_keys.first_index_of(&public_key).unwrap_or(0);
+            let public_key_idx = public_keys.first_index_of(&public_key).unwrap_or(0);
 
             // check that signature's public key index is greater than the previous index, aside from first iteration
             if i > 0 && !(public_key_idx > prev_index) {
