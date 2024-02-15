@@ -8,8 +8,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 soroban-sdk = { workspace = true, features = ["alloc"] }
-secp256k1 = { version = "0.28.2", features = ["rand"] }
-rand = { vesion = "0.8.5" }
 
 [dev_dependencies]
 soroban-sdk = { workspace = true, features = ["testutils", "alloc"] }
