@@ -1,5 +1,4 @@
-use soroban_sdk::{contract, contractimpl, contracttype, contracterror, bytes, Bytes, BytesN, Env, Symbol, Address, Vec, bytesn,
-                  xdr::{FromXdr, ToXdr}, panic_with_error, String,
+use soroban_sdk::{bytes, bytesn, contract, contracterror, contractimpl, contracttype, log, panic_with_error, xdr::{FromXdr, ToXdr}, Address, Bytes, BytesN, Env, String, Symbol, Vec
 };
 use crate::admin::*;
 
@@ -85,7 +84,7 @@ pub struct Operatorship {
     // new_operators
     pub new_wghts: Vec<u128>,
     // new_weights
-    pub new_thres: u128, // new_threshold 
+    pub new_thres: u128, // new_threshold
 }
 
 #[contracttype]
@@ -96,7 +95,7 @@ pub struct Validate {
     // uint256
     pub threshold: u128,
     // uint256
-    pub signatures: Vec<BytesN<64>>,
+    pub signatures: Vec<BytesN<65>>,
 }
 
 #[contracttype]
@@ -278,18 +277,19 @@ impl Gateway {
         caller.require_auth();
 
         let data: ContractCall = ContractCall {
-            prefix: Symbol::new(&env, &"ContractCall"),
+            prefix: Symbol::new(&env, "ContractCall"),
             dest_chain,
             dest_addr,
             payload: payload.clone(),
         };
-        env.events().publish((caller, env.crypto().keccak256(&payload), ), data);
+        env.events().publish((caller, env.crypto().keccak256(&payload)), data);
     }
 
     fn transfer_op( // transferOperatorship
                     env: Env,
                     params: Bytes,
     ) -> bool {
+        log!(env, "transfer_op 1");
         let tokens: Operatorship = Operatorship::from_xdr(&env, &params).unwrap();
         let new_operators: Vec<BytesN<65>> = tokens.new_ops;
         let new_weights: Vec<u128> = tokens.new_wghts;
@@ -378,7 +378,7 @@ impl Gateway {
         let operators: Vec<BytesN<65>> = tokens.operators;
         let weights: Vec<u128> = tokens.weights;
         let threshold: u128 = tokens.threshold;
-        let signatures: Vec<BytesN<64>> = tokens.signatures;
+        let signatures: Vec<BytesN<65>> = tokens.signatures;
 
         // Three parts of operators is treated as constant
         let operators_data: Operatorship = Operatorship {
@@ -407,7 +407,7 @@ impl Gateway {
         public_keys: Vec<BytesN<65>>, // operators
         weights: Vec<u128>,
         threshold: u128,
-        signatures: Vec<BytesN<64>>,
+        signatures: Vec<BytesN<65>>,
     ) {
         let mut weight: u128 = 0;
         let signatures_len: u32 = signatures.len();
@@ -416,9 +416,11 @@ impl Gateway {
         let mut prev_index = 0;
         for i in 0..signatures_len {
             let signature = &signatures.get(i).unwrap();
+            let psig: [u8; 64] = signature.to_array()[..64].try_into().unwrap();
+            let main_sig: BytesN<64> = BytesN::from_array(&env, &psig);
             let public_key = env.crypto().secp256k1_recover(
                 &msghash,
-                signature,
+                &main_sig,
                 signature.last().unwrap() as u32 - 27,
             );
 

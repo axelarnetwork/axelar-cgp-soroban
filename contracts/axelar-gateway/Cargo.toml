@@ -11,7 +11,7 @@ soroban-sdk = { workspace = true, features = ["alloc"] }
 
 [dev_dependencies]
 soroban-sdk = { workspace = true, features = ["testutils", "alloc"] }
-secp256k1 = { version = "0.28.2", features = ["rand"] }
+secp256k1 = { version = "0.28.2", features = ["recovery", "rand"] }
 rand = { version = "0.8.5" }
 
 [features]
