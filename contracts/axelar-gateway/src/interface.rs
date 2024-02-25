@@ -1,5 +1,7 @@
 use soroban_sdk::{Address, Bytes, BytesN, Env, String};
 
+use crate::error::Error;
+
 /// Interface for the Axelar Gateway.
 // #[contractclient(crate_path = "crate", name = "GatewayClient")]
 pub trait AxelarGatewayInterface {
@@ -15,5 +17,5 @@ pub trait AxelarGatewayInterface {
     fn is_contract_call_approved(env: Env, command_id: BytesN<32>, source_chain: String, source_address: String, contract_address: Address, payload_hash: BytesN<32>) -> bool;
 
     /// Approve a batch of commands signed by Axelar verifiers, consisting of contract call approvals, and verifier set updates.
-    fn execute(env: Env, batch: Bytes);
+    fn execute(env: Env, batch: Bytes) -> Result<(), Error>;
 }
