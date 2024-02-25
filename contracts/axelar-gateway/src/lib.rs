@@ -5,6 +5,7 @@ mod admin;
 
 pub use crate::gateway::GatewayClient;
 pub mod interface;
+mod types;
 mod event;
 mod error;
 mod storage_types;
