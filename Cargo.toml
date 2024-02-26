@@ -9,6 +9,7 @@ edition = "2021"
 
 [workspace.dependencies]
 soroban-sdk = { version = "20.2.0" }
+axelar-auth-verifier = { version = "^0.1.0", path = "contracts/axelar-auth-verifier" }
 
 [profile.release]
 opt-level = "z"
