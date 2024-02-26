@@ -9,4 +9,3 @@ pub enum Error {
     CommandAlreadyExecuted = 3,
     InvalidProof = 4,
 }
-
