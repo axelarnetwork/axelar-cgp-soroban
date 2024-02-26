@@ -47,10 +47,10 @@ impl AxelarGatewayInterface for AxelarGateway {
 
         let key = Self::contract_call_approval_key(command_id.clone(), source_chain, source_address, caller, payload_hash);
 
-        let approved = env.storage().persistent().get(&key).unwrap_or(false);
+        let approved = env.storage().persistent().has(&key);
 
         if approved {
-            env.storage().persistent().set(&key, &false);
+            env.storage().persistent().remove(&key);
 
             event::execute_contract_call(&env, command_id);
         }
@@ -61,7 +61,7 @@ impl AxelarGatewayInterface for AxelarGateway {
     fn is_contract_call_approved(env: Env, command_id: BytesN<32>, source_chain: String, source_address: String, contract_address: Address, payload_hash: BytesN<32>) -> bool {
         let key = Self::contract_call_approval_key(command_id, source_chain, source_address, contract_address, payload_hash);
 
-        env.storage().persistent().get(&key).unwrap_or(false)
+        env.storage().persistent().has(&key)
     }
 
     fn execute(env: Env, batch: Bytes) -> Result<(), Error> {
@@ -86,7 +86,7 @@ impl AxelarGatewayInterface for AxelarGateway {
             let key = Self::command_executed_key(command_id.clone());
 
             // Skip command if already executed. This allows batches to be processed partially.
-            if env.storage().persistent().get(&key).unwrap_or(false) {
+            if env.storage().persistent().has(&key) {
                 continue
             }
 
@@ -97,7 +97,6 @@ impl AxelarGatewayInterface for AxelarGateway {
                     Self::approve_contract_call(&env, command_id.clone(), approval);
                 }
                 Command::TransferOperatorship(new_operators) => {
-                    // TODO:
                     Self::transfer_operatorship(&env, &auth_module, new_operators);
                 }
             }
