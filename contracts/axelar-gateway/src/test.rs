@@ -1,6 +1,14 @@
 #![cfg(test)]
 extern crate std;
 
+// use axelar_auth_verifier::contract::{AxelarAuthVerifier, AxelarAuthVerifierClient};
+
+mod axelar_auth_verifier {
+    soroban_sdk::contractimport!(
+        file = "../../target/wasm32-unknown-unknown/release/axelar_auth_verifier.wasm"
+    );
+}
+
 use crate::{contract::AxelarGateway, AxelarGatewayClient};
 use crate::types;
 use soroban_sdk::{bytes, symbol_short, testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, BytesN as _, Events}, vec, xdr::ToXdr, Address, Bytes, BytesN, Env, IntoVal, String, Symbol, Val, Vec};
@@ -12,8 +20,12 @@ fn setup_env<'a>() -> (Env, Address, AxelarGatewayClient<'a>) {
     let env = Env::default();
     env.mock_all_auths();
 
+    let auth_contract_id = env.register_contract_wasm(None, axelar_auth_verifier::WASM);
+
     let contract_id = env.register_contract(None, AxelarGateway);
     let client = AxelarGatewayClient::new(&env, &contract_id);
+
+    client.initialize(&auth_contract_id);
 
     (env, contract_id, client)
 }

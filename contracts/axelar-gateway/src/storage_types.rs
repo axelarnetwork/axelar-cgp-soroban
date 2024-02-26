@@ -19,6 +19,8 @@ pub struct CommandExecutedKey {
 #[contracttype]
 #[derive(Clone, Debug)]
 pub enum DataKey {
+    Initialized,
+    AuthModule,
     CommandExecuted(CommandExecutedKey),
     ContractCallApproval(ContractCallApprovalKey),
 }

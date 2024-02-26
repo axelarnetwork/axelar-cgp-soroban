@@ -1,13 +1,36 @@
-use soroban_sdk::xdr::FromXdr;
-use soroban_sdk::{contract, contractimpl, log, symbol_short, Address, Env, BytesN, Bytes, String, Symbol};
+use soroban_sdk::xdr::{FromXdr, ToXdr};
+use soroban_sdk::{contract, contractimpl, Address, Env, BytesN, Bytes, String};
+
+// use axelar_auth_verifier::AxelarAuthVerifierClient;
+
+mod axelar_auth_verifier {
+    soroban_sdk::contractimport!(
+        file = "../../target/wasm32-unknown-unknown/release/axelar_auth_verifier.wasm"
+    );
+}
+
+use axelar_auth_verifier::Client as AxelarAuthVerifierClient;
 
 use crate::interface::AxelarGatewayInterface;
-use crate::types::{self, Command, ContractCallApproval, SignedCommandBatch};
+use crate::types::{self, Command, SignedCommandBatch};
 use crate::{error::Error, event};
 use crate::storage_types::{CommandExecutedKey, ContractCallApprovalKey, DataKey};
 
 #[contract]
 pub struct AxelarGateway;
+
+#[contractimpl]
+impl AxelarGateway {
+    pub fn initialize(env: Env, auth_module: Address) {
+        if env.storage().instance().get(&DataKey::Initialized).unwrap_or(false) {
+            panic!("Already initialized");
+        }
+
+        env.storage().instance().set(&DataKey::Initialized, &true);
+
+        env.storage().instance().set(&DataKey::AuthModule, &auth_module);
+    }
+}
 
 #[contractimpl]
 impl AxelarGatewayInterface for AxelarGateway {
@@ -42,14 +65,18 @@ impl AxelarGatewayInterface for AxelarGateway {
     }
 
     fn execute(env: Env, batch: Bytes) -> Result<(), Error> {
-        // Implement the logic for executing a batch of commands.
-        // Err(Error::InvalidBatch)
+        let SignedCommandBatch { batch, proof } = SignedCommandBatch::from_xdr(&env, &batch).map_err(|_| Error::InvalidBatch)?;
+        let batch_hash = env.crypto().keccak256(&batch.clone().to_xdr(&env));
 
-        let signed_batch = SignedCommandBatch::from_xdr(&env, &batch).map_err(|_| Error::InvalidBatch)?;
+        let auth_module = AxelarAuthVerifierClient::new(
+            &env,
+            &env.storage().instance().get(&DataKey::AuthModule).unwrap(),
+        );
 
-        // validate proof
-
-        let batch = signed_batch.batch;
+        let valid = auth_module.validate_proof(&batch_hash, &proof);
+        if !valid {
+            return Err(Error::InvalidProof);
+        }
 
         if batch.chain_id != 1 {
             return Err(Error::InvalidChainId);
@@ -70,7 +97,8 @@ impl AxelarGatewayInterface for AxelarGateway {
                     Self::approve_contract_call(&env, command_id.clone(), approval);
                 }
                 Command::TransferOperatorship(new_operators) => {
-                    Self::transfer_operatorship(&env, new_operators);
+                    // TODO:
+                    Self::transfer_operatorship(&env, &auth_module, new_operators);
                 }
             }
 
@@ -111,7 +139,9 @@ impl AxelarGateway {
         event::approve_contract_call(env, command_id, source_chain, source_address, contract_address, payload_hash);
     }
 
-    fn transfer_operatorship(env: &Env, new_operator: Bytes) {
-        unimplemented!("Transfer operatorship");
+    fn transfer_operatorship(env: &Env, auth_module: &AxelarAuthVerifierClient, new_operator: Bytes) {
+        auth_module.transfer_operatorship(&env.current_contract_address(), &new_operator);
+
+        event::transfer_operatorship(env, new_operator);
     }
 }

@@ -3,7 +3,7 @@ use soroban_sdk::{Address, Bytes, BytesN, Env, String};
 use crate::error::Error;
 
 /// Interface for the Axelar Gateway.
-// #[contractclient(crate_path = "crate", name = "GatewayClient")]
+// #[contractclient(crate_path = "crate", name = "AxelarGatewayClient")]
 pub trait AxelarGatewayInterface {
     /// Call a contract on another chain with the given payload. The destination address can validate the contract call on the destination gateway.
     fn call_contract(env: Env, caller: Address, destination_chain: String, destination_address: String, payload: Bytes);

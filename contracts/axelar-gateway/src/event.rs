@@ -19,3 +19,8 @@ pub(crate) fn execute_command(env: &Env, command_id: BytesN<32>) {
     let topics = (symbol_short!("command"), command_id);
     env.events().publish(topics, ());
 }
+
+pub(crate) fn transfer_operatorship(env: &Env, new_operator_set: Bytes) {
+    let topics = (symbol_short!("transfer"),);
+    env.events().publish(topics, (new_operator_set,));
+}
