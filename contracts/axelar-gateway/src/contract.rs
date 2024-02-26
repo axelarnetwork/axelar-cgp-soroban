@@ -1,8 +1,6 @@
 use soroban_sdk::xdr::{FromXdr, ToXdr};
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String};
 
-// use axelar_auth_verifier::AxelarAuthVerifierClient;
-
 mod axelar_auth_verifier {
     soroban_sdk::contractimport!(
         file = "../../target/wasm32-unknown-unknown/release/axelar_auth_verifier.wasm"
@@ -213,7 +211,7 @@ impl AxelarGateway {
         auth_module: &AxelarAuthVerifierClient,
         new_operator: Bytes,
     ) {
-        auth_module.transfer_operatorship(&env.current_contract_address(), &new_operator);
+        auth_module.transfer_operatorship(&new_operator);
 
         event::transfer_operatorship(env, new_operator);
     }
