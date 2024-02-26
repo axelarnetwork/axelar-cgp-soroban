@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, Address, BytesN, String, Vec, U256};
+use soroban_sdk::{contracttype, BytesN, Vec, U256};
 
 #[contracttype]
 #[derive(Clone, Debug)]

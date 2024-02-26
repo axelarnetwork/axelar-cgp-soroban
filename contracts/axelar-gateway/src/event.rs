@@ -1,4 +1,4 @@
-use soroban_sdk::{symbol_short, Address, Bytes, BytesN, Env, String, Symbol, Vec};
+use soroban_sdk::{symbol_short, Address, Bytes, BytesN, Env, String};
 
 pub(crate) fn call_contract(
     env: &Env,

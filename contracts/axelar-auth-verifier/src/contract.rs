@@ -1,13 +1,11 @@
 use soroban_sdk::xdr::{FromXdr, ToXdr};
-use soroban_sdk::{
-    contract, contractimpl, log, panic_with_error, symbol_short, Address, Bytes, BytesN, Env, String, Symbol, Vec, U256
-};
+use soroban_sdk::{contract, contractimpl, panic_with_error, Bytes, BytesN, Env, Vec, U256};
 
-use crate::error::{self, Error};
+use crate::error::Error;
 use crate::event;
-use crate::types::{Proof, WeightedSigners};
-use crate::storage_types::DataKey;
 use crate::interface::AxelarAuthVerifierInterface;
+use crate::storage_types::DataKey;
+use crate::types::{Proof, WeightedSigners};
 
 #[contract]
 pub struct AxelarAuthVerifier;
@@ -15,19 +13,16 @@ pub struct AxelarAuthVerifier;
 #[contractimpl]
 impl AxelarAuthVerifier {
     pub fn initialize(env: Env, previous_signer_retention: u32, operator_set: Bytes) {
-        if env
-            .storage()
-            .instance()
-            .has(&DataKey::Initialized)
-        {
+        if env.storage().instance().has(&DataKey::Initialized) {
             panic!("Already initialized");
         }
 
-        env.storage()
-            .instance()
-            .set(&DataKey::Initialized, &true);
+        env.storage().instance().set(&DataKey::Initialized, &true);
 
-        env.storage().instance().set(&DataKey::PreviousSignerRetention, &previous_signer_retention);
+        env.storage().instance().set(
+            &DataKey::PreviousSignerRetention,
+            &previous_signer_retention,
+        );
 
         let signer_sets = Vec::<WeightedSigners>::from_xdr(&env, &operator_set).unwrap();
 
@@ -46,9 +41,15 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
     fn validate_proof(env: &Env, msg_hash: BytesN<32>, proof: Bytes) -> bool {
         let proof = Proof::from_xdr(env, &proof).unwrap();
 
-        let signer_set_hash = env.crypto().keccak256(&proof.signer_set.clone().to_xdr(env));
+        let signer_set_hash = env
+            .crypto()
+            .keccak256(&proof.signer_set.clone().to_xdr(env));
 
-        let signer_set_epoch: u64 = env.storage().persistent().get(&DataKey::EpochBySignerHash(signer_set_hash.clone())).unwrap();
+        let signer_set_epoch: u64 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::EpochBySignerHash(signer_set_hash.clone()))
+            .unwrap();
 
         let epoch: u64 = env.storage().instance().get(&DataKey::Epoch).unwrap();
 
@@ -56,7 +57,11 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
             return false;
         }
 
-        let previous_signer_retention: u32 = env.storage().instance().get(&DataKey::PreviousSignerRetention).unwrap();
+        let previous_signer_retention: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey::PreviousSignerRetention)
+            .unwrap();
 
         if epoch - signer_set_epoch > previous_signer_retention as u64 {
             return false;
@@ -84,7 +89,12 @@ impl AxelarAuthVerifier {
         }
 
         let new_signer_hash = env.crypto().keccak256(&new_signer_set.clone().to_xdr(env));
-        let new_epoch = env.storage().instance().get::<DataKey, u64>(&DataKey::Epoch).unwrap() + 1;
+        let new_epoch = env
+            .storage()
+            .instance()
+            .get::<DataKey, u64>(&DataKey::Epoch)
+            .unwrap()
+            + 1;
 
         env.storage().instance().set(&DataKey::Epoch, &new_epoch);
 
@@ -92,15 +102,19 @@ impl AxelarAuthVerifier {
             .persistent()
             .set(&DataKey::SignerHashByEpoch(new_epoch), &new_signer_hash);
 
-        env.storage()
-            .persistent()
-            .set(&DataKey::EpochBySignerHash(new_signer_hash.clone()), &new_epoch);
+        env.storage().persistent().set(
+            &DataKey::EpochBySignerHash(new_signer_hash.clone()),
+            &new_epoch,
+        );
 
         event::transfer_operatorship(env, new_signer_set, new_signer_hash);
     }
 
     fn validate_signatures(env: &Env, msg_hash: BytesN<32>, proof: Proof) -> bool {
-        let Proof { signer_set, signatures } = proof;
+        let Proof {
+            signer_set,
+            signatures,
+        } = proof;
 
         if signatures.is_empty() {
             return false;
@@ -111,7 +125,9 @@ impl AxelarAuthVerifier {
 
         for (signature, recovery_id) in signatures.into_iter() {
             // TODO: typo in recovery id name
-            let pub_key = env.crypto().secp256k1_recover(&msg_hash, &signature, recovery_id);
+            let pub_key = env
+                .crypto()
+                .secp256k1_recover(&msg_hash, &signature, recovery_id);
             let expected_signer = env.crypto().keccak256(&pub_key.into());
 
             loop {
