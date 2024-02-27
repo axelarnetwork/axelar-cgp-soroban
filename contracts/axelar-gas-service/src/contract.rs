@@ -1,5 +1,5 @@
 use soroban_sdk::token::TokenClient;
-use soroban_sdk::{contract, contractimpl, Address, BytesN, Env, U256};
+use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, U256};
 
 use crate::interface::AxelarGasServiceInterface;
 use crate::event;
@@ -10,6 +10,7 @@ pub struct AxelarGasService;
 
 #[contractimpl]
 impl AxelarGasService {
+    
     pub fn initialize(env: Env) {
         if env.storage().instance().get(&DataKey::Initialized).unwrap_or(false) {
             panic!("Already initialized");
@@ -22,9 +23,9 @@ impl AxelarGasService {
 #[contractimpl]
 impl AxelarGasServiceInterface for AxelarGasService {
     
-    fn pay_native_gas_for_contract_call() {
+    fn pay_native_gas_for_contract_call(env: Env, sender: Address, destination_chain: String, destination_address: String, payload: Bytes, refund_address: Address) {
+        event::native_gas_paid_for_contract_call(&env, sender, destination_chain, destination_address, payload, refund_address)
     }
-
     
     fn collect_fees() {
     }
