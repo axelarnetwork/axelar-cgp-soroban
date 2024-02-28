@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
   "contracts/*",
+  "packages/*",
 ]
 
 [workspace.package]
@@ -11,6 +12,7 @@ edition = "2021"
 soroban-sdk = { version = "20.2.0" }
 axelar-auth-verifier = { version = "^0.1.0", path = "contracts/axelar-auth-verifier" }
 axelar-gateway = { version = "^0.1.0", path = "contracts/axelar-gateway" }
+axelar-soroban-std = { version = "^0.1.0", path = "packages/axelar-soroban-std" }
 
 [profile.release]
 opt-level = "z"
