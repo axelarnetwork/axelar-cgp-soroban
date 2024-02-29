@@ -1,13 +1,13 @@
 use soroban_sdk::xdr::{FromXdr, ToXdr};
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String};
 
-mod axelar_auth_verifier {
+mod axelar_auth_verifier_contract {
     soroban_sdk::contractimport!(
         file = "../../target/wasm32-unknown-unknown/release/axelar_auth_verifier.wasm"
     );
 }
 
-use axelar_auth_verifier::Client as AxelarAuthVerifierClient;
+use axelar_auth_verifier_contract::Client as AxelarAuthVerifierClient;
 
 use crate::interface::AxelarGatewayInterface;
 use crate::storage_types::{CommandExecutedKey, ContractCallApprovalKey, DataKey};
@@ -186,6 +186,7 @@ impl AxelarGateway {
             payload_hash,
         } = approval;
 
+        // TODO: further restrict contract_address value if needed (to avoid non applicable values that might be a valid Address)
         let key = Self::contract_call_approval_key(
             command_id.clone(),
             source_chain.clone(),

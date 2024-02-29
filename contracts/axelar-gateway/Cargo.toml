@@ -11,8 +11,12 @@ soroban-sdk = { workspace = true, features = ["alloc"] }
 
 [dev_dependencies]
 soroban-sdk = { workspace = true, features = ["testutils", "alloc"] }
+axelar-auth-verifier = { workspace = true, features = ["testutils"] }
+axelar-soroban-std = { workspace = true, features = ["testutils"] }
 secp256k1 = { version = "0.28.2", features = ["recovery", "rand"] }
+generic-array = { version = "*" }
+sha3 = "*"
 rand = { version = "0.8.5" }
 
 [features]
-testutils = ["soroban-sdk/testutils"]
+testutils = ["soroban-sdk/testutils", "axelar-auth-verifier/testutils", "axelar-soroban-std/testutils"]

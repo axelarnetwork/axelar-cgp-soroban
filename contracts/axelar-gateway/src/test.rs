@@ -1,13 +1,21 @@
 #![cfg(test)]
 extern crate std;
 
-mod axelar_auth_verifier {
+mod axelar_auth_verifier_contract {
     soroban_sdk::contractimport!(
         file = "../../target/wasm32-unknown-unknown/release/axelar_auth_verifier.wasm"
     );
 }
 
-use crate::types;
+use axelar_soroban_std::traits::IntoVec;
+use axelar_auth_verifier::types::{Proof, WeightedSigners};
+use rand::rngs::OsRng;
+use rand::Rng;
+use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
+use soroban_sdk::{TryFromVal, U256};
+use sha3::{Digest, Keccak256};
+
+use crate::types::{self, CommandBatch, SignedCommandBatch};
 use crate::{contract::AxelarGateway, AxelarGatewayClient};
 use soroban_sdk::{
     bytes, symbol_short,
@@ -24,14 +32,59 @@ fn setup_env<'a>() -> (Env, Address, AxelarGatewayClient<'a>) {
     let env = Env::default();
     env.mock_all_auths();
 
-    let auth_contract_id = env.register_contract_wasm(None, axelar_auth_verifier::WASM);
-
     let contract_id = env.register_contract(None, AxelarGateway);
     let client = AxelarGatewayClient::new(&env, &contract_id);
 
-    client.initialize(&auth_contract_id);
-
     (env, contract_id, client)
+}
+
+fn generate_signer_set(env: &Env, num_signers: u32) -> (std::vec::Vec<SecretKey>, WeightedSigners) {
+    let secp = Secp256k1::new();
+    let mut rng = rand::thread_rng();
+
+    let mut signer_keypair: std::vec::Vec<_> = (0..num_signers).map(|_| {
+        let sk = SecretKey::new(&mut OsRng);
+        let pk = PublicKey::from_secret_key(&secp, &sk);
+        let pk_hash: [u8; 32] = Keccak256::digest(pk.serialize_uncompressed()).into();
+        let weight = rng.gen_range(1..10) as u32;
+
+        (sk, (pk, pk_hash, weight))
+    }).collect();
+
+    signer_keypair.sort_by(|(_, (_, h1, _)), (_, (_, h2, _))| h1.cmp(h2));
+
+    let (signers, signer_info): (std::vec::Vec<_>, std::vec::Vec<(_, _, _)>) = signer_keypair.into_iter().unzip();
+    let total_weight = signer_info.iter().map(|(_, _, w)| w).sum::<u32>();
+
+    let signer_vec: std::vec::Vec<(BytesN<32>, U256)> = signer_info.into_iter().map(|(_, pk_hash, w)| {
+        (BytesN::<32>::from_array(env, &pk_hash), U256::from_u32(env, w))
+    }).collect();
+
+    let threshold = rng.gen_range(1..=total_weight);
+
+    let signer_set = WeightedSigners {
+        signers: signer_vec.into_vec(env),
+        threshold: U256::from_u32(env, threshold),
+    };
+
+    (signers, signer_set)
+}
+
+fn generate_proof(env: &Env, batch: CommandBatch, signers: std::vec::Vec<SecretKey>, signer_set: WeightedSigners) -> SignedCommandBatch {
+    let msg_hash = env.crypto().keccak256(&batch.clone().to_xdr(env));
+    let msg = Message::from_digest_slice(&msg_hash.to_array()).unwrap();
+    let threshold = signer_set.threshold.to_u128().unwrap() as u32;
+    let secp = Secp256k1::new();
+
+    let signatures: std::vec::Vec<_> = signers.iter().take(threshold as usize).map(|signer| {
+        let (recovery_id, signature) = secp.sign_ecdsa_recoverable(&msg, signer).serialize_compact();
+
+        (BytesN::<64>::from_array(env, &signature), recovery_id.to_i32() as u32)
+    }).collect();
+
+    let proof = Proof { signer_set, signatures: signatures.into_vec(env) }.to_xdr(env);
+
+    SignedCommandBatch{ batch, proof }
 }
 
 fn generate_test_approval(env: &Env) -> (types::ContractCallApproval, Bytes) {
@@ -184,20 +237,27 @@ fn approve_contract_call() {
         payload_hash,
     } = approval.clone();
     let command_id = BytesN::random(&env);
+    let (signers, signer_set) = generate_signer_set(&env, 3);
+    let signer_sets = vec![&env, signer_set.clone()].to_xdr(&env);
 
-    let signed_batch = types::SignedCommandBatch {
-        batch: types::CommandBatch {
-            chain_id: 1,
-            commands: vec![
-                &env,
-                (
-                    command_id.clone(),
-                    types::Command::ContractCallApproval(approval),
-                ),
-            ],
-        },
-        proof: Bytes::new(&env),
+    let auth_contract_id = env.register_contract_wasm(None, axelar_auth_verifier_contract::WASM);
+    let auth_client = axelar_auth_verifier_contract::Client::new(&env, &auth_contract_id);
+    auth_client.initialize(&2, &signer_sets);
+
+    client.initialize(&auth_contract_id);
+
+    let batch = types::CommandBatch {
+        chain_id: 1,
+        commands: vec![
+            &env,
+            (
+                command_id.clone(),
+                types::Command::ContractCallApproval(approval),
+            ),
+        ],
     };
+
+    let signed_batch = generate_proof(&env, batch, signers, signer_set);
 
     client.execute(&signed_batch.to_xdr(&env));
 
