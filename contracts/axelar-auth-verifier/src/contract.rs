@@ -1,5 +1,7 @@
+use core::panic;
+
 use soroban_sdk::xdr::{FromXdr, ToXdr};
-use soroban_sdk::{contract, contractimpl, panic_with_error, Bytes, BytesN, Env, Vec, U256};
+use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, Vec, U256};
 
 use crate::error::Error;
 use crate::event;
@@ -12,12 +14,16 @@ pub struct AxelarAuthVerifier;
 
 #[contractimpl]
 impl AxelarAuthVerifier {
-    pub fn initialize(env: Env, previous_signer_retention: u32, operator_set: Bytes) {
+    pub fn initialize(env: Env, owner: Address, previous_signer_retention: u32, operator_set: Bytes) {
         if env.storage().instance().has(&DataKey::Initialized) {
             panic!("Already initialized");
         }
 
         env.storage().instance().set(&DataKey::Initialized, &true);
+
+        env.storage().instance().set(&DataKey::Epoch, &0_u64);
+
+        env.storage().instance().set(&DataKey::Owner, &owner);
 
         env.storage().instance().set(
             &DataKey::PreviousSignerRetention,
@@ -33,6 +39,19 @@ impl AxelarAuthVerifier {
         for signer_set in signer_sets {
             Self::rotate_signer_set(&env, signer_set);
         }
+    }
+
+    pub fn transfer_ownership(env: Env, new_owner: Address) {
+        let owner: Address = env.storage().instance().get(&DataKey::Owner).unwrap();
+        owner.require_auth();
+
+        env.storage().instance().set(&DataKey::Owner, &new_owner);
+
+        event::transfer_ownership(&env, owner, new_owner);
+    }
+
+    pub fn owner(env: &Env) -> Address {
+        env.storage().instance().get(&DataKey::Owner).unwrap()
     }
 }
 
@@ -75,7 +94,12 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
     }
 
     fn transfer_operatorship(env: Env, new_operator_set: Bytes) {
-        // TODO: do we need to check if contract has been initialized?
+        // TODO: do we need to check explicitly if contract has been initialized?
+
+        // Only allow owner to transfer operatorship. This is meant to be set to the gateway contract
+        let owner: Address = env.storage().instance().get(&DataKey::Owner).unwrap();
+        owner.require_auth();
+
         let signers = WeightedSigners::from_xdr(&env, &new_operator_set).unwrap();
 
         Self::rotate_signer_set(&env, signers);
