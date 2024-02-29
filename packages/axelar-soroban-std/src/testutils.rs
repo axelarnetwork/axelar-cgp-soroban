@@ -6,13 +6,14 @@ use soroban_sdk::{
 };
 
 /// Asserts invocation auth of a contract from a single caller.
-pub fn assert_invocation(
+pub fn assert_invocation<T>(
     env: &Env,
     caller: &Address,
     contract_id: &Address,
     function_name: &str,
-    args: Vec<Val>,
-) {
+    args: T,
+) where
+    T: IntoVal<Env, Vec<Val>> {
     assert_eq!(
         env.auths(),
         std::vec![(
@@ -21,7 +22,7 @@ pub fn assert_invocation(
                 function: AuthorizedFunction::Contract((
                     contract_id.clone(),
                     Symbol::new(env, function_name),
-                    args,
+                    args.into_val(env),
                 )),
                 sub_invocations: std::vec![]
             }
@@ -41,7 +42,7 @@ pub fn assert_emitted_event<U, V>(
     V: IntoVal<Env, Val>,
 {
     let events = env.events().all();
-    assert!(event_index < events.len(), "event_index out of bounds");
+    assert!(event_index < events.len(), "event {} not found, only {} events were emitted", event_index+1, events.len());
 
     let event = events.get(event_index).unwrap();
 
