@@ -10,4 +10,5 @@ pub enum Error {
     MalformedSigners = 4,
     LowSignaturesWeight = 5,
     InvalidProof = 6,
+    OutdatedOperatorSet = 7,
 }

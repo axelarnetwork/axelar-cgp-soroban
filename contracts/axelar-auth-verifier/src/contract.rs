@@ -67,13 +67,13 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
         let signer_set_epoch: u64 = env
             .storage()
             .persistent()
-            .get(&DataKey::EpochBySignerHash(signer_set_hash.clone()))
+            .get(&DataKey::EpochBySignerHash(signer_set_hash))
             .unwrap();
 
         let epoch: u64 = env.storage().instance().get(&DataKey::Epoch).unwrap();
 
         if signer_set_epoch == 0 {
-            return false;
+            panic!("invalid epoch");
         }
 
         let previous_signer_retention: u32 = env
@@ -83,11 +83,11 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
             .unwrap();
 
         if epoch - signer_set_epoch > previous_signer_retention as u64 {
-            return false;
+            panic_with_error!(env, Error::OutdatedOperatorSet);
         }
 
         if !Self::validate_signatures(env, msg_hash, proof) {
-            return false;
+            panic!("invalid signatures");
         }
 
         epoch == signer_set_epoch
@@ -113,7 +113,7 @@ impl AxelarAuthVerifier {
         }
 
         let new_signer_hash = env.crypto().keccak256(&new_signer_set.clone().to_xdr(env));
-        let new_epoch = env
+        let new_epoch: u64 = env
             .storage()
             .instance()
             .get::<DataKey, u64>(&DataKey::Epoch)
@@ -144,11 +144,11 @@ impl AxelarAuthVerifier {
             return false;
         }
 
-        let total_weight = U256::from_u32(env, 0);
+        let mut total_weight = U256::from_u32(env, 0);
         let mut signer_index = 0;
 
         for (signature, recovery_id) in signatures.into_iter() {
-            // TODO: typo in recovery id name
+            // TODO: check if any additional validation is needed for signature and output of ec recover, or if it's fully handled by the sdk
             let pub_key = env
                 .crypto()
                 .secp256k1_recover(&msg_hash, &signature, recovery_id);
@@ -158,7 +158,7 @@ impl AxelarAuthVerifier {
                 let (signer, weight) = signer_set.signers.get(signer_index).unwrap();
 
                 if expected_signer == signer {
-                    total_weight.add(&weight);
+                    total_weight = total_weight.add(&weight);
 
                     if total_weight >= signer_set.threshold {
                         return true;
@@ -180,24 +180,24 @@ impl AxelarAuthVerifier {
 }
 
 impl WeightedSigners {
+    /// Check if signer set is valid, i.e signer/pub key hash are in sorted order,
+    /// weights are non-zero and sum to at least threshold
     pub fn is_valid(&self) -> bool {
         if self.signers.is_empty() {
             return false;
         }
 
-        // TODO: zero address check?
-
         let first_weight = self.signers.get(0).unwrap();
         let env = first_weight.1.env();
         let zero = U256::from_u32(env, 0);
-        let total_weight = zero.clone();
+        let mut total_weight = zero.clone();
 
         for weight in self.signers.iter().map(|s| s.1) {
             if weight == zero {
                 return false;
             }
 
-            total_weight.add(&weight);
+            total_weight = total_weight.add(&weight);
         }
 
         if self.threshold == zero || total_weight < self.threshold {
