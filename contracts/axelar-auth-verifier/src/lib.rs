@@ -9,3 +9,12 @@ pub mod contract;
 pub mod interface;
 
 pub use contract::AxelarAuthVerifierClient;
+
+#[cfg(all(target_family = "wasm", feature = "testutils"))]
+compile_error!("'testutils' feature is not supported on 'wasm' target");
+
+#[cfg(any(test, feature = "testutils"))]
+pub mod testutils;
+
+#[cfg(test)]
+mod test;
