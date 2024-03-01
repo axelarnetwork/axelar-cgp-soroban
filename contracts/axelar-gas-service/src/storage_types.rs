@@ -4,4 +4,5 @@ use soroban_sdk::contracttype;
 #[derive(Clone, Debug)]
 pub enum DataKey {
     Initialized,
+    GasCollector,
 }

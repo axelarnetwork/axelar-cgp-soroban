@@ -7,5 +7,5 @@ pub struct Refunded {
     pub log_index: U256,
     pub receiver: Address,
     pub token: Address,
-    pub amount: U256
+    pub amount: U256,
 }
