@@ -1,17 +1,13 @@
 #![cfg(test)]
 extern crate std;
 
-mod axelar_auth_verifier_contract {
-    soroban_sdk::contractimport!(
-        file = "../../target/wasm32-unknown-unknown/release/axelar_auth_verifier.wasm"
-    );
-}
-
 use axelar_soroban_std::{assert_emitted_event, assert_invocation};
 
 use axelar_auth_verifier::testutils::{
     generate_proof, generate_signer_set, randint, TestSignerSet,
 };
+
+use axelar_auth_verifier::contract::AxelarAuthVerifier;
 
 use crate::types::{self, SignedCommandBatch};
 use crate::{contract::AxelarGateway, AxelarGatewayClient};
@@ -42,7 +38,7 @@ fn initialize(
     previous_signer_retention: u32,
     num_signers: u32,
 ) -> TestSignerSet {
-    let auth_contract_id = env.register_contract_wasm(None, axelar_auth_verifier_contract::WASM);
+    let auth_contract_id = env.register_contract(None, AxelarAuthVerifier);
 
     let signers = generate_signer_set(env, num_signers);
     let signer_sets = vec![&env, signers.signer_set.clone()].to_xdr(env);
@@ -54,9 +50,6 @@ fn initialize(
         axelar_auth_verifier::contract::AxelarAuthVerifierClient::new(env, &auth_contract_id);
 
     auth_client.initialize(&client.address, &previous_signer_retention, &signer_sets);
-
-    // let _: () = env.invoke_contract(auth, &Symbol::new(env, "initialize"), vec![env, owner.into_val(env), previous_signer_retention.into_val(env), signer_sets.into_val(env)]);
-    // client.initialize(&owner, &previous_signer_retention, &signer_sets);
 
     assert_emitted_event(
         env,
