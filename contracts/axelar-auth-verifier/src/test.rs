@@ -1,24 +1,19 @@
 #![cfg(test)]
 extern crate std;
 
-use rand::Rng;
 use soroban_sdk::{
-    symbol_short,
-    testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, BytesN as _, Events},
-    vec,
-    xdr::{FromXdr, ToXdr},
-    Address, Bytes, Env, Vec,
+    testutils::Address as _,
+    xdr::ToXdr,
+    Address, Bytes, Env,
 };
 
-use axelar_soroban_std::testutils::{assert_emitted_event, assert_invocation};
+use axelar_soroban_std::testutils::assert_invocation;
 
 use crate::{
     contract::{AxelarAuthVerifier, AxelarAuthVerifierClient},
     testutils::{
         generate_proof, generate_signer_set, initialize, randint, transfer_operatorship,
-        TestSignerSet,
     },
-    types::WeightedSigners,
 };
 
 fn setup_env<'a>() -> (Env, Address, AxelarAuthVerifierClient<'a>) {

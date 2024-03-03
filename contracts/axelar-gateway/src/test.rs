@@ -7,27 +7,20 @@ mod axelar_auth_verifier_contract {
     );
 }
 
-use axelar_auth_verifier::types::{Proof, WeightedSigners};
-use axelar_soroban_std::traits::IntoVec;
 use axelar_soroban_std::{assert_emitted_event, assert_invocation};
-use rand::rngs::OsRng;
-use rand::Rng;
-use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
-use sha3::{Digest, Keccak256};
-use soroban_sdk::{log, U256};
 
 use axelar_auth_verifier::testutils::{
     generate_proof, generate_signer_set, randint, TestSignerSet,
 };
 
-use crate::types::{self, CommandBatch, SignedCommandBatch};
+use crate::types::{self, SignedCommandBatch};
 use crate::{contract::AxelarGateway, AxelarGatewayClient};
 use soroban_sdk::{
     bytes, symbol_short,
-    testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, BytesN as _, Events},
+    testutils::{Address as _, BytesN as _, Events},
     vec,
     xdr::ToXdr,
-    Address, Bytes, BytesN, Env, IntoVal, String, Symbol, Val, Vec,
+    Address, Bytes, BytesN, Env, String,
 };
 
 const DESTINATION_CHAIN: &str = "ethereum";
