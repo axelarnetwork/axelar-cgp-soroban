@@ -1,7 +1,9 @@
 use soroban_sdk::xdr::{FromXdr, ToXdr};
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String};
 
-use axelar_auth_verifier::contract::AxelarAuthVerifierClient;
+// use axelar_auth_verifier_contract::Client as AxelarAuthVerifierClient;
+// use axelar_auth_verifier::interface::AxelarAuthVerifierInterface;
+use axelar_auth_verifier::AxelarAuthVerifierClient;
 
 use crate::interface::AxelarGatewayInterface;
 use crate::storage_types::{CommandExecutedKey, ContractCallApprovalKey, DataKey};
@@ -13,7 +15,7 @@ pub struct AxelarGateway;
 
 #[contractimpl]
 impl AxelarGateway {
-    pub fn initialize(env: Env, auth_module: Address) {
+    pub fn initialize_gateway(env: Env, auth_module: Address) {
         if env
             .storage()
             .instance()
@@ -111,6 +113,8 @@ impl AxelarGatewayInterface for AxelarGateway {
             &env,
             &env.storage().instance().get(&DataKey::AuthModule).unwrap(),
         );
+
+        // AxelarAuthVerifierInterface::validate_proof(env, batch_hash, proof)
 
         let valid = auth_module.validate_proof(&batch_hash, &proof);
         if !valid {
