@@ -1,19 +1,13 @@
 #![cfg(test)]
 extern crate std;
 
-use soroban_sdk::{
-    testutils::Address as _,
-    xdr::ToXdr,
-    Address, Bytes, Env,
-};
+use soroban_sdk::{testutils::Address as _, xdr::ToXdr, Address, Bytes, Env};
 
 use axelar_soroban_std::testutils::assert_invocation;
 
 use crate::{
     contract::{AxelarAuthVerifier, AxelarAuthVerifierClient},
-    testutils::{
-        generate_proof, generate_signer_set, initialize, randint, transfer_operatorship,
-    },
+    testutils::{generate_proof, generate_signer_set, initialize, randint, transfer_operatorship},
 };
 
 fn setup_env<'a>() -> (Env, Address, AxelarAuthVerifierClient<'a>) {

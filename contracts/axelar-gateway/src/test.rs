@@ -3,12 +3,9 @@ extern crate std;
 
 use axelar_soroban_std::{assert_emitted_event, assert_invocation};
 
-use axelar_auth_verifier::testutils::{
-    generate_proof, generate_signer_set, randint, TestSignerSet,
-};
+use axelar_auth_verifier::testutils::{generate_proof, randint};
 
-use axelar_auth_verifier::contract::AxelarAuthVerifier;
-
+use crate::testutils::{generate_test_approval, initialize};
 use crate::types::{self, SignedCommandBatch};
 use crate::{contract::AxelarGateway, AxelarGatewayClient};
 use soroban_sdk::{
@@ -16,7 +13,7 @@ use soroban_sdk::{
     testutils::{Address as _, BytesN as _, Events},
     vec,
     xdr::ToXdr,
-    Address, Bytes, BytesN, Env, String,
+    Address, BytesN, Env, String,
 };
 
 const DESTINATION_CHAIN: &str = "ethereum";
@@ -30,38 +27,6 @@ fn setup_env<'a>() -> (Env, Address, AxelarGatewayClient<'a>) {
     let client = AxelarGatewayClient::new(&env, &contract_id);
 
     (env, contract_id, client)
-}
-
-fn initialize(
-    env: &Env,
-    client: &AxelarGatewayClient,
-    previous_signer_retention: u32,
-    num_signers: u32,
-) -> TestSignerSet {
-    let auth_contract_id = env.register_contract(None, AxelarAuthVerifier);
-
-    let auth_client =
-        axelar_auth_verifier::contract::AxelarAuthVerifierClient::new(env, &auth_contract_id);
-
-    let signers = axelar_auth_verifier::testutils::initialize(env, &auth_client, client.address.clone(), previous_signer_retention, num_signers);
-
-    client.initialize_gateway(&auth_contract_id);
-
-    signers
-}
-
-fn generate_test_approval(env: &Env) -> (types::ContractCallApproval, Bytes) {
-    let payload = bytes!(&env, 0x1234);
-
-    (
-        types::ContractCallApproval {
-            source_chain: String::from_str(env, DESTINATION_CHAIN),
-            source_address: String::from_str(env, DESTINATION_ADDRESS),
-            contract_address: Address::generate(env),
-            payload_hash: env.crypto().keccak256(&payload),
-        },
-        payload,
-    )
 }
 
 #[test]

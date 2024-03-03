@@ -1,13 +1,20 @@
 #![no_std]
 
-pub mod contract;
 mod error;
 mod event;
-pub mod interface;
 mod storage_types;
-mod types;
+pub mod types;
+
+pub mod contract;
+pub mod interface;
+
+pub use contract::AxelarGatewayClient;
+
+#[cfg(all(target_family = "wasm", feature = "testutils"))]
+compile_error!("'testutils' feature is not supported on 'wasm' target");
+
+#[cfg(any(test, feature = "testutils"))]
+pub mod testutils;
 
 #[cfg(test)]
 mod test;
-
-pub use contract::AxelarGatewayClient;
