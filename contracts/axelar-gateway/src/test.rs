@@ -7,16 +7,18 @@ mod axelar_auth_verifier_contract {
     );
 }
 
+use axelar_auth_verifier::types::{Proof, WeightedSigners};
 use axelar_soroban_std::traits::IntoVec;
 use axelar_soroban_std::{assert_emitted_event, assert_invocation};
-use axelar_auth_verifier::types::{Proof, WeightedSigners};
 use rand::rngs::OsRng;
 use rand::Rng;
 use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
-use soroban_sdk::{log, U256};
 use sha3::{Digest, Keccak256};
+use soroban_sdk::{log, U256};
 
-use axelar_auth_verifier::testutils::{generate_proof, generate_signer_set, randint, TestSignerSet};
+use axelar_auth_verifier::testutils::{
+    generate_proof, generate_signer_set, randint, TestSignerSet,
+};
 
 use crate::types::{self, CommandBatch, SignedCommandBatch};
 use crate::{contract::AxelarGateway, AxelarGatewayClient};
@@ -41,23 +43,35 @@ fn setup_env<'a>() -> (Env, Address, AxelarGatewayClient<'a>) {
     (env, contract_id, client)
 }
 
-fn initialize(env: &Env, client: &AxelarGatewayClient, previous_signer_retention: u32, num_signers: u32) -> TestSignerSet {
+fn initialize(
+    env: &Env,
+    client: &AxelarGatewayClient,
+    previous_signer_retention: u32,
+    num_signers: u32,
+) -> TestSignerSet {
     let auth_contract_id = env.register_contract_wasm(None, axelar_auth_verifier_contract::WASM);
 
     let signers = generate_signer_set(env, num_signers);
     let signer_sets = vec![&env, signers.signer_set.clone()].to_xdr(env);
-    let signer_set_hash = env.crypto().keccak256(&signers.signer_set.clone().to_xdr(env));
+    let signer_set_hash = env
+        .crypto()
+        .keccak256(&signers.signer_set.clone().to_xdr(env));
 
-    let auth_client = axelar_auth_verifier::contract::AxelarAuthVerifierClient::new(env, &auth_contract_id);
+    let auth_client =
+        axelar_auth_verifier::contract::AxelarAuthVerifierClient::new(env, &auth_contract_id);
 
     auth_client.initialize(&client.address, &previous_signer_retention, &signer_sets);
 
     // let _: () = env.invoke_contract(auth, &Symbol::new(env, "initialize"), vec![env, owner.into_val(env), previous_signer_retention.into_val(env), signer_sets.into_val(env)]);
     // client.initialize(&owner, &previous_signer_retention, &signer_sets);
 
-    assert_emitted_event(env, env.events().all().len() - 1, &auth_contract_id,
+    assert_emitted_event(
+        env,
+        env.events().all().len() - 1,
+        &auth_contract_id,
         (symbol_short!("transfer"), signer_set_hash),
-        (signers.signer_set.clone(),));
+        (signers.signer_set.clone(),),
+    );
 
     client.initialize_gateway(&auth_contract_id);
 
@@ -99,7 +113,7 @@ fn call_contract() {
             destination_chain.clone(),
             destination_address.clone(),
             payload.clone(),
-        )
+        ),
     );
 
     assert_emitted_event(
@@ -151,7 +165,7 @@ fn validate_contract_call() {
             source_chain.clone(),
             source_address.clone(),
             payload_hash.clone(),
-        )
+        ),
     );
 
     assert_eq!(env.events().all().len(), 0);
@@ -183,7 +197,10 @@ fn approve_contract_call() {
     };
     let batch_hash = env.crypto().keccak256(&batch.clone().to_xdr(&env));
 
-    let signed_batch = SignedCommandBatch{ batch, proof: generate_proof(&env, batch_hash, signers).to_xdr(&env)};
+    let signed_batch = SignedCommandBatch {
+        batch,
+        proof: generate_proof(&env, batch_hash, signers).to_xdr(&env),
+    };
 
     client.execute(&signed_batch.to_xdr(&env));
 

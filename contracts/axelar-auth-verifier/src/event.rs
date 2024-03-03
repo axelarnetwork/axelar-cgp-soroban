@@ -11,11 +11,7 @@ pub(crate) fn transfer_operatorship(
     env.events().publish(topics, (signer_set,)); // TODO: use a tuple or the type directly?
 }
 
-pub(crate) fn transfer_ownership(
-    env: &Env,
-    previous_owner: Address,
-    new_owner: Address,
-) {
+pub(crate) fn transfer_ownership(env: &Env, previous_owner: Address, new_owner: Address) {
     let topics = (symbol_short!("ownership"), previous_owner, new_owner);
     env.events().publish(topics, ());
 }

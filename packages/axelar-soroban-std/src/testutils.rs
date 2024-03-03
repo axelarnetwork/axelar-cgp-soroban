@@ -2,7 +2,8 @@
 extern crate std;
 
 use soroban_sdk::{
-    testutils::{AuthorizedFunction, AuthorizedInvocation, Events}, vec, Address, Env, IntoVal, Symbol, Val, Vec
+    testutils::{AuthorizedFunction, AuthorizedInvocation, Events},
+    vec, Address, Env, IntoVal, Symbol, Val, Vec,
 };
 
 /// Asserts invocation auth of a contract from a single caller.
@@ -13,7 +14,8 @@ pub fn assert_invocation<T>(
     function_name: &str,
     args: T,
 ) where
-    T: IntoVal<Env, Vec<Val>> {
+    T: IntoVal<Env, Vec<Val>>,
+{
     assert_eq!(
         env.auths(),
         std::vec![(
@@ -42,7 +44,12 @@ pub fn assert_emitted_event<U, V>(
     V: IntoVal<Env, Val>,
 {
     let events = env.events().all();
-    assert!(event_index < events.len(), "event {} not found, only {} events were emitted", event_index+1, events.len());
+    assert!(
+        event_index < events.len(),
+        "event {} not found, only {} events were emitted",
+        event_index + 1,
+        events.len()
+    );
 
     let event = events.get(event_index).unwrap();
 

@@ -2,11 +2,24 @@
 extern crate std;
 
 use rand::Rng;
-use soroban_sdk::{symbol_short, testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, BytesN as _, Events}, vec, xdr::{FromXdr, ToXdr}, Address, Bytes, Env, Vec};
+use soroban_sdk::{
+    symbol_short,
+    testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, BytesN as _, Events},
+    vec,
+    xdr::{FromXdr, ToXdr},
+    Address, Bytes, Env, Vec,
+};
 
-use axelar_soroban_std::testutils::{assert_invocation, assert_emitted_event};
+use axelar_soroban_std::testutils::{assert_emitted_event, assert_invocation};
 
-use crate::{contract::{AxelarAuthVerifier, AxelarAuthVerifierClient}, testutils::{generate_proof, generate_signer_set, initialize, randint, transfer_operatorship, TestSignerSet}, types::WeightedSigners};
+use crate::{
+    contract::{AxelarAuthVerifier, AxelarAuthVerifierClient},
+    testutils::{
+        generate_proof, generate_signer_set, initialize, randint, transfer_operatorship,
+        TestSignerSet,
+    },
+    types::WeightedSigners,
+};
 
 fn setup_env<'a>() -> (Env, Address, AxelarAuthVerifierClient<'a>) {
     let env = Env::default();
@@ -49,7 +62,13 @@ fn test_transfer_operatorship() {
     let user = Address::generate(&env);
     let previous_signer_retention = 1;
 
-    initialize(&env, &client, user.clone(), previous_signer_retention, randint(1, 10));
+    initialize(
+        &env,
+        &client,
+        user.clone(),
+        previous_signer_retention,
+        randint(1, 10),
+    );
 
     let msg = Bytes::from_array(&env, &[0x01, 0x02, 0x03]);
     let msg_hash = env.crypto().keccak256(&msg);
@@ -58,7 +77,13 @@ fn test_transfer_operatorship() {
 
     let encoded_new_signer_set = transfer_operatorship(&env, &client, new_signers.clone());
 
-    assert_invocation(&env, &user, &client.address, "transfer_operatorship", (encoded_new_signer_set,));
+    assert_invocation(
+        &env,
+        &user,
+        &client.address,
+        "transfer_operatorship",
+        (encoded_new_signer_set,),
+    );
 
     let proof = generate_proof(&env, msg_hash.clone(), new_signers.clone());
     let latest_signer_set = client.validate_proof(&msg_hash, &proof.to_xdr(&env));
@@ -72,7 +97,13 @@ fn test_multi_transfer_operatorship() {
     let user = Address::generate(&env);
     let previous_signer_retention = randint(1, 5);
 
-    let original_signers = initialize(&env, &client, user, previous_signer_retention, randint(1, 10));
+    let original_signers = initialize(
+        &env,
+        &client,
+        user,
+        previous_signer_retention,
+        randint(1, 10),
+    );
 
     let msg = Bytes::from_array(&env, &[0x01, 0x02, 0x03]);
     let msg_hash = env.crypto().keccak256(&msg);
@@ -108,7 +139,13 @@ fn test_transfer_operatorship_panics_on_outdated_signer_set() {
     let user = Address::generate(&env);
     let previous_signer_retention = randint(0, 5);
 
-    let original_signers = initialize(&env, &client, user, previous_signer_retention, randint(1, 10));
+    let original_signers = initialize(
+        &env,
+        &client,
+        user,
+        previous_signer_retention,
+        randint(1, 10),
+    );
 
     let msg = Bytes::from_array(&env, &[0x01, 0x02, 0x03]);
     let msg_hash = env.crypto().keccak256(&msg);

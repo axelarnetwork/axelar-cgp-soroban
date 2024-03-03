@@ -1,7 +1,9 @@
 use core::panic;
 
 use soroban_sdk::xdr::{FromXdr, ToXdr};
-use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, Vec, U256};
+use soroban_sdk::{
+    contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, Vec, U256,
+};
 
 use crate::error::Error;
 use crate::event;
