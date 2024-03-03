@@ -2,7 +2,7 @@
 extern crate std;
 
 use soroban_sdk::{
-    bytes, symbol_short, testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, BytesN as _, Events}, vec, xdr::ToXdr, Address, Bytes, BytesN, Env, IntoVal, String, Symbol, TryFromVal, Val, Vec
+    testutils::{AuthorizedFunction, AuthorizedInvocation, Events}, vec, Address, Env, IntoVal, Symbol, Val, Vec
 };
 
 /// Asserts invocation auth of a contract from a single caller.
