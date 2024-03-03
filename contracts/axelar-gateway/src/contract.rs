@@ -1,13 +1,7 @@
 use soroban_sdk::xdr::{FromXdr, ToXdr};
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String};
 
-mod axelar_auth_verifier_contract {
-    soroban_sdk::contractimport!(
-        file = "../../target/wasm32-unknown-unknown/release/axelar_auth_verifier.wasm"
-    );
-}
-
-use axelar_auth_verifier_contract::Client as AxelarAuthVerifierClient;
+use axelar_auth_verifier::contract::AxelarAuthVerifierClient;
 
 use crate::interface::AxelarGatewayInterface;
 use crate::storage_types::{CommandExecutedKey, ContractCallApprovalKey, DataKey};

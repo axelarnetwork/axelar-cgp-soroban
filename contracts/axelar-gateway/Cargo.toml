@@ -8,6 +8,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 soroban-sdk = { workspace = true, features = ["alloc"] }
+axelar-auth-verifier = { workspace = true }
 
 [dev_dependencies]
 soroban-sdk = { workspace = true, features = ["testutils", "alloc"] }
