@@ -6,7 +6,7 @@ use rand::Rng;
 use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
 use soroban_sdk::{TryFromVal, U256};
 use sha3::{Digest, Keccak256};
-use crate::types::{Proof, WeightedSigners};
+use crate::{types::{Proof, WeightedSigners}, AxelarAuthVerifierClient};
 
 use soroban_sdk::{
     bytes, symbol_short,
@@ -16,12 +16,16 @@ use soroban_sdk::{
     Address, Bytes, BytesN, Env, IntoVal, String, Symbol, Val, Vec,
 };
 
-use axelar_soroban_std::traits::IntoVec;
+use axelar_soroban_std::{assert_emitted_event, traits::IntoVec};
 
 #[derive(Clone, Debug)]
 pub struct TestSignerSet {
     pub signers: std::vec::Vec<SecretKey>,
     pub signer_set: WeightedSigners,
+}
+
+pub fn randint(a: u32, b: u32) -> u32 {
+    rand::thread_rng().gen_range(a..b)
 }
 
 pub fn generate_signer_set(env: &Env, num_signers: u32) -> TestSignerSet {
@@ -72,4 +76,30 @@ pub fn generate_proof(env: &Env, msg_hash: BytesN<32>, signers: TestSignerSet) -
     }).collect();
 
     Proof { signer_set: signers.signer_set, signatures: signatures.into_vec(env) }
+}
+
+pub fn initialize(env: &Env, client: &AxelarAuthVerifierClient, owner: Address, previous_signer_retention: u32, num_signers: u32) -> TestSignerSet {
+    let signers = generate_signer_set(env, num_signers);
+    let signer_sets = vec![&env, signers.signer_set.clone()].to_xdr(env);
+    let signer_set_hash = env.crypto().keccak256(&signers.signer_set.clone().to_xdr(env));
+
+    client.initialize(&owner, &previous_signer_retention, &signer_sets);
+
+    assert_emitted_event(env, env.events().all().len() - 1, &client.address,
+        (symbol_short!("transfer"), signer_set_hash),
+        (signers.signer_set.clone(),));
+
+    signers
+}
+
+pub fn transfer_operatorship(env: &Env, client: &AxelarAuthVerifierClient, new_signers: TestSignerSet) -> Bytes {
+    let encoded_new_signer_set = new_signers.signer_set.clone().to_xdr(env);
+
+    client.transfer_operatorship(&encoded_new_signer_set);
+
+    assert_emitted_event(env, env.events().all().len() - 1, &client.address,
+        (symbol_short!("transfer"), env.crypto().keccak256(&encoded_new_signer_set)),
+        (new_signers.signer_set.clone(),));
+
+    encoded_new_signer_set
 }

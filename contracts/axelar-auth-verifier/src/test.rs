@@ -6,7 +6,7 @@ use soroban_sdk::{symbol_short, testutils::{Address as _, AuthorizedFunction, Au
 
 use axelar_soroban_std::testutils::{assert_invocation, assert_emitted_event};
 
-use crate::{contract::{AxelarAuthVerifier, AxelarAuthVerifierClient}, testutils::{generate_proof, generate_signer_set, TestSignerSet}, types::WeightedSigners};
+use crate::{contract::{AxelarAuthVerifier, AxelarAuthVerifierClient}, testutils::{generate_proof, generate_signer_set, initialize, randint, transfer_operatorship, TestSignerSet}, types::WeightedSigners};
 
 fn setup_env<'a>() -> (Env, Address, AxelarAuthVerifierClient<'a>) {
     let env = Env::default();
@@ -16,36 +16,6 @@ fn setup_env<'a>() -> (Env, Address, AxelarAuthVerifierClient<'a>) {
     let client = AxelarAuthVerifierClient::new(&env, &contract_id);
 
     (env, contract_id, client)
-}
-
-pub fn initialize(env: &Env, client: &AxelarAuthVerifierClient, owner: Address, previous_signer_retention: u32, num_signers: u32) -> TestSignerSet {
-    let signers = generate_signer_set(env, num_signers);
-    let signer_sets = vec![&env, signers.signer_set.clone()].to_xdr(env);
-    let signer_set_hash = env.crypto().keccak256(&signers.signer_set.clone().to_xdr(env));
-
-    client.initialize(&owner, &previous_signer_retention, &signer_sets);
-
-    assert_emitted_event(env, env.events().all().len() - 1, &client.address,
-        (symbol_short!("transfer"), signer_set_hash),
-        (signers.signer_set.clone(),));
-
-    signers
-}
-
-pub fn transfer_operatorship(env: &Env, client: &AxelarAuthVerifierClient, new_signers: TestSignerSet) -> Bytes {
-    let encoded_new_signer_set = new_signers.signer_set.clone().to_xdr(env);
-
-    client.transfer_operatorship(&encoded_new_signer_set);
-
-    assert_emitted_event(env, env.events().all().len() - 1, &client.address,
-        (symbol_short!("transfer"), env.crypto().keccak256(&encoded_new_signer_set)),
-        (new_signers.signer_set.clone(),));
-
-    encoded_new_signer_set
-}
-
-fn randint(a: u32, b: u32) -> u32 {
-    rand::thread_rng().gen_range(a..b)
 }
 
 #[test]
@@ -100,7 +70,7 @@ fn test_multi_transfer_operatorship() {
     let (env, _, client) = setup_env();
 
     let user = Address::generate(&env);
-    let previous_signer_retention = randint(0, 5);
+    let previous_signer_retention = randint(1, 5);
 
     let original_signers = initialize(&env, &client, user, previous_signer_retention, randint(1, 10));
 

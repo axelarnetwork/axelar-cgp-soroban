@@ -14,7 +14,23 @@ pub struct AxelarAuthVerifier;
 
 #[contractimpl]
 impl AxelarAuthVerifier {
-    pub fn initialize(env: Env, owner: Address, previous_signer_retention: u32, operator_set: Bytes) {
+    pub fn transfer_ownership(env: Env, new_owner: Address) {
+        let owner: Address = env.storage().instance().get(&DataKey::Owner).unwrap();
+        owner.require_auth();
+
+        env.storage().instance().set(&DataKey::Owner, &new_owner);
+
+        event::transfer_ownership(&env, owner, new_owner);
+    }
+
+    pub fn owner(env: &Env) -> Address {
+        env.storage().instance().get(&DataKey::Owner).unwrap()
+    }
+}
+
+#[contractimpl]
+impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
+    fn initialize(env: Env, owner: Address, previous_signer_retention: u32, operator_set: Bytes) {
         if env.storage().instance().has(&DataKey::Initialized) {
             panic!("Already initialized");
         }
@@ -41,22 +57,6 @@ impl AxelarAuthVerifier {
         }
     }
 
-    pub fn transfer_ownership(env: Env, new_owner: Address) {
-        let owner: Address = env.storage().instance().get(&DataKey::Owner).unwrap();
-        owner.require_auth();
-
-        env.storage().instance().set(&DataKey::Owner, &new_owner);
-
-        event::transfer_ownership(&env, owner, new_owner);
-    }
-
-    pub fn owner(env: &Env) -> Address {
-        env.storage().instance().get(&DataKey::Owner).unwrap()
-    }
-}
-
-#[contractimpl]
-impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
     fn validate_proof(env: &Env, msg_hash: BytesN<32>, proof: Bytes) -> bool {
         let proof = Proof::from_xdr(env, &proof).unwrap();
 
