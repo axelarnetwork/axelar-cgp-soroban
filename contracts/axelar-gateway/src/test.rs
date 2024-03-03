@@ -40,24 +40,10 @@ fn initialize(
 ) -> TestSignerSet {
     let auth_contract_id = env.register_contract(None, AxelarAuthVerifier);
 
-    let signers = generate_signer_set(env, num_signers);
-    let signer_sets = vec![&env, signers.signer_set.clone()].to_xdr(env);
-    let signer_set_hash = env
-        .crypto()
-        .keccak256(&signers.signer_set.clone().to_xdr(env));
-
     let auth_client =
         axelar_auth_verifier::contract::AxelarAuthVerifierClient::new(env, &auth_contract_id);
 
-    auth_client.initialize(&client.address, &previous_signer_retention, &signer_sets);
-
-    assert_emitted_event(
-        env,
-        env.events().all().len() - 1,
-        &auth_contract_id,
-        (symbol_short!("transfer"), signer_set_hash),
-        (signers.signer_set.clone(),),
-    );
+    let signers = axelar_auth_verifier::testutils::initialize(env, &auth_client, client.address.clone(), previous_signer_retention, num_signers);
 
     client.initialize_gateway(&auth_contract_id);
 
