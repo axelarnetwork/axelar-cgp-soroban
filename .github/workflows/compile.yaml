@@ -14,7 +14,11 @@ jobs:
         with:
           profile: minimal
           toolchain: 1.76.0
+          target: wasm32-unknown-unknown
           override: true
+
+      - name: Add wasm32-unknown-unknown Target
+        run: rustup target add wasm32-unknown-unknown
 
       - name: Cache build artifacts
         uses: useblacksmith/rust-cache@v3
