@@ -1,8 +1,9 @@
- name: Test
+ name: Linting
 
 on: pull_request
 
- lints:
+jobs:
+  lints:
     name: Lints
     runs-on: ubuntu-latest
     steps:
