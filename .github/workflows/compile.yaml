@@ -1,0 +1,25 @@
+name: Compiling
+
+on: pull_request
+
+jobs:
+  soroban-compilation:
+    name: Soroban Compilation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: 1.76.0
+          override: true
+
+      - name: Cache build artifacts
+        uses: useblacksmith/rust-cache@v3
+        with:
+          shared-key: "cache"
+
+      - name: Build wasm release
+        run: cargo wasm
