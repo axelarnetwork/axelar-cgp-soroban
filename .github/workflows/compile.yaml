@@ -20,14 +20,10 @@ jobs:
       - name: Add wasm32-unknown-unknown Target
         run: rustup target add wasm32-unknown-unknown
 
-      - name: Cache Rust dependencies
-        uses: actions/cache@v2
+     - name: Cache build artifacts
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          shared-key: "cache"
 
       - name: Build wasm release
         run: cargo wasm

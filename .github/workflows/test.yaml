@@ -16,14 +16,10 @@ jobs:
           toolchain: 1.76.0
           override: true
 
-      - name: Cache Rust dependencies
-        uses: actions/cache@v2
+      - name: Cache build artifacts
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          shared-key: "cache"
 
       - name: Run tests
         uses: actions-rs/cargo@v1
