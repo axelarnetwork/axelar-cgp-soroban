@@ -69,6 +69,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "axelar-gas-service"
+version = "0.1.0"
+dependencies = [
+ "secp256k1",
+ "soroban-sdk",
+]
+
+[[package]]
 name = "axelar-gateway"
 version = "0.1.0"
 dependencies = [

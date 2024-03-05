@@ -20,14 +20,14 @@ pub(crate) fn native_gas_paid_for_contract_call(
     payload: Bytes,
     refund_address: Address,
 ) {
-    let topics = (symbol_short!("cc_g_paid"),);
+    let topics = (symbol_short!("cc_g_paid"), env.crypto().keccak256(&payload));
     env.events().publish(
         topics,
         (
             sender,
             destination_chain,
             destination_address,
-            env.crypto().keccak256(&payload),
+            payload,
             refund_address,
         ),
     );

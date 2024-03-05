@@ -73,8 +73,7 @@ impl AxelarGasServiceInterface for AxelarGasService {
         for i in 0..token_addr_length {
             let amount = amounts.get(i).unwrap();
 
-            let token_addr = token_addresses
-                .get(i).unwrap();
+            let token_addr = token_addresses.get(i).unwrap();
 
             if amount == 0 {
                 return Err(Error::InvalidAmounts);
@@ -102,7 +101,7 @@ impl AxelarGasServiceInterface for AxelarGasService {
         token_addr: Address,
         amount: i128,
     ) {
-        //TODO confirm this is analogous to onlyGasCollector in Solidity
+        // TODO confirm this is analogous to onlyGasCollector in Solidity
         let gas_collector: Address = env
             .storage()
             .instance()

@@ -5,10 +5,11 @@ use crate::contract::{AxelarGasService, AxelarGasServiceClient};
 use soroban_sdk::{
     bytes, bytesn, symbol_short,
     testutils::{Address as _, Events},
-    token, vec, Address, BytesN, Env, IntoVal, String, Val, Vec, U256,
+    token::{StellarAssetClient, TokenClient},
+    vec, Address, BytesN, Env, IntoVal, String, Val, Vec, U256,
 };
 
-fn setup_env<'a>() -> (Env, Address, AxelarGasServiceClient<'a>) {
+fn setup_env<'a>() -> (Env, Address, Address, AxelarGasServiceClient<'a>) {
     let env = Env::default();
 
     env.mock_all_auths();
@@ -16,12 +17,36 @@ fn setup_env<'a>() -> (Env, Address, AxelarGasServiceClient<'a>) {
     let contract_id = env.register_contract(None, AxelarGasService);
 
     let client = AxelarGasServiceClient::new(&env, &contract_id);
-
     let gas_collector: Address = Address::generate(&env);
-
     client.initialize(&gas_collector);
 
-    (env, contract_id, client)
+    (env, contract_id, gas_collector, client)
+}
+
+fn setup_env_with_token<'a>() -> (
+    Env,
+    Address,
+    Address,
+    Address,
+    TokenClient<'a>,
+    i128,
+    AxelarGasServiceClient<'a>,
+) {
+    let (env, contract_id, gas_collector, client) = setup_env();
+    let token_address: Address = env.register_stellar_asset_contract(Address::generate(&env));
+    let token_client = TokenClient::new(&env, &token_address);
+    let supply: i128 = 1000;
+    StellarAssetClient::new(&env, &token_address).mint(&contract_id, &supply);
+
+    (
+        env,
+        contract_id,
+        gas_collector,
+        token_address,
+        token_client,
+        supply,
+        client,
+    )
 }
 
 /// Asserts that the event at `event_index` in the environment's emitted events is the expected event.
@@ -35,10 +60,7 @@ fn assert_emitted_event<U, V>(
     U: IntoVal<Env, Vec<Val>>,
     V: IntoVal<Env, Val>,
 {
-    let events = env.events().all();
-    assert!(event_index < events.len(), "event_index out of bounds");
-
-    let event = events.get(event_index).unwrap();
+    let event = env.events().all().get(event_index).unwrap();
 
     assert_eq!(event.0, contract_id.clone());
     assert_eq!(event.1, topics.into_val(env));
@@ -47,7 +69,7 @@ fn assert_emitted_event<U, V>(
 
 #[test]
 fn pay_native_gas_for_contract_call() {
-    let (env, contract_id, client) = setup_env();
+    let (env, contract_id, _, client) = setup_env();
     let sender: Address = Address::generate(&env);
     let refund_address: Address = Address::generate(&env);
     let payload = bytes!(&env, 0x1234);
@@ -63,36 +85,50 @@ fn pay_native_gas_for_contract_call() {
         &refund_address,
     );
 
-    // assert_emitted_event(
-    //     &env,
-    //     0,
-    //     &contract_id,
-    //     (symbol_short!("cc_g_paid"),),
-    //     (
-    //         sender,
-    //         destination_chain,
-    //         destination_address,
-    //         env.crypto().keccak256(&payload),
-    //     ),
-    // );
+    assert_emitted_event(
+        &env,
+        0,
+        &contract_id,
+        (symbol_short!("cc_g_paid"), env.crypto().keccak256(&payload)),
+        (
+            sender,
+            destination_chain,
+            destination_address,
+            payload,
+            refund_address,
+        ),
+    );
+}
+
+#[test]
+fn collect_fees() {
+    let (env, contract_id, gas_collector, token_address, token_client, supply, client) =
+        setup_env_with_token();
+
+    let token_addresses = vec![&env, token_address.clone()];
+    let refund_amount = 1;
+    let amounts = vec![&env, refund_amount];
+
+    assert_eq!(0, token_client.balance(&gas_collector));
+    assert_eq!(supply, token_client.balance(&contract_id));
+
+    client.collect_fees(&gas_collector, &token_addresses, &amounts);
+
+    assert_eq!(refund_amount, token_client.balance(&gas_collector));
+    assert_eq!(supply - refund_amount, token_client.balance(&contract_id));
 }
 
 #[test]
 fn refund() {
-    let (env, contract_id, client) = setup_env();
+    let (env, contract_id, _, token_address, token_client, supply, client) = setup_env_with_token();
 
     let tx_hash: BytesN<32> = bytesn!(
         &env,
         0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d
     );
-    let log_index: U256 = U256::from_u32(&env, 1);
+    let log_index: U256 = U256::from_u32(&env, 0);
     let receiver: Address = Address::generate(&env);
-    let token_address: Address = env.register_stellar_asset_contract(Address::generate(&env));
-    let supply: i128 = 1000;
     let refund_amount: i128 = 1;
-
-    token::StellarAssetClient::new(&env, &token_address).mint(&contract_id, &supply);
-    let token_client = token::Client::new(&env, &token_address);
 
     assert_eq!(0, token_client.balance(&receiver));
     assert_eq!(supply, token_client.balance(&contract_id));
@@ -108,11 +144,11 @@ fn refund() {
     assert_eq!(refund_amount, token_client.balance(&receiver));
     assert_eq!(supply - refund_amount, token_client.balance(&contract_id));
 
-    // assert_emitted_event(
-    //     &env,
-    //     0,
-    //     &contract_id,
-    //     (symbol_short!("refunded"), tx_hash, log_index),
-    //     (receiver, token_address, amount),
-    // );
+    assert_emitted_event(
+        &env,
+        2, //events 0 and 1 are related to token setup
+        &contract_id,
+        (symbol_short!("refunded"), tx_hash, log_index),
+        (receiver, token_address, refund_amount),
+    );
 }
