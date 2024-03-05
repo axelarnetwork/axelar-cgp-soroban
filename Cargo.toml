@@ -2,8 +2,8 @@
 resolver = "2"
 members = [
   "contracts/*",
-  "packages/*",
   "integration-tests",
+  "packages/*",
 ]
 
 [workspace.package]
