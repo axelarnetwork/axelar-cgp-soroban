@@ -1,0 +1,50 @@
+name: Linting
+
+on: pull_request
+
+jobs:
+  lints:
+    name: Lints
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: 1.76.0
+          override: true
+          components: rustfmt, clippy
+
+      - name: Cache build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "cache"
+
+      - name: Install cargo-sort
+        uses: baptiste0928/cargo-install@v2
+        with:
+          crate: cargo-sort
+
+      - name: Run cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+      - name: Run cargo sort
+        uses: actions-rs/cargo@v1
+        with:
+          command: sort
+          args: --workspace --check --check-format
+
+      - name: Run cargo clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: -- -D warnings -A deprecated
+
+      - name: Check Diff
+        # fails if any changes not committed
+        run: git diff --exit-code

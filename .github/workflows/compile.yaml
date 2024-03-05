@@ -1,0 +1,29 @@
+name: Compiling
+
+on: pull_request
+
+jobs:
+  soroban-compilation:
+    name: Soroban Compilation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: 1.76.0
+          target: wasm32-unknown-unknown
+          override: true
+
+      - name: Add wasm32-unknown-unknown Target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Cache build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "cache"
+
+      - name: Build wasm release
+        run: cargo wasm
