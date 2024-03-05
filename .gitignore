@@ -17,3 +17,7 @@ debug
 
 # Rust test failures
 test_snapshots
+
+# Coverage files
+coverage
+lcov.info
