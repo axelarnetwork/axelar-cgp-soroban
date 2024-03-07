@@ -6,7 +6,7 @@ use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String};
 use axelar_auth_verifier::AxelarAuthVerifierClient;
 
 use crate::interface::AxelarGatewayInterface;
-use crate::storage_types::{CommandExecutedKey, ContractCallApprovalKey, DataKey};
+use crate::storage_types::{ContractCallApprovalKey, DataKey};
 use crate::types::{self, Command, SignedCommandBatch};
 use crate::{error::Error, event};
 
@@ -111,23 +111,23 @@ impl AxelarGatewayInterface for AxelarGateway {
 
         let auth_module = AxelarAuthVerifierClient::new(
             &env,
-            &env.storage().instance().get(&DataKey::AuthModule).unwrap(),
+            &env.storage().instance().get(&DataKey::AuthModule).ok_or(Error::Uninitialized)?,
         );
-
-        // AxelarAuthVerifierInterface::validate_proof(env, batch_hash, proof)
 
         let valid = auth_module.validate_proof(&batch_hash, &proof);
         if !valid {
             return Err(Error::InvalidProof);
         }
 
+        // TODO: switch to new domain separation approach
         if batch.chain_id != 1 {
             return Err(Error::InvalidChainId);
         }
 
         for (command_id, command) in batch.commands {
-            let key = Self::command_executed_key(command_id.clone());
+            let key = DataKey::CommandExecuted(command_id.clone());
 
+            // TODO: switch to full revert, or add allow selecting subset of commands to process
             // Skip command if already executed. This allows batches to be processed partially.
             if env.storage().persistent().has(&key) {
                 continue;
@@ -166,10 +166,6 @@ impl AxelarGateway {
             contract_address,
             payload_hash,
         })
-    }
-
-    fn command_executed_key(command_id: BytesN<32>) -> DataKey {
-        DataKey::CommandExecuted(CommandExecutedKey { command_id })
     }
 
     fn approve_contract_call(

@@ -2,9 +2,8 @@
 extern crate std;
 
 use soroban_sdk::{
-    contract, contractimpl, panic_with_error, symbol_short,
-    testutils::{Address as _, Events},
-    Address, Bytes, BytesN, Env, String,
+    contract, contractimpl, panic_with_error, symbol_short, testutils::Address as _, Address,
+    Bytes, BytesN, Env, String,
 };
 
 use axelar_soroban_std::testutils::assert_emitted_event;
@@ -120,11 +119,5 @@ fn test_execute() {
 
     client.execute(&command_id, &source_chain, &source_address, &payload);
 
-    assert_emitted_event(
-        &env,
-        env.events().all().len() - 1,
-        &client.address,
-        (symbol_short!("executed"),),
-        (),
-    );
+    assert_emitted_event(&env, -1, &client.address, (symbol_short!("executed"),), ());
 }

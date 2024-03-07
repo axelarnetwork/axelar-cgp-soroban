@@ -143,7 +143,7 @@ fn approve_contract_call() {
 
     assert_emitted_event(
         &env,
-        env.events().all().len() - 2,
+        -2,
         &contract_id,
         (
             symbol_short!("approved"),
@@ -156,7 +156,7 @@ fn approve_contract_call() {
 
     assert_emitted_event(
         &env,
-        env.events().all().len() - 1,
+        -1,
         &contract_id,
         (symbol_short!("command"), command_id),
         (),

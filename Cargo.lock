@@ -600,6 +600,7 @@ name = "integration-tests"
 version = "0.1.0"
 dependencies = [
  "axelar-auth-verifier",
+ "axelar-executable",
  "axelar-gateway",
  "axelar-soroban-std",
  "soroban-sdk",
