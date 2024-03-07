@@ -9,7 +9,7 @@ use rand::rngs::OsRng;
 use rand::Rng;
 use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
 use sha3::{Digest, Keccak256};
-use soroban_sdk::{vec, U256};
+use soroban_sdk::{vec, Vec, U256};
 
 use soroban_sdk::{symbol_short, testutils::Events, xdr::ToXdr, Address, Bytes, BytesN, Env};
 
@@ -25,7 +25,11 @@ pub fn randint(a: u32, b: u32) -> u32 {
     rand::thread_rng().gen_range(a..b)
 }
 
-pub fn generate_signer_set(env: &Env, num_signers: u32) -> TestSignerSet {
+pub fn generate_signer_set(
+    env: &Env,
+    num_signers: u32,
+    include_zero_weight: bool,
+) -> TestSignerSet {
     let secp = Secp256k1::new();
     let mut rng = rand::thread_rng();
 
@@ -39,6 +43,13 @@ pub fn generate_signer_set(env: &Env, num_signers: u32) -> TestSignerSet {
             (sk, (pk, pk_hash, weight))
         })
         .collect();
+
+    if include_zero_weight {
+        let sk = SecretKey::new(&mut OsRng);
+        let pk = PublicKey::from_secret_key(&secp, &sk);
+        let pk_hash: [u8; 32] = Keccak256::digest(&pk.serialize_uncompressed()).into();
+        signer_keypair.push((sk, (pk, pk_hash, 0)));
+    }
 
     // Sort signers by public key hash
     signer_keypair.sort_by(|(_, (_, h1, _)), (_, (_, h2, _))| h1.cmp(h2));
@@ -68,6 +79,10 @@ pub fn generate_signer_set(env: &Env, num_signers: u32) -> TestSignerSet {
         signers,
         signer_set,
     }
+}
+
+pub fn generate_empty_signer_set(env: &Env) -> Vec<WeightedSigners> {
+    Vec::<WeightedSigners>::new(&env)
 }
 
 pub fn generate_proof(env: &Env, msg_hash: BytesN<32>, signers: TestSignerSet) -> Proof {
@@ -104,7 +119,7 @@ pub fn initialize(
     previous_signer_retention: u32,
     num_signers: u32,
 ) -> TestSignerSet {
-    let signers = generate_signer_set(env, num_signers);
+    let signers = generate_signer_set(env, num_signers, false);
     let signer_sets = vec![&env, signers.signer_set.clone()].to_xdr(env);
     let signer_set_hash = env
         .crypto()
