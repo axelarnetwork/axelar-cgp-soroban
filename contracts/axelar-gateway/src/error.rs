@@ -8,4 +8,5 @@ pub enum Error {
     InvalidChainId = 2,
     CommandAlreadyExecuted = 3,
     InvalidProof = 4,
+    Uninitialized = 5,
 }
