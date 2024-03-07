@@ -111,7 +111,10 @@ impl AxelarGatewayInterface for AxelarGateway {
 
         let auth_module = AxelarAuthVerifierClient::new(
             &env,
-            &env.storage().instance().get(&DataKey::AuthModule).ok_or(Error::Uninitialized)?,
+            &env.storage()
+                .instance()
+                .get(&DataKey::AuthModule)
+                .ok_or(Error::Uninitialized)?,
         );
 
         let valid = auth_module.validate_proof(&batch_hash, &proof);
