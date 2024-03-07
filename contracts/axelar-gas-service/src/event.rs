@@ -33,12 +33,8 @@ pub(crate) fn refunded(
     env.events().publish(topics, (receiver, token, amount));
 }
 
-pub(crate) fn fee_collected(
-    env: &Env,
-    receiver: &Address,
-    token_address: &Address,
-    amount: i128,
-) {
+pub(crate) fn fee_collected(env: &Env, receiver: &Address, token_address: &Address, amount: i128) {
     let topics = (symbol_short!("coll_fees"),);
-    env.events().publish(topics, (receiver, token_address, amount));
+    env.events()
+        .publish(topics, (receiver, token_address, amount));
 }

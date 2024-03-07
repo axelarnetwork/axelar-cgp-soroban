@@ -114,7 +114,7 @@ fn collect_fees() {
 
     assert_eq!(refund_amount, token_client.balance(&gas_collector));
     assert_eq!(supply - refund_amount, token_client.balance(&contract_id));
-    
+
     assert_emitted_event(
         &env,
         3, //events 0-2 are related to token setup and transfer

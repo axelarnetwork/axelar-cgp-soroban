@@ -76,9 +76,9 @@ impl AxelarGasServiceInterface for AxelarGasService {
         } else {
             return Err(Error::InsufficientBalance);
         }
-        
+
         event::fee_collected(&env, &gas_collector, &token_address, amount);
-        
+
         Ok(())
     }
 
