@@ -1,4 +1,4 @@
-use soroban_sdk::{contract, contractimpl, token, Address, Bytes, BytesN, Env, String, Vec, U256};
+use soroban_sdk::{contract, contractimpl, token, Address, Bytes, BytesN, Env, String, U256};
 
 use crate::interface::AxelarGasServiceInterface;
 use crate::storage_types::DataKey;
@@ -50,10 +50,9 @@ impl AxelarGasServiceInterface for AxelarGasService {
     fn collect_fees(
         env: Env,
         receiver: Address,
-        token_addresses: Vec<Address>,
-        amounts: Vec<i128>,
+        token_address: Address,
+        amount: i128,
     ) -> Result<(), Error> {
-        //TODO confirm this is analogous to onlyGasCollector in Solidity
         let gas_collector: Address = env
             .storage()
             .instance()
@@ -64,32 +63,22 @@ impl AxelarGasServiceInterface for AxelarGasService {
 
         //TODO: sanity check address zero
 
-        let token_addr_length = token_addresses.len();
-
-        if token_addr_length != amounts.len() {
+        if amount == 0 {
             return Err(Error::InvalidAmounts);
         }
 
-        for i in 0..token_addr_length {
-            let amount = amounts.get(i).unwrap();
+        let token_client = token::Client::new(&env, &token_address);
 
-            let token_addr = token_addresses.get(i).unwrap();
+        let contract_token_balance = token_client.balance(&env.current_contract_address());
 
-            if amount == 0 {
-                return Err(Error::InvalidAmounts);
-            }
-
-            let token_client = token::Client::new(&env, &token_addr);
-
-            let contract_token_balance = token_client.balance(&env.current_contract_address());
-
-            if contract_token_balance >= amount {
-                token_client.transfer(&env.current_contract_address(), &receiver, &amount)
-            } else {
-                return Err(Error::InsufficientBalance);
-            }
+        if contract_token_balance >= amount {
+            token_client.transfer(&env.current_contract_address(), &receiver, &amount)
+        } else {
+            return Err(Error::InsufficientBalance);
         }
-
+        
+        event::fee_collected(&env, &gas_collector, &token_address, amount);
+        
         Ok(())
     }
 
@@ -101,7 +90,6 @@ impl AxelarGasServiceInterface for AxelarGasService {
         token_addr: Address,
         amount: i128,
     ) {
-        // TODO confirm this is analogous to onlyGasCollector in Solidity
         let gas_collector: Address = env
             .storage()
             .instance()

@@ -1,5 +1,5 @@
 use crate::error::Error;
-use soroban_sdk::{Address, Bytes, BytesN, Env, String, Vec, U256};
+use soroban_sdk::{Address, Bytes, BytesN, Env, String, U256};
 /// Interface for the Axelar Gas Service.
 // #[contractclient(crate_path = "crate", name = "AxelarGasService")]
 pub trait AxelarGasServiceInterface {
@@ -17,8 +17,8 @@ pub trait AxelarGasServiceInterface {
     fn collect_fees(
         env: Env,
         receiver: Address,
-        token_addr: Vec<Address>,
-        amounts: Vec<i128>,
+        token_addr: Address,
+        amounts: i128,
     ) -> Result<(), Error>;
 
     /// Refunds gas payment to the receiver in relation to a specific cross-chain transaction. Only callable by the gasCollector.

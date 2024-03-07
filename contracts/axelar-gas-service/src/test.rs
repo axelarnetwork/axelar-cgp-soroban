@@ -105,17 +105,23 @@ fn collect_fees() {
     let (env, contract_id, gas_collector, token_address, token_client, supply, client) =
         setup_env_with_token();
 
-    let token_addresses = vec![&env, token_address.clone()];
     let refund_amount = 1;
-    let amounts = vec![&env, refund_amount];
 
     assert_eq!(0, token_client.balance(&gas_collector));
     assert_eq!(supply, token_client.balance(&contract_id));
 
-    client.collect_fees(&gas_collector, &token_addresses, &amounts);
+    client.collect_fees(&gas_collector, &token_address, &refund_amount);
 
     assert_eq!(refund_amount, token_client.balance(&gas_collector));
     assert_eq!(supply - refund_amount, token_client.balance(&contract_id));
+    
+    assert_emitted_event(
+        &env,
+        3, //events 0-2 are related to token setup and transfer
+        &contract_id,
+        (symbol_short!("coll_fees"),),
+        (gas_collector, token_address, refund_amount),
+    );
 }
 
 #[test]
