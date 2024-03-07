@@ -11,7 +11,7 @@ use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
 use sha3::{Digest, Keccak256};
 use soroban_sdk::{vec, U256};
 
-use soroban_sdk::{symbol_short, testutils::Events, xdr::ToXdr, Address, Bytes, BytesN, Env};
+use soroban_sdk::{symbol_short, xdr::ToXdr, Address, Bytes, BytesN, Env};
 
 use axelar_soroban_std::{assert_emitted_event, traits::IntoVec};
 
@@ -114,7 +114,7 @@ pub fn initialize(
 
     assert_emitted_event(
         env,
-        env.events().all().len() - 1,
+        -1,
         &client.address,
         (symbol_short!("transfer"), signer_set_hash),
         (signers.signer_set.clone(),),
@@ -134,7 +134,7 @@ pub fn transfer_operatorship(
 
     assert_emitted_event(
         env,
-        env.events().all().len() - 1,
+        -1,
         &client.address,
         (
             symbol_short!("transfer"),
