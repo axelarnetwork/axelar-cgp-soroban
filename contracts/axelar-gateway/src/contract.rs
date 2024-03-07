@@ -114,13 +114,12 @@ impl AxelarGatewayInterface for AxelarGateway {
             &env.storage().instance().get(&DataKey::AuthModule).unwrap(),
         );
 
-        // AxelarAuthVerifierInterface::validate_proof(env, batch_hash, proof)
-
         let valid = auth_module.validate_proof(&batch_hash, &proof);
         if !valid {
             return Err(Error::InvalidProof);
         }
 
+        // TODO: switch to new domain separation approach
         if batch.chain_id != 1 {
             return Err(Error::InvalidChainId);
         }
@@ -128,6 +127,7 @@ impl AxelarGatewayInterface for AxelarGateway {
         for (command_id, command) in batch.commands {
             let key = Self::command_executed_key(command_id.clone());
 
+            // TODO: switch to full revert, or add allow selecting subset of commands to process
             // Skip command if already executed. This allows batches to be processed partially.
             if env.storage().persistent().has(&key) {
                 continue;
