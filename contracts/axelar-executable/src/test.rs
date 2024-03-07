@@ -2,9 +2,8 @@
 extern crate std;
 
 use soroban_sdk::{
-    contract, contractimpl, panic_with_error, symbol_short,
-    testutils::Address as _,
-    Address, Bytes, BytesN, Env, String,
+    contract, contractimpl, panic_with_error, symbol_short, testutils::Address as _, Address,
+    Bytes, BytesN, Env, String,
 };
 
 use axelar_soroban_std::testutils::assert_emitted_event;
