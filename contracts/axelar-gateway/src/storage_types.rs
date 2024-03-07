@@ -10,7 +10,6 @@ pub struct ContractCallApprovalKey {
     pub payload_hash: BytesN<32>,
 }
 
-
 #[contracttype]
 #[derive(Clone, Debug)]
 pub enum DataKey {
