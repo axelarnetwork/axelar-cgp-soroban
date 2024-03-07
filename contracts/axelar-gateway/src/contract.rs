@@ -6,7 +6,7 @@ use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String};
 use axelar_auth_verifier::AxelarAuthVerifierClient;
 
 use crate::interface::AxelarGatewayInterface;
-use crate::storage_types::{CommandExecutedKey, ContractCallApprovalKey, DataKey};
+use crate::storage_types::{ContractCallApprovalKey, DataKey};
 use crate::types::{self, Command, SignedCommandBatch};
 use crate::{error::Error, event};
 
@@ -125,7 +125,7 @@ impl AxelarGatewayInterface for AxelarGateway {
         }
 
         for (command_id, command) in batch.commands {
-            let key = Self::command_executed_key(command_id.clone());
+            let key = DataKey::CommandExecuted(command_id.clone());
 
             // TODO: switch to full revert, or add allow selecting subset of commands to process
             // Skip command if already executed. This allows batches to be processed partially.
@@ -166,10 +166,6 @@ impl AxelarGateway {
             contract_address,
             payload_hash,
         })
-    }
-
-    fn command_executed_key(command_id: BytesN<32>) -> DataKey {
-        DataKey::CommandExecuted(CommandExecutedKey { command_id })
     }
 
     fn approve_contract_call(
