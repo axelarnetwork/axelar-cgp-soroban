@@ -11,6 +11,7 @@ use axelar_soroban_std::testutils::assert_emitted_event;
 use axelar_gateway::contract::AxelarGatewayClient;
 
 use crate::{error::Error, AxelarExecutableInterface};
+use crate::interface::AxelarExecutable;
 
 #[contract]
 pub struct AxelarExecutableTest;
@@ -20,27 +21,16 @@ impl AxelarExecutableInterface for AxelarExecutableTest {
     fn gateway(env: &Env) -> Address {
         env.storage().instance().get(&"gateway").unwrap()
     }
+}
 
-    fn execute(
+impl AxelarExecutable for AxelarExecutableTest {
+    fn execute_internal(
         env: Env,
         command_id: BytesN<32>,
         source_chain: String,
         source_address: String,
         payload: Bytes,
     ) {
-        let gateway = AxelarGatewayClient::new(&env, &Self::gateway(&env));
-
-        // Validate the contract call was approved by the gateway
-        if !gateway.validate_contract_call(
-            &env.current_contract_address(),
-            &command_id,
-            &source_chain,
-            &source_address,
-            &env.crypto().keccak256(&payload),
-        ) {
-            panic_with_error!(env, Error::NotApproved);
-        };
-
         env.events().publish((symbol_short!("executed"),), ());
     }
 }
