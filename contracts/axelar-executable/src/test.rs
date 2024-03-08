@@ -11,19 +11,12 @@ use axelar_soroban_std::testutils::assert_emitted_event;
 use axelar_gateway::contract::AxelarGatewayClient;
 
 use crate::{error::Error, AxelarExecutableInterface};
-use crate::interface::AxelarExecutable;
+use crate::interface::AxelarExecutableInternal;
 
 #[contract]
 pub struct AxelarExecutableTest;
 
-#[contractimpl]
-impl AxelarExecutableInterface for AxelarExecutableTest {
-    fn gateway(env: &Env) -> Address {
-        env.storage().instance().get(&"gateway").unwrap()
-    }
-}
-
-impl AxelarExecutable for AxelarExecutableTest {
+impl AxelarExecutableInternal for AxelarExecutableTest {
     fn execute_internal(
         env: Env,
         command_id: BytesN<32>,
@@ -32,6 +25,24 @@ impl AxelarExecutable for AxelarExecutableTest {
         payload: Bytes,
     ) {
         env.events().publish((symbol_short!("executed"),), ());
+    }
+}
+
+#[contractimpl]
+impl AxelarExecutableInterface for AxelarExecutableTest {
+    type Internal = AxelarExecutableTest;
+
+    fn gateway(env: &Env) -> Address {
+        env.storage().instance().get(&"gateway").unwrap()
+    }
+}
+
+#[contractimpl]
+impl AxelarExecutableTest {
+    pub fn initialize(env: Env, gateway: Address) {
+        env.storage().instance().set(&"initialized", &true);
+
+        env.storage().instance().set(&"gateway", &gateway);
     }
 }
 
@@ -49,15 +60,6 @@ impl MockAxelarGateway {
         _payload_hash: soroban_sdk::BytesN<32>,
     ) -> bool {
         true
-    }
-}
-
-#[contractimpl]
-impl AxelarExecutableTest {
-    pub fn initialize(env: Env, gateway: Address) {
-        env.storage().instance().set(&"initialized", &true);
-
-        env.storage().instance().set(&"gateway", &gateway);
     }
 }
 

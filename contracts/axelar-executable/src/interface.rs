@@ -2,7 +2,7 @@ use soroban_sdk::{contractclient, panic_with_error, Address, Bytes, BytesN, Env,
 
 use axelar_gateway::contract::AxelarGatewayClient;
 
-pub trait AxelarExecutable {
+pub trait AxelarExecutableInternal {
     fn execute_internal(
         env: Env,
         command_id: BytesN<32>,
@@ -14,7 +14,9 @@ pub trait AxelarExecutable {
 
 /// Interface for an Axelar Executable app.
 #[contractclient(name = "AxelarExecutableClient")]
-pub trait AxelarExecutableInterface: AxelarExecutable {
+pub trait AxelarExecutableInterface {
+    type Internal: AxelarExecutableInternal;
+
     /// Return the trusted gateway contract id.
     fn gateway(env: &Env) -> Address;
 
@@ -39,6 +41,6 @@ pub trait AxelarExecutableInterface: AxelarExecutable {
             panic_with_error!(env, crate::error::Error::NotApproved);
         };
 
-        Self::execute_internal(env, command_id, source_chain, source_address, payload);
+        Self::Internal::execute_internal(env, command_id, source_chain, source_address, payload);
     }
 }
