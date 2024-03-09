@@ -70,7 +70,7 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
             .storage()
             .persistent()
             .get(&DataKey::EpochBySignerHash(signer_set_hash))
-            .unwrap_or(0);
+            .expect("unknown signer set");
 
         let epoch: u64 = env.storage().instance().get(&DataKey::Epoch).unwrap();
 

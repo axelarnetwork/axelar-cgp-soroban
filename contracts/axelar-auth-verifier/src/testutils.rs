@@ -25,11 +25,17 @@ pub fn randint(a: u32, b: u32) -> u32 {
     rand::thread_rng().gen_range(a..b)
 }
 
-pub fn generate_signer_set(
-    env: &Env,
-    num_signers: u32,
-    include_zero_weight: bool,
-) -> TestSignerSet {
+pub fn generate_random_payload_and_hash(env: &Env) -> BytesN<32> {
+    let payload = <soroban_sdk::BytesN<10> as soroban_sdk::testutils::BytesN<10>>::random(env);
+
+    let payload_bytes: Bytes = Bytes::from_slice(env, &payload.to_array());
+
+    let payload_hash = env.crypto().keccak256(&payload_bytes);
+
+    payload_hash
+}
+
+pub fn generate_signer_set(env: &Env, num_signers: u32) -> TestSignerSet {
     let secp = Secp256k1::new();
     let mut rng = rand::thread_rng();
 
@@ -43,13 +49,6 @@ pub fn generate_signer_set(
             (sk, (pk, pk_hash, weight))
         })
         .collect();
-
-    if include_zero_weight {
-        let sk = SecretKey::new(&mut OsRng);
-        let pk = PublicKey::from_secret_key(&secp, &sk);
-        let pk_hash: [u8; 32] = Keccak256::digest(&pk.serialize_uncompressed()).into();
-        signer_keypair.push((sk, (pk, pk_hash, 0)));
-    }
 
     // Sort signers by public key hash
     signer_keypair.sort_by(|(_, (_, h1, _)), (_, (_, h2, _))| h1.cmp(h2));
@@ -81,7 +80,8 @@ pub fn generate_signer_set(
     }
 }
 
-pub fn generate_empty_signer_set(env: &Env) -> Vec<WeightedSigners> {
+#[allow(dead_code)]
+pub(crate) fn generate_empty_signer_set(env: &Env) -> Vec<WeightedSigners> {
     Vec::<WeightedSigners>::new(&env)
 }
 
@@ -119,7 +119,7 @@ pub fn initialize(
     previous_signer_retention: u32,
     num_signers: u32,
 ) -> TestSignerSet {
-    let signers = generate_signer_set(env, num_signers, false);
+    let signers = generate_signer_set(env, num_signers);
     let signer_sets = vec![&env, signers.signer_set.clone()].to_xdr(env);
     let signer_set_hash = env
         .crypto()

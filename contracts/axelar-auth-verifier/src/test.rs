@@ -8,8 +8,8 @@ use axelar_soroban_std::testutils::assert_invocation;
 use crate::{
     contract::{AxelarAuthVerifier, AxelarAuthVerifierClient},
     testutils::{
-        generate_empty_signer_set, generate_proof, generate_signer_set, initialize, randint,
-        transfer_operatorship,
+        generate_empty_signer_set, generate_proof, generate_random_payload_and_hash,
+        generate_signer_set, initialize, randint, transfer_operatorship,
     },
 };
 
@@ -33,7 +33,7 @@ fn test_initialize() {
 
 #[test]
 #[should_panic(expected = "Already initialized")]
-fn test_fails_if_already_initialized() {
+fn fails_if_already_initialized() {
     let (env, _, client) = setup_env();
     let user_one = Address::generate(&env);
     let user_two = Address::generate(&env);
@@ -45,7 +45,7 @@ fn test_fails_if_already_initialized() {
 }
 
 #[test]
-fn test_fails_with_empty_signer_set() {
+fn fails_with_empty_signer_set() {
     let (env, _, client) = setup_env();
     let owner = Address::generate(&env);
 
@@ -61,7 +61,7 @@ fn test_fails_with_empty_signer_set() {
 }
 
 #[test]
-fn test_transfer_ownership() {
+fn transfer_ownership() {
     let (env, _, client) = setup_env();
 
     let initial_owner = Address::generate(&env);
@@ -91,14 +91,13 @@ fn test_transfer_ownership() {
 }
 
 #[test]
-fn test_validate_proof() {
+fn validate_proof() {
     let (env, _, client) = setup_env();
     let user = Address::generate(&env);
 
     let signers = initialize(&env, &client, user, randint(0, 10), randint(1, 10));
 
-    let msg = Bytes::from_array(&env, &[0x01, 0x02, 0x03]);
-    let msg_hash = env.crypto().keccak256(&msg);
+    let msg_hash = generate_random_payload_and_hash(&env);
     let proof = generate_proof(&env, msg_hash.clone(), signers);
 
     // validate_proof shouldn't panic
@@ -107,33 +106,31 @@ fn test_validate_proof() {
 }
 
 #[test]
-#[should_panic(expected = "invalid epoch")]
-fn test_fail_validate_proof_invalid_epoch() {
+#[should_panic(expected = "unknown signer set")]
+fn fail_validate_proof_invalid_epoch() {
     let (env, _, client) = setup_env();
     let user = Address::generate(&env);
 
     initialize(&env, &client, user, randint(0, 10), randint(1, 10));
 
-    let different_signers = generate_signer_set(&env, randint(1, 10), false);
+    let different_signers = generate_signer_set(&env, randint(1, 10));
 
-    let msg = Bytes::from_array(&env, &[0x01, 0x02, 0x03]);
-    let msg_hash = env.crypto().keccak256(&msg);
+    let msg_hash = generate_random_payload_and_hash(&env);
     let proof = generate_proof(&env, msg_hash.clone(), different_signers);
 
-    // should panic, epoch should return zero for invalid signer set
+    // should panic, epoch should return zero for unknown signer set
     client.validate_proof(&msg_hash, &proof.to_xdr(&env));
 }
 
 #[test]
 #[should_panic(expected = "invalid signatures")]
-fn test_fail_validate_proof_invalid_signatures() {
+fn fail_validate_proof_invalid_signatures() {
     let (env, _, client) = setup_env();
     let user = Address::generate(&env);
 
     let signers = initialize(&env, &client, user, randint(0, 10), randint(1, 10));
 
-    let msg = Bytes::from_array(&env, &[0x01, 0x02, 0x03]);
-    let msg_hash = env.crypto().keccak256(&msg);
+    let msg_hash = generate_random_payload_and_hash(&env);
     let proof = generate_proof(&env, msg_hash.clone(), signers);
 
     let different_msg = Bytes::from_array(&env, &[0x04, 0x05, 0x06]);
@@ -145,14 +142,13 @@ fn test_fail_validate_proof_invalid_signatures() {
 
 #[test]
 #[should_panic(expected = "invalid signatures")]
-fn test_fail_validate_proof_empty_signatures() {
+fn fail_validate_proof_empty_signatures() {
     let (env, _, client) = setup_env();
     let user = Address::generate(&env);
 
     let signers = initialize(&env, &client, user, randint(0, 10), randint(1, 10));
 
-    let msg = Bytes::from_array(&env, &[0x01, 0x02, 0x03]);
-    let msg_hash = env.crypto().keccak256(&msg);
+    let msg_hash = generate_random_payload_and_hash(&env);
     let mut proof = generate_proof(&env, msg_hash.clone(), signers);
 
     proof.signatures = Vec::new(&env);
@@ -163,17 +159,16 @@ fn test_fail_validate_proof_empty_signatures() {
 
 #[test]
 #[should_panic(expected = "invalid signatures")]
-fn test_fail_validate_proof_invalid_signer_set() {
+fn fail_validate_proof_invalid_signer_set() {
     let (env, _, client) = setup_env();
     let user = Address::generate(&env);
 
     let signers = initialize(&env, &client, user, randint(0, 10), randint(1, 10));
 
-    let msg = Bytes::from_array(&env, &[0x01, 0x02, 0x03]);
-    let msg_hash = env.crypto().keccak256(&msg);
+    let msg_hash = generate_random_payload_and_hash(&env);
     let mut proof = generate_proof(&env, msg_hash.clone(), signers);
 
-    let new_signers = generate_signer_set(&env, randint(1, 10), false);
+    let new_signers = generate_signer_set(&env, randint(1, 10));
     let new_proof = generate_proof(&env, msg_hash.clone(), new_signers);
 
     proof.signatures = new_proof.signatures;
@@ -184,7 +179,7 @@ fn test_fail_validate_proof_invalid_signer_set() {
 
 #[test]
 #[should_panic(expected = "invalid signatures")]
-fn test_fail_validate_proof_threshold_not_met() {
+fn fail_validate_proof_threshold_not_met() {
     let (env, _, client) = setup_env();
     let user = Address::generate(&env);
 
@@ -205,8 +200,7 @@ fn test_fail_validate_proof_threshold_not_met() {
         }
     }
 
-    let msg = Bytes::from_array(&env, &[0x01, 0x02, 0x03]);
-    let msg_hash = env.crypto().keccak256(&msg);
+    let msg_hash = generate_random_payload_and_hash(&env);
     let mut proof = generate_proof(&env, msg_hash.clone(), signers);
 
     // remove signatures to just below the threshold
@@ -231,10 +225,9 @@ fn test_transfer_operatorship() {
         randint(1, 10),
     );
 
-    let msg = Bytes::from_array(&env, &[0x01, 0x02, 0x03]);
-    let msg_hash = env.crypto().keccak256(&msg);
+    let msg_hash = generate_random_payload_and_hash(&env);
 
-    let new_signers = generate_signer_set(&env, randint(1, 10), false);
+    let new_signers = generate_signer_set(&env, randint(1, 10));
 
     let encoded_new_signer_set = transfer_operatorship(&env, &client, new_signers.clone());
 
@@ -252,7 +245,7 @@ fn test_transfer_operatorship() {
 }
 
 #[test]
-fn test_transfer_operatorship_fail_empty_signer_set() {
+fn transfer_operatorship_fail_empty_signer_set() {
     let (env, _, client) = setup_env();
 
     let user = Address::generate(&env);
@@ -276,7 +269,7 @@ fn test_transfer_operatorship_fail_empty_signer_set() {
 }
 
 #[test]
-fn test_transfer_operatorship_fail_zero_weight() {
+fn transfer_operatorship_fail_zero_weight() {
     let (env, _, client) = setup_env();
 
     let user = Address::generate(&env);
@@ -290,7 +283,15 @@ fn test_transfer_operatorship_fail_zero_weight() {
         randint(1, 10),
     );
 
-    let new_signers = generate_signer_set(&env, randint(1, 10), true);
+    let mut new_signers = generate_signer_set(&env, randint(1, 10));
+
+    let last_index = new_signers.signer_set.signers.len() as u32 - 1;
+
+    // get last signer and modify its weight to zero
+    if let Some(mut last_signer) = new_signers.signer_set.signers.get(last_index) {
+        last_signer.1 = U256::from_u32(&env, 0);
+        new_signers.signer_set.signers.set(last_index, last_signer);
+    }
 
     let encoded_new_signer_set = new_signers.signer_set.to_xdr(&env);
 
@@ -300,7 +301,7 @@ fn test_transfer_operatorship_fail_zero_weight() {
 }
 
 #[test]
-fn test_transfer_operatorship_fail_zero_threshold() {
+fn transfer_operatorship_fail_zero_threshold() {
     let (env, _, client) = setup_env();
 
     let user = Address::generate(&env);
@@ -314,7 +315,7 @@ fn test_transfer_operatorship_fail_zero_threshold() {
         randint(1, 10),
     );
 
-    let mut new_signers = generate_signer_set(&env, randint(1, 10), false);
+    let mut new_signers = generate_signer_set(&env, randint(1, 10));
 
     // set the threshold to zero
     new_signers.signer_set.threshold = U256::from_u32(&env, 0);
@@ -327,7 +328,7 @@ fn test_transfer_operatorship_fail_zero_threshold() {
 }
 
 #[test]
-fn test_transfer_operatorship_fail_low_total_weight() {
+fn transfer_operatorship_fail_low_total_weight() {
     let (env, _, client) = setup_env();
 
     let user = Address::generate(&env);
@@ -341,16 +342,16 @@ fn test_transfer_operatorship_fail_low_total_weight() {
         randint(1, 10),
     );
 
-    let mut new_signers = generate_signer_set(&env, randint(1, 10), false);
+    let mut new_signers = generate_signer_set(&env, randint(1, 10));
 
-    let env = &env;
-    let zero = U256::from_u32(env, 0);
-    let one = U256::from_u32(env, 1);
-    let mut total_weight = zero.clone();
+    let zero = U256::from_u32(&env, 0);
+    let one = U256::from_u32(&env, 1);
 
-    for weight in new_signers.signer_set.signers.iter().map(|s| s.1) {
-        total_weight = total_weight.add(&weight);
-    }
+    let total_weight = new_signers
+        .signer_set
+        .signers
+        .iter()
+        .fold(zero, |acc, (_, weight)| acc.add(&weight));
 
     let new_threshold = total_weight.add(&one);
 
@@ -365,7 +366,7 @@ fn test_transfer_operatorship_fail_low_total_weight() {
 }
 
 #[test]
-fn test_transfer_operatorship_fail_wrong_signer_order() {
+fn transfer_operatorship_fail_wrong_signer_order() {
     let (env, _, client) = setup_env();
 
     let user = Address::generate(&env);
@@ -379,7 +380,7 @@ fn test_transfer_operatorship_fail_wrong_signer_order() {
         randint(1, 10),
     );
 
-    let mut new_signers = generate_signer_set(&env, randint(1, 10), false);
+    let mut new_signers = generate_signer_set(&env, randint(1, 10));
 
     let len = new_signers.signer_set.signers.len();
 
@@ -401,7 +402,7 @@ fn test_transfer_operatorship_fail_wrong_signer_order() {
 }
 
 #[test]
-fn test_multi_transfer_operatorship() {
+fn multi_transfer_operatorship() {
     let (env, _, client) = setup_env();
 
     let user = Address::generate(&env);
@@ -415,13 +416,12 @@ fn test_multi_transfer_operatorship() {
         randint(1, 10),
     );
 
-    let msg = Bytes::from_array(&env, &[0x01, 0x02, 0x03]);
-    let msg_hash = env.crypto().keccak256(&msg);
+    let msg_hash = generate_random_payload_and_hash(&env);
 
     let mut previous_signers = original_signers.clone();
 
     for _ in 0..previous_signer_retention {
-        let new_signers = generate_signer_set(&env, randint(1, 10), false);
+        let new_signers = generate_signer_set(&env, randint(1, 10));
 
         transfer_operatorship(&env, &client, new_signers.clone());
 
@@ -443,7 +443,7 @@ fn test_multi_transfer_operatorship() {
 }
 
 #[test]
-fn test_transfer_operatorship_panics_on_outdated_signer_set() {
+fn transfer_operatorship_panics_on_outdated_signer_set() {
     let (env, _, client) = setup_env();
 
     let user = Address::generate(&env);
@@ -457,11 +457,10 @@ fn test_transfer_operatorship_panics_on_outdated_signer_set() {
         randint(1, 10),
     );
 
-    let msg = Bytes::from_array(&env, &[0x01, 0x02, 0x03]);
-    let msg_hash = env.crypto().keccak256(&msg);
+    let msg_hash = generate_random_payload_and_hash(&env);
 
     for _ in 0..(previous_signer_retention + 1) {
-        let new_signers = generate_signer_set(&env, randint(1, 10), false);
+        let new_signers = generate_signer_set(&env, randint(1, 10));
         transfer_operatorship(&env, &client, new_signers.clone());
     }
 
