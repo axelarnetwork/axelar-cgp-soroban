@@ -1,9 +1,11 @@
 #![cfg(test)]
 extern crate std;
 
-use soroban_sdk::{testutils::Address as _, xdr::ToXdr, Address, Bytes, Env, Vec, U256};
+use soroban_sdk::{
+    symbol_short, testutils::Address as _, xdr::ToXdr, Address, Bytes, Env, Vec, U256,
+};
 
-use axelar_soroban_std::testutils::assert_invocation;
+use axelar_soroban_std::{assert_emitted_event, testutils::assert_invocation};
 
 use crate::{
     contract::{AxelarAuthVerifier, AxelarAuthVerifierClient},
@@ -84,6 +86,14 @@ fn transfer_ownership() {
         &client.address,
         "transfer_ownership",
         (new_owner.clone(),),
+    );
+
+    assert_emitted_event(
+        &env,
+        -1,
+        &client.address,
+        (symbol_short!("ownership"), initial_owner, new_owner.clone()),
+        (),
     );
 
     let retrieved_owner = client.owner();
@@ -344,14 +354,15 @@ fn transfer_operatorship_fail_low_total_weight() {
 
     let mut new_signers = generate_signer_set(&env, randint(1, 10));
 
-    let zero = U256::from_u32(&env, 0);
     let one = U256::from_u32(&env, 1);
 
     let total_weight = new_signers
         .signer_set
         .signers
         .iter()
-        .fold(zero, |acc, (_, weight)| acc.add(&weight));
+        .map(|(_, weight)| weight)
+        .reduce(|acc, weight| acc.add(&weight))
+        .expect("Empty signers");
 
     let new_threshold = total_weight.add(&one);
 
