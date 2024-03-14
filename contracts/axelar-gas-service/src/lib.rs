@@ -10,4 +10,4 @@ mod types;
 #[cfg(test)]
 mod test;
 
-pub use contract::AxelarGasService;
+pub use contract::AxelarGasServiceClient;
