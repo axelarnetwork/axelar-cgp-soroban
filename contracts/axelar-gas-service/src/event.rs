@@ -8,7 +8,7 @@ pub(crate) fn gas_paid_for_contract_call(
     payload: Bytes,
     refund_address: Address,
 ) {
-    let topics = (symbol_short!("cc_g_paid"), env.crypto().keccak256(&payload));
+    let topics = (symbol_short!("gas_paid"), env.crypto().keccak256(&payload));
     env.events().publish(
         topics,
         (
