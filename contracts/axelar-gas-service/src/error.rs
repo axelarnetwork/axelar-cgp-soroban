@@ -5,6 +5,6 @@ use soroban_sdk::contracterror;
 #[repr(u32)]
 pub enum Error {
     InvalidAddress = 1,
-    InvalidAmounts = 2,
+    InvalidAmount = 2,
     InsufficientBalance = 3,
 }
