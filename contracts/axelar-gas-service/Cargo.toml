@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
 soroban-sdk = { workspace = true }
 
 [dev_dependencies]
-soroban-sdk = { workspace = true, features = ["testutils", "alloc"] }
+soroban-sdk = { workspace = true, features = ["testutils"] }
 secp256k1 = { version = "0.28.2", features = ["recovery", "rand"] }
 
 [features]
