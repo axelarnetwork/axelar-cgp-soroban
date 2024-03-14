@@ -29,7 +29,7 @@ impl AxelarGasService {
 
 #[contractimpl]
 impl AxelarGasServiceInterface for AxelarGasService {
-    fn pay_native_gas_for_contract_call(
+    fn pay_gas_for_contract_call(
         env: Env,
         sender: Address,
         destination_chain: String,
