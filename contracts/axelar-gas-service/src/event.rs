@@ -1,6 +1,6 @@
 use soroban_sdk::{symbol_short, Address, Bytes, BytesN, Env, String, U256};
 
-pub(crate) fn native_gas_paid_for_contract_call(
+pub(crate) fn gas_paid_for_contract_call(
     env: &Env,
     sender: Address,
     destination_chain: String,
