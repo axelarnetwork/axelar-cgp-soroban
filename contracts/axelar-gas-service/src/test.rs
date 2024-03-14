@@ -117,7 +117,7 @@ fn collect_fees() {
 
     assert_emitted_event(
         &env,
-        3, //events 0-2 are related to token setup and transfer
+        -1,
         &contract_id,
         (symbol_short!("coll_fees"),),
         (gas_collector, token_address, refund_amount),
