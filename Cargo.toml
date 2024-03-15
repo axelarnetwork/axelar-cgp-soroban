@@ -15,7 +15,6 @@ axelar-soroban-interfaces = { version = "^0.1.0", path = "contracts/axelar-sorob
 axelar-soroban-std = { version = "^0.1.0", path = "packages/axelar-soroban-std" }
 axelar-auth-verifier = { version = "^0.1.0", path = "contracts/axelar-auth-verifier" }
 axelar-gateway = { version = "^0.1.0", path = "contracts/axelar-gateway" }
-axelar-executable = { version = "^0.1.0", path = "contracts/axelar-executable" }
 
 [profile.release]
 opt-level = "z"

@@ -60,17 +60,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "axelar-executable"
-version = "0.1.0"
-dependencies = [
- "axelar-auth-verifier",
- "axelar-gateway",
- "axelar-soroban-interfaces",
- "axelar-soroban-std",
- "soroban-sdk",
-]
-
-[[package]]
 name = "axelar-gateway"
 version = "0.1.0"
 dependencies = [
@@ -610,7 +599,6 @@ name = "integration-tests"
 version = "0.1.0"
 dependencies = [
  "axelar-auth-verifier",
- "axelar-executable",
  "axelar-gateway",
  "axelar-soroban-interfaces",
  "axelar-soroban-std",
