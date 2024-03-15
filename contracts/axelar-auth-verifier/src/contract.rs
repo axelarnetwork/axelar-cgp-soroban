@@ -7,7 +7,7 @@ use soroban_sdk::{
 
 use crate::error::Error;
 use crate::event;
-use crate::interface::AxelarAuthVerifierInterface;
+use axelar_soroban_interfaces::axelar_auth_verifier::AxelarAuthVerifierInterface;
 use crate::storage_types::DataKey;
 use crate::types::{Proof, WeightedSigners};
 

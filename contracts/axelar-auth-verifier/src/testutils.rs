@@ -3,7 +3,7 @@ extern crate std;
 
 use crate::{
     types::{Proof, WeightedSigners},
-    AxelarAuthVerifierClient,
+    contract::AxelarAuthVerifierClient,
 };
 use rand::rngs::OsRng;
 use rand::Rng;
