@@ -1,0 +1,10 @@
+[package]
+name = "axelar-soroban-interfaces"
+version = "0.1.0"
+edition = { workspace = true }
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+soroban-sdk = { workspace = true }
