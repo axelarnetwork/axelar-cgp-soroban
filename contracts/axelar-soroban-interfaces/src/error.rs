@@ -9,4 +9,5 @@ pub enum Error {
     CommandAlreadyExecuted = 3,
     InvalidProof = 4,
     Uninitialized = 5,
+    NotApproved = 6,
 }
