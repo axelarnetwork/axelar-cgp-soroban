@@ -28,7 +28,7 @@ pub fn initialize(
         num_signers,
     );
 
-    client.initialize_gateway(&auth_contract_id);
+    client.initialize(&auth_contract_id);
 
     signers
 }

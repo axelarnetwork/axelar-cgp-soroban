@@ -73,6 +73,7 @@ name = "axelar-gateway"
 version = "0.1.0"
 dependencies = [
  "axelar-auth-verifier",
+ "axelar-soroban-interfaces",
  "axelar-soroban-std",
  "rand",
  "soroban-sdk",

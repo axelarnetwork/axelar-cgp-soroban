@@ -1,4 +1,4 @@
-use soroban_sdk::{Address, Bytes, BytesN, Env, contractclient};
+use soroban_sdk::{contractclient, Address, Bytes, BytesN, Env};
 
 /// Interface for the Axelar Auth Verifier.
 #[contractclient(name = "AxelarAuthVerifierClient")]

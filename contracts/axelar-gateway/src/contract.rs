@@ -1,21 +1,19 @@
 use soroban_sdk::xdr::{FromXdr, ToXdr};
-use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String};
+use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, String};
 
-// use axelar_auth_verifier_contract::Client as AxelarAuthVerifierClient;
-// use axelar_auth_verifier::interface::AxelarAuthVerifierInterface;
-use axelar_auth_verifier::AxelarAuthVerifierClient;
+use axelar_soroban_interfaces::axelar_auth_verifier::AxelarAuthVerifierClient;
 
-use crate::interface::AxelarGatewayInterface;
 use crate::storage_types::{ContractCallApprovalKey, DataKey};
 use crate::types::{self, Command, SignedCommandBatch};
 use crate::{error::Error, event};
+use axelar_soroban_interfaces::axelar_gateway::AxelarGatewayInterface;
 
 #[contract]
 pub struct AxelarGateway;
 
 #[contractimpl]
-impl AxelarGateway {
-    pub fn initialize_gateway(env: Env, auth_module: Address) {
+impl AxelarGatewayInterface for AxelarGateway {
+    fn initialize(env: Env, auth_module: Address) {
         if env
             .storage()
             .instance()
@@ -31,10 +29,7 @@ impl AxelarGateway {
             .instance()
             .set(&DataKey::AuthModule, &auth_module);
     }
-}
 
-#[contractimpl]
-impl AxelarGatewayInterface for AxelarGateway {
     fn call_contract(
         env: Env,
         caller: Address,
@@ -104,27 +99,29 @@ impl AxelarGatewayInterface for AxelarGateway {
         env.storage().persistent().has(&key)
     }
 
-    fn execute(env: Env, batch: Bytes) -> Result<(), Error> {
-        let SignedCommandBatch { batch, proof } =
-            SignedCommandBatch::from_xdr(&env, &batch).map_err(|_| Error::InvalidBatch)?;
+    fn execute(env: Env, batch: Bytes) {
+        let SignedCommandBatch { batch, proof } = match SignedCommandBatch::from_xdr(&env, &batch) {
+            Ok(x) => x,
+            Err(_) => panic_with_error!(env, Error::InvalidBatch),
+        };
         let batch_hash = env.crypto().keccak256(&batch.clone().to_xdr(&env));
 
         let auth_module = AxelarAuthVerifierClient::new(
             &env,
-            &env.storage()
-                .instance()
-                .get(&DataKey::AuthModule)
-                .ok_or(Error::Uninitialized)?,
+            match &env.storage().instance().get(&DataKey::AuthModule) {
+                Some(auth) => auth,
+                None => panic_with_error!(env, Error::Uninitialized),
+            },
         );
 
         let valid = auth_module.validate_proof(&batch_hash, &proof);
         if !valid {
-            return Err(Error::InvalidProof);
+            panic_with_error!(env, Error::InvalidProof);
         }
 
         // TODO: switch to new domain separation approach
         if batch.chain_id != 1 {
-            return Err(Error::InvalidChainId);
+            panic_with_error!(env, Error::InvalidChainId);
         }
 
         for (command_id, command) in batch.commands {
@@ -149,8 +146,6 @@ impl AxelarGatewayInterface for AxelarGateway {
 
             event::execute_command(&env, command_id);
         }
-
-        Ok(())
     }
 }
 

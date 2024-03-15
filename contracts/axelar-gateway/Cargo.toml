@@ -7,6 +7,7 @@ edition = { workspace = true }
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+axelar-soroban-interfaces = { workspace = true }
 axelar-auth-verifier = { workspace = true, optional = true }
 rand = { version = "0.8.5", optional = true }
 soroban-sdk = { workspace = true }

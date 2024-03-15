@@ -1,10 +1,11 @@
-use soroban_sdk::{Address, Bytes, BytesN, Env, String, contractclient};
-
-use crate::error::Error;
+use soroban_sdk::{contractclient, Address, Bytes, BytesN, Env, String};
 
 /// Interface for the Axelar Gateway.
 #[contractclient(name = "AxelarGatewayClient")]
 pub trait AxelarGatewayInterface {
+    /// Initialize the gateway with the given auth module address.
+    fn initialize(env: Env, auth_module: Address);
+
     /// Call a contract on another chain with the given payload. The destination address can validate the contract call on the destination gateway.
     fn call_contract(
         env: Env,
@@ -37,5 +38,5 @@ pub trait AxelarGatewayInterface {
     ) -> bool;
 
     /// Approve a batch of commands signed by Axelar verifiers, consisting of contract call approvals, and verifier set updates.
-    fn execute(env: Env, batch: Bytes) -> Result<(), Error>;
+    fn execute(env: Env, batch: Bytes);
 }

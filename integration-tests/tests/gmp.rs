@@ -83,7 +83,7 @@ fn setup_gateway<'a>(env: &Env) -> (AxelarGatewayClient<'a>, TestSignerSet) {
         5,
     );
 
-    gateway_client.initialize_gateway(&auth_contract_id);
+    gateway_client.initialize(&auth_contract_id);
 
     (gateway_client, signers)
 }
