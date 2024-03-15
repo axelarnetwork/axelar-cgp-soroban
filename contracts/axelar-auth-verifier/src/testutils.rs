@@ -2,8 +2,8 @@
 extern crate std;
 
 use crate::{
-    types::{Proof, WeightedSigners},
     contract::AxelarAuthVerifierClient,
+    types::{Proof, WeightedSigners},
 };
 use rand::rngs::OsRng;
 use rand::Rng;

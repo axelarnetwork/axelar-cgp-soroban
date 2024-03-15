@@ -29,7 +29,13 @@ impl AxelarExecutableInterface for AxelarApp {
         source_address: String,
         payload: Bytes,
     ) {
-        Self::validate(env.clone(), command_id, source_chain, source_address, payload.clone());
+        Self::validate(
+            env.clone(),
+            command_id,
+            source_chain,
+            source_address,
+            payload.clone(),
+        );
 
         env.events()
             .publish((symbol_short!("executed"),), (payload,));
