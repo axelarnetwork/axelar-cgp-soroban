@@ -2,15 +2,13 @@
 extern crate std;
 
 use soroban_sdk::{
-    contract, contractimpl, panic_with_error, symbol_short, testutils::Address as _, Address,
+    contract, contractimpl, symbol_short, testutils::Address as _, Address,
     Bytes, BytesN, Env, String,
 };
 
 use axelar_soroban_std::testutils::assert_emitted_event;
 
-use axelar_gateway::contract::AxelarGatewayClient;
-
-use crate::{error::Error, AxelarExecutableInterface};
+use axelar_soroban_interfaces::axelar_executable::AxelarExecutableInterface;
 
 #[contract]
 pub struct AxelarExecutableTest;
@@ -28,18 +26,7 @@ impl AxelarExecutableInterface for AxelarExecutableTest {
         source_address: String,
         payload: Bytes,
     ) {
-        let gateway = AxelarGatewayClient::new(&env, &Self::gateway(&env));
-
-        // Validate the contract call was approved by the gateway
-        if !gateway.validate_contract_call(
-            &env.current_contract_address(),
-            &command_id,
-            &source_chain,
-            &source_address,
-            &env.crypto().keccak256(&payload),
-        ) {
-            panic_with_error!(env, Error::NotApproved);
-        };
+        Self::validate(env.clone(), command_id, source_chain, source_address, payload);
 
         env.events().publish((symbol_short!("executed"),), ());
     }

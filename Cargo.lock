@@ -65,6 +65,7 @@ version = "0.1.0"
 dependencies = [
  "axelar-auth-verifier",
  "axelar-gateway",
+ "axelar-soroban-interfaces",
  "axelar-soroban-std",
  "soroban-sdk",
 ]
@@ -611,6 +612,7 @@ dependencies = [
  "axelar-auth-verifier",
  "axelar-executable",
  "axelar-gateway",
+ "axelar-soroban-interfaces",
  "axelar-soroban-std",
  "soroban-sdk",
 ]

@@ -8,10 +8,10 @@ use axelar_auth_verifier::testutils::{generate_proof, TestSignerSet};
 use axelar_gateway::contract::{AxelarGateway, AxelarGatewayClient};
 use axelar_gateway::types::{self, CommandBatch, ContractCallApproval, SignedCommandBatch};
 use axelar_soroban_std::assert_emitted_event;
-use soroban_sdk::{contract, contractimpl, log, panic_with_error, symbol_short, Bytes};
+use soroban_sdk::{contract, contractimpl, log, symbol_short, Bytes};
 use soroban_sdk::{testutils::BytesN as _, vec, xdr::ToXdr, Address, BytesN, Env, String};
 
-use axelar_executable::interface::AxelarExecutableInterface;
+use axelar_soroban_interfaces::axelar_executable::AxelarExecutableInterface;
 
 #[contract]
 pub struct AxelarApp;
@@ -29,18 +29,7 @@ impl AxelarExecutableInterface for AxelarApp {
         source_address: String,
         payload: Bytes,
     ) {
-        let gateway = AxelarGatewayClient::new(&env, &Self::gateway(&env));
-
-        // Validate the contract call was approved by the gateway
-        if !gateway.validate_contract_call(
-            &env.current_contract_address(),
-            &command_id,
-            &source_chain,
-            &source_address,
-            &env.crypto().keccak256(&payload),
-        ) {
-            panic_with_error!(env, axelar_executable::error::Error::NotApproved);
-        };
+        Self::validate(env.clone(), command_id, source_chain, source_address, payload.clone());
 
         env.events()
             .publish((symbol_short!("executed"),), (payload,));
