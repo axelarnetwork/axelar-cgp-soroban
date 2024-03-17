@@ -7,4 +7,5 @@ edition = { workspace = true }
 crate-type = ["rlib"]
 
 [dependencies]
+axelar-soroban-std = { workspace = true }
 soroban-sdk = { workspace = true }

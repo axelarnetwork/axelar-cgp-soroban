@@ -1,4 +1,5 @@
-use soroban_sdk::{contracttype, Address, Bytes, BytesN, String, Vec};
+use axelar_soroban_std::types::Hash;
+use soroban_sdk::{contracttype, Address, Bytes, String, Vec};
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -6,7 +7,7 @@ pub struct ContractCallApproval {
     pub source_chain: String,
     pub source_address: String,
     pub contract_address: Address,
-    pub payload_hash: BytesN<32>,
+    pub payload_hash: Hash,
 }
 
 #[contracttype]
@@ -20,7 +21,7 @@ pub enum Command {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CommandBatch {
     pub chain_id: u64,
-    pub commands: Vec<(BytesN<32>, Command)>,
+    pub commands: Vec<(Hash, Command)>,
 }
 
 #[contracttype]

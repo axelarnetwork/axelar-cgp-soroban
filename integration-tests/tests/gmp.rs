@@ -12,6 +12,7 @@ use soroban_sdk::{contract, contractimpl, log, symbol_short, Bytes};
 use soroban_sdk::{testutils::BytesN as _, vec, xdr::ToXdr, Address, BytesN, Env, String};
 
 use axelar_soroban_interfaces::axelar_executable::AxelarExecutableInterface;
+use axelar_soroban_std::types::Hash;
 
 #[contract]
 pub struct AxelarApp;
@@ -24,7 +25,7 @@ impl AxelarExecutableInterface for AxelarApp {
 
     fn execute(
         env: Env,
-        command_id: BytesN<32>,
+        command_id: Hash,
         source_chain: String,
         source_address: String,
         payload: Bytes,

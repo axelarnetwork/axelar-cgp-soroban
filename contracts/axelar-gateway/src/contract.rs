@@ -1,7 +1,8 @@
 use soroban_sdk::xdr::{FromXdr, ToXdr};
-use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, String};
+use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, Env, String};
 
 use axelar_soroban_interfaces::axelar_auth_verifier::AxelarAuthVerifierClient;
+use axelar_soroban_std::types::Hash;
 
 use crate::storage_types::{ContractCallApprovalKey, DataKey};
 use crate::types::{self, Command, SignedCommandBatch};
@@ -54,10 +55,10 @@ impl AxelarGatewayInterface for AxelarGateway {
     fn validate_contract_call(
         env: Env,
         caller: Address,
-        command_id: BytesN<32>,
+        command_id: Hash,
         source_chain: String,
         source_address: String,
-        payload_hash: BytesN<32>,
+        payload_hash: Hash,
     ) -> bool {
         caller.require_auth();
 
@@ -82,11 +83,11 @@ impl AxelarGatewayInterface for AxelarGateway {
 
     fn is_contract_call_approved(
         env: Env,
-        command_id: BytesN<32>,
+        command_id: Hash,
         source_chain: String,
         source_address: String,
         contract_address: Address,
-        payload_hash: BytesN<32>,
+        payload_hash: Hash,
     ) -> bool {
         let key = Self::contract_call_approval_key(
             command_id,
@@ -151,11 +152,11 @@ impl AxelarGatewayInterface for AxelarGateway {
 
 impl AxelarGateway {
     fn contract_call_approval_key(
-        command_id: BytesN<32>,
+        command_id: Hash,
         source_chain: String,
         source_address: String,
         contract_address: Address,
-        payload_hash: BytesN<32>,
+        payload_hash: Hash,
     ) -> DataKey {
         DataKey::ContractCallApproval(ContractCallApprovalKey {
             command_id,
@@ -166,11 +167,7 @@ impl AxelarGateway {
         })
     }
 
-    fn approve_contract_call(
-        env: &Env,
-        command_id: BytesN<32>,
-        approval: types::ContractCallApproval,
-    ) {
+    fn approve_contract_call(env: &Env, command_id: Hash, approval: types::ContractCallApproval) {
         let types::ContractCallApproval {
             source_chain,
             source_address,

@@ -1,4 +1,6 @@
-use soroban_sdk::{contractclient, Address, Bytes, BytesN, Env, String};
+use soroban_sdk::{contractclient, Address, Bytes, Env, String};
+
+use axelar_soroban_std::types::Hash;
 
 /// Interface for the Axelar Gateway.
 #[contractclient(name = "AxelarGatewayClient")]
@@ -21,20 +23,20 @@ pub trait AxelarGatewayInterface {
     fn validate_contract_call(
         env: Env,
         caller: Address,
-        command_id: BytesN<32>,
+        command_id: Hash,
         source_chain: String,
         source_address: String,
-        payload_hash: BytesN<32>,
+        payload_hash: Hash,
     ) -> bool;
 
     /// Return true if a contract call with the given payload hash and source caller info is approved.
     fn is_contract_call_approved(
         env: Env,
-        command_id: BytesN<32>,
+        command_id: Hash,
         source_chain: String,
         source_address: String,
         contract_address: Address,
-        payload_hash: BytesN<32>,
+        payload_hash: Hash,
     ) -> bool;
 
     /// Approve a batch of commands signed by Axelar verifiers, consisting of contract call approvals, and verifier set updates.

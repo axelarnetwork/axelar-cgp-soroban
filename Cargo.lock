@@ -74,6 +74,7 @@ dependencies = [
 name = "axelar-soroban-interfaces"
 version = "0.1.0"
 dependencies = [
+ "axelar-soroban-std",
  "soroban-sdk",
 ]
 

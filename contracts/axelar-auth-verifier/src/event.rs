@@ -1,12 +1,9 @@
-use soroban_sdk::{symbol_short, Address, BytesN, Env};
+use soroban_sdk::{symbol_short, Address, Env};
 
 use crate::types::WeightedSigners;
+use axelar_soroban_std::types::Hash;
 
-pub(crate) fn transfer_operatorship(
-    env: &Env,
-    signer_set: WeightedSigners,
-    signer_set_hash: BytesN<32>,
-) {
+pub(crate) fn transfer_operatorship(env: &Env, signer_set: WeightedSigners, signer_set_hash: Hash) {
     let topics = (symbol_short!("transfer"), signer_set_hash);
     env.events().publish(topics, (signer_set,)); // TODO: use a tuple or the type directly?
 }
