@@ -1,21 +1,20 @@
 use soroban_sdk::xdr::{FromXdr, ToXdr};
-use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String};
+use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, Env, String};
 
-// use axelar_auth_verifier_contract::Client as AxelarAuthVerifierClient;
-// use axelar_auth_verifier::interface::AxelarAuthVerifierInterface;
-use axelar_auth_verifier::AxelarAuthVerifierClient;
+use axelar_soroban_interfaces::axelar_auth_verifier::AxelarAuthVerifierClient;
+use axelar_soroban_std::types::Hash;
 
-use crate::interface::AxelarGatewayInterface;
-use crate::storage_types::{CommandExecutedKey, ContractCallApprovalKey, DataKey};
+use crate::storage_types::{ContractCallApprovalKey, DataKey};
 use crate::types::{self, Command, SignedCommandBatch};
 use crate::{error::Error, event};
+use axelar_soroban_interfaces::axelar_gateway::AxelarGatewayInterface;
 
 #[contract]
 pub struct AxelarGateway;
 
 #[contractimpl]
-impl AxelarGateway {
-    pub fn initialize_gateway(env: Env, auth_module: Address) {
+impl AxelarGatewayInterface for AxelarGateway {
+    fn initialize(env: Env, auth_module: Address) {
         if env
             .storage()
             .instance()
@@ -31,10 +30,7 @@ impl AxelarGateway {
             .instance()
             .set(&DataKey::AuthModule, &auth_module);
     }
-}
 
-#[contractimpl]
-impl AxelarGatewayInterface for AxelarGateway {
     fn call_contract(
         env: Env,
         caller: Address,
@@ -59,10 +55,10 @@ impl AxelarGatewayInterface for AxelarGateway {
     fn validate_contract_call(
         env: Env,
         caller: Address,
-        command_id: BytesN<32>,
+        command_id: Hash,
         source_chain: String,
         source_address: String,
-        payload_hash: BytesN<32>,
+        payload_hash: Hash,
     ) -> bool {
         caller.require_auth();
 
@@ -87,11 +83,11 @@ impl AxelarGatewayInterface for AxelarGateway {
 
     fn is_contract_call_approved(
         env: Env,
-        command_id: BytesN<32>,
+        command_id: Hash,
         source_chain: String,
         source_address: String,
         contract_address: Address,
-        payload_hash: BytesN<32>,
+        payload_hash: Hash,
     ) -> bool {
         let key = Self::contract_call_approval_key(
             command_id,
@@ -104,30 +100,35 @@ impl AxelarGatewayInterface for AxelarGateway {
         env.storage().persistent().has(&key)
     }
 
-    fn execute(env: Env, batch: Bytes) -> Result<(), Error> {
-        let SignedCommandBatch { batch, proof } =
-            SignedCommandBatch::from_xdr(&env, &batch).map_err(|_| Error::InvalidBatch)?;
+    fn execute(env: Env, batch: Bytes) {
+        let SignedCommandBatch { batch, proof } = match SignedCommandBatch::from_xdr(&env, &batch) {
+            Ok(x) => x,
+            Err(_) => panic_with_error!(env, Error::InvalidBatch),
+        };
         let batch_hash = env.crypto().keccak256(&batch.clone().to_xdr(&env));
 
         let auth_module = AxelarAuthVerifierClient::new(
             &env,
-            &env.storage().instance().get(&DataKey::AuthModule).unwrap(),
+            match &env.storage().instance().get(&DataKey::AuthModule) {
+                Some(auth) => auth,
+                None => panic_with_error!(env, Error::Uninitialized),
+            },
         );
-
-        // AxelarAuthVerifierInterface::validate_proof(env, batch_hash, proof)
 
         let valid = auth_module.validate_proof(&batch_hash, &proof);
         if !valid {
-            return Err(Error::InvalidProof);
+            panic_with_error!(env, Error::InvalidProof);
         }
 
+        // TODO: switch to new domain separation approach
         if batch.chain_id != 1 {
-            return Err(Error::InvalidChainId);
+            panic_with_error!(env, Error::InvalidChainId);
         }
 
         for (command_id, command) in batch.commands {
-            let key = Self::command_executed_key(command_id.clone());
+            let key = DataKey::CommandExecuted(command_id.clone());
 
+            // TODO: switch to full revert, or add allow selecting subset of commands to process
             // Skip command if already executed. This allows batches to be processed partially.
             if env.storage().persistent().has(&key) {
                 continue;
@@ -146,18 +147,16 @@ impl AxelarGatewayInterface for AxelarGateway {
 
             event::execute_command(&env, command_id);
         }
-
-        Ok(())
     }
 }
 
 impl AxelarGateway {
     fn contract_call_approval_key(
-        command_id: BytesN<32>,
+        command_id: Hash,
         source_chain: String,
         source_address: String,
         contract_address: Address,
-        payload_hash: BytesN<32>,
+        payload_hash: Hash,
     ) -> DataKey {
         DataKey::ContractCallApproval(ContractCallApprovalKey {
             command_id,
@@ -168,15 +167,7 @@ impl AxelarGateway {
         })
     }
 
-    fn command_executed_key(command_id: BytesN<32>) -> DataKey {
-        DataKey::CommandExecuted(CommandExecutedKey { command_id })
-    }
-
-    fn approve_contract_call(
-        env: &Env,
-        command_id: BytesN<32>,
-        approval: types::ContractCallApproval,
-    ) {
+    fn approve_contract_call(env: &Env, command_id: Hash, approval: types::ContractCallApproval) {
         let types::ContractCallApproval {
             source_chain,
             source_address,

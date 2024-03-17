@@ -12,15 +12,9 @@ pub struct ContractCallApprovalKey {
 
 #[contracttype]
 #[derive(Clone, Debug)]
-pub struct CommandExecutedKey {
-    pub command_id: BytesN<32>,
-}
-
-#[contracttype]
-#[derive(Clone, Debug)]
 pub enum DataKey {
     Initialized,
     AuthModule,
-    CommandExecuted(CommandExecutedKey),
+    CommandExecuted(BytesN<32>),
     ContractCallApproval(ContractCallApprovalKey),
 }

@@ -2,8 +2,8 @@
 extern crate std;
 
 use crate::{
+    contract::AxelarAuthVerifierClient,
     types::{Proof, WeightedSigners},
-    AxelarAuthVerifierClient,
 };
 use rand::rngs::OsRng;
 use rand::Rng;
@@ -11,8 +11,9 @@ use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
 use sha3::{Digest, Keccak256};
 use soroban_sdk::{vec, U256};
 
-use soroban_sdk::{symbol_short, testutils::Events, xdr::ToXdr, Address, Bytes, BytesN, Env};
+use soroban_sdk::{symbol_short, xdr::ToXdr, Address, Bytes, BytesN, Env};
 
+use axelar_soroban_std::types::Hash;
 use axelar_soroban_std::{assert_emitted_event, traits::IntoVec};
 
 #[derive(Clone, Debug)]
@@ -47,7 +48,7 @@ pub fn generate_signer_set(env: &Env, num_signers: u32) -> TestSignerSet {
         signer_keypair.into_iter().unzip();
     let total_weight = signer_info.iter().map(|(_, _, w)| w).sum::<u32>();
 
-    let signer_vec: std::vec::Vec<(BytesN<32>, U256)> = signer_info
+    let signer_vec: std::vec::Vec<(Hash, U256)> = signer_info
         .into_iter()
         .map(|(_, pk_hash, w)| {
             (
@@ -70,7 +71,7 @@ pub fn generate_signer_set(env: &Env, num_signers: u32) -> TestSignerSet {
     }
 }
 
-pub fn generate_proof(env: &Env, msg_hash: BytesN<32>, signers: TestSignerSet) -> Proof {
+pub fn generate_proof(env: &Env, msg_hash: Hash, signers: TestSignerSet) -> Proof {
     let msg = Message::from_digest_slice(&msg_hash.to_array()).unwrap();
     let threshold = signers.signer_set.threshold.to_u128().unwrap() as u32;
     let secp = Secp256k1::new();
@@ -114,7 +115,7 @@ pub fn initialize(
 
     assert_emitted_event(
         env,
-        env.events().all().len() - 1,
+        -1,
         &client.address,
         (symbol_short!("transfer"), signer_set_hash),
         (signers.signer_set.clone(),),
@@ -134,7 +135,7 @@ pub fn transfer_operatorship(
 
     assert_emitted_event(
         env,
-        env.events().all().len() - 1,
+        -1,
         &client.address,
         (
             symbol_short!("transfer"),

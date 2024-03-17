@@ -1,10 +1,13 @@
-use soroban_sdk::{Address, Bytes, BytesN, Env, String};
+use soroban_sdk::{contractclient, Address, Bytes, Env, String};
 
-use crate::error::Error;
+use axelar_soroban_std::types::Hash;
 
 /// Interface for the Axelar Gateway.
-// #[contractclient(crate_path = "crate", name = "AxelarGatewayClient")]
+#[contractclient(name = "AxelarGatewayClient")]
 pub trait AxelarGatewayInterface {
+    /// Initialize the gateway with the given auth module address.
+    fn initialize(env: Env, auth_module: Address);
+
     /// Call a contract on another chain with the given payload. The destination address can validate the contract call on the destination gateway.
     fn call_contract(
         env: Env,
@@ -20,22 +23,22 @@ pub trait AxelarGatewayInterface {
     fn validate_contract_call(
         env: Env,
         caller: Address,
-        command_id: BytesN<32>,
+        command_id: Hash,
         source_chain: String,
         source_address: String,
-        payload_hash: BytesN<32>,
+        payload_hash: Hash,
     ) -> bool;
 
     /// Return true if a contract call with the given payload hash and source caller info is approved.
     fn is_contract_call_approved(
         env: Env,
-        command_id: BytesN<32>,
+        command_id: Hash,
         source_chain: String,
         source_address: String,
         contract_address: Address,
-        payload_hash: BytesN<32>,
+        payload_hash: Hash,
     ) -> bool;
 
     /// Approve a batch of commands signed by Axelar verifiers, consisting of contract call approvals, and verifier set updates.
-    fn execute(env: Env, batch: Bytes) -> Result<(), Error>;
+    fn execute(env: Env, batch: Bytes);
 }

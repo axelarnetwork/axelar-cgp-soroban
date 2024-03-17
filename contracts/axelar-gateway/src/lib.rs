@@ -6,9 +6,6 @@ mod storage_types;
 pub mod types;
 
 pub mod contract;
-pub mod interface;
-
-pub use contract::AxelarGatewayClient;
 
 #[cfg(all(target_family = "wasm", feature = "testutils"))]
 compile_error!("'testutils' feature is not supported on 'wasm' target");

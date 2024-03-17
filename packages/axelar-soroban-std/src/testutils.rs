@@ -33,9 +33,10 @@ pub fn assert_invocation<T>(
 }
 
 /// Asserts that the event at `event_index` in the environment's emitted events is the expected event.
+/// If `event_index` is negative, the length of events will be added to it, i.e it'll be indexed from the end.
 pub fn assert_emitted_event<U, V>(
     env: &Env,
-    event_index: u32,
+    mut event_index: i32,
     contract_id: &Address,
     topics: U,
     data: V,
@@ -44,14 +45,18 @@ pub fn assert_emitted_event<U, V>(
     V: IntoVal<Env, Val>,
 {
     let events = env.events().all();
+    if event_index.is_negative() {
+        event_index += events.len() as i32;
+    }
+
     assert!(
-        event_index < events.len(),
+        event_index < events.len() as i32,
         "event {} not found, only {} events were emitted",
         event_index + 1,
         events.len()
     );
 
-    let event = events.get(event_index).unwrap();
+    let event = events.get(event_index as u32).unwrap();
 
     assert_eq!(event.0, contract_id.clone());
     assert_eq!(event.1, topics.into_val(env));

@@ -7,7 +7,7 @@ use axelar_auth_verifier::testutils::{generate_proof, randint};
 
 use crate::testutils::{generate_test_approval, initialize};
 use crate::types::{self, SignedCommandBatch};
-use crate::{contract::AxelarGateway, AxelarGatewayClient};
+use crate::{contract::AxelarGateway, contract::AxelarGatewayClient};
 use soroban_sdk::{
     bytes, symbol_short,
     testutils::{Address as _, BytesN as _, Events},
@@ -143,7 +143,7 @@ fn approve_contract_call() {
 
     assert_emitted_event(
         &env,
-        env.events().all().len() - 2,
+        -2,
         &contract_id,
         (
             symbol_short!("approved"),
@@ -156,7 +156,7 @@ fn approve_contract_call() {
 
     assert_emitted_event(
         &env,
-        env.events().all().len() - 1,
+        -1,
         &contract_id,
         (symbol_short!("command"), command_id),
         (),

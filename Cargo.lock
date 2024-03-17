@@ -51,20 +51,11 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 name = "axelar-auth-verifier"
 version = "0.1.0"
 dependencies = [
+ "axelar-soroban-interfaces",
  "axelar-soroban-std",
  "rand",
  "secp256k1",
  "sha3",
- "soroban-sdk",
-]
-
-[[package]]
-name = "axelar-executable"
-version = "0.1.0"
-dependencies = [
- "axelar-auth-verifier",
- "axelar-gateway",
- "axelar-soroban-std",
  "soroban-sdk",
 ]
 
@@ -81,8 +72,17 @@ name = "axelar-gateway"
 version = "0.1.0"
 dependencies = [
  "axelar-auth-verifier",
+ "axelar-soroban-interfaces",
  "axelar-soroban-std",
  "rand",
+ "soroban-sdk",
+]
+
+[[package]]
+name = "axelar-soroban-interfaces"
+version = "0.1.0"
+dependencies = [
+ "axelar-soroban-std",
  "soroban-sdk",
 ]
 
@@ -609,6 +609,7 @@ version = "0.1.0"
 dependencies = [
  "axelar-auth-verifier",
  "axelar-gateway",
+ "axelar-soroban-interfaces",
  "axelar-soroban-std",
  "soroban-sdk",
 ]

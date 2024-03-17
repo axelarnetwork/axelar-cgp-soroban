@@ -1,7 +1,7 @@
 #![cfg(any(test, feature = "testutils"))]
 extern crate std;
 
-use crate::{types, AxelarGatewayClient};
+use crate::{contract::AxelarGatewayClient, types};
 use axelar_auth_verifier::{contract::AxelarAuthVerifier, testutils::TestSignerSet};
 use rand::Rng;
 use soroban_sdk::{testutils::Address as _, Address, Bytes, Env, String};
@@ -28,7 +28,7 @@ pub fn initialize(
         num_signers,
     );
 
-    client.initialize_gateway(&auth_contract_id);
+    client.initialize(&auth_contract_id);
 
     signers
 }

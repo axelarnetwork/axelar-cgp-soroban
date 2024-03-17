@@ -2,9 +2,8 @@
 extern crate std;
 
 use soroban_sdk::{
-    contract, contractimpl, panic_with_error, symbol_short,
-    testutils::{Address as _, Events},
-    Address, Bytes, BytesN, Env, String,
+    contract, contractimpl, panic_with_error, symbol_short, testutils::Address as _, Address,
+    Bytes, BytesN, Env, String,
 };
 
 use axelar_soroban_std::testutils::assert_emitted_event;
@@ -24,7 +23,7 @@ impl AxelarExecutableInterface for AxelarExecutableTest {
 
     fn execute(
         env: Env,
-        command_id: BytesN<32>,
+        command_id: Hash,
         source_chain: String,
         source_address: String,
         payload: Bytes,
@@ -54,10 +53,10 @@ impl MockAxelarGateway {
     pub fn validate_contract_call(
         _env: Env,
         _caller: Address,
-        _command_id: soroban_sdk::BytesN<32>,
+        _command_id: soroban_sdk::Hash,
         _source_chain: soroban_sdk::String,
         _source_address: soroban_sdk::String,
-        _payload_hash: soroban_sdk::BytesN<32>,
+        _payload_hash: soroban_sdk::Hash,
     ) -> bool {
         true
     }
@@ -120,11 +119,5 @@ fn test_execute() {
 
     client.execute(&command_id, &source_chain, &source_address, &payload);
 
-    assert_emitted_event(
-        &env,
-        env.events().all().len() - 1,
-        &client.address,
-        (symbol_short!("executed"),),
-        (),
-    );
+    assert_emitted_event(&env, -1, &client.address, (symbol_short!("executed"),), ());
 }
