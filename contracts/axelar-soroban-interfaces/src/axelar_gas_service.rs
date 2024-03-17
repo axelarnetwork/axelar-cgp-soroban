@@ -1,4 +1,3 @@
-
 use axelar_soroban_std::types::Hash;
 use soroban_sdk::{Address, Bytes, Env, String, U256};
 
@@ -18,12 +17,7 @@ pub trait AxelarGasServiceInterface {
     );
 
     /// Allows the gasCollector to collect accumulated fees from the contract.
-    fn collect_fees(
-        env: Env,
-        receiver: Address,
-        token_addr: Address,
-        amounts: i128,
-    );
+    fn collect_fees(env: Env, receiver: Address, token_addr: Address, amounts: i128);
 
     /// Refunds gas payment to the receiver in relation to a specific cross-chain transaction. Only callable by the gasCollector.
     fn refund(

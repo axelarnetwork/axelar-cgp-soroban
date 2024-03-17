@@ -19,7 +19,13 @@ pub(crate) fn gas_paid_for_contract_call(
     );
     env.events().publish(
         topics,
-        (destination_address, payload, refund_address, token_addr, amount),
+        (
+            destination_address,
+            payload,
+            refund_address,
+            token_addr,
+            amount,
+        ),
     );
 }
 

@@ -63,7 +63,13 @@ fn pay_gas_for_contract_call() {
             sender,
             destination_chain,
         ),
-        (destination_address, payload, refund_address, token_address, gas_amount),
+        (
+            destination_address,
+            payload,
+            refund_address,
+            token_address,
+            gas_amount,
+        ),
     );
 }
 
