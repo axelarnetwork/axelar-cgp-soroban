@@ -1,4 +1,4 @@
-use axelar_soroban_std::types::Hash;
+use axelar_soroban_std::types::{Hash, TokenDetails};
 use soroban_sdk::{Address, Bytes, Env, String, U256};
 
 /// Interface for the Axelar Gas Service.
@@ -12,8 +12,7 @@ pub trait AxelarGasServiceInterface {
         destination_address: String,
         payload: Bytes,
         refund_address: Address,
-        token_address: Address,
-        amount: i128,
+        token_details: TokenDetails,
     );
 
     /// Allows the gasCollector to collect accumulated fees from the contract.

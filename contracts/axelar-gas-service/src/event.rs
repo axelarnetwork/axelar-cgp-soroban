@@ -1,4 +1,4 @@
-use axelar_soroban_std::types::Hash;
+use axelar_soroban_std::types::{Hash, TokenDetails};
 use soroban_sdk::{symbol_short, Address, Bytes, Env, String, U256};
 
 pub(crate) fn gas_paid_for_contract_call(
@@ -8,8 +8,7 @@ pub(crate) fn gas_paid_for_contract_call(
     destination_address: String,
     payload: Bytes,
     refund_address: Address,
-    token_addr: Address,
-    amount: i128,
+    token_details: TokenDetails,
 ) {
     let topics = (
         symbol_short!("gas_paid"),
@@ -19,13 +18,7 @@ pub(crate) fn gas_paid_for_contract_call(
     );
     env.events().publish(
         topics,
-        (
-            destination_address,
-            payload,
-            refund_address,
-            token_addr,
-            amount,
-        ),
+        (destination_address, payload, refund_address, token_details),
     );
 }
 

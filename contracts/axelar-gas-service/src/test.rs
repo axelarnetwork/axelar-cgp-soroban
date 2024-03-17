@@ -1,7 +1,7 @@
 #![cfg(test)]
 extern crate std;
 
-use axelar_soroban_std::assert_emitted_event;
+use axelar_soroban_std::{assert_emitted_event, types::TokenDetails};
 
 use crate::contract::{AxelarGasService, AxelarGasServiceClient};
 use soroban_sdk::{
@@ -28,17 +28,22 @@ fn setup_env<'a>() -> (Env, Address, Address, AxelarGasServiceClient<'a>) {
 #[test]
 fn pay_gas_for_contract_call() {
     let (env, contract_id, _, client) = setup_env();
-    let token_address: Address = env.register_stellar_asset_contract(Address::generate(&env));
+
+    let token_addr: Address = env.register_stellar_asset_contract(Address::generate(&env));
     let sender: Address = Address::generate(&env);
     let gas_amount: i128 = 1;
-    let token_client = TokenClient::new(&env, &token_address);
-    StellarAssetClient::new(&env, &token_address).mint(&sender, &gas_amount);
-
+    let token_details = TokenDetails {
+        token_addr: token_addr.clone(),
+        amount: gas_amount,
+    };
     let refund_address: Address = Address::generate(&env);
     let payload = bytes!(&env, 0x1234);
     let destination_chain: String = String::from_str(&env, "ethereum");
     let destination_address: String =
         String::from_str(&env, "0x4EFE356BEDeCC817cb89B4E9b796dB8bC188DC59");
+
+    let token_client = TokenClient::new(&env, &token_addr);
+    StellarAssetClient::new(&env, &token_addr).mint(&sender, &gas_amount);
 
     client.pay_gas_for_contract_call(
         &sender,
@@ -46,8 +51,7 @@ fn pay_gas_for_contract_call() {
         &destination_address,
         &payload,
         &refund_address,
-        &token_address,
-        &gas_amount,
+        &token_details,
     );
 
     assert_eq!(0, token_client.balance(&sender));
@@ -63,27 +67,21 @@ fn pay_gas_for_contract_call() {
             sender,
             destination_chain,
         ),
-        (
-            destination_address,
-            payload,
-            refund_address,
-            token_address,
-            gas_amount,
-        ),
+        (destination_address, payload, refund_address, token_details),
     );
 }
 
 #[test]
 fn collect_fees() {
     let (env, contract_id, gas_collector, client) = setup_env();
-    let token_address: Address = env.register_stellar_asset_contract(Address::generate(&env));
-    let token_client = TokenClient::new(&env, &token_address);
+    let token_addr: Address = env.register_stellar_asset_contract(Address::generate(&env));
+    let token_client = TokenClient::new(&env, &token_addr);
     let supply: i128 = 1000;
-    StellarAssetClient::new(&env, &token_address).mint(&contract_id, &supply);
+    StellarAssetClient::new(&env, &token_addr).mint(&contract_id, &supply);
 
     let refund_amount = 1;
 
-    client.collect_fees(&gas_collector, &token_address, &refund_amount);
+    client.collect_fees(&gas_collector, &token_addr, &refund_amount);
 
     assert_eq!(refund_amount, token_client.balance(&gas_collector));
     assert_eq!(supply - refund_amount, token_client.balance(&contract_id));
@@ -95,7 +93,7 @@ fn collect_fees() {
         (
             symbol_short!("collected"),
             gas_collector,
-            token_address,
+            token_addr,
             refund_amount,
         ),
         (),
@@ -105,10 +103,10 @@ fn collect_fees() {
 #[test]
 fn refund() {
     let (env, contract_id, _, client) = setup_env();
-    let token_address: Address = env.register_stellar_asset_contract(Address::generate(&env));
-    let token_client = TokenClient::new(&env, &token_address);
+    let token_addr: Address = env.register_stellar_asset_contract(Address::generate(&env));
+    let token_client = TokenClient::new(&env, &token_addr);
     let supply: i128 = 1000;
-    StellarAssetClient::new(&env, &token_address).mint(&contract_id, &supply);
+    StellarAssetClient::new(&env, &token_addr).mint(&contract_id, &supply);
 
     let tx_hash = bytesn!(
         &env,
@@ -118,13 +116,7 @@ fn refund() {
     let receiver: Address = Address::generate(&env);
     let refund_amount: i128 = 1;
 
-    client.refund(
-        &tx_hash,
-        &log_index,
-        &receiver,
-        &token_address,
-        &refund_amount,
-    );
+    client.refund(&tx_hash, &log_index, &receiver, &token_addr, &refund_amount);
 
     assert_eq!(refund_amount, token_client.balance(&receiver));
     assert_eq!(supply - refund_amount, token_client.balance(&contract_id));
@@ -134,6 +126,6 @@ fn refund() {
         -1,
         &contract_id,
         (symbol_short!("refunded"), tx_hash, log_index, receiver),
-        (token_address, refund_amount),
+        (token_addr, refund_amount),
     );
 }

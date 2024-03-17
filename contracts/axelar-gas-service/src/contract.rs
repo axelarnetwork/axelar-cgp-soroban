@@ -2,7 +2,7 @@ use soroban_sdk::{
     contract, contractimpl, panic_with_error, token, Address, Bytes, Env, String, U256,
 };
 
-use axelar_soroban_std::types::Hash;
+use axelar_soroban_std::types::{Hash, TokenDetails};
 
 use crate::storage_types::DataKey;
 use crate::{error::Error, event};
@@ -40,10 +40,11 @@ impl AxelarGasServiceInterface for AxelarGasService {
         destination_address: String,
         payload: Bytes,
         refund_address: Address,
-        token_addr: Address,
-        amount: i128,
+        token_details: TokenDetails,
     ) {
         sender.require_auth();
+
+        let TokenDetails { token_addr, amount } = token_details.clone();
 
         if amount == 0 {
             panic_with_error!(env, Error::InvalidAmount);
@@ -62,8 +63,7 @@ impl AxelarGasServiceInterface for AxelarGasService {
             destination_address,
             payload,
             refund_address,
-            token_addr,
-            amount,
+            token_details,
         );
     }
 
