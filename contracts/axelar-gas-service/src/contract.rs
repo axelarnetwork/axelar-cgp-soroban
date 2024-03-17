@@ -1,8 +1,12 @@
-use soroban_sdk::{contract, contractimpl, token, Address, Bytes, BytesN, Env, String, U256};
+use soroban_sdk::{
+    contract, contractimpl, panic_with_error, token, Address, Bytes, Env, String, U256,
+};
 
-use crate::interface::AxelarGasServiceInterface;
+use axelar_soroban_std::types::Hash;
+
 use crate::storage_types::DataKey;
 use crate::{error::Error, event};
+use axelar_soroban_interfaces::axelar_gas_service::AxelarGasServiceInterface;
 
 #[contract]
 pub struct AxelarGasService;
@@ -36,23 +40,34 @@ impl AxelarGasServiceInterface for AxelarGasService {
         destination_address: String,
         payload: Bytes,
         refund_address: Address,
+        token_addr: Address,
+        amount: i128,
     ) {
-        event::native_gas_paid_for_contract_call(
+        sender.require_auth();
+
+        if amount == 0 {
+            panic_with_error!(env, Error::InvalidAmount);
+        }
+
+        token::Client::new(&env, &token_addr).transfer(
+            &sender,
+            &env.current_contract_address(),
+            &amount,
+        );
+
+        event::gas_paid_for_contract_call(
             &env,
             sender,
             destination_chain,
             destination_address,
             payload,
             refund_address,
-        )
+            token_addr,
+            amount,
+        );
     }
 
-    fn collect_fees(
-        env: Env,
-        receiver: Address,
-        token_address: Address,
-        amount: i128,
-    ) -> Result<(), Error> {
+    fn collect_fees(env: Env, receiver: Address, token_addr: Address, amount: i128) {
         let gas_collector: Address = env
             .storage()
             .instance()
@@ -61,30 +76,26 @@ impl AxelarGasServiceInterface for AxelarGasService {
 
         gas_collector.require_auth();
 
-        //TODO: sanity check address zero
-
         if amount == 0 {
-            return Err(Error::InvalidAmounts);
+            panic_with_error!(env, Error::InvalidAmount);
         }
 
-        let token_client = token::Client::new(&env, &token_address);
+        let token_client = token::Client::new(&env, &token_addr);
 
         let contract_token_balance = token_client.balance(&env.current_contract_address());
 
         if contract_token_balance >= amount {
             token_client.transfer(&env.current_contract_address(), &receiver, &amount)
         } else {
-            return Err(Error::InsufficientBalance);
+            panic_with_error!(env, Error::InsufficientBalance);
         }
 
-        event::fee_collected(&env, &gas_collector, &token_address, amount);
-
-        Ok(())
+        event::fee_collected(&env, &gas_collector, &token_addr, amount);
     }
 
     fn refund(
         env: Env,
-        tx_hash: BytesN<32>,
+        tx_hash: Hash,
         log_index: U256,
         receiver: Address,
         token_addr: Address,
@@ -98,12 +109,12 @@ impl AxelarGasServiceInterface for AxelarGasService {
 
         gas_collector.require_auth();
 
-        event::refunded(&env, tx_hash, log_index, &receiver, &token_addr, amount);
-
         token::Client::new(&env, &token_addr).transfer(
             &env.current_contract_address(),
             &receiver,
             &amount,
         );
+
+        event::refunded(&env, tx_hash, log_index, &receiver, &token_addr, amount);
     }
 }

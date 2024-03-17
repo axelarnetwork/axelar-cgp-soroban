@@ -8,10 +8,9 @@ crate-type = ["cdylib"]
 
 [dependencies]
 soroban-sdk = { workspace = true }
+axelar-soroban-interfaces = { workspace = true }
+axelar-soroban-std = { workspace = true }
 
 [dev_dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
-secp256k1 = { version = "0.28.2", features = ["recovery", "rand"] }
-
-[features]
-testutils = ["soroban-sdk/testutils"]
+axelar-soroban-std = { workspace = true, features = ["testutils"] }

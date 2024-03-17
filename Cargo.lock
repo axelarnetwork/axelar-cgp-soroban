@@ -63,7 +63,8 @@ dependencies = [
 name = "axelar-gas-service"
 version = "0.1.0"
 dependencies = [
- "secp256k1",
+ "axelar-soroban-interfaces",
+ "axelar-soroban-std",
  "soroban-sdk",
 ]
 
