@@ -15,7 +15,7 @@ pub trait AxelarGasServiceInterface {
         token_details: TokenDetails,
     );
 
-    /// Allows the gasCollector to collect accumulated fees from the contract.
+    /// Allows the `gas_collector` to collect accumulated fees from the contract.
     fn collect_fees(env: Env, receiver: Address, token_addr: Address, amounts: i128);
 
     /// Refunds gas payment to the receiver in relation to a specific cross-chain transaction. Only callable by the gasCollector.
