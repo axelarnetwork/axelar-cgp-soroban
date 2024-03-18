@@ -40,7 +40,7 @@ impl AxelarGasServiceInterface for AxelarGasService {
         destination_address: String,
         payload: Bytes,
         refund_address: Address,
-        token_details: TokenDetails,
+        token: Token,
     ) {
         sender.require_auth();
 
