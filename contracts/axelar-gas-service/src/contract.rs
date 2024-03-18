@@ -67,7 +67,7 @@ impl AxelarGasServiceInterface for AxelarGasService {
         );
     }
 
-    fn collect_fees(env: Env, receiver: Address, token_addr: Address, amount: i128) {
+    fn collect_fees(env: Env, receiver: Address, token: TokenDetails) {
         let gas_collector: Address = env
             .storage()
             .instance()
