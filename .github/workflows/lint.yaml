@@ -7,10 +7,14 @@ on:
       - main
       - releases/**
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lints:
     name: Lints
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     steps:
       - uses: actions/checkout@v4
 
@@ -23,7 +27,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Cache build artifacts
-        uses: Swatinem/rust-cache@v2
+        uses: useblacksmith/rust-cache@v3
         with:
           shared-key: "cache"
 

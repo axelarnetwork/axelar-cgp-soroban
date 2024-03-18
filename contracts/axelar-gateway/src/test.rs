@@ -7,7 +7,7 @@ use axelar_auth_verifier::testutils::{generate_proof, generate_signer_set, randi
 
 use crate::testutils::{generate_test_approval, initialize};
 use crate::types::{self, SignedCommandBatch};
-use crate::{contract::AxelarGateway, AxelarGatewayClient};
+use crate::{contract::AxelarGateway, contract::AxelarGatewayClient};
 use soroban_sdk::{
     bytes, symbol_short,
     testutils::{Address as _, BytesN as _, Events},

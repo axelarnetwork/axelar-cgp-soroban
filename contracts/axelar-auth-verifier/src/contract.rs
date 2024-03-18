@@ -1,15 +1,14 @@
 use core::panic;
 
 use soroban_sdk::xdr::{FromXdr, ToXdr};
-use soroban_sdk::{
-    contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, Vec, U256,
-};
+use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, Env, Vec, U256};
 
 use crate::error::Error;
 use crate::event;
-use crate::interface::AxelarAuthVerifierInterface;
 use crate::storage_types::DataKey;
 use crate::types::{Proof, WeightedSigners};
+use axelar_soroban_interfaces::axelar_auth_verifier::AxelarAuthVerifierInterface;
+use axelar_soroban_std::types::Hash;
 
 #[contract]
 pub struct AxelarAuthVerifier;
@@ -59,7 +58,7 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
         }
     }
 
-    fn validate_proof(env: &Env, msg_hash: BytesN<32>, proof: Bytes) -> bool {
+    fn validate_proof(env: &Env, msg_hash: Hash, proof: Bytes) -> bool {
         let proof = Proof::from_xdr(env, &proof).unwrap();
 
         let signer_set_hash = env
@@ -136,7 +135,7 @@ impl AxelarAuthVerifier {
         event::transfer_operatorship(env, new_signer_set, new_signer_hash);
     }
 
-    fn validate_signatures(env: &Env, msg_hash: BytesN<32>, proof: Proof) -> bool {
+    fn validate_signatures(env: &Env, msg_hash: Hash, proof: Proof) -> bool {
         let Proof {
             signer_set,
             signatures,

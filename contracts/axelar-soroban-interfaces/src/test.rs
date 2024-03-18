@@ -23,7 +23,7 @@ impl AxelarExecutableInterface for AxelarExecutableTest {
 
     fn execute(
         env: Env,
-        command_id: BytesN<32>,
+        command_id: Hash,
         source_chain: String,
         source_address: String,
         payload: Bytes,
@@ -53,10 +53,10 @@ impl MockAxelarGateway {
     pub fn validate_contract_call(
         _env: Env,
         _caller: Address,
-        _command_id: soroban_sdk::BytesN<32>,
+        _command_id: soroban_sdk::Hash,
         _source_chain: soroban_sdk::String,
         _source_address: soroban_sdk::String,
-        _payload_hash: soroban_sdk::BytesN<32>,
+        _payload_hash: soroban_sdk::Hash,
     ) -> bool {
         true
     }

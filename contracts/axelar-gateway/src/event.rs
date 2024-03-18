@@ -1,4 +1,5 @@
-use soroban_sdk::{symbol_short, Address, Bytes, BytesN, Env, String};
+use axelar_soroban_std::types::Hash;
+use soroban_sdk::{symbol_short, Address, Bytes, Env, String};
 
 pub(crate) fn call_contract(
     env: &Env,
@@ -6,7 +7,7 @@ pub(crate) fn call_contract(
     destination_chain: String,
     destination_address: String,
     payload: Bytes,
-    payload_hash: BytesN<32>,
+    payload_hash: Hash,
 ) {
     let topics = (symbol_short!("called"), caller, payload_hash);
     env.events()
@@ -15,11 +16,11 @@ pub(crate) fn call_contract(
 
 pub(crate) fn approve_contract_call(
     env: &Env,
-    command_id: BytesN<32>,
+    command_id: Hash,
     source_chain: String,
     source_address: String,
     contract_address: Address,
-    payload_hash: BytesN<32>,
+    payload_hash: Hash,
 ) {
     let topics = (
         symbol_short!("approved"),
@@ -30,12 +31,12 @@ pub(crate) fn approve_contract_call(
     env.events().publish(topics, (source_chain, source_address));
 }
 
-pub(crate) fn execute_contract_call(env: &Env, command_id: BytesN<32>) {
+pub(crate) fn execute_contract_call(env: &Env, command_id: Hash) {
     let topics = (symbol_short!("executed"), command_id);
     env.events().publish(topics, ());
 }
 
-pub(crate) fn execute_command(env: &Env, command_id: BytesN<32>) {
+pub(crate) fn execute_command(env: &Env, command_id: Hash) {
     let topics = (symbol_short!("command"), command_id);
     env.events().publish(topics, ());
 }
