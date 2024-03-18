@@ -10,7 +10,7 @@ on:
 jobs:
   coverage:
     name: Code Coverage
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     env:
       CARGO_TERM_COLOR: always
     steps:
@@ -27,7 +27,7 @@ jobs:
         run: sudo apt-get install libclang-dev
 
       - name: Cache build artifacts
-        uses: Swatinem/rust-cache@v2
+        uses: useblacksmith/rust-cache@v3
         with:
           shared-key: "cache"
 

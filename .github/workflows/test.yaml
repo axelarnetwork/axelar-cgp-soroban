@@ -10,7 +10,7 @@ on:
 jobs:
   test:
     name: Test Suite
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     steps:
       - uses: actions/checkout@v4
 
@@ -22,7 +22,7 @@ jobs:
           override: true
 
       - name: Cache build artifacts
-        uses: Swatinem/rust-cache@v2
+        uses: useblacksmith/rust-cache@v3
         with:
           shared-key: "cache"
 
