@@ -28,6 +28,6 @@ pub(crate) fn refunded(env: &Env, message_id: String, receiver: Address, token: 
 }
 
 pub(crate) fn fee_collected(env: &Env, receiver: Address, token: Token) {
-    let topics = (symbol_short!("collected"), receiver, token.clone());
+    let topics = (symbol_short!("collected"), receiver, token);
     env.events().publish(topics, ());
 }
