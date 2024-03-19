@@ -39,7 +39,7 @@ impl AxelarGasServiceInterface for AxelarGasService {
     ) {
         sender.require_auth();
 
-        if token.amount == 0 {
+        if token.amount <= 0 {
             panic_with_error!(env, Error::InvalidAmount);
         }
 
