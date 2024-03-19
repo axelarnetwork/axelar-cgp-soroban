@@ -16,6 +16,7 @@ axelar-soroban-std = { version = "^0.1.0", path = "packages/axelar-soroban-std" 
 axelar-auth-verifier = { version = "^0.1.0", path = "contracts/axelar-auth-verifier" }
 axelar-gas-service = { version = "^0.1.0", path = "contracts/axelar-gas-service" }
 axelar-gateway = { version = "^0.1.0", path = "contracts/axelar-gateway" }
+axelar-operators = { version = "^0.1.0", path = "contracts/axelar-operators" }
 
 [profile.release]
 opt-level = "z"
