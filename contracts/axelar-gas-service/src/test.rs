@@ -31,7 +31,7 @@ fn setup_env<'a>() -> (Env, Address, Address, AxelarGasServiceClient<'a>) {
 fn pay_gas_for_contract_call() {
     let (env, contract_id, _, client) = setup_env();
 
-    let token_addr: Address = env.register_stellar_asset_contract(Address::generate(&env));
+    let token_address: Address = env.register_stellar_asset_contract(Address::generate(&env));
     let sender: Address = Address::generate(&env);
     let gas_amount: i128 = 1;
     let token = Token {
