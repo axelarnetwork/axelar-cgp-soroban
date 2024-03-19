@@ -9,9 +9,9 @@ use rand::rngs::OsRng;
 use rand::Rng;
 use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
 use sha3::{Digest, Keccak256};
-use soroban_sdk::{vec, Vec, U256};
+use soroban_sdk::{vec, U256};
 
-use soroban_sdk::{symbol_short, xdr::ToXdr, Address, Bytes, BytesN, Env};
+use soroban_sdk::{symbol_short, testutils::BytesN as _, xdr::ToXdr, Address, Bytes, BytesN, Env};
 
 use axelar_soroban_std::{assert_emitted_event, traits::IntoVec};
 
@@ -26,11 +26,9 @@ pub fn randint(a: u32, b: u32) -> u32 {
 }
 
 pub fn generate_random_payload_and_hash(env: &Env) -> BytesN<32> {
-    let payload = <soroban_sdk::BytesN<10> as soroban_sdk::testutils::BytesN<10>>::random(env);
+    let payload: Bytes = BytesN::<10>::random(env).into();
 
-    let payload_bytes: Bytes = Bytes::from_slice(env, &payload.to_array());
-
-    let payload_hash = env.crypto().keccak256(&payload_bytes);
+    let payload_hash = env.crypto().keccak256(&payload);
 
     payload_hash
 }
@@ -78,11 +76,6 @@ pub fn generate_signer_set(env: &Env, num_signers: u32) -> TestSignerSet {
         signers,
         signer_set,
     }
-}
-
-#[allow(dead_code)]
-pub(crate) fn generate_empty_signer_set(env: &Env) -> Vec<WeightedSigners> {
-    Vec::<WeightedSigners>::new(&env)
 }
 
 pub fn generate_proof(env: &Env, msg_hash: BytesN<32>, signers: TestSignerSet) -> Proof {

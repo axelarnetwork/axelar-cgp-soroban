@@ -1,6 +1,8 @@
 #![cfg(test)]
 extern crate std;
 
+use crate::types::WeightedSigners;
+
 use soroban_sdk::{
     symbol_short, testutils::Address as _, xdr::ToXdr, Address, Bytes, Env, Vec, U256,
 };
@@ -10,8 +12,8 @@ use axelar_soroban_std::{assert_emitted_event, testutils::assert_invocation};
 use crate::{
     contract::{AxelarAuthVerifier, AxelarAuthVerifierClient},
     testutils::{
-        generate_empty_signer_set, generate_proof, generate_random_payload_and_hash,
-        generate_signer_set, initialize, randint, transfer_operatorship,
+        generate_proof, generate_random_payload_and_hash, generate_signer_set, initialize, randint,
+        transfer_operatorship,
     },
 };
 
@@ -23,6 +25,10 @@ fn setup_env<'a>() -> (Env, Address, AxelarAuthVerifierClient<'a>) {
     let client = AxelarAuthVerifierClient::new(&env, &contract_id);
 
     (env, contract_id, client)
+}
+
+fn generate_empty_signer_set(env: &Env) -> Vec<WeightedSigners> {
+    Vec::<WeightedSigners>::new(&env)
 }
 
 #[test]
