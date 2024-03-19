@@ -60,6 +60,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "axelar-gas-service"
+version = "0.1.0"
+dependencies = [
+ "axelar-soroban-interfaces",
+ "axelar-soroban-std",
+ "soroban-sdk",
+]
+
+[[package]]
 name = "axelar-gateway"
 version = "0.1.0"
 dependencies = [
