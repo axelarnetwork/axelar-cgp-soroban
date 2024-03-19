@@ -43,7 +43,8 @@ impl AxelarGasServiceInterface for AxelarGasService {
             panic_with_error!(env, Error::InvalidAmount);
         }
 
-        token::Client::new(&env, &token.address).transfer(
+        token::Client::new(&env, &token.address).transfer_from(
+            &env.current_contract_address(),
             &sender,
             &env.current_contract_address(),
             &token.amount,

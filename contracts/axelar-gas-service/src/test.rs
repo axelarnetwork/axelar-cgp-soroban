@@ -47,6 +47,13 @@ fn pay_gas_for_contract_call() {
     let token_client = TokenClient::new(&env, &token_addr);
     StellarAssetClient::new(&env, &token_addr).mint(&sender, &gas_amount);
 
+    let expiration_ledger = &env.ledger().sequence() + 200;
+
+    // approve token spend before invoking `pay_gas_for_contract_call`
+    token_client.approve(&sender, &contract_id, &gas_amount, &expiration_ledger);
+
+    assert_eq!(token_client.allowance(&sender, &contract_id), gas_amount);
+
     client.pay_gas_for_contract_call(
         &sender,
         &destination_chain,
@@ -58,6 +65,7 @@ fn pay_gas_for_contract_call() {
 
     assert_eq!(0, token_client.balance(&sender));
     assert_eq!(gas_amount, token_client.balance(&contract_id));
+    assert_eq!(token_client.allowance(&sender, &contract_id), 0);
 
     assert_emitted_event(
         &env,
