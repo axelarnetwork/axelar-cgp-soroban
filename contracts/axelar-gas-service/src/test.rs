@@ -84,7 +84,7 @@ fn pay_gas_for_contract_call() {
 #[test]
 fn collect_fees() {
     let (env, contract_id, gas_collector, client) = setup_env();
-    let token_addr: Address = env.register_stellar_asset_contract(Address::generate(&env));
+    let token_address: Address = env.register_stellar_asset_contract(Address::generate(&env));
     let token_client = TokenClient::new(&env, &token_addr);
     let supply: i128 = 1000;
     let refund_amount = 1;
