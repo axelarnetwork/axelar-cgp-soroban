@@ -1,4 +1,5 @@
-use soroban_sdk::{contracttype, BytesN};
+use axelar_soroban_std::types::Hash;
+use soroban_sdk::contracttype;
 
 #[contracttype]
 #[derive(Clone, Debug)]
@@ -8,5 +9,5 @@ pub enum DataKey {
     Epoch,
     Owner,
     SignerHashByEpoch(u64),
-    EpochBySignerHash(BytesN<32>),
+    EpochBySignerHash(Hash),
 }

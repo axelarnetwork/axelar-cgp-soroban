@@ -9,3 +9,13 @@ cargo wasm
 
 cargo test
 ```
+
+## Deploy
+
+```bash
+soroban contract build
+
+./optimize.sh
+
+soroban contract deploy --wasm target/wasm32-unknown-unknown/release/[contract].optimized.wasm --source wallet --network testnet
+```
