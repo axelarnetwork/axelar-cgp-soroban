@@ -35,7 +35,7 @@ fn pay_gas_for_contract_call() {
     let sender: Address = Address::generate(&env);
     let gas_amount: i128 = 1;
     let token = Token {
-        address: token_addr.clone(),
+        address: token_address.clone(),
         amount: gas_amount,
     };
     let refund_address: Address = Address::generate(&env);
@@ -44,8 +44,8 @@ fn pay_gas_for_contract_call() {
     let destination_address: String =
         String::from_str(&env, "0x4EFE356BEDeCC817cb89B4E9b796dB8bC188DC59");
 
-    let token_client = TokenClient::new(&env, &token_addr);
-    StellarAssetClient::new(&env, &token_addr).mint(&sender, &gas_amount);
+    let token_client = TokenClient::new(&env, &token_address);
+    StellarAssetClient::new(&env, &token_address).mint(&sender, &gas_amount);
 
     let expiration_ledger = &env.ledger().sequence() + 200;
 
@@ -85,11 +85,11 @@ fn pay_gas_for_contract_call() {
 fn collect_fees() {
     let (env, contract_id, gas_collector, client) = setup_env();
     let token_address: Address = env.register_stellar_asset_contract(Address::generate(&env));
-    let token_client = TokenClient::new(&env, &token_addr);
+    let token_client = TokenClient::new(&env, &token_address);
     let supply: i128 = 1000;
     let refund_amount = 1;
     let token = Token {
-        address: token_addr.clone(),
+        address: token_address.clone(),
         amount: refund_amount,
     };
     StellarAssetClient::new(&env, &token.address).mint(&contract_id, &supply);
@@ -111,15 +111,15 @@ fn collect_fees() {
 #[test]
 fn refund() {
     let (env, contract_id, _, client) = setup_env();
-    let token_addr: Address = env.register_stellar_asset_contract(Address::generate(&env));
-    let token_client = TokenClient::new(&env, &token_addr);
+    let token_address: Address = env.register_stellar_asset_contract(Address::generate(&env));
+    let token_client = TokenClient::new(&env, &token_address);
     let supply: i128 = 1000;
-    StellarAssetClient::new(&env, &token_addr).mint(&contract_id, &supply);
+    StellarAssetClient::new(&env, &token_address).mint(&contract_id, &supply);
 
     let receiver: Address = Address::generate(&env);
     let refund_amount: i128 = 1;
     let token = Token {
-        address: token_addr.clone(),
+        address: token_address.clone(),
         amount: refund_amount,
     };
 
