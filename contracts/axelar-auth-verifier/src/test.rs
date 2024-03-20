@@ -139,7 +139,7 @@ fn fail_validate_proof_invalid_epoch() {
 }
 
 #[test]
-#[should_panic(expected = "invalid signatures")]
+#[should_panic(expected = "invalid epoch")]
 fn fail_validate_proof_invalid_signatures() {
     let (env, _, client) = setup_env();
     let user = Address::generate(&env);
