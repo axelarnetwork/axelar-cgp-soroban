@@ -11,7 +11,7 @@ use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
 use sha3::{Digest, Keccak256};
 use soroban_sdk::{vec, U256};
 
-use soroban_sdk::{symbol_short, xdr::ToXdr, Address, Bytes, BytesN, Env};
+use soroban_sdk::{symbol_short, testutils::BytesN as _, xdr::ToXdr, Address, Bytes, BytesN, Env};
 
 use axelar_soroban_std::types::Hash;
 use axelar_soroban_std::{assert_emitted_event, traits::IntoVec};
@@ -24,6 +24,14 @@ pub struct TestSignerSet {
 
 pub fn randint(a: u32, b: u32) -> u32 {
     rand::thread_rng().gen_range(a..b)
+}
+
+pub fn generate_random_payload_and_hash(env: &Env) -> BytesN<32> {
+    let payload: Bytes = BytesN::<10>::random(env).into();
+
+    let payload_hash = env.crypto().keccak256(&payload);
+
+    payload_hash
 }
 
 pub fn generate_signer_set(env: &Env, num_signers: u32) -> TestSignerSet {
