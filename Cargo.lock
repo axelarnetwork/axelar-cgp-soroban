@@ -80,6 +80,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "axelar-operators"
+version = "0.1.0"
+dependencies = [
+ "axelar-soroban-interfaces",
+ "axelar-soroban-std",
+ "soroban-sdk",
+]
+
+[[package]]
 name = "axelar-soroban-interfaces"
 version = "0.1.0"
 dependencies = [
