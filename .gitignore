@@ -21,3 +21,6 @@ test_snapshots
 # Coverage files
 coverage
 lcov.info
+
+# JetBrains
+/.idea/

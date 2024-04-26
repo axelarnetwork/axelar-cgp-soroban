@@ -1,6 +1,7 @@
-use soroban_sdk::{contractclient, Address, Bytes, Env, String};
+use soroban_sdk::{contractclient, Address, Bytes, Env, String, Vec};
 
 use axelar_soroban_std::types::Hash;
+use crate::types::{Message, Proof, WeightedSigners};
 
 /// Interface for the Axelar Gateway.
 #[contractclient(name = "AxelarGatewayClient")]
@@ -41,4 +42,8 @@ pub trait AxelarGatewayInterface {
 
     /// Approve a batch of commands signed by Axelar verifiers, consisting of contract call approvals, and verifier set updates.
     fn execute(env: Env, batch: Bytes);
+
+    fn approve_messages(env: Env, messages: Vec<Message>, proof: Proof);
+
+    fn rotate_signers(env: Env, signers: WeightedSigners, proof: Proof);
 }

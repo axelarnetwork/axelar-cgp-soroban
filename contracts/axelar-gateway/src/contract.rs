@@ -148,6 +148,14 @@ impl AxelarGatewayInterface for AxelarGateway {
             event::execute_command(&env, command_id);
         }
     }
+
+    fn approve_messages(env: Env, messages: soroban_sdk::Vec<axelar_soroban_interfaces::types::Message>, proof: axelar_soroban_interfaces::types::Proof) {
+
+    }
+
+    fn rotate_signers(env: Env, signers: axelar_soroban_interfaces::types::WeightedSigners, proof: axelar_soroban_interfaces::types::Proof) {
+
+    }
 }
 
 impl AxelarGateway {
