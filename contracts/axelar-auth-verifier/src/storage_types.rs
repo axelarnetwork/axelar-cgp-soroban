@@ -6,8 +6,11 @@ use soroban_sdk::contracttype;
 pub enum DataKey {
     Initialized,
     PreviousSignerRetention,
-    Epoch,
+    DomainSeparator,
+    MinimumRotationDelay,
     Owner,
+    Epoch,
+    LastRotationTimestamp,
     SignerHashByEpoch(u64),
     EpochBySignerHash(Hash),
 }

@@ -13,12 +13,13 @@ pub struct WeightedSigner {
 pub struct WeightedSigners {
     pub signers: Vec<WeightedSigner>,
     pub threshold: U256,
+    pub nonce: BytesN<32>,
 }
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Proof {
-    pub signer_set: WeightedSigners,
+    pub signers: WeightedSigners,
     pub signatures: Vec<(BytesN<64>, u32)>,
 }
 

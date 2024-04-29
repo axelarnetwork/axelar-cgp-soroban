@@ -1,10 +1,7 @@
 #![cfg(any(test, feature = "testutils"))]
 extern crate std;
 
-use crate::{
-    contract::AxelarAuthVerifierClient,
-    types::{Proof, WeightedSigners},
-};
+use crate::contract::AxelarAuthVerifierClient;
 use rand::rngs::OsRng;
 use rand::Rng;
 use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
@@ -13,6 +10,7 @@ use soroban_sdk::{vec, U256};
 
 use soroban_sdk::{symbol_short, testutils::BytesN as _, xdr::ToXdr, Address, Bytes, BytesN, Env};
 
+use axelar_soroban_interfaces::types::{Proof, WeightedSigner, WeightedSigners};
 use axelar_soroban_std::types::Hash;
 use axelar_soroban_std::{assert_emitted_event, traits::IntoVec};
 
@@ -20,6 +18,7 @@ use axelar_soroban_std::{assert_emitted_event, traits::IntoVec};
 pub struct TestSignerSet {
     pub signers: std::vec::Vec<SecretKey>,
     pub signer_set: WeightedSigners,
+    pub domain_separator: Hash,
 }
 
 pub fn randint(a: u32, b: u32) -> u32 {
@@ -29,9 +28,7 @@ pub fn randint(a: u32, b: u32) -> u32 {
 pub fn generate_random_payload_and_hash(env: &Env) -> BytesN<32> {
     let payload: Bytes = BytesN::<10>::random(env).into();
 
-    let payload_hash = env.crypto().keccak256(&payload);
-
-    payload_hash
+    env.crypto().keccak256(&payload)
 }
 
 pub fn generate_signer_set(env: &Env, num_signers: u32) -> TestSignerSet {
@@ -56,13 +53,11 @@ pub fn generate_signer_set(env: &Env, num_signers: u32) -> TestSignerSet {
         signer_keypair.into_iter().unzip();
     let total_weight = signer_info.iter().map(|(_, _, w)| w).sum::<u32>();
 
-    let signer_vec: std::vec::Vec<(Hash, U256)> = signer_info
+    let signer_vec: std::vec::Vec<WeightedSigner> = signer_info
         .into_iter()
-        .map(|(_, pk_hash, w)| {
-            (
-                BytesN::<32>::from_array(env, &pk_hash),
-                U256::from_u32(env, w),
-            )
+        .map(|(_, pk_hash, w)| WeightedSigner {
+            signer: BytesN::<32>::from_array(env, &pk_hash),
+            weight: U256::from_u32(env, w),
         })
         .collect();
 
@@ -71,16 +66,33 @@ pub fn generate_signer_set(env: &Env, num_signers: u32) -> TestSignerSet {
     let signer_set = WeightedSigners {
         signers: signer_vec.into_vec(env),
         threshold: U256::from_u32(env, threshold),
+        nonce: BytesN::<32>::from_array(env, &[0; 32]),
     };
 
     TestSignerSet {
         signers,
         signer_set,
+        domain_separator: Hash::random(env),
     }
 }
 
-pub fn generate_proof(env: &Env, msg_hash: Hash, signers: TestSignerSet) -> Proof {
-    let msg = Message::from_digest_slice(&msg_hash.to_array()).unwrap();
+pub fn generate_proof(env: &Env, data_hash: Hash, signers: TestSignerSet) -> Proof {
+    let signers_hash = env
+        .crypto()
+        .keccak256(&signers.signer_set.clone().to_xdr(env));
+    let msg = Bytes::from_slice(
+        env,
+        [
+            signers.domain_separator.to_array(),
+            signers_hash.to_array(),
+            data_hash.to_array(),
+        ]
+        .concat()
+        .as_slice(),
+    );
+    let msg_hash = env.crypto().keccak256(&msg);
+
+    let msg_to_sign = Message::from_digest_slice(&msg_hash.to_array()).unwrap();
     let threshold = signers.signer_set.threshold.to_u128().unwrap() as u32;
     let secp = Secp256k1::new();
 
@@ -90,7 +102,7 @@ pub fn generate_proof(env: &Env, msg_hash: Hash, signers: TestSignerSet) -> Proo
         .take(threshold as usize)
         .map(|signer| {
             let (recovery_id, signature) = secp
-                .sign_ecdsa_recoverable(&msg, signer)
+                .sign_ecdsa_recoverable(&msg_to_sign, signer)
                 .serialize_compact();
 
             (
@@ -101,7 +113,7 @@ pub fn generate_proof(env: &Env, msg_hash: Hash, signers: TestSignerSet) -> Proo
         .collect();
 
     Proof {
-        signer_set: signers.signer_set,
+        signers: signers.signer_set,
         signatures: signatures.into_vec(env),
     }
 }
@@ -114,43 +126,47 @@ pub fn initialize(
     num_signers: u32,
 ) -> TestSignerSet {
     let signers = generate_signer_set(env, num_signers);
-    let signer_sets = vec![&env, signers.signer_set.clone()].to_xdr(env);
+    let signer_sets = vec![&env, signers.signer_set.clone()];
     let signer_set_hash = env
         .crypto()
         .keccak256(&signers.signer_set.clone().to_xdr(env));
+    let minimum_rotation_delay = 0;
 
-    client.initialize(&owner, &previous_signer_retention, &signer_sets);
+    client.initialize(
+        &owner,
+        &previous_signer_retention,
+        &signers.domain_separator,
+        &minimum_rotation_delay,
+        &signer_sets,
+    );
 
     assert_emitted_event(
         env,
         -1,
         &client.address,
-        (symbol_short!("transfer"), signer_set_hash),
+        (symbol_short!("rotated"), 1u64, signer_set_hash),
         (signers.signer_set.clone(),),
     );
 
     signers
 }
 
-pub fn transfer_operatorship(
-    env: &Env,
-    client: &AxelarAuthVerifierClient,
-    new_signers: TestSignerSet,
-) -> Bytes {
+pub fn rotate_signers(env: &Env, client: &AxelarAuthVerifierClient, new_signers: TestSignerSet) {
     let encoded_new_signer_set = new_signers.signer_set.clone().to_xdr(env);
 
-    client.transfer_operatorship(&encoded_new_signer_set);
+    client.rotate_signers(&new_signers.signer_set, &false);
+
+    let epoch: u64 = client.epoch();
 
     assert_emitted_event(
         env,
         -1,
         &client.address,
         (
-            symbol_short!("transfer"),
+            symbol_short!("rotated"),
+            epoch,
             env.crypto().keccak256(&encoded_new_signer_set),
         ),
         (new_signers.signer_set.clone(),),
     );
-
-    encoded_new_signer_set
 }

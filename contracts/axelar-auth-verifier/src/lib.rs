@@ -3,7 +3,6 @@
 mod error;
 mod event;
 mod storage_types;
-pub mod types;
 
 pub mod contract;
 

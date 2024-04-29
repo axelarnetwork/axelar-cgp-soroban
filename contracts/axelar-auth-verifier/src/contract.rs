@@ -1,13 +1,15 @@
 use core::panic;
 
-use soroban_sdk::xdr::{FromXdr, ToXdr};
+use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, Env, Vec, U256};
 
 use crate::error::Error;
 use crate::event;
 use crate::storage_types::DataKey;
-use crate::types::{Proof, WeightedSigners};
-use axelar_soroban_interfaces::axelar_auth_verifier::AxelarAuthVerifierInterface;
+use axelar_soroban_interfaces::{
+    axelar_auth_verifier::AxelarAuthVerifierInterface,
+    types::{Proof, WeightedSigner, WeightedSigners},
+};
 use axelar_soroban_std::types::Hash;
 
 #[contract]
@@ -31,7 +33,14 @@ impl AxelarAuthVerifier {
 
 #[contractimpl]
 impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
-    fn initialize(env: Env, owner: Address, previous_signer_retention: u32, operator_set: Bytes) {
+    fn initialize(
+        env: Env,
+        owner: Address,
+        previous_signer_retention: u32,
+        domain_separator: Hash,
+        minimum_rotation_delay: u64,
+        initial_signers: Vec<WeightedSigners>,
+    ) {
         if env.storage().instance().has(&DataKey::Initialized) {
             panic!("Already initialized");
         }
@@ -42,40 +51,47 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
 
         env.storage().instance().set(&DataKey::Owner, &owner);
 
+        // TODO: Do we need to manually expose these in a query, or can it be read directly off of storage in Stellar?
         env.storage().instance().set(
             &DataKey::PreviousSignerRetention,
             &previous_signer_retention,
         );
 
-        let signer_sets = Vec::<WeightedSigners>::from_xdr(&env, &operator_set).unwrap();
+        env.storage()
+            .instance()
+            .set(&DataKey::DomainSeparator, &domain_separator);
 
-        if signer_sets.is_empty() {
+        env.storage()
+            .instance()
+            .set(&DataKey::MinimumRotationDelay, &minimum_rotation_delay);
+
+        if initial_signers.is_empty() {
             panic_with_error!(env, Error::InvalidOperators);
         }
 
-        for signer_set in signer_sets {
-            Self::rotate_signer_set(&env, signer_set);
+        for signers in initial_signers.into_iter() {
+            Self::rotate_signer_set(&env, signers, false);
         }
     }
 
-    fn validate_proof(env: &Env, msg_hash: Hash, proof: Bytes) -> bool {
-        let proof = Proof::from_xdr(env, &proof).unwrap();
+    fn epoch(env: Env) -> u64 {
+        env.storage().instance().get(&DataKey::Epoch).unwrap()
+    }
 
-        let signer_set_hash = env
-            .crypto()
-            .keccak256(&proof.signer_set.clone().to_xdr(env));
+    fn validate_proof(env: Env, data_hash: Hash, proof: Proof) -> bool {
+        let signer_hash = env.crypto().keccak256(&proof.signers.clone().to_xdr(&env));
 
-        let signer_set_epoch: u64 = env
+        let signer_epoch: u64 = env
             .storage()
             .persistent()
-            .get(&DataKey::EpochBySignerHash(signer_set_hash))
+            .get(&DataKey::EpochBySignerHash(signer_hash.clone()))
             .unwrap_or(0);
 
-        let epoch: u64 = env.storage().instance().get(&DataKey::Epoch).unwrap();
-
-        if signer_set_epoch == 0 {
+        if signer_epoch == 0 {
             panic!("invalid epoch");
         }
+
+        let epoch: u64 = env.storage().instance().get(&DataKey::Epoch).unwrap();
 
         let previous_signer_retention: u32 = env
             .storage()
@@ -83,37 +99,61 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
             .get(&DataKey::PreviousSignerRetention)
             .unwrap();
 
-        if epoch - signer_set_epoch > previous_signer_retention as u64 {
-            panic_with_error!(env, Error::OutdatedOperatorSet);
+        if epoch - signer_epoch > previous_signer_retention as u64 {
+            panic_with_error!(env, Error::OutdatedSigners);
         }
 
-        if !Self::validate_signatures(env, msg_hash, proof) {
+        let msg_hash = Self::message_hash_to_sign(&env, signer_hash, data_hash);
+
+        if !Self::validate_signatures(&env, msg_hash, proof) {
             panic!("invalid signatures");
         }
 
-        epoch == signer_set_epoch
+        epoch == signer_epoch
     }
 
-    fn transfer_operatorship(env: Env, new_operator_set: Bytes) {
+    fn rotate_signers(env: Env, new_signers: WeightedSigners, enforce_rotation_delay: bool) {
         // TODO: do we need to check explicitly if contract has been initialized?
 
         // Only allow owner to transfer operatorship. This is meant to be set to the gateway contract
         let owner: Address = env.storage().instance().get(&DataKey::Owner).unwrap();
         owner.require_auth();
 
-        let signers = WeightedSigners::from_xdr(&env, &new_operator_set).unwrap();
-
-        Self::rotate_signer_set(&env, signers);
+        Self::rotate_signer_set(&env, new_signers, enforce_rotation_delay);
     }
 }
 
 impl AxelarAuthVerifier {
-    fn rotate_signer_set(env: &Env, new_signer_set: WeightedSigners) {
-        if !new_signer_set.is_valid() {
+    fn message_hash_to_sign(env: &Env, signer_hash: Hash, data_hash: Hash) -> Hash {
+        let domain_separator: Hash = env
+            .storage()
+            .instance()
+            .get(&DataKey::DomainSeparator)
+            .unwrap();
+
+        let msg = Bytes::from_slice(
+            env,
+            [
+                domain_separator.to_array(),
+                signer_hash.to_array(),
+                data_hash.to_array(),
+            ]
+            .concat()
+            .as_slice(),
+        );
+
+        // TODO: use an appropriate non tx overlapping prefix
+        env.crypto().keccak256(&msg)
+    }
+
+    fn rotate_signer_set(env: &Env, new_signers: WeightedSigners, enforce_rotation_delay: bool) {
+        if !validate_signers(env, &new_signers) {
             panic_with_error!(env, Error::InvalidOperators);
         }
 
-        let new_signer_hash = env.crypto().keccak256(&new_signer_set.clone().to_xdr(env));
+        Self::update_rotation_timestamp(env, enforce_rotation_delay);
+
+        let new_signer_hash = env.crypto().keccak256(&new_signers.clone().to_xdr(env));
         let new_epoch: u64 = env
             .storage()
             .instance()
@@ -127,17 +167,44 @@ impl AxelarAuthVerifier {
             .persistent()
             .set(&DataKey::SignerHashByEpoch(new_epoch), &new_signer_hash);
 
+        // If new_signers has been rotated to before, we will overwrite the epoch to point to the latest
         env.storage().persistent().set(
             &DataKey::EpochBySignerHash(new_signer_hash.clone()),
             &new_epoch,
         );
 
-        event::transfer_operatorship(env, new_signer_set, new_signer_hash);
+        event::rotate_signers(env, new_epoch, new_signers, new_signer_hash);
+    }
+
+    fn update_rotation_timestamp(env: &Env, enforce_rotation_delay: bool) {
+        let minimum_rotation_delay: u64 = env
+            .storage()
+            .instance()
+            .get(&DataKey::MinimumRotationDelay)
+            .unwrap();
+
+        let last_rotation_timestamp: u64 = env
+            .storage()
+            .instance()
+            .get(&DataKey::LastRotationTimestamp)
+            .unwrap_or(0);
+
+        let current_timestamp = env.ledger().timestamp();
+
+        if enforce_rotation_delay
+            && (current_timestamp - last_rotation_timestamp < minimum_rotation_delay)
+        {
+            panic_with_error!(env, Error::InsufficientRotationDelay);
+        }
+
+        env.storage()
+            .instance()
+            .set(&DataKey::LastRotationTimestamp, &current_timestamp);
     }
 
     fn validate_signatures(env: &Env, msg_hash: Hash, proof: Proof) -> bool {
         let Proof {
-            signer_set,
+            signers,
             signatures,
         } = proof;
 
@@ -155,24 +222,26 @@ impl AxelarAuthVerifier {
                 .secp256k1_recover(&msg_hash, &signature, recovery_id);
             let expected_signer = env.crypto().keccak256(&pub_key.into());
 
-            loop {
-                let (signer, weight) = signer_set.signers.get(signer_index).unwrap();
+            while signer_index < signers.signers.len() {
+                let WeightedSigner { signer, .. } = signers.signers.get(signer_index).unwrap();
 
                 if expected_signer == signer {
-                    total_weight = total_weight.add(&weight);
-
-                    if total_weight >= signer_set.threshold {
-                        return true;
-                    }
-
                     break;
                 }
 
                 signer_index += 1;
+            }
 
-                if signer_index == signer_set.signers.len() {
-                    return false;
-                }
+            if signer_index == signers.signers.len() {
+                return false;
+            }
+
+            let WeightedSigner { weight, .. } = signers.signers.get(signer_index).unwrap();
+
+            total_weight = total_weight.add(&weight);
+
+            if total_weight >= signers.threshold {
+                return true;
             }
         }
 
@@ -180,41 +249,34 @@ impl AxelarAuthVerifier {
     }
 }
 
-impl WeightedSigners {
-    /// Check if signer set is valid, i.e signer/pub key hash are in sorted order,
-    /// weights are non-zero and sum to at least threshold
-    pub fn is_valid(&self) -> bool {
-        if self.signers.is_empty() {
-            return false;
-        }
-
-        let first_weight = self.signers.get(0).unwrap();
-        let env = first_weight.1.env();
-        let zero = U256::from_u32(env, 0);
-        let mut total_weight = zero.clone();
-
-        for weight in self.signers.iter().map(|s| s.1) {
-            if weight == zero {
-                return false;
-            }
-
-            total_weight = total_weight.add(&weight);
-        }
-
-        if self.threshold == zero || total_weight < self.threshold {
-            return false;
-        }
-
-        let mut previous_signer = self.signers.get(0).unwrap().0;
-
-        for signer in self.signers.iter().skip(1).map(|s| s.0) {
-            if signer <= previous_signer {
-                return false;
-            }
-
-            previous_signer = signer;
-        }
-
-        true
+/// Check if signer set is valid, i.e signer/pub key hash are in sorted order,
+/// weights are non-zero and sum to at least threshold
+pub fn validate_signers(env: &Env, weighted_signers: &WeightedSigners) -> bool {
+    if weighted_signers.signers.is_empty() {
+        return false;
     }
+
+    // TODO: what's the min address/hash?
+    let mut previous_signer = Hash::from_array(env, &[0; 32]);
+    let zero = U256::from_u32(env, 0);
+    let mut total_weight = zero.clone();
+
+    for signer in weighted_signers.signers.iter() {
+        if previous_signer >= signer.signer {
+            return false;
+        }
+
+        if signer.weight == zero {
+            return false;
+        }
+
+        previous_signer = signer.signer;
+        total_weight = total_weight.add(&signer.weight);
+    }
+
+    if weighted_signers.threshold == zero || total_weight < weighted_signers.threshold {
+        return false;
+    }
+
+    true
 }

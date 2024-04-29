@@ -209,7 +209,7 @@ impl AxelarGateway {
         auth_module: &AxelarAuthVerifierClient,
         new_operator: Bytes,
     ) {
-        auth_module.transfer_operatorship(&new_operator);
+        auth_module.rotate_signers(&new_operator, &false);
 
         event::transfer_operatorship(env, new_operator);
     }
