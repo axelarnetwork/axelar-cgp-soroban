@@ -1,11 +1,12 @@
-use soroban_sdk::xdr::{FromXdr, ToXdr};
+use axelar_soroban_interfaces::types::Message;
+use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, Env, String};
 
 use axelar_soroban_interfaces::axelar_auth_verifier::AxelarAuthVerifierClient;
 use axelar_soroban_std::types::Hash;
 
-use crate::storage_types::{ContractCallApprovalKey, DataKey};
-use crate::types::{self, Command, SignedCommandBatch};
+use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
+use crate::types::CommandType;
 use crate::{error::Error, event};
 use axelar_soroban_interfaces::axelar_gateway::AxelarGatewayInterface;
 
@@ -14,7 +15,7 @@ pub struct AxelarGateway;
 
 #[contractimpl]
 impl AxelarGatewayInterface for AxelarGateway {
-    fn initialize(env: Env, auth_module: Address) {
+    fn initialize(env: Env, auth_module: Address, operator: Address) {
         if env
             .storage()
             .instance()
@@ -29,6 +30,8 @@ impl AxelarGatewayInterface for AxelarGateway {
         env.storage()
             .instance()
             .set(&DataKey::AuthModule, &auth_module);
+
+        env.storage().instance().set(&DataKey::Operator, &operator);
     }
 
     fn call_contract(
@@ -52,165 +55,180 @@ impl AxelarGatewayInterface for AxelarGateway {
         );
     }
 
-    fn validate_contract_call(
+    fn is_message_approved(
+        env: Env,
+        message_id: String,
+        source_chain: String,
+        source_address: String,
+        contract_address: Address,
+        payload_hash: Hash,
+    ) -> bool {
+        let message_approval =
+            Self::message_approval(&env, message_id.clone(), source_chain.clone());
+
+        message_approval
+            == Self::message_approval_hash(
+                &env,
+                Message {
+                    message_id,
+                    source_chain,
+                    source_address,
+                    contract_address,
+                    payload_hash,
+                },
+            )
+    }
+
+    fn is_message_executed(env: Env, message_id: String, source_chain: String) -> bool {
+        let message_approval = Self::message_approval(&env, message_id, source_chain);
+
+        message_approval == MessageApprovalValue::Executed
+    }
+
+    fn validate_message(
         env: Env,
         caller: Address,
-        command_id: Hash,
+        message_id: String,
         source_chain: String,
         source_address: String,
         payload_hash: Hash,
     ) -> bool {
         caller.require_auth();
 
-        let key = Self::contract_call_approval_key(
-            command_id.clone(),
-            source_chain,
-            source_address,
-            caller,
-            payload_hash,
-        );
-
-        let approved = env.storage().persistent().has(&key);
-
-        if approved {
-            env.storage().persistent().remove(&key);
-
-            event::execute_contract_call(&env, command_id);
-        }
-
-        approved
-    }
-
-    fn is_contract_call_approved(
-        env: Env,
-        command_id: Hash,
-        source_chain: String,
-        source_address: String,
-        contract_address: Address,
-        payload_hash: Hash,
-    ) -> bool {
-        let key = Self::contract_call_approval_key(
-            command_id,
-            source_chain,
-            source_address,
-            contract_address,
-            payload_hash,
-        );
-
-        env.storage().persistent().has(&key)
-    }
-
-    fn execute(env: Env, batch: Bytes) {
-        let SignedCommandBatch { batch, proof } = match SignedCommandBatch::from_xdr(&env, &batch) {
-            Ok(x) => x,
-            Err(_) => panic_with_error!(env, Error::InvalidBatch),
+        let key = MessageApprovalKey {
+            message_id: message_id.clone(),
+            source_chain: source_chain.clone(),
         };
-        let batch_hash = env.crypto().keccak256(&batch.clone().to_xdr(&env));
+        let message_approval = Self::message_approval_by_key(&env, key.clone());
+        let message = Message {
+            message_id: message_id.clone(),
+            source_chain,
+            source_address,
+            contract_address: caller,
+            payload_hash,
+        };
 
-        let auth_module = AxelarAuthVerifierClient::new(
-            &env,
-            match &env.storage().instance().get(&DataKey::AuthModule) {
-                Some(auth) => auth,
-                None => panic_with_error!(env, Error::Uninitialized),
-            },
-        );
+        if message_approval == Self::message_approval_hash(&env, message) {
+            env.storage().persistent().set(
+                &DataKey::MessageApproval(key),
+                &MessageApprovalValue::Executed,
+            );
 
-        let valid = auth_module.validate_proof(&batch_hash, &proof);
-        if !valid {
-            panic_with_error!(env, Error::InvalidProof);
+            event::execute_contract_call(&env, message_id);
+
+            return true;
         }
 
-        // TODO: switch to new domain separation approach
-        if batch.chain_id != 1 {
-            panic_with_error!(env, Error::InvalidChainId);
+        false
+    }
+
+    fn approve_messages(
+        env: Env,
+        messages: soroban_sdk::Vec<axelar_soroban_interfaces::types::Message>,
+        proof: axelar_soroban_interfaces::types::Proof,
+    ) {
+        let data_hash = env
+            .crypto()
+            .keccak256(&(CommandType::ApproveMessages, messages.clone()).to_xdr(&env));
+
+        let auth_module = Self::auth_module(&env);
+
+        auth_module.validate_proof(&data_hash, &proof);
+
+        if messages.is_empty() {
+            panic_with_error!(env, Error::EmptyMessages);
         }
 
-        for (command_id, command) in batch.commands {
-            let key = DataKey::CommandExecuted(command_id.clone());
+        for message in messages.into_iter() {
+            let key = MessageApprovalKey {
+                message_id: message.message_id.clone(),
+                source_chain: message.source_chain.clone(),
+            };
 
-            // TODO: switch to full revert, or add allow selecting subset of commands to process
-            // Skip command if already executed. This allows batches to be processed partially.
-            if env.storage().persistent().has(&key) {
+            // Prevent replay if message is already approved/executed
+            let message_approval = Self::message_approval_by_key(&env, key.clone());
+            if message_approval != MessageApprovalValue::NotApproved {
                 continue;
             }
 
-            env.storage().persistent().set(&key, &true);
+            env.storage().persistent().set(
+                &DataKey::MessageApproval(key),
+                &Self::message_approval_hash(&env, message.clone()),
+            );
 
-            match command {
-                Command::ContractCallApproval(approval) => {
-                    Self::approve_contract_call(&env, command_id.clone(), approval);
-                }
-                Command::TransferOperatorship(new_operators) => {
-                    Self::transfer_operatorship(&env, &auth_module, new_operators);
-                }
-            }
-
-            event::execute_command(&env, command_id);
+            event::approve_message(&env, message);
         }
     }
 
-    fn approve_messages(env: Env, messages: soroban_sdk::Vec<axelar_soroban_interfaces::types::Message>, proof: axelar_soroban_interfaces::types::Proof) {
+    fn rotate_signers(
+        env: Env,
+        signers: axelar_soroban_interfaces::types::WeightedSigners,
+        proof: axelar_soroban_interfaces::types::Proof,
+    ) {
+        let data_hash = env
+            .crypto()
+            .keccak256(&(CommandType::RotateSigners, signers.clone()).to_xdr(&env));
 
-    }
+        let auth_module = Self::auth_module(&env);
 
-    fn rotate_signers(env: Env, signers: axelar_soroban_interfaces::types::WeightedSigners, proof: axelar_soroban_interfaces::types::Proof) {
+        // TODO: Add rotation delay governance
+        if env
+            .storage()
+            .persistent()
+            .has(&DataKey::RotationExecuted(data_hash.clone()))
+        {
+            panic_with_error!(env, Error::RotationAlreadyExecuted);
+        }
 
+        let is_latest_signers = auth_module.validate_proof(&data_hash, &proof);
+        if !is_latest_signers {
+            panic_with_error!(env, Error::NotLatestSigners);
+        }
+
+        env.storage()
+            .persistent()
+            .set(&DataKey::RotationExecuted(data_hash), &true);
+
+        auth_module.rotate_signers(&signers, &true);
+
+        event::rotate_signers(&env, signers);
     }
 }
 
 impl AxelarGateway {
-    fn contract_call_approval_key(
-        command_id: Hash,
-        source_chain: String,
-        source_address: String,
-        contract_address: Address,
-        payload_hash: Hash,
-    ) -> DataKey {
-        DataKey::ContractCallApproval(ContractCallApprovalKey {
-            command_id,
-            source_chain,
-            source_address,
-            contract_address,
-            payload_hash,
-        })
-    }
-
-    fn approve_contract_call(env: &Env, command_id: Hash, approval: types::ContractCallApproval) {
-        let types::ContractCallApproval {
-            source_chain,
-            source_address,
-            contract_address,
-            payload_hash,
-        } = approval;
-
-        // TODO: further restrict contract_address value if needed (to avoid non applicable values that might be a valid Address)
-        let key = Self::contract_call_approval_key(
-            command_id.clone(),
-            source_chain.clone(),
-            source_address.clone(),
-            contract_address.clone(),
-            payload_hash.clone(),
-        );
-
-        env.storage().persistent().set(&key, &true);
-
-        event::approve_contract_call(
+    fn auth_module(env: &Env) -> AxelarAuthVerifierClient {
+        AxelarAuthVerifierClient::new(
             env,
-            command_id,
-            source_chain,
-            source_address,
-            contract_address,
-            payload_hash,
-        );
+            match &env.storage().instance().get(&DataKey::AuthModule) {
+                Some(auth) => auth,
+                None => panic_with_error!(env, Error::Uninitialized),
+            },
+        )
     }
 
-    fn transfer_operatorship(
-        env: &Env,
-        auth_module: &AxelarAuthVerifierClient,
-        new_operator: Bytes,
-    ) {
-        auth_module.rotate_signers(&new_operator, &false);
+    fn message_approval_hash(env: &Env, message: Message) -> MessageApprovalValue {
+        MessageApprovalValue::Approved(env.crypto().keccak256(&message.to_xdr(env)))
+    }
 
-        event::transfer_operatorship(env, new_operator);
+    /// Get the message approval value by message_id and source_chain, defaulting to `MessageNotApproved`
+    fn message_approval(
+        env: &Env,
+        message_id: String,
+        source_chain: String,
+    ) -> MessageApprovalValue {
+        let key = MessageApprovalKey {
+            message_id,
+            source_chain,
+        };
+
+        Self::message_approval_by_key(env, key)
+    }
+
+    /// Get the message approval value by key, defaulting to `MessageNotApproved`
+    fn message_approval_by_key(env: &Env, key: MessageApprovalKey) -> MessageApprovalValue {
+        env.storage()
+            .persistent()
+            .get(&DataKey::MessageApproval(key))
+            .unwrap_or(MessageApprovalValue::NotApproved)
     }
 }

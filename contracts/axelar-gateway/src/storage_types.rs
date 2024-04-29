@@ -1,13 +1,20 @@
-use soroban_sdk::{contracttype, Address, BytesN, String};
+use soroban_sdk::{contracttype, String};
+
+use axelar_soroban_std::types::Hash;
 
 #[contracttype]
 #[derive(Clone, Debug)]
-pub struct ContractCallApprovalKey {
-    pub command_id: BytesN<32>,
+pub struct MessageApprovalKey {
+    pub message_id: String,
     pub source_chain: String,
-    pub source_address: String,
-    pub contract_address: Address,
-    pub payload_hash: BytesN<32>,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum MessageApprovalValue {
+    NotApproved,
+    Approved(Hash),
+    Executed,
 }
 
 #[contracttype]
@@ -15,6 +22,7 @@ pub struct ContractCallApprovalKey {
 pub enum DataKey {
     Initialized,
     AuthModule,
-    CommandExecuted(BytesN<32>),
-    ContractCallApproval(ContractCallApprovalKey),
+    Operator,
+    MessageApproval(MessageApprovalKey),
+    RotationExecuted(Hash),
 }

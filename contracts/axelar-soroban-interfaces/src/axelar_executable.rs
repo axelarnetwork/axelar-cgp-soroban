@@ -25,7 +25,7 @@ pub trait AxelarExecutableInterface {
     /// This method doesn't get exposed from the contract, as Soroban SDK's contractimpl macro ignores default trait methods.
     fn validate(
         env: Env,
-        command_id: Hash,
+        message_id: String,
         source_chain: String,
         source_address: String,
         payload: Bytes,
@@ -33,9 +33,9 @@ pub trait AxelarExecutableInterface {
         let gateway = AxelarGatewayClient::new(&env, &Self::gateway(&env));
 
         // Validate the contract call was approved by the gateway
-        if !gateway.validate_contract_call(
+        if !gateway.validate_message(
             &env.current_contract_address(),
-            &command_id,
+            &message_id,
             &source_chain,
             &source_address,
             &env.crypto().keccak256(&payload),

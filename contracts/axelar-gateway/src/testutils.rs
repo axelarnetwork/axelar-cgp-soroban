@@ -1,10 +1,13 @@
 #![cfg(any(test, feature = "testutils"))]
 extern crate std;
 
-use crate::{contract::AxelarGatewayClient, types};
+use crate::{contract::AxelarGatewayClient, types::CommandType};
 use axelar_auth_verifier::{contract::AxelarAuthVerifier, testutils::TestSignerSet};
+use axelar_soroban_interfaces::types::{Message, WeightedSigners};
+use axelar_soroban_std::types::Hash;
 use rand::Rng;
-use soroban_sdk::{testutils::Address as _, Address, Bytes, Env, String};
+use soroban_sdk::xdr::ToXdr;
+use soroban_sdk::{testutils::Address as _, Address, Bytes, Env, String, Vec};
 
 const DESTINATION_CHAIN: &str = "ethereum";
 const DESTINATION_ADDRESS: &str = "0x4EFE356BEDeCC817cb89B4E9b796dB8bC188DC59";
@@ -28,12 +31,22 @@ pub fn initialize(
         num_signers,
     );
 
-    client.initialize(&auth_contract_id);
+    client.initialize(&auth_contract_id, &client.address.clone());
 
     signers
 }
 
-pub fn generate_test_approval(env: &Env) -> (types::ContractCallApproval, Bytes) {
+pub fn get_approve_hash(env: &Env, messages: Vec<Message>) -> Hash {
+    env.crypto()
+        .keccak256(&(CommandType::ApproveMessages, messages).to_xdr(env))
+}
+
+pub fn get_rotation_hash(env: &Env, new_signers: WeightedSigners) -> Hash {
+    env.crypto()
+        .keccak256(&(CommandType::RotateSigners, new_signers).to_xdr(env))
+}
+
+pub fn generate_test_message(env: &Env) -> (Message, Bytes) {
     let mut rng = rand::thread_rng();
     let len = rng.gen_range(0..20);
     let mut payload = std::vec![0u8; len];
@@ -42,7 +55,8 @@ pub fn generate_test_approval(env: &Env) -> (types::ContractCallApproval, Bytes)
     let payload = Bytes::from_slice(env, &payload[..]);
 
     (
-        types::ContractCallApproval {
+        Message {
+            message_id: String::from_str(env, "test"),
             source_chain: String::from_str(env, DESTINATION_CHAIN),
             source_address: String::from_str(env, DESTINATION_ADDRESS),
             contract_address: Address::generate(env),

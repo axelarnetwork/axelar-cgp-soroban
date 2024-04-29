@@ -1,5 +1,5 @@
 use axelar_soroban_std::types::Hash;
-use soroban_sdk::{contracttype, Address, String, BytesN, Vec, U256};
+use soroban_sdk::{contracttype, Address, BytesN, String, Vec, U256};
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
