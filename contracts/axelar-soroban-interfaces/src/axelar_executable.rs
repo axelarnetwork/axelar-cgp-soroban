@@ -3,7 +3,6 @@ use core::panic;
 use soroban_sdk::{contractclient, Address, Bytes, Env, String};
 
 use crate::axelar_gateway::AxelarGatewayClient;
-use axelar_soroban_std::types::Hash;
 
 /// Interface for an Axelar Executable app.
 #[contractclient(name = "AxelarExecutableClient")]
@@ -14,14 +13,14 @@ pub trait AxelarExecutableInterface {
     /// Execute a cross-chain contract call with the given payload. This function must validate that the contract call is received from the trusted gateway.
     fn execute(
         env: Env,
-        command_id: Hash,
+        message_id: String,
         source_chain: String,
         source_address: String,
         payload: Bytes,
     );
 
     /// Validate if a gateway has approved a contract call.
-    /// This should be called from `execute` before executing custom app logic.
+    /// This should be called from an implementation of `execute` before executing custom app logic.
     /// This method doesn't get exposed from the contract, as Soroban SDK's contractimpl macro ignores default trait methods.
     fn validate(
         env: Env,

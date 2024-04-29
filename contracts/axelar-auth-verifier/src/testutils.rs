@@ -77,19 +77,13 @@ pub fn generate_signer_set(env: &Env, num_signers: u32) -> TestSignerSet {
 }
 
 pub fn generate_proof(env: &Env, data_hash: Hash, signers: TestSignerSet) -> Proof {
-    let signers_hash = env
+    let signer_hash = env
         .crypto()
         .keccak256(&signers.signer_set.clone().to_xdr(env));
-    let msg = Bytes::from_slice(
-        env,
-        [
-            signers.domain_separator.to_array(),
-            signers_hash.to_array(),
-            data_hash.to_array(),
-        ]
-        .concat()
-        .as_slice(),
-    );
+
+    let mut msg: Bytes = signers.domain_separator.into();
+    msg.extend_from_array(&signer_hash.to_array());
+    msg.extend_from_array(&data_hash.to_array());
     let msg_hash = env.crypto().keccak256(&msg);
 
     let msg_to_sign = Message::from_digest_slice(&msg_hash.to_array()).unwrap();

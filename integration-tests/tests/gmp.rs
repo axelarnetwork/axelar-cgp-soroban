@@ -6,13 +6,13 @@ use axelar_auth_verifier::contract::AxelarAuthVerifier;
 use axelar_auth_verifier::testutils::{generate_proof, TestSignerSet};
 
 use axelar_gateway::contract::{AxelarGateway, AxelarGatewayClient};
-use axelar_gateway::types::{self, CommandBatch, ContractCallApproval, SignedCommandBatch};
+use axelar_gateway::testutils::get_approve_hash;
+use axelar_soroban_interfaces::types::Message;
 use axelar_soroban_std::assert_emitted_event;
 use soroban_sdk::{contract, contractimpl, log, symbol_short, Bytes};
-use soroban_sdk::{testutils::BytesN as _, vec, xdr::ToXdr, Address, BytesN, Env, String};
+use soroban_sdk::{testutils::BytesN as _, vec, Address, BytesN, Env, String};
 
 use axelar_soroban_interfaces::axelar_executable::AxelarExecutableInterface;
-use axelar_soroban_std::types::Hash;
 
 #[contract]
 pub struct AxelarApp;
@@ -25,14 +25,14 @@ impl AxelarExecutableInterface for AxelarApp {
 
     fn execute(
         env: Env,
-        command_id: Hash,
+        message_id: String,
         source_chain: String,
         source_address: String,
         payload: Bytes,
     ) {
         Self::validate(
             env.clone(),
-            command_id,
+            message_id,
             source_chain,
             source_address,
             payload.clone(),
@@ -79,7 +79,7 @@ fn setup_gateway<'a>(env: &Env) -> (AxelarGatewayClient<'a>, TestSignerSet) {
         5,
     );
 
-    gateway_client.initialize(&auth_contract_id);
+    gateway_client.initialize(&auth_contract_id, &gateway_client.address.clone());
 
     (gateway_client, signers)
 }
@@ -121,6 +121,8 @@ fn test_gmp() {
     source_app.send(&destination_chain, &destination_address, &payload);
 
     // Axelar hub confirms the contract call, i.e Axelar verifiers verify/vote on the emitted event
+    let message_id = String::from_str(&env, "test");
+
     log!(env, "Confirming message from source Axelar gateway");
 
     assert_emitted_event(
@@ -138,38 +140,31 @@ fn test_gmp() {
     // Axelar hub signs the message approval
     log!(env, "Signing message approval for destination");
 
-    let command_id = BytesN::random(&env);
-    let batch = CommandBatch {
-        chain_id: 1,
-        commands: vec![
-            &env,
-            (
-                command_id.clone(),
-                types::Command::ContractCallApproval(ContractCallApproval {
-                    source_chain: source_chain.clone(),
-                    source_address: source_address.clone(),
-                    contract_address: destination_app_id.clone(),
-                    payload_hash,
-                }),
-            ),
-        ],
-    };
-    let batch_hash = env.crypto().keccak256(&batch.clone().to_xdr(&env));
-    let proof = generate_proof(&env, batch_hash, signers);
-    let signed_batch = SignedCommandBatch {
-        batch,
-        proof: proof.to_xdr(&env),
-    };
+    let messages = vec![
+        &env,
+        Message {
+            message_id: message_id.clone(),
+            source_chain: source_chain.clone(),
+            source_address: source_address.clone(),
+            contract_address: destination_app_id.clone(),
+            payload_hash,
+        },
+    ];
+    let data_hash = get_approve_hash(&env, messages.clone());
+    let proof = generate_proof(&env, data_hash, signers);
 
     // Submit the signed batch to the destination Axelar gateway
-    log!(env, "Submitting signed batch to destination Axelar gateway");
+    log!(
+        env,
+        "Submitting signed message approval to destination Axelar gateway"
+    );
 
-    destination_gateway_client.execute(&signed_batch.to_xdr(&env));
+    destination_gateway_client.approve_messages(&messages, &proof);
 
     // Execute the app
     log!(env, "Executing message on destination app");
 
-    destination_app.execute(&command_id, &source_chain, &source_address, &payload);
+    destination_app.execute(&message_id, &source_chain, &source_address, &payload);
 
     assert_emitted_event(
         &env,

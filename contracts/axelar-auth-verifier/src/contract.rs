@@ -131,16 +131,9 @@ impl AxelarAuthVerifier {
             .get(&DataKey::DomainSeparator)
             .unwrap();
 
-        let msg = Bytes::from_slice(
-            env,
-            [
-                domain_separator.to_array(),
-                signer_hash.to_array(),
-                data_hash.to_array(),
-            ]
-            .concat()
-            .as_slice(),
-        );
+        let mut msg: Bytes = domain_separator.into();
+        msg.extend_from_array(&signer_hash.to_array());
+        msg.extend_from_array(&data_hash.to_array());
 
         // TODO: use an appropriate non tx overlapping prefix
         env.crypto().keccak256(&msg)
