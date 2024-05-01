@@ -183,9 +183,9 @@ fn fail_execute_invalid_proof() {
     let (env, _contract_id, client) = setup_env();
     let (message, _) = generate_test_message(&env);
 
-    initialize(&env, &client, 1, randint(1, 10));
+    let signers = initialize(&env, &client, 1, randint(1, 10));
 
-    let invalid_signers = generate_signer_set(&env, randint(1, 10));
+    let invalid_signers = generate_signer_set(&env, randint(1, 10), signers.domain_separator);
 
     let messages = vec![&env, message.clone()];
     let data_hash = get_approve_hash(&env, messages.clone());
@@ -215,14 +215,13 @@ fn approve_messages_skip_duplicate_message() {
     assert_eq!(env.events().all().len(), 2);
 }
 
-// TODO: rotate signers fix
-// #[test]
+#[test]
 fn rotate_signers() {
     let (env, contract_id, client) = setup_env();
 
     let signers = initialize(&env, &client, 1, randint(1, 10));
 
-    let new_signers = generate_signer_set(&env, randint(1, 10));
+    let new_signers = generate_signer_set(&env, randint(1, 10), signers.domain_separator.clone());
 
     let data_hash = get_rotation_hash(&env, new_signers.signer_set.clone());
     let proof = generate_proof(&env, data_hash, signers);

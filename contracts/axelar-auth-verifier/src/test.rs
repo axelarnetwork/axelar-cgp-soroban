@@ -129,7 +129,7 @@ fn fail_validate_proof_invalid_epoch() {
 
     initialize(&env, &client, user, randint(0, 10), randint(1, 10));
 
-    let different_signers = generate_signer_set(&env, randint(1, 10));
+    let different_signers = generate_signer_set(&env, randint(1, 10), Hash::random(&env));
 
     let msg_hash = generate_random_payload_and_hash(&env);
     let proof = generate_proof(&env, msg_hash.clone(), different_signers);
@@ -180,11 +180,11 @@ fn fail_validate_proof_invalid_signer_set() {
     let user = Address::generate(&env);
 
     let signers = initialize(&env, &client, user, randint(0, 10), randint(1, 10));
+    let new_signers = generate_signer_set(&env, randint(1, 10), signers.domain_separator.clone());
 
     let msg_hash = generate_random_payload_and_hash(&env);
     let mut proof = generate_proof(&env, msg_hash.clone(), signers);
 
-    let new_signers = generate_signer_set(&env, randint(1, 10));
     let new_proof = generate_proof(&env, msg_hash.clone(), new_signers);
 
     proof.signatures = new_proof.signatures;
@@ -226,15 +226,14 @@ fn fail_validate_proof_threshold_not_met() {
     client.validate_proof(&msg_hash, &proof);
 }
 
-// TODO: investigate this test
-// #[test]
+#[test]
 fn test_rotate_signers() {
     let (env, _, client) = setup_env();
 
     let user = Address::generate(&env);
     let previous_signer_retention = 1;
 
-    initialize(
+    let signers = initialize(
         &env,
         &client,
         user.clone(),
@@ -244,7 +243,7 @@ fn test_rotate_signers() {
 
     let msg_hash = generate_random_payload_and_hash(&env);
 
-    let new_signers = generate_signer_set(&env, randint(1, 10));
+    let new_signers = generate_signer_set(&env, randint(1, 10), signers.domain_separator);
 
     rotate_signers(&env, &client, new_signers.clone());
 
@@ -254,10 +253,10 @@ fn test_rotate_signers() {
     //     &user,
     //     &client.address,
     //     "rotate_signers",
-    //     (new_signers.signer_set.clone(), false),
+    //     (new_signers.signer_set.clone(), false,),
     // );
 
-    let proof = generate_proof(&env, msg_hash.clone(), new_signers.clone());
+    let proof = generate_proof(&env, msg_hash.clone(), new_signers);
     let latest_signer_set = client.validate_proof(&msg_hash, &proof);
     assert!(latest_signer_set);
 }
@@ -303,7 +302,7 @@ fn rotate_signers_fail_zero_weight() {
         randint(1, 10),
     );
 
-    let mut new_signers = generate_signer_set(&env, randint(1, 10));
+    let mut new_signers = generate_signer_set(&env, randint(1, 10), Hash::random(&env));
 
     let last_index = new_signers.signer_set.signers.len() as u32 - 1;
 
@@ -333,7 +332,7 @@ fn rotate_signers_fail_zero_threshold() {
         randint(1, 10),
     );
 
-    let mut new_signers = generate_signer_set(&env, randint(1, 10));
+    let mut new_signers = generate_signer_set(&env, randint(1, 10), Hash::random(&env));
 
     // set the threshold to zero
     new_signers.signer_set.threshold = U256::from_u32(&env, 0);
@@ -358,7 +357,7 @@ fn rotate_signers_fail_low_total_weight() {
         randint(1, 10),
     );
 
-    let mut new_signers = generate_signer_set(&env, randint(1, 10));
+    let mut new_signers = generate_signer_set(&env, randint(1, 10), Hash::random(&env));
 
     let one = U256::from_u32(&env, 1);
 
@@ -395,7 +394,8 @@ fn rotate_signers_fail_wrong_signer_order() {
         randint(1, 10),
     );
 
-    let mut new_signers = generate_signer_set(&env, randint(1, 10));
+    let min_signers = 2; // need at least 2 signers to test incorrect ordering
+    let mut new_signers = generate_signer_set(&env, randint(min_signers, 10), Hash::random(&env));
 
     let len = new_signers.signer_set.signers.len();
 
@@ -414,8 +414,7 @@ fn rotate_signers_fail_wrong_signer_order() {
     assert!(res.is_err());
 }
 
-// TODO: investigate this test
-// #[test]
+#[test]
 fn multi_rotate_signers() {
     let (env, _, client) = setup_env();
 
@@ -435,7 +434,11 @@ fn multi_rotate_signers() {
     let mut previous_signers = original_signers.clone();
 
     for _ in 0..previous_signer_retention {
-        let new_signers = generate_signer_set(&env, randint(1, 10));
+        let new_signers = generate_signer_set(
+            &env,
+            randint(1, 10),
+            original_signers.domain_separator.clone(),
+        );
 
         rotate_signers(&env, &client, new_signers.clone());
 
@@ -474,7 +477,11 @@ fn rotate_signers_panics_on_outdated_signer_set() {
     let msg_hash = generate_random_payload_and_hash(&env);
 
     for _ in 0..(previous_signer_retention + 1) {
-        let new_signers = generate_signer_set(&env, randint(1, 10));
+        let new_signers = generate_signer_set(
+            &env,
+            randint(1, 10),
+            original_signers.domain_separator.clone(),
+        );
         rotate_signers(&env, &client, new_signers.clone());
     }
 
