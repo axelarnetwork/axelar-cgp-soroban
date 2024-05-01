@@ -247,14 +247,13 @@ fn test_rotate_signers() {
 
     rotate_signers(&env, &client, new_signers.clone());
 
-    // TODO: investigate invocation issue
-    // assert_invocation(
-    //     &env,
-    //     &user,
-    //     &client.address,
-    //     "rotate_signers",
-    //     (new_signers.signer_set.clone(), false,),
-    // );
+    assert_invocation(
+        &env,
+        &user,
+        &client.address,
+        "rotate_signers",
+        (new_signers.signer_set.clone(), false),
+    );
 
     let proof = generate_proof(&env, msg_hash.clone(), new_signers);
     let latest_signer_set = client.validate_proof(&msg_hash, &proof);

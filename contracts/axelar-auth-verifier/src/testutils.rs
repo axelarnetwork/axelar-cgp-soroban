@@ -148,9 +148,9 @@ pub fn initialize(
 pub fn rotate_signers(env: &Env, client: &AxelarAuthVerifierClient, new_signers: TestSignerSet) {
     let encoded_new_signer_set = new_signers.signer_set.clone().to_xdr(env);
 
-    client.rotate_signers(&new_signers.signer_set, &false);
+    let epoch: u64 = client.epoch() + 1;
 
-    let epoch: u64 = client.epoch();
+    client.rotate_signers(&new_signers.signer_set, &false);
 
     assert_emitted_event(
         env,
