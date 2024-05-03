@@ -1,4 +1,4 @@
-use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Env, Val, Vec, Symbol};
+use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Env, Symbol, Val, Vec};
 
 use crate::storage_types::DataKey;
 use crate::{error::Error, event};

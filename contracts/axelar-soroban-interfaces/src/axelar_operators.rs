@@ -1,4 +1,4 @@
-use soroban_sdk::{contractclient, Address, Env, Val, Vec, Symbol};
+use soroban_sdk::{contractclient, Address, Env, Symbol, Val, Vec};
 
 /// Interface for the Axelar Operators contract.
 #[contractclient(name = "AxelarOperators")]
