@@ -16,5 +16,6 @@ pub trait AxelarOperatorsInterface {
     fn remove_operator(env: Env, operator: Address);
 
     /// Execute a function on a contract as an operator.
-    fn execute(env: Env, operator: Address, contract: Address, func: Symbol, args: Vec<Val>) -> Val;
+    fn execute(env: Env, operator: Address, contract: Address, func: Symbol, args: Vec<Val>)
+        -> Val;
 }

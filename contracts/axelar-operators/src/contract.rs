@@ -76,7 +76,13 @@ impl AxelarOperatorsInterface for AxelarOperators {
         event::remove_operator(&env, account);
     }
 
-    fn execute(env: Env, operator: Address, contract: Address, func: Symbol, args: Vec<Val>) -> Val {
+    fn execute(
+        env: Env,
+        operator: Address,
+        contract: Address,
+        func: Symbol, args:
+        Vec<Val>
+    ) -> Val {
         operator.require_auth();
 
         let key = DataKey::Operators(operator.clone());
