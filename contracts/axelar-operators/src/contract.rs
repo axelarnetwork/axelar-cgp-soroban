@@ -81,7 +81,7 @@ impl AxelarOperatorsInterface for AxelarOperators {
         operator: Address,
         contract: Address,
         func: Symbol,
-        args: Vec<Val>
+        args: Vec<Val>,
     ) -> Val {
         operator.require_auth();
 
