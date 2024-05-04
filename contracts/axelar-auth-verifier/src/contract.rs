@@ -1,7 +1,7 @@
 use core::panic;
 
 use soroban_sdk::xdr::ToXdr;
-use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, Env, Vec, U256};
+use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, Vec, U256};
 
 use crate::error::Error;
 use crate::event;
@@ -10,7 +10,6 @@ use axelar_soroban_interfaces::{
     axelar_auth_verifier::AxelarAuthVerifierInterface,
     types::{Proof, WeightedSigner, WeightedSigners},
 };
-use axelar_soroban_std::types::Hash;
 
 #[contract]
 pub struct AxelarAuthVerifier;
@@ -37,7 +36,7 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
         env: Env,
         owner: Address,
         previous_signer_retention: u32,
-        domain_separator: Hash,
+        domain_separator: BytesN<32>,
         minimum_rotation_delay: u64,
         initial_signers: Vec<WeightedSigners>,
     ) {
@@ -78,7 +77,7 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
         env.storage().instance().get(&DataKey::Epoch).unwrap()
     }
 
-    fn validate_proof(env: Env, data_hash: Hash, proof: Proof) -> bool {
+    fn validate_proof(env: Env, data_hash: BytesN<32>, proof: Proof) -> bool {
         let signer_hash = env.crypto().keccak256(&proof.signers.clone().to_xdr(&env));
 
         let signer_epoch: u64 = env
@@ -124,8 +123,8 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
 }
 
 impl AxelarAuthVerifier {
-    fn message_hash_to_sign(env: &Env, signer_hash: Hash, data_hash: Hash) -> Hash {
-        let domain_separator: Hash = env
+    fn message_hash_to_sign(env: &Env, signer_hash: BytesN<32>, data_hash: BytesN<32>) -> BytesN<32> {
+        let domain_separator: BytesN<32> = env
             .storage()
             .instance()
             .get(&DataKey::DomainSeparator)
@@ -195,7 +194,7 @@ impl AxelarAuthVerifier {
             .set(&DataKey::LastRotationTimestamp, &current_timestamp);
     }
 
-    fn validate_signatures(env: &Env, msg_hash: Hash, proof: Proof) -> bool {
+    fn validate_signatures(env: &Env, msg_hash: BytesN<32>, proof: Proof) -> bool {
         let Proof {
             signers,
             signatures,
@@ -250,7 +249,7 @@ pub fn validate_signers(env: &Env, weighted_signers: &WeightedSigners) -> bool {
     }
 
     // TODO: what's the min address/hash?
-    let mut previous_signer = Hash::from_array(env, &[0; 32]);
+    let mut previous_signer = BytesN::<32>::from_array(env, &[0; 32]);
     let zero = U256::from_u32(env, 0);
     let mut total_weight = zero.clone();
 

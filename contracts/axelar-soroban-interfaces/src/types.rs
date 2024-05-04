@@ -1,10 +1,9 @@
-use axelar_soroban_std::types::Hash;
 use soroban_sdk::{contracttype, Address, BytesN, String, Vec, U256};
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WeightedSigner {
-    pub signer: Hash,
+    pub signer: BytesN<32>,
     pub weight: U256,
 }
 
@@ -30,5 +29,5 @@ pub struct Message {
     pub source_chain: String,
     pub source_address: String,
     pub contract_address: Address,
-    pub payload_hash: Hash,
+    pub payload_hash: BytesN<32>,
 }

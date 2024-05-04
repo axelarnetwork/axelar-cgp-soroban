@@ -1,9 +1,8 @@
 use axelar_soroban_interfaces::types::Message;
 use soroban_sdk::xdr::ToXdr;
-use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, Env, String};
+use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, String};
 
 use axelar_soroban_interfaces::axelar_auth_verifier::AxelarAuthVerifierClient;
-use axelar_soroban_std::types::Hash;
 
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::types::CommandType;
@@ -61,7 +60,7 @@ impl AxelarGatewayInterface for AxelarGateway {
         source_chain: String,
         source_address: String,
         contract_address: Address,
-        payload_hash: Hash,
+        payload_hash: BytesN<32>,
     ) -> bool {
         let message_approval =
             Self::message_approval(&env, message_id.clone(), source_chain.clone());
@@ -91,7 +90,7 @@ impl AxelarGatewayInterface for AxelarGateway {
         message_id: String,
         source_chain: String,
         source_address: String,
-        payload_hash: Hash,
+        payload_hash: BytesN<32>,
     ) -> bool {
         caller.require_auth();
 
