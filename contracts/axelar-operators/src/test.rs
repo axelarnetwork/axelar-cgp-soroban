@@ -207,15 +207,14 @@ fn test_execute() {
     client.add_operator(&operator);
 
     // call execute as an operator
-    client.execute(&operator, &target, &symbol_short!("method"), &Vec::new(&env));
-
-    assert_emitted_event(
-        &env,
-        -1,
+    client.execute(
+        &operator,
         &target,
-        (symbol_short!("executed"),),
-        (),
+        &symbol_short!("method"),
+        &Vec::new(&env),
     );
+
+    assert_emitted_event(&env, -1, &target, (symbol_short!("executed"), ), ());
 }
 
 #[test]
@@ -234,7 +233,7 @@ fn fail_execute_not_operator() {
     client.add_operator(&operator);
 
     // call execute with a non-operator, should panic
-    let res =  client.try_execute(&owner, &target, &symbol_short!("method"), &Vec::new(&env));
+    let res = client.try_execute(&owner, &target, &symbol_short!("method"), &Vec::new(&env));
 
     assert!(res.is_err());
 }
