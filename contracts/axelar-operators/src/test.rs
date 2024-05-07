@@ -13,8 +13,8 @@ pub struct TestTarget;
 
 #[contractimpl]
 impl TestTarget {
-    pub fn method(_env: Env) {
-        _env.events().publish((symbol_short!("executed"),), ());
+    pub fn method(env: Env) {
+        env.events().publish((symbol_short!("executed"),), ());
     }
 }
 
