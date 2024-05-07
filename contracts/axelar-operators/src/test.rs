@@ -4,16 +4,16 @@ extern crate std;
 use axelar_soroban_std::{assert_emitted_event, testutils::assert_invocation};
 
 use crate::contract::{AxelarOperators, AxelarOperatorsClient};
-use soroban_sdk::{contract, contractimpl, symbol_short, testutils::Address as _, Address, Env, Vec};
+use soroban_sdk::{
+    contract, contractimpl, symbol_short, testutils::Address as _, Address, Env, Vec
+};
 
 #[contract]
 pub struct TestTarget;
 
 #[contractimpl]
 impl TestTarget {
-    pub fn method(
-        _env: Env,
-    ) {
+    pub fn method(_env: Env, ) {
         _env.events().publish((symbol_short!("executed"),), ());
     }
 }
@@ -214,7 +214,7 @@ fn test_execute() {
         &Vec::new(&env),
     );
 
-    assert_emitted_event(&env, -1, &target, (symbol_short!("executed"), ), ());
+    assert_emitted_event(&env, -1, &target, (symbol_short!("executed"),), ());
 }
 
 #[test]
