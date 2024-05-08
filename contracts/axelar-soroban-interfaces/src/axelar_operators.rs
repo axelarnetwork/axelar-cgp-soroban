@@ -1,4 +1,4 @@
-use soroban_sdk::{contractclient, Address, Env};
+use soroban_sdk::{contractclient, Address, Env, Symbol, Val, Vec};
 
 /// Interface for the Axelar Operators contract.
 #[contractclient(name = "AxelarOperators")]
@@ -14,4 +14,13 @@ pub trait AxelarOperatorsInterface {
 
     /// Remove an address as an operator. Only callable by the contract owner.
     fn remove_operator(env: Env, operator: Address);
+
+    /// Execute a function on a contract as an operator.
+    fn execute(
+        env: Env,
+        operator: Address,
+        contract: Address,
+        function_name: Symbol,
+        args: Vec<Val>,
+    ) -> Val;
 }

@@ -1,4 +1,4 @@
-use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Env};
+use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Env, Symbol, Val, Vec};
 
 use crate::storage_types::DataKey;
 use crate::{error::Error, event};
@@ -74,5 +74,25 @@ impl AxelarOperatorsInterface for AxelarOperators {
         env.storage().persistent().remove(&key);
 
         event::remove_operator(&env, account);
+    }
+
+    fn execute(
+        env: Env,
+        operator: Address,
+        contract: Address,
+        func: Symbol,
+        args: Vec<Val>,
+    ) -> Val {
+        operator.require_auth();
+
+        let key = DataKey::Operators(operator.clone());
+
+        if !env.storage().persistent().has(&key) {
+            panic_with_error!(env, Error::NotAnOperator);
+        }
+
+        let res: Val = env.invoke_contract(&contract, &func, args);
+
+        res
     }
 }
