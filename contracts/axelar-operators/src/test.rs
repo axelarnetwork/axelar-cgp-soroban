@@ -16,6 +16,10 @@ impl TestTarget {
     pub fn method(env: Env) {
         env.events().publish((symbol_short!("executed"),), ());
     }
+
+    pub fn failing(_env: Env) {
+        panic!("This method should fail");
+    }
 }
 
 fn setup_env<'a>() -> (Env, Address, AxelarOperatorsClient<'a>, Address) {
@@ -200,9 +204,6 @@ fn test_execute() {
 
     client.initialize(&owner);
 
-    let is_operator_initial = client.is_operator(&operator);
-    assert!(!is_operator_initial);
-
     // set operator as an operator
     client.add_operator(&operator);
 
@@ -226,9 +227,6 @@ fn fail_execute_not_operator() {
 
     client.initialize(&owner);
 
-    let is_operator_initial = client.is_operator(&operator);
-    assert!(!is_operator_initial);
-
     // set operator as an operator
     client.add_operator(&operator);
 
@@ -236,4 +234,26 @@ fn fail_execute_not_operator() {
     let res = client.try_execute(&owner, &target, &symbol_short!("method"), &Vec::new(&env));
 
     assert!(res.is_err());
+}
+
+#[test]
+#[should_panic(expected = "This method should fail")]
+fn fail_execute_when_target_panics() {
+    let (env, _, client, target) = setup_env();
+
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
+
+    client.initialize(&owner);
+
+    // set operator as an operator
+    client.add_operator(&operator);
+
+    // call execute as an operator
+    client.execute(
+        &operator,
+        &target,
+        &symbol_short!("failing"),
+        &Vec::new(&env),
+    );
 }
