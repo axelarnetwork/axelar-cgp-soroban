@@ -4,7 +4,6 @@ mod error;
 mod event;
 mod storage_types;
 pub mod types;
-
 pub mod contract;
 
 #[cfg(all(target_family = "wasm", feature = "testutils"))]

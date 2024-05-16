@@ -1,8 +1,15 @@
-use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Env, Symbol, Val, Vec};
+use soroban_sdk::{
+    contract, contractimpl, panic_with_error, Address, Bytes, Env, String, Symbol, Val, Vec,
+};
+
+use axelar_soroban_std::types::Hash;
 
 use axelar_soroban_interfaces::axelar_auth_verifier::AxelarAuthVerifierClient;
+use axelar_soroban_interfaces::axelar_gateway::AxelarGatewayClient;
+use axelar_soroban_interfaces::types::Proof;
 
 use crate::storage_types::DataKey;
+use crate::types::{GovernanceProposal, ServiceGovernanceCommandType};
 use crate::{error::Error, event};
 use axelar_soroban_interfaces::axelar_service_governance::AxelarServiceGovernanceInterface;
 
@@ -54,8 +61,8 @@ impl AxelarServiceGovernanceInterface for AxelarServiceGovernance {
         let proposal = GovernanceProposal {
             command: command_id,
             target: env.current_contract_address(),
-            func: Symbol::new("execute"),
-            args: vec![Val::Bytes(payload)],
+            func: Symbol::new(env, "execute"),
+            args: (),
             eta: env.block().timestamp() + 60 * 60 * 24,
         };
 
@@ -63,22 +70,22 @@ impl AxelarServiceGovernanceInterface for AxelarServiceGovernance {
             .crypto()
             .keccak256(&(proposal.target, proposal.func, proposal.args.clone()).to_xdr());
 
-        if (proposal.command_id == ServiceGovernanceCommandType::ScheduleTimeLockProposal) {
+        if (proposal.command == ServiceGovernanceCommandType::ScheduleTimeLockProposal) {
             env.storage()
                 .instance()
-                .set(&DataKey::TimeLockProposal(proposal_hash), true);
-        } else if (proposal.command_id == ServiceGovernanceCommandType::CancelTimeLockProposal) {
+                .set(&DataKey::TimeLockProposal(proposal_hash), &true);
+        } else if (proposal.command == ServiceGovernanceCommandType::CancelTimeLockProposal) {
             env.storage()
                 .instance()
-                .delete(&DataKey::TimeLockProposal(proposal_hash));
-        } else if (proposal.command_id == ServiceGovernanceCommandType::ApproveMultisigProposal) {
+                .remove(&DataKey::TimeLockProposal(proposal_hash));
+        } else if (proposal.command == ServiceGovernanceCommandType::ApproveMultisigProposal) {
             env.storage()
                 .instance()
-                .set(&DataKey::MultisigProposal(proposal_hash), true);
-        } else if (proposal.command_id == ServiceGovernanceCommandType::CancelMultisigApproval) {
+                .set(&DataKey::MultisigProposal(proposal_hash), &true);
+        } else if (proposal.command == ServiceGovernanceCommandType::CancelMultisigApproval) {
             env.storage()
                 .instance()
-                .delete(&DataKey::MultisigProposal(proposal_hash));
+                .remove(&DataKey::MultisigProposal(proposal_hash));
         } else {
             panic_with_error!(env, Error::InvalidCommand);
         }
@@ -104,9 +111,9 @@ impl AxelarServiceGovernanceInterface for AxelarServiceGovernance {
 
         env.storage()
             .instance()
-            .delete(&DataKey::TimeLockProposal(proposal_hash));
+            .remove(&DataKey::TimeLockProposal(proposal_hash));
 
-        let res: Val = env.invoke_contract(&contract, &target, args);
+        let res: Val = env.invoke_contract(&target, &func, args);
 
         res
     }
@@ -116,7 +123,7 @@ impl AxelarServiceGovernanceInterface for AxelarServiceGovernance {
         target: Address,
         func: Symbol,
         args: Vec<Val>,
-        proof: axelar_soroban_interfaces::types::Proof,
+        proof: Proof,
     ) -> Val {
         let proposal_hash = env
             .crypto()
@@ -137,9 +144,9 @@ impl AxelarServiceGovernanceInterface for AxelarServiceGovernance {
 
         env.storage()
             .instance()
-            .delete(&DataKey::MultisigProposal(proposal_hash));
+            .remove(&DataKey::MultisigProposal(proposal_hash));
 
-        let res: Val = env.invoke_contract(&contract, &target, args);
+        let res: Val = env.invoke_contract(&target, &func, args);
 
         res
     }

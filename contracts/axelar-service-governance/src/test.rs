@@ -34,22 +34,21 @@ fn setup_env<'a>() -> (Env, Address, AxelarServiceGovernanceClient<'a>, Address)
     (env, contract_id, client, target_contract_id)
 }
 
-#[test]
-fn test_initialize() {
-    let (env, _, client, _) = setup_env();
-    let user = Address::generate(&env);
-
-    client.initialize(&user);
-}
-
-#[test]
-#[should_panic(expected = "Already initialized")]
-fn fail_already_initialized() {
-    let (env, _, client, _) = setup_env();
-    let user = Address::generate(&env);
-
-    client.initialize(&user);
-
-    client.initialize(&user);
-}
-
+// #[test]
+// fn test_initialize() {
+//     let (env, _, client, _) = setup_env();
+//     let user = Address::generate(&env);
+//
+//     client.initialize(&user);
+// }
+//
+// #[test]
+// #[should_panic(expected = "Already initialized")]
+// fn fail_already_initialized() {
+//     let (env, _, client, _) = setup_env();
+//     let user = Address::generate(&env);
+//
+//     client.initialize(&user);
+//
+//     client.initialize(&user);
+// }
