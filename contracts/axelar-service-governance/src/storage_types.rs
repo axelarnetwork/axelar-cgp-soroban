@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, Address};
+use soroban_sdk::contracttype;
 
 use axelar_soroban_std::types::Hash;
 

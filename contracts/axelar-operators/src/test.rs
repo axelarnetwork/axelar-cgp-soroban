@@ -5,7 +5,7 @@ use axelar_soroban_std::{assert_emitted_event, testutils::assert_invocation};
 
 use crate::contract::{AxelarOperators, AxelarOperatorsClient};
 use soroban_sdk::{
-    contract, contractimpl, symbol_short, testutils::Address as _, Address, Env, Vec,
+    contract, contractimpl, symbol_short, testutils::Address as _, Address, Env, Val, Vec,
 };
 
 #[contract]
@@ -197,7 +197,7 @@ fn fail_remove_operator_non_existant() {
 
 #[test]
 fn test_execute() {
-    let (env, _, client, target) = setup_env();
+    let (env, contract_id, client, target) = setup_env();
 
     let owner = Address::generate(&env);
     let operator = Address::generate(&env);
@@ -215,7 +215,15 @@ fn test_execute() {
         &Vec::new(&env),
     );
 
-    assert_emitted_event(&env, -1, &target, (symbol_short!("executed"),), ());
+    assert_emitted_event(&env, -2, &target, (symbol_short!("executed"),), ());
+
+    assert_emitted_event(
+        &env,
+        -1,
+        &contract_id,
+        (symbol_short!("executed"),),
+        (&target, symbol_short!("method"), Vec::new(&env) as Vec<Val>),
+    );
 }
 
 #[test]
