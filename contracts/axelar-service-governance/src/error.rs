@@ -9,4 +9,6 @@ pub enum Error {
     InvalidCommand = 3,
     ProposalNotFound = 4,
     ProposalNotReady = 5,
+    InvalidPayload = 6,
+    InvalidEta = 7,
 }

@@ -6,8 +6,9 @@ use axelar_soroban_std::types::Hash;
 #[derive(Clone, Debug)]
 pub enum DataKey {
     Initialized,
-    AuthModule,
+    Multisig,
     Gateway,
+    MinimumTimeDelay,
     TimeLockProposal(Hash),
     MultisigProposal(Hash),
 }

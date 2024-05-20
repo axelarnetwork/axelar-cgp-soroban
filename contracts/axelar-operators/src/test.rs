@@ -77,8 +77,8 @@ fn transfer_owner() {
         &env,
         0,
         &client.address,
-        (symbol_short!("ownership"), initial_owner, new_owner.clone()),
-        (),
+        (symbol_short!("ownership"), symbol_short!("transfer")),
+        (initial_owner, new_owner.clone()),
     );
 
     let retrieved_owner = client.owner();
@@ -112,8 +112,8 @@ fn test_add_operator() {
         &env,
         0,
         &client.address,
-        (symbol_short!("added"), operator.clone()),
-        (),
+        (symbol_short!("operator"), symbol_short!("added")),
+        (operator.clone(),),
     );
 
     let is_operator_final = client.is_operator(&operator);
@@ -170,8 +170,8 @@ fn test_remove_operator() {
         &env,
         -1,
         &client.address,
-        (symbol_short!("removed"), operator.clone()),
-        (),
+        (symbol_short!("operator"), symbol_short!("removed")),
+        (operator.clone(),),
     );
 
     let is_operator_final = client.is_operator(&operator);
