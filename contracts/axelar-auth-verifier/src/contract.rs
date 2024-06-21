@@ -1,7 +1,7 @@
 use core::panic;
 
 use soroban_sdk::xdr::ToXdr;
-use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, Vec, U256};
+use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, BytesN, crypto::Hash, Env, Vec, U256};
 
 use crate::error::Error;
 use crate::event;
@@ -35,7 +35,7 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
     fn initialize(
         env: Env,
         owner: Address,
-        previous_signer_retention: u32,
+        previous_signer_retention: u64,
         domain_separator: BytesN<32>,
         minimum_rotation_delay: u64,
         initial_signers: Vec<WeightedSigners>,
@@ -78,7 +78,7 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
     }
 
     fn validate_proof(env: Env, data_hash: BytesN<32>, proof: Proof) -> bool {
-        let signer_hash = env.crypto().keccak256(&proof.signers.clone().to_xdr(&env));
+        let signer_hash: BytesN<32> = env.crypto().keccak256(&proof.signers.clone().to_xdr(&env)).into();
 
         let signer_epoch: u64 = env
             .storage()
@@ -92,13 +92,13 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
 
         let epoch: u64 = env.storage().instance().get(&DataKey::Epoch).unwrap();
 
-        let previous_signer_retention: u32 = env
+        let previous_signer_retention: u64 = env
             .storage()
             .instance()
             .get(&DataKey::PreviousSignerRetention)
             .unwrap();
 
-        if epoch - signer_epoch > previous_signer_retention as u64 {
+        if epoch - signer_epoch > previous_signer_retention {
             panic_with_error!(env, Error::OutdatedSigners);
         }
 
@@ -123,7 +123,7 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
 }
 
 impl AxelarAuthVerifier {
-    fn message_hash_to_sign(env: &Env, signer_hash: BytesN<32>, data_hash: BytesN<32>) -> BytesN<32> {
+    fn message_hash_to_sign(env: &Env, signer_hash: BytesN<32>, data_hash: BytesN<32>) -> Hash<32> {
         let domain_separator: BytesN<32> = env
             .storage()
             .instance()
@@ -145,7 +145,7 @@ impl AxelarAuthVerifier {
 
         Self::update_rotation_timestamp(env, enforce_rotation_delay);
 
-        let new_signer_hash = env.crypto().keccak256(&new_signers.clone().to_xdr(env));
+        let new_signer_hash: BytesN<32> = env.crypto().keccak256(&new_signers.clone().to_xdr(env)).into();
         let new_epoch: u64 = env
             .storage()
             .instance()
@@ -194,7 +194,7 @@ impl AxelarAuthVerifier {
             .set(&DataKey::LastRotationTimestamp, &current_timestamp);
     }
 
-    fn validate_signatures(env: &Env, msg_hash: BytesN<32>, proof: Proof) -> bool {
+    fn validate_signatures(env: &Env, msg_hash: Hash<32>, proof: Proof) -> bool {
         let Proof {
             signers,
             signatures,
@@ -212,7 +212,7 @@ impl AxelarAuthVerifier {
             let pub_key = env
                 .crypto()
                 .secp256k1_recover(&msg_hash, &signature, recovery_id);
-            let expected_signer = env.crypto().keccak256(&pub_key.into());
+            let expected_signer: BytesN<32> = env.crypto().keccak256(&pub_key.into()).into();
 
             while signer_index < signers.signers.len() {
                 let WeightedSigner { signer, .. } = signers.signers.get(signer_index).unwrap();

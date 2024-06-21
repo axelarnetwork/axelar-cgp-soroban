@@ -8,7 +8,7 @@ pub trait AxelarAuthVerifierInterface {
     fn initialize(
         env: Env,
         owner: Address,
-        previous_signer_retention: u32,
+        previous_signer_retention: u64,
         domain_separator: BytesN<32>,
         minimum_rotation_delay: u64,
         initial_signers: Vec<WeightedSigners>,
