@@ -5,7 +5,7 @@ use axelar_soroban_interfaces::types::{WeightedSigner, WeightedSigners};
 use soroban_sdk::{
     symbol_short,
     testutils::{Address as _, BytesN as _},
-    Address, Bytes, Env, Vec, U256, BytesN,
+    Address, Bytes, BytesN, Env, Vec, U256,
 };
 
 use axelar_soroban_std::{assert_emitted_event, testutils::assert_invocation};

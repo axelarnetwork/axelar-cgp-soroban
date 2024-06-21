@@ -1,7 +1,9 @@
 use core::panic;
 
 use soroban_sdk::xdr::ToXdr;
-use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, BytesN, crypto::Hash, Env, Vec, U256};
+use soroban_sdk::{
+    contract, contractimpl, crypto::Hash, panic_with_error, Address, Bytes, BytesN, Env, Vec, U256,
+};
 
 use crate::error::Error;
 use crate::event;
@@ -78,7 +80,10 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
     }
 
     fn validate_proof(env: Env, data_hash: BytesN<32>, proof: Proof) -> bool {
-        let signer_hash: BytesN<32> = env.crypto().keccak256(&proof.signers.clone().to_xdr(&env)).into();
+        let signer_hash: BytesN<32> = env
+            .crypto()
+            .keccak256(&proof.signers.clone().to_xdr(&env))
+            .into();
 
         let signer_epoch: u64 = env
             .storage()
@@ -145,7 +150,10 @@ impl AxelarAuthVerifier {
 
         Self::update_rotation_timestamp(env, enforce_rotation_delay);
 
-        let new_signer_hash: BytesN<32> = env.crypto().keccak256(&new_signers.clone().to_xdr(env)).into();
+        let new_signer_hash: BytesN<32> = env
+            .crypto()
+            .keccak256(&new_signers.clone().to_xdr(env))
+            .into();
         let new_epoch: u64 = env
             .storage()
             .instance()

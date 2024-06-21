@@ -128,7 +128,8 @@ impl AxelarGatewayInterface for AxelarGateway {
     ) {
         let data_hash = env
             .crypto()
-            .keccak256(&(CommandType::ApproveMessages, messages.clone()).to_xdr(&env)).into();
+            .keccak256(&(CommandType::ApproveMessages, messages.clone()).to_xdr(&env))
+            .into();
 
         let auth_module = Self::auth_module(&env);
 
@@ -166,7 +167,8 @@ impl AxelarGatewayInterface for AxelarGateway {
     ) {
         let data_hash: BytesN<32> = env
             .crypto()
-            .keccak256(&(CommandType::RotateSigners, signers.clone()).to_xdr(&env)).into();
+            .keccak256(&(CommandType::RotateSigners, signers.clone()).to_xdr(&env))
+            .into();
 
         let auth_module = Self::auth_module(&env);
 

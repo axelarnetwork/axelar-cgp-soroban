@@ -38,12 +38,14 @@ pub fn initialize(
 
 pub fn get_approve_hash(env: &Env, messages: Vec<Message>) -> BytesN<32> {
     env.crypto()
-        .keccak256(&(CommandType::ApproveMessages, messages).to_xdr(env)).into()
+        .keccak256(&(CommandType::ApproveMessages, messages).to_xdr(env))
+        .into()
 }
 
 pub fn get_rotation_hash(env: &Env, new_signers: WeightedSigners) -> BytesN<32> {
     env.crypto()
-        .keccak256(&(CommandType::RotateSigners, new_signers).to_xdr(env)).into()
+        .keccak256(&(CommandType::RotateSigners, new_signers).to_xdr(env))
+        .into()
 }
 
 pub fn generate_test_message(env: &Env) -> (Message, Bytes) {

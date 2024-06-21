@@ -30,7 +30,11 @@ pub fn generate_random_payload_and_hash(env: &Env) -> BytesN<32> {
     env.crypto().keccak256(&payload).into()
 }
 
-pub fn generate_signer_set(env: &Env, num_signers: u32, domain_separator: BytesN<32>) -> TestSignerSet {
+pub fn generate_signer_set(
+    env: &Env,
+    num_signers: u32,
+    domain_separator: BytesN<32>,
+) -> TestSignerSet {
     let secp = Secp256k1::new();
     let mut rng = rand::thread_rng();
 
