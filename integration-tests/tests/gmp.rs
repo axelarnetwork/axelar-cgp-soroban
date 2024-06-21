@@ -113,7 +113,7 @@ fn test_gmp() {
     let source_address = source_app.address.to_string();
     let destination_address = destination_app_id.to_string();
     let payload: Bytes = BytesN::<20>::random(&env).into();
-    let payload_hash = env.crypto().keccak256(&payload);
+    let payload_hash: BytesN<32> = env.crypto().keccak256(&payload).into();
 
     // Initiate cross-chain contract call
     log!(env, "Sending message from source to destination");

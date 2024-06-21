@@ -11,14 +11,13 @@ use soroban_sdk::{vec, U256};
 use soroban_sdk::{symbol_short, testutils::BytesN as _, xdr::ToXdr, Address, Bytes, BytesN, Env};
 
 use axelar_soroban_interfaces::types::{Proof, WeightedSigner, WeightedSigners};
-use axelar_soroban_std::types::Hash;
 use axelar_soroban_std::{assert_emitted_event, traits::IntoVec};
 
 #[derive(Clone, Debug)]
 pub struct TestSignerSet {
     pub signers: std::vec::Vec<SecretKey>,
     pub signer_set: WeightedSigners,
-    pub domain_separator: Hash,
+    pub domain_separator: BytesN<32>,
 }
 
 pub fn randint(a: u32, b: u32) -> u32 {
@@ -28,10 +27,14 @@ pub fn randint(a: u32, b: u32) -> u32 {
 pub fn generate_random_payload_and_hash(env: &Env) -> BytesN<32> {
     let payload: Bytes = BytesN::<10>::random(env).into();
 
-    env.crypto().keccak256(&payload)
+    env.crypto().keccak256(&payload).into()
 }
 
-pub fn generate_signer_set(env: &Env, num_signers: u32, domain_separator: Hash) -> TestSignerSet {
+pub fn generate_signer_set(
+    env: &Env,
+    num_signers: u32,
+    domain_separator: BytesN<32>,
+) -> TestSignerSet {
     let secp = Secp256k1::new();
     let mut rng = rand::thread_rng();
 
@@ -76,7 +79,7 @@ pub fn generate_signer_set(env: &Env, num_signers: u32, domain_separator: Hash) 
     }
 }
 
-pub fn generate_proof(env: &Env, data_hash: Hash, signers: TestSignerSet) -> Proof {
+pub fn generate_proof(env: &Env, data_hash: BytesN<32>, signers: TestSignerSet) -> Proof {
     let signer_hash = env
         .crypto()
         .keccak256(&signers.signer_set.clone().to_xdr(env));
@@ -119,7 +122,7 @@ pub fn initialize(
     previous_signer_retention: u32,
     num_signers: u32,
 ) -> TestSignerSet {
-    let signers = generate_signer_set(env, num_signers, Hash::random(env));
+    let signers = generate_signer_set(env, num_signers, BytesN::random(env));
     let signer_sets = vec![&env, signers.signer_set.clone()];
     let signer_set_hash = env
         .crypto()
@@ -128,7 +131,7 @@ pub fn initialize(
 
     client.initialize(
         &owner,
-        &previous_signer_retention,
+        &(previous_signer_retention as u64),
         &signers.domain_separator,
         &minimum_rotation_delay,
         &signer_sets,
@@ -148,9 +151,9 @@ pub fn initialize(
 pub fn rotate_signers(env: &Env, client: &AxelarAuthVerifierClient, new_signers: TestSignerSet) {
     let encoded_new_signer_set = new_signers.signer_set.clone().to_xdr(env);
 
-    client.rotate_signers(&new_signers.signer_set, &false);
+    let epoch: u64 = client.epoch() + 1;
 
-    let epoch: u64 = client.epoch();
+    client.rotate_signers(&new_signers.signer_set, &false);
 
     assert_emitted_event(
         env,

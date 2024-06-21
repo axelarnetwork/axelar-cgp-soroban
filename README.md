@@ -2,6 +2,14 @@
 
 This repo implements Axelar's [cross-chain gateway protocol](https://github.com/axelarnetwork/cgp-spec/tree/main/solidity) in Soroban for use on Stellar. The reference Solidity contracts can be found [here](https://github.com/axelarnetwork/cgp-spec/tree/main/solidity#design).
 
+## Install
+
+Install Soroban CLI
+
+```bash
+cargo install --locked soroban-cli --features opt
+```
+
 ## Build
 
 ```bash

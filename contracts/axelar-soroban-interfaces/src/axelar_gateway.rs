@@ -1,7 +1,6 @@
-use soroban_sdk::{contractclient, Address, Bytes, Env, String, Vec};
+use soroban_sdk::{contractclient, Address, Bytes, BytesN, Env, String, Vec};
 
 use crate::types::{Message, Proof, WeightedSigners};
-use axelar_soroban_std::types::Hash;
 
 /// Interface for the Axelar Gateway.
 #[contractclient(name = "AxelarGatewayClient")]
@@ -18,7 +17,7 @@ pub trait AxelarGatewayInterface {
         payload: Bytes,
     );
 
-    /// Validate if a contract call with the given payload hash and source caller info is approved,
+    /// Validate if a contract call with the given payload BytesN<32> and source caller info is approved,
     /// preventing re-validation (i.e distinct contract calls can be validated at most once).
     /// `caller` must be the intended `destination_address` of the contract call for validation to succeed.
     fn validate_message(
@@ -27,20 +26,20 @@ pub trait AxelarGatewayInterface {
         message_id: String,
         source_chain: String,
         source_address: String,
-        payload_hash: Hash,
+        payload_hash: BytesN<32>,
     ) -> bool;
 
-    /// Return true if a contract call with the given payload hash and source caller info is approved.
+    /// Return true if a contract call with the given payload BytesN<32> and source caller info is approved.
     fn is_message_approved(
         env: Env,
         message_id: String,
         source_chain: String,
         source_address: String,
         contract_address: Address,
-        payload_hash: Hash,
+        payload_hash: BytesN<32>,
     ) -> bool;
 
-    /// Return true if a contract call with the given payload hash and source caller info has been executed.
+    /// Return true if a contract call with the given payload BytesN<32> and source caller info has been executed.
     fn is_message_executed(env: Env, message_id: String, source_chain: String) -> bool;
 
     fn approve_messages(env: Env, messages: Vec<Message>, proof: Proof);

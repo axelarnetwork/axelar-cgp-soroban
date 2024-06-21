@@ -1,9 +1,12 @@
 use axelar_soroban_interfaces::types::WeightedSigners;
-use soroban_sdk::{symbol_short, Address, Env};
+use soroban_sdk::{symbol_short, Address, BytesN, Env};
 
-use axelar_soroban_std::types::Hash;
-
-pub(crate) fn rotate_signers(env: &Env, epoch: u64, signers: WeightedSigners, signer_hash: Hash) {
+pub(crate) fn rotate_signers(
+    env: &Env,
+    epoch: u64,
+    signers: WeightedSigners,
+    signer_hash: BytesN<32>,
+) {
     let topics = (symbol_short!("rotated"), epoch, signer_hash);
     env.events().publish(topics, (signers,)); // TODO: use a tuple or the type directly?
 }

@@ -12,20 +12,20 @@ pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
     fn interchain_token_id(
         env: Env,
         deployer: Address,
-        salt: Hash,
-    ) -> Hash;
+        salt: BytesN<32>,
+    ) -> BytesN<32>;
 
     /// Return the interchain token address registered to the given token id if it exists.
     fn valid_interchain_token_address(
         env: Env,
-        token_id: Hash,
-    ) -> Hash;
+        token_id: BytesN<32>,
+    ) -> BytesN<32>;
 
     /// Compute the interchain token address for the given token id if it was deployed on this chain.
     fn interchain_token_address(
         env: Env,
-        token_id: Hash,
-    ) -> Hash;
+        token_id: BytesN<32>,
+    ) -> BytesN<32>;
 
     /// Deploy a new interchain token to the destination chain with the given name, symbol, and decimals, and minter.
     /// If `destination_chain` is empty, the token is deployed to the current chain.
@@ -33,19 +33,19 @@ pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
     fn deploy_interchain_token(
         env: Env,
         caller: Address,
-        salt: Hash,
+        salt: BytesN<32>,
         destination_chain: String,
         name: String,
         symbol: String,
         decimals: u8,
         minter: Bytes,
-    ) -> Hash;
+    ) -> BytesN<32>;
 
     /// Transfer a token interchain to the given destination chain and address.
     fn interchain_transfer(
         env: Env,
         caller: Address,
-        token_id: Hash,
+        token_id: BytesN<32>,
         amount: i128,
         destination_chain: String,
         destination_address: String,

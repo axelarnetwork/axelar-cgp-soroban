@@ -1,6 +1,4 @@
-use soroban_sdk::{contracttype, String};
-
-use axelar_soroban_std::types::Hash;
+use soroban_sdk::{contracttype, BytesN, String};
 
 #[contracttype]
 #[derive(Clone, Debug)]
@@ -13,7 +11,7 @@ pub struct MessageApprovalKey {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum MessageApprovalValue {
     NotApproved,
-    Approved(Hash),
+    Approved(BytesN<32>),
     Executed,
 }
 
@@ -24,5 +22,5 @@ pub enum DataKey {
     AuthModule,
     Operator,
     MessageApproval(MessageApprovalKey),
-    RotationExecuted(Hash),
+    RotationExecuted(BytesN<32>),
 }
