@@ -6,7 +6,7 @@ use rand::rngs::OsRng;
 use rand::Rng;
 use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
 use sha3::{Digest, Keccak256};
-use soroban_sdk::{vec, U256};
+use soroban_sdk::{vec, U256, Vec};
 
 use soroban_sdk::{symbol_short, testutils::BytesN as _, xdr::ToXdr, Address, Bytes, BytesN, Env};
 
@@ -129,12 +129,23 @@ pub fn initialize(
         .keccak256(&signers.signer_set.clone().to_xdr(env));
     let minimum_rotation_delay = 0;
 
+    let mut signers_vec = Vec::new(env);
+    let mut weights_vec = Vec::new(env);
+
+    for weighted_signer in signers.signer_set.signers.iter() {
+        signers_vec.push_back(weighted_signer.signer.clone());
+        weights_vec.push_back(weighted_signer.weight.clone());
+    }
+
     client.initialize(
         &owner,
         &(previous_signer_retention as u64),
         &signers.domain_separator,
         &minimum_rotation_delay,
-        &signer_sets,
+        &signers_vec,
+        &weights_vec,
+        &signers.signer_set.threshold,
+        &signers.signer_set.nonce,
     );
 
     assert_emitted_event(

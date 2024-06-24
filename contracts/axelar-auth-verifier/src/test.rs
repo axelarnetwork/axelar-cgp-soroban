@@ -54,8 +54,9 @@ fn fails_with_empty_signer_set() {
     let (env, _, client) = setup_env();
     let owner = Address::generate(&env);
 
-    // create an empty WeightedSigners vector
-    let empty_signer_set = Vec::<WeightedSigners>::new(&env);
+
+    let signers_vec = Vec::new(&env);
+    let weights_vec = Vec::new(&env);
 
     // call should panic because signer set is empty
     let res = client.try_initialize(
@@ -63,7 +64,10 @@ fn fails_with_empty_signer_set() {
         &(randint(0, 10) as u64),
         &BytesN::random(&env),
         &0,
-        &empty_signer_set,
+        &signers_vec,
+        &weights_vec,
+        &U256::from_u32(&env, 0),
+        &BytesN::random(&env),
     );
     assert!(res.is_err());
 }
@@ -91,7 +95,7 @@ fn transfer_ownership() {
         &initial_owner,
         &client.address,
         "transfer_ownership",
-        (new_owner.clone(),),
+        (new_owner.clone(), ),
     );
 
     assert_emitted_event(
