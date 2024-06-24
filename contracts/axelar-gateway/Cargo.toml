@@ -13,7 +13,7 @@ axelar-soroban-std = { workspace = true }
 rand = { version = "0.8.5", optional = true }
 soroban-sdk = { workspace = true }
 
-[dev_dependencies]
+[dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
 axelar-auth-verifier = { workspace = true, features = ["testutils"] }
 axelar-soroban-std = { workspace = true, features = ["testutils"] }

@@ -14,7 +14,7 @@ secp256k1 = { version = "0.28.2", features = ["recovery", "rand"], optional = tr
 sha3 = { version = "*", optional = true }
 soroban-sdk = { workspace = true }
 
-[dev_dependencies]
+[dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
 axelar-soroban-std = { workspace = true, features = ["testutils"] }
 secp256k1 = { version = "0.28.2", features = ["recovery", "rand"] }

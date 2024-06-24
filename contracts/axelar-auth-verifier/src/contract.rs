@@ -40,7 +40,10 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
         previous_signer_retention: u64,
         domain_separator: BytesN<32>,
         minimum_rotation_delay: u64,
-        initial_signers: Vec<WeightedSigners>,
+        signers: Vec<BytesN<32>>,
+        weights: Vec<U256>,
+        threshold: U256,
+        nonce: BytesN<32>,
     ) {
         if env.storage().instance().has(&DataKey::Initialized) {
             panic!("Already initialized");
@@ -66,13 +69,26 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
             .instance()
             .set(&DataKey::MinimumRotationDelay, &minimum_rotation_delay);
 
-        if initial_signers.is_empty() {
+        if signers.is_empty() || signers.len() != weights.len() {
             panic_with_error!(env, Error::InvalidOperators);
         }
 
-        for signers in initial_signers.into_iter() {
-            Self::rotate_signer_set(&env, signers, false);
+        let mut initial_signers = Vec::new(&env);
+
+        for (signer, weight) in signers.iter().zip(weights.iter()) {
+            initial_signers.push_back(WeightedSigner {
+                signer: signer.clone(),
+                weight: weight.clone(),
+            });
         }
+
+        let signer_set = WeightedSigners {
+            signers: initial_signers,
+            threshold,
+            nonce,
+        };
+
+        Self::rotate_signer_set(&env, signer_set, false);
     }
 
     fn epoch(env: Env) -> u64 {

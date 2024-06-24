@@ -1,4 +1,4 @@
-use soroban_sdk::{contractclient, Address, BytesN, Env, Vec};
+use soroban_sdk::{contractclient, Address, BytesN, Env, Vec, U256};
 
 use crate::types::{Proof, WeightedSigners};
 
@@ -11,7 +11,10 @@ pub trait AxelarAuthVerifierInterface {
         previous_signer_retention: u64,
         domain_separator: BytesN<32>,
         minimum_rotation_delay: u64,
-        initial_signers: Vec<WeightedSigners>,
+        signers: Vec<BytesN<32>>,
+        weights: Vec<U256>,
+        threshold: U256,
+        nonce: BytesN<32>,
     );
 
     fn epoch(env: Env) -> u64;
