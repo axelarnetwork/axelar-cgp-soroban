@@ -6,7 +6,7 @@ use rand::rngs::OsRng;
 use rand::Rng;
 use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
 use sha3::{Digest, Keccak256};
-use soroban_sdk::{vec, U256};
+use soroban_sdk::{vec};
 
 use soroban_sdk::{symbol_short, testutils::BytesN as _, xdr::ToXdr, Address, Bytes, BytesN, Env};
 
@@ -60,7 +60,7 @@ pub fn generate_signer_set(
         .into_iter()
         .map(|(_, pk_hash, w)| WeightedSigner {
             signer: BytesN::<32>::from_array(env, &pk_hash),
-            weight: U256::from_u32(env, w),
+            weight: w as u128,
         })
         .collect();
 
@@ -68,7 +68,7 @@ pub fn generate_signer_set(
 
     let signer_set = WeightedSigners {
         signers: signer_vec.into_vec(env),
-        threshold: U256::from_u32(env, threshold),
+        threshold: threshold as u128,
         nonce: BytesN::<32>::from_array(env, &[0; 32]),
     };
 
@@ -90,7 +90,7 @@ pub fn generate_proof(env: &Env, data_hash: BytesN<32>, signers: TestSignerSet) 
     let msg_hash = env.crypto().keccak256(&msg);
 
     let msg_to_sign = Message::from_digest_slice(&msg_hash.to_array()).unwrap();
-    let threshold = signers.signer_set.threshold.to_u128().unwrap() as u32;
+    let threshold = signers.signer_set.threshold as u32;
     let secp = Secp256k1::new();
 
     let signatures: std::vec::Vec<_> = signers

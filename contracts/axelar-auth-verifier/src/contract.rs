@@ -2,7 +2,7 @@ use core::panic;
 
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{
-    contract, contractimpl, crypto::Hash, panic_with_error, Address, Bytes, BytesN, Env, Vec, U256,
+    contract, contractimpl, crypto::Hash, panic_with_error, Address, Bytes, BytesN, Env, Vec,
 };
 
 use crate::error::Error;
@@ -212,7 +212,7 @@ impl AxelarAuthVerifier {
             return false;
         }
 
-        let mut total_weight = U256::from_u32(env, 0);
+        let mut total_weight = 0u128;
         let mut signer_index = 0;
 
         for (signature, recovery_id) in signatures.into_iter() {
@@ -238,7 +238,7 @@ impl AxelarAuthVerifier {
 
             let WeightedSigner { weight, .. } = signers.signers.get(signer_index).unwrap();
 
-            total_weight = total_weight.add(&weight);
+            total_weight += weight;
 
             if total_weight >= signers.threshold {
                 return true;
@@ -258,23 +258,22 @@ pub fn validate_signers(env: &Env, weighted_signers: &WeightedSigners) -> bool {
 
     // TODO: what's the min address/hash?
     let mut previous_signer = BytesN::<32>::from_array(env, &[0; 32]);
-    let zero = U256::from_u32(env, 0);
-    let mut total_weight = zero.clone();
+    let mut total_weight = 0u128;
 
     for signer in weighted_signers.signers.iter() {
         if previous_signer >= signer.signer {
             return false;
         }
 
-        if signer.weight == zero {
+        if signer.weight == 0 {
             return false;
         }
 
         previous_signer = signer.signer;
-        total_weight = total_weight.add(&signer.weight);
+        total_weight += signer.weight;
     }
 
-    if weighted_signers.threshold == zero || total_weight < weighted_signers.threshold {
+    if weighted_signers.threshold == 0 || total_weight < weighted_signers.threshold {
         return false;
     }
 

@@ -5,7 +5,7 @@ use axelar_soroban_interfaces::types::{WeightedSigner, WeightedSigners};
 use soroban_sdk::{
     symbol_short,
     testutils::{Address as _, BytesN as _},
-    Address, Bytes, BytesN, Env, Vec, U256,
+    Address, Bytes, BytesN, Env, Vec,
 };
 
 use axelar_soroban_std::{assert_emitted_event, testutils::assert_invocation};
@@ -202,14 +202,13 @@ fn fail_validate_proof_threshold_not_met() {
     let signers = initialize(&env, &client, user, randint(0, 10), randint(1, 10));
 
     let env = &env;
-    let zero = U256::from_u32(env, 0);
-    let mut total_weight = zero.clone();
+    let mut total_weight = 0u128;
 
     let mut index_below_threshold = 0;
 
     // find the index where the total weight is just below the threshold
     for (i, WeightedSigner { weight, .. }) in signers.signer_set.signers.iter().enumerate() {
-        total_weight = total_weight.add(&weight);
+        total_weight += weight;
         if total_weight >= signers.signer_set.threshold {
             index_below_threshold = i;
             break;
@@ -277,7 +276,7 @@ fn rotate_signers_fail_empty_signers() {
 
     let empty_signers = WeightedSigners {
         signers: Vec::<WeightedSigner>::new(&env),
-        threshold: U256::from_u32(&env, 0),
+        threshold: 0u128,
         nonce: BytesN::random(&env),
     };
 
@@ -303,11 +302,11 @@ fn rotate_signers_fail_zero_weight() {
 
     let mut new_signers = generate_signer_set(&env, randint(1, 10), BytesN::random(&env));
 
-    let last_index = new_signers.signer_set.signers.len() as u32 - 1;
+    let last_index = new_signers.signer_set.signers.len() - 1;
 
     // get last signer and modify its weight to zero
     if let Some(mut last_signer) = new_signers.signer_set.signers.get(last_index) {
-        last_signer.weight = U256::from_u32(&env, 0);
+        last_signer.weight = 0u128;
         new_signers.signer_set.signers.set(last_index, last_signer);
     }
 
@@ -334,7 +333,7 @@ fn rotate_signers_fail_zero_threshold() {
     let mut new_signers = generate_signer_set(&env, randint(1, 10), BytesN::random(&env));
 
     // set the threshold to zero
-    new_signers.signer_set.threshold = U256::from_u32(&env, 0);
+    new_signers.signer_set.threshold = 0u128;
 
     // should error because the threshold is set to zero
     let res = client.try_rotate_signers(&new_signers.signer_set, &false);
@@ -358,17 +357,15 @@ fn rotate_signers_fail_low_total_weight() {
 
     let mut new_signers = generate_signer_set(&env, randint(1, 10), BytesN::random(&env));
 
-    let one = U256::from_u32(&env, 1);
-
     let total_weight = new_signers
         .signer_set
         .signers
         .iter()
         .map(|WeightedSigner { weight, .. }| weight)
-        .reduce(|acc, weight| acc.add(&weight))
+        .reduce(|acc, weight| acc + weight)
         .expect("Empty signers");
 
-    let new_threshold = total_weight.add(&one);
+    let new_threshold = total_weight + 1;
 
     // set the threshold to zero
     new_signers.signer_set.threshold = new_threshold;

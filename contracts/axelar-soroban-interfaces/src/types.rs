@@ -1,17 +1,17 @@
-use soroban_sdk::{contracttype, Address, BytesN, String, Vec, U256};
+use soroban_sdk::{contracttype, Address, BytesN, String, Vec};
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WeightedSigner {
     pub signer: BytesN<32>,
-    pub weight: U256,
+    pub weight: u128,
 }
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WeightedSigners {
     pub signers: Vec<WeightedSigner>,
-    pub threshold: U256,
+    pub threshold: u128,
     pub nonce: BytesN<32>,
 }
 
