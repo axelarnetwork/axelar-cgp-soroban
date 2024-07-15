@@ -6,7 +6,7 @@ use rand::rngs::OsRng;
 use rand::Rng;
 use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
 use sha3::{Digest, Keccak256};
-use soroban_sdk::{vec};
+use soroban_sdk::vec;
 
 use soroban_sdk::{symbol_short, testutils::BytesN as _, xdr::ToXdr, Address, Bytes, BytesN, Env};
 

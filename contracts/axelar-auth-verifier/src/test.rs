@@ -330,7 +330,7 @@ fn rotate_signers_fail_weight_overflow() {
         randint(1, 10),
     );
 
-    let mut new_signers = generate_signer_set(&env, randint(1, 10), BytesN::random(&env));
+    let mut new_signers = generate_signer_set(&env, randint(3, 10), BytesN::random(&env));
 
     let last_index = new_signers.signer_set.signers.len() - 1;
 
