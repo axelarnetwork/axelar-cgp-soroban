@@ -238,7 +238,7 @@ impl AxelarAuthVerifier {
 
             let WeightedSigner { weight, .. } = signers.signers.get(signer_index).unwrap();
 
-            total_weight += weight;
+            total_weight = total_weight.checked_add(weight).unwrap();
 
             if total_weight >= signers.threshold {
                 return true;

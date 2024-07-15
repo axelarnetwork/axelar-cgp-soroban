@@ -316,6 +316,36 @@ fn rotate_signers_fail_zero_weight() {
 }
 
 #[test]
+fn rotate_signers_fail_weight_overflow() {
+    let (env, _, client) = setup_env();
+
+    let user = Address::generate(&env);
+    let previous_signer_retention = 1;
+
+    initialize(
+        &env,
+        &client,
+        user.clone(),
+        previous_signer_retention,
+        randint(1, 10),
+    );
+
+    let mut new_signers = generate_signer_set(&env, randint(1, 10), BytesN::random(&env));
+
+    let last_index = new_signers.signer_set.signers.len() - 1;
+
+    // get last signer and modify its weight to zero
+    if let Some(mut last_signer) = new_signers.signer_set.signers.get(last_index) {
+        last_signer.weight = u128::MAX - 1;
+        new_signers.signer_set.signers.set(last_index, last_signer);
+    }
+
+    // should throw an error, last signer weight is zero
+    let res = client.try_rotate_signers(&new_signers.signer_set, &false);
+    assert!(res.is_err());
+}
+
+#[test]
 fn rotate_signers_fail_zero_threshold() {
     let (env, _, client) = setup_env();
 

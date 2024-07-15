@@ -43,7 +43,7 @@ pub fn generate_signer_set(
             let sk = SecretKey::new(&mut OsRng);
             let pk = PublicKey::from_secret_key(&secp, &sk);
             let pk_hash: [u8; 32] = Keccak256::digest(pk.serialize_uncompressed()).into();
-            let weight = rng.gen_range(1..10) as u32;
+            let weight = rng.gen_range(1..10) as u128;
 
             (sk, (pk, pk_hash, weight))
         })
@@ -54,13 +54,13 @@ pub fn generate_signer_set(
 
     let (signers, signer_info): (std::vec::Vec<_>, std::vec::Vec<(_, _, _)>) =
         signer_keypair.into_iter().unzip();
-    let total_weight = signer_info.iter().map(|(_, _, w)| w).sum::<u32>();
+    let total_weight = signer_info.iter().map(|(_, _, w)| w).sum::<u128>();
 
     let signer_vec: std::vec::Vec<WeightedSigner> = signer_info
         .into_iter()
         .map(|(_, pk_hash, w)| WeightedSigner {
             signer: BytesN::<32>::from_array(env, &pk_hash),
-            weight: w as u128,
+            weight: w,
         })
         .collect();
 
@@ -68,7 +68,7 @@ pub fn generate_signer_set(
 
     let signer_set = WeightedSigners {
         signers: signer_vec.into_vec(env),
-        threshold: threshold as u128,
+        threshold,
         nonce: BytesN::<32>::from_array(env, &[0; 32]),
     };
 
