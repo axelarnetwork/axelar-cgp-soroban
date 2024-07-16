@@ -340,7 +340,7 @@ fn rotate_signers_fail_weight_overflow() {
         new_signers.signer_set.signers.set(last_index, last_signer);
     }
 
-    // should throw an error, last signer weight is zero
+    // should throw an error, last signer weight should cause overflow
     let res = client.try_rotate_signers(&new_signers.signer_set, &false);
     assert!(res.is_err());
 }

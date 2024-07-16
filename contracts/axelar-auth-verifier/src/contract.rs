@@ -270,7 +270,7 @@ pub fn validate_signers(env: &Env, weighted_signers: &WeightedSigners) -> bool {
         }
 
         previous_signer = signer.signer;
-        total_weight += signer.weight;
+        total_weight = total_weight.checked_add(signer.weight).unwrap();
     }
 
     if weighted_signers.threshold == 0 || total_weight < weighted_signers.threshold {
