@@ -243,7 +243,7 @@ fn fail_validate_proof_threshold_overflow() {
     }
 
     let msg_hash = generate_random_payload_and_hash(env);
-    let mut proof = generate_proof(env, msg_hash.clone(), signers);
+    let proof = generate_proof(env, msg_hash.clone(), signers);
 
     // should panic, last signer weight should cause overflow
     client.validate_proof(&msg_hash, &proof);
