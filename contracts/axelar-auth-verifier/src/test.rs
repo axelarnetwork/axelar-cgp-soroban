@@ -224,6 +224,30 @@ fn fail_validate_proof_threshold_not_met() {
     // should panic, all signatures are valid but total weight is below threshold
     client.validate_proof(&msg_hash, &proof);
 }
+#[test]
+#[should_panic()]
+fn fail_validate_proof_threshold_overflow() {
+    let (env, _, client) = setup_env();
+    let user = Address::generate(&env);
+
+    let mut signers = initialize(&env, &client, user, randint(0, 10), randint(1, 10));
+
+    let env = &env;
+
+    let last_index = signers.signer_set.signers.len() - 1;
+
+    // get last signer and modify its weight to zero
+    if let Some(mut last_signer) = signers.signer_set.signers.get(last_index) {
+        last_signer.weight = u128::MAX - 1;
+        signers.signer_set.signers.set(last_index, last_signer);
+    }
+
+    let msg_hash = generate_random_payload_and_hash(env);
+    let mut proof = generate_proof(env, msg_hash.clone(), signers);
+
+    // should panic, last signer weight should cause overflow
+    client.validate_proof(&msg_hash, &proof);
+}
 
 #[test]
 fn test_rotate_signers() {
@@ -334,7 +358,7 @@ fn rotate_signers_fail_weight_overflow() {
 
     let last_index = new_signers.signer_set.signers.len() - 1;
 
-    // get last signer and modify its weight to zero
+    // get last signer and modify its weight to max u128 - 1
     if let Some(mut last_signer) = new_signers.signer_set.signers.get(last_index) {
         last_signer.weight = u128::MAX - 1;
         new_signers.signer_set.signers.set(last_index, last_signer);
