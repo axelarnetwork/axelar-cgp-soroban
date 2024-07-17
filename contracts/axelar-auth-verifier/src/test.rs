@@ -225,7 +225,7 @@ fn fail_validate_proof_threshold_not_met() {
     client.validate_proof(&msg_hash, &proof);
 }
 #[test]
-#[should_panic()]
+#[should_panic(expected = "invalid epoch")]
 fn fail_validate_proof_threshold_overflow() {
     let (env, _, client) = setup_env();
     let user = Address::generate(&env);
@@ -236,7 +236,7 @@ fn fail_validate_proof_threshold_overflow() {
 
     let last_index = signers.signer_set.signers.len() - 1;
 
-    // get last signer and modify its weight to zero
+    // get last signer and modify its weight to max u128 - 1
     if let Some(mut last_signer) = signers.signer_set.signers.get(last_index) {
         last_signer.weight = u128::MAX - 1;
         signers.signer_set.signers.set(last_index, last_signer);
@@ -245,7 +245,7 @@ fn fail_validate_proof_threshold_overflow() {
     let msg_hash = generate_random_payload_and_hash(env);
     let proof = generate_proof(env, msg_hash.clone(), signers);
 
-    // should panic, last signer weight should cause overflow
+    // should panic, as modified signer wouldn't match the epoch
     client.validate_proof(&msg_hash, &proof);
 }
 
@@ -340,6 +340,7 @@ fn rotate_signers_fail_zero_weight() {
 }
 
 #[test]
+#[should_panic(expected = "called `Option::unwrap()` on a `None` value")]
 fn rotate_signers_fail_weight_overflow() {
     let (env, _, client) = setup_env();
 
@@ -365,8 +366,7 @@ fn rotate_signers_fail_weight_overflow() {
     }
 
     // should throw an error, last signer weight should cause overflow
-    let res = client.try_rotate_signers(&new_signers.signer_set, &false);
-    assert!(res.is_err());
+    client.rotate_signers(&new_signers.signer_set, &false);
 }
 
 #[test]
