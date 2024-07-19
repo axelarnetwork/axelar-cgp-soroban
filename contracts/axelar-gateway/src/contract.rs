@@ -1,9 +1,8 @@
 use axelar_soroban_interfaces::types::Message;
 use soroban_sdk::xdr::ToXdr;
-use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, Env, String};
+use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, String};
 
 use axelar_soroban_interfaces::axelar_auth_verifier::AxelarAuthVerifierClient;
-use axelar_soroban_std::types::Hash;
 
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::types::CommandType;
@@ -43,7 +42,7 @@ impl AxelarGatewayInterface for AxelarGateway {
     ) {
         caller.require_auth();
 
-        let payload_hash = env.crypto().keccak256(&payload);
+        let payload_hash = env.crypto().keccak256(&payload).into();
 
         event::call_contract(
             &env,
@@ -61,7 +60,7 @@ impl AxelarGatewayInterface for AxelarGateway {
         source_chain: String,
         source_address: String,
         contract_address: Address,
-        payload_hash: Hash,
+        payload_hash: BytesN<32>,
     ) -> bool {
         let message_approval =
             Self::message_approval(&env, message_id.clone(), source_chain.clone());
@@ -91,7 +90,7 @@ impl AxelarGatewayInterface for AxelarGateway {
         message_id: String,
         source_chain: String,
         source_address: String,
-        payload_hash: Hash,
+        payload_hash: BytesN<32>,
     ) -> bool {
         caller.require_auth();
 
@@ -129,7 +128,8 @@ impl AxelarGatewayInterface for AxelarGateway {
     ) {
         let data_hash = env
             .crypto()
-            .keccak256(&(CommandType::ApproveMessages, messages.clone()).to_xdr(&env));
+            .keccak256(&(CommandType::ApproveMessages, messages.clone()).to_xdr(&env))
+            .into();
 
         let auth_module = Self::auth_module(&env);
 
@@ -165,9 +165,10 @@ impl AxelarGatewayInterface for AxelarGateway {
         signers: axelar_soroban_interfaces::types::WeightedSigners,
         proof: axelar_soroban_interfaces::types::Proof,
     ) {
-        let data_hash = env
+        let data_hash: BytesN<32> = env
             .crypto()
-            .keccak256(&(CommandType::RotateSigners, signers.clone()).to_xdr(&env));
+            .keccak256(&(CommandType::RotateSigners, signers.clone()).to_xdr(&env))
+            .into();
 
         let auth_module = Self::auth_module(&env);
 
@@ -207,7 +208,7 @@ impl AxelarGateway {
     }
 
     fn message_approval_hash(env: &Env, message: Message) -> MessageApprovalValue {
-        MessageApprovalValue::Approved(env.crypto().keccak256(&message.to_xdr(env)))
+        MessageApprovalValue::Approved(env.crypto().keccak256(&message.to_xdr(env)).into())
     }
 
     /// Get the message approval value by message_id and source_chain, defaulting to `MessageNotApproved`

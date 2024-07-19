@@ -1,6 +1,5 @@
 use axelar_soroban_interfaces::types::{Message, WeightedSigners};
-use axelar_soroban_std::types::Hash;
-use soroban_sdk::{symbol_short, Address, Bytes, Env, String};
+use soroban_sdk::{symbol_short, Address, Bytes, BytesN, Env, String};
 
 pub(crate) fn call_contract(
     env: &Env,
@@ -8,7 +7,7 @@ pub(crate) fn call_contract(
     destination_chain: String,
     destination_address: String,
     payload: Bytes,
-    payload_hash: Hash,
+    payload_hash: BytesN<32>,
 ) {
     let topics = (symbol_short!("called"), caller, payload_hash);
     env.events()

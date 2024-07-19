@@ -37,7 +37,7 @@ pub trait AxelarExecutableInterface {
             &message_id,
             &source_chain,
             &source_address,
-            &env.crypto().keccak256(&payload),
+            &env.crypto().keccak256(&payload).into(),
         ) {
             panic!("not approved");
         };

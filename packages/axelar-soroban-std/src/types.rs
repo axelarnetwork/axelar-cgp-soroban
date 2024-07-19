@@ -1,6 +1,4 @@
-use soroban_sdk::{contracttype, Address, BytesN};
-
-pub type Hash = BytesN<32>;
+use soroban_sdk::{contracttype, Address};
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]

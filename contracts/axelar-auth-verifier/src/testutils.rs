@@ -6,19 +6,18 @@ use rand::rngs::OsRng;
 use rand::Rng;
 use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
 use sha3::{Digest, Keccak256};
-use soroban_sdk::{vec, U256};
+use soroban_sdk::vec;
 
 use soroban_sdk::{symbol_short, testutils::BytesN as _, xdr::ToXdr, Address, Bytes, BytesN, Env};
 
 use axelar_soroban_interfaces::types::{Proof, WeightedSigner, WeightedSigners};
-use axelar_soroban_std::types::Hash;
 use axelar_soroban_std::{assert_emitted_event, traits::IntoVec};
 
 #[derive(Clone, Debug)]
 pub struct TestSignerSet {
     pub signers: std::vec::Vec<SecretKey>,
     pub signer_set: WeightedSigners,
-    pub domain_separator: Hash,
+    pub domain_separator: BytesN<32>,
 }
 
 pub fn randint(a: u32, b: u32) -> u32 {
@@ -28,10 +27,14 @@ pub fn randint(a: u32, b: u32) -> u32 {
 pub fn generate_random_payload_and_hash(env: &Env) -> BytesN<32> {
     let payload: Bytes = BytesN::<10>::random(env).into();
 
-    env.crypto().keccak256(&payload)
+    env.crypto().keccak256(&payload).into()
 }
 
-pub fn generate_signer_set(env: &Env, num_signers: u32, domain_separator: Hash) -> TestSignerSet {
+pub fn generate_signer_set(
+    env: &Env,
+    num_signers: u32,
+    domain_separator: BytesN<32>,
+) -> TestSignerSet {
     let secp = Secp256k1::new();
     let mut rng = rand::thread_rng();
 
@@ -40,7 +43,7 @@ pub fn generate_signer_set(env: &Env, num_signers: u32, domain_separator: Hash) 
             let sk = SecretKey::new(&mut OsRng);
             let pk = PublicKey::from_secret_key(&secp, &sk);
             let pk_hash: [u8; 32] = Keccak256::digest(pk.serialize_uncompressed()).into();
-            let weight = rng.gen_range(1..10) as u32;
+            let weight = rng.gen_range(1..10) as u128;
 
             (sk, (pk, pk_hash, weight))
         })
@@ -51,13 +54,13 @@ pub fn generate_signer_set(env: &Env, num_signers: u32, domain_separator: Hash) 
 
     let (signers, signer_info): (std::vec::Vec<_>, std::vec::Vec<(_, _, _)>) =
         signer_keypair.into_iter().unzip();
-    let total_weight = signer_info.iter().map(|(_, _, w)| w).sum::<u32>();
+    let total_weight = signer_info.iter().map(|(_, _, w)| w).sum::<u128>();
 
     let signer_vec: std::vec::Vec<WeightedSigner> = signer_info
         .into_iter()
         .map(|(_, pk_hash, w)| WeightedSigner {
             signer: BytesN::<32>::from_array(env, &pk_hash),
-            weight: U256::from_u32(env, w),
+            weight: w,
         })
         .collect();
 
@@ -65,7 +68,7 @@ pub fn generate_signer_set(env: &Env, num_signers: u32, domain_separator: Hash) 
 
     let signer_set = WeightedSigners {
         signers: signer_vec.into_vec(env),
-        threshold: U256::from_u32(env, threshold),
+        threshold,
         nonce: BytesN::<32>::from_array(env, &[0; 32]),
     };
 
@@ -76,7 +79,7 @@ pub fn generate_signer_set(env: &Env, num_signers: u32, domain_separator: Hash) 
     }
 }
 
-pub fn generate_proof(env: &Env, data_hash: Hash, signers: TestSignerSet) -> Proof {
+pub fn generate_proof(env: &Env, data_hash: BytesN<32>, signers: TestSignerSet) -> Proof {
     let signer_hash = env
         .crypto()
         .keccak256(&signers.signer_set.clone().to_xdr(env));
@@ -87,7 +90,7 @@ pub fn generate_proof(env: &Env, data_hash: Hash, signers: TestSignerSet) -> Pro
     let msg_hash = env.crypto().keccak256(&msg);
 
     let msg_to_sign = Message::from_digest_slice(&msg_hash.to_array()).unwrap();
-    let threshold = signers.signer_set.threshold.to_u128().unwrap() as u32;
+    let threshold = signers.signer_set.threshold as u32;
     let secp = Secp256k1::new();
 
     let signatures: std::vec::Vec<_> = signers
@@ -119,7 +122,7 @@ pub fn initialize(
     previous_signer_retention: u32,
     num_signers: u32,
 ) -> TestSignerSet {
-    let signers = generate_signer_set(env, num_signers, Hash::random(env));
+    let signers = generate_signer_set(env, num_signers, BytesN::random(env));
     let signer_sets = vec![&env, signers.signer_set.clone()];
     let signer_set_hash = env
         .crypto()
@@ -128,7 +131,7 @@ pub fn initialize(
 
     client.initialize(
         &owner,
-        &previous_signer_retention,
+        &(previous_signer_retention as u64),
         &signers.domain_separator,
         &minimum_rotation_delay,
         &signer_sets,
@@ -148,9 +151,9 @@ pub fn initialize(
 pub fn rotate_signers(env: &Env, client: &AxelarAuthVerifierClient, new_signers: TestSignerSet) {
     let encoded_new_signer_set = new_signers.signer_set.clone().to_xdr(env);
 
-    client.rotate_signers(&new_signers.signer_set, &false);
+    let epoch: u64 = client.epoch() + 1;
 
-    let epoch: u64 = client.epoch();
+    client.rotate_signers(&new_signers.signer_set, &false);
 
     assert_emitted_event(
         env,

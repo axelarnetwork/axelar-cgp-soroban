@@ -5,10 +5,10 @@ use axelar_soroban_interfaces::types::{WeightedSigner, WeightedSigners};
 use soroban_sdk::{
     symbol_short,
     testutils::{Address as _, BytesN as _},
-    Address, Bytes, Env, Vec, U256,
+    Address, Bytes, BytesN, Env, Vec,
 };
 
-use axelar_soroban_std::{assert_emitted_event, testutils::assert_invocation, types::Hash};
+use axelar_soroban_std::{assert_emitted_event, testutils::assert_invocation};
 
 use crate::{
     contract::{AxelarAuthVerifier, AxelarAuthVerifierClient},
@@ -60,8 +60,8 @@ fn fails_with_empty_signer_set() {
     // call should panic because signer set is empty
     let res = client.try_initialize(
         &owner,
-        &randint(0, 10),
-        &Hash::random(&env),
+        &(randint(0, 10) as u64),
+        &BytesN::random(&env),
         &0,
         &empty_signer_set,
     );
@@ -129,7 +129,7 @@ fn fail_validate_proof_invalid_epoch() {
 
     initialize(&env, &client, user, randint(0, 10), randint(1, 10));
 
-    let different_signers = generate_signer_set(&env, randint(1, 10), Hash::random(&env));
+    let different_signers = generate_signer_set(&env, randint(1, 10), BytesN::random(&env));
 
     let msg_hash = generate_random_payload_and_hash(&env);
     let proof = generate_proof(&env, msg_hash.clone(), different_signers);
@@ -150,7 +150,7 @@ fn fail_validate_proof_invalid_signatures() {
     let proof = generate_proof(&env, msg_hash.clone(), signers);
 
     let different_msg = Bytes::from_array(&env, &[0x04, 0x05, 0x06]);
-    let different_msg_hash = env.crypto().keccak256(&different_msg);
+    let different_msg_hash = env.crypto().keccak256(&different_msg).into();
 
     // should panic, proof is for different message hash
     client.validate_proof(&different_msg_hash, &proof);
@@ -202,14 +202,13 @@ fn fail_validate_proof_threshold_not_met() {
     let signers = initialize(&env, &client, user, randint(0, 10), randint(1, 10));
 
     let env = &env;
-    let zero = U256::from_u32(env, 0);
-    let mut total_weight = zero.clone();
+    let mut total_weight = 0u128;
 
     let mut index_below_threshold = 0;
 
     // find the index where the total weight is just below the threshold
     for (i, WeightedSigner { weight, .. }) in signers.signer_set.signers.iter().enumerate() {
-        total_weight = total_weight.add(&weight);
+        total_weight += weight;
         if total_weight >= signers.signer_set.threshold {
             index_below_threshold = i;
             break;
@@ -223,6 +222,30 @@ fn fail_validate_proof_threshold_not_met() {
     proof.signatures = proof.signatures.slice(0..index_below_threshold as u32);
 
     // should panic, all signatures are valid but total weight is below threshold
+    client.validate_proof(&msg_hash, &proof);
+}
+#[test]
+#[should_panic(expected = "invalid epoch")]
+fn fail_validate_proof_threshold_overflow() {
+    let (env, _, client) = setup_env();
+    let user = Address::generate(&env);
+
+    let mut signers = initialize(&env, &client, user, randint(0, 10), randint(1, 10));
+
+    let env = &env;
+
+    let last_index = signers.signer_set.signers.len() - 1;
+
+    // get last signer and modify its weight to max u128 - 1
+    if let Some(mut last_signer) = signers.signer_set.signers.get(last_index) {
+        last_signer.weight = u128::MAX - 1;
+        signers.signer_set.signers.set(last_index, last_signer);
+    }
+
+    let msg_hash = generate_random_payload_and_hash(env);
+    let proof = generate_proof(env, msg_hash.clone(), signers);
+
+    // should panic, as modified signer wouldn't match the epoch
     client.validate_proof(&msg_hash, &proof);
 }
 
@@ -247,14 +270,13 @@ fn test_rotate_signers() {
 
     rotate_signers(&env, &client, new_signers.clone());
 
-    // TODO: investigate invocation issue
-    // assert_invocation(
-    //     &env,
-    //     &user,
-    //     &client.address,
-    //     "rotate_signers",
-    //     (new_signers.signer_set.clone(), false,),
-    // );
+    assert_invocation(
+        &env,
+        &user,
+        &client.address,
+        "rotate_signers",
+        (new_signers.signer_set.clone(), false),
+    );
 
     let proof = generate_proof(&env, msg_hash.clone(), new_signers);
     let latest_signer_set = client.validate_proof(&msg_hash, &proof);
@@ -278,8 +300,8 @@ fn rotate_signers_fail_empty_signers() {
 
     let empty_signers = WeightedSigners {
         signers: Vec::<WeightedSigner>::new(&env),
-        threshold: U256::from_u32(&env, 0),
-        nonce: Hash::random(&env),
+        threshold: 0u128,
+        nonce: BytesN::random(&env),
     };
 
     // should throw an error, empty signer set
@@ -302,19 +324,49 @@ fn rotate_signers_fail_zero_weight() {
         randint(1, 10),
     );
 
-    let mut new_signers = generate_signer_set(&env, randint(1, 10), Hash::random(&env));
+    let mut new_signers = generate_signer_set(&env, randint(1, 10), BytesN::random(&env));
 
-    let last_index = new_signers.signer_set.signers.len() as u32 - 1;
+    let last_index = new_signers.signer_set.signers.len() - 1;
 
     // get last signer and modify its weight to zero
     if let Some(mut last_signer) = new_signers.signer_set.signers.get(last_index) {
-        last_signer.weight = U256::from_u32(&env, 0);
+        last_signer.weight = 0u128;
         new_signers.signer_set.signers.set(last_index, last_signer);
     }
 
     // should throw an error, last signer weight is zero
     let res = client.try_rotate_signers(&new_signers.signer_set, &false);
     assert!(res.is_err());
+}
+
+#[test]
+#[should_panic(expected = "called `Option::unwrap()` on a `None` value")]
+fn rotate_signers_fail_weight_overflow() {
+    let (env, _, client) = setup_env();
+
+    let user = Address::generate(&env);
+    let previous_signer_retention = 1;
+
+    initialize(
+        &env,
+        &client,
+        user.clone(),
+        previous_signer_retention,
+        randint(1, 10),
+    );
+
+    let mut new_signers = generate_signer_set(&env, randint(3, 10), BytesN::random(&env));
+
+    let last_index = new_signers.signer_set.signers.len() - 1;
+
+    // get last signer and modify its weight to max u128 - 1
+    if let Some(mut last_signer) = new_signers.signer_set.signers.get(last_index) {
+        last_signer.weight = u128::MAX - 1;
+        new_signers.signer_set.signers.set(last_index, last_signer);
+    }
+
+    // should throw an error, last signer weight should cause overflow
+    client.rotate_signers(&new_signers.signer_set, &false);
 }
 
 #[test]
@@ -332,10 +384,10 @@ fn rotate_signers_fail_zero_threshold() {
         randint(1, 10),
     );
 
-    let mut new_signers = generate_signer_set(&env, randint(1, 10), Hash::random(&env));
+    let mut new_signers = generate_signer_set(&env, randint(1, 10), BytesN::random(&env));
 
     // set the threshold to zero
-    new_signers.signer_set.threshold = U256::from_u32(&env, 0);
+    new_signers.signer_set.threshold = 0u128;
 
     // should error because the threshold is set to zero
     let res = client.try_rotate_signers(&new_signers.signer_set, &false);
@@ -357,19 +409,17 @@ fn rotate_signers_fail_low_total_weight() {
         randint(1, 10),
     );
 
-    let mut new_signers = generate_signer_set(&env, randint(1, 10), Hash::random(&env));
-
-    let one = U256::from_u32(&env, 1);
+    let mut new_signers = generate_signer_set(&env, randint(1, 10), BytesN::random(&env));
 
     let total_weight = new_signers
         .signer_set
         .signers
         .iter()
         .map(|WeightedSigner { weight, .. }| weight)
-        .reduce(|acc, weight| acc.add(&weight))
+        .reduce(|acc, weight| acc + weight)
         .expect("Empty signers");
 
-    let new_threshold = total_weight.add(&one);
+    let new_threshold = total_weight + 1;
 
     // set the threshold to zero
     new_signers.signer_set.threshold = new_threshold;
@@ -395,7 +445,7 @@ fn rotate_signers_fail_wrong_signer_order() {
     );
 
     let min_signers = 2; // need at least 2 signers to test incorrect ordering
-    let mut new_signers = generate_signer_set(&env, randint(min_signers, 10), Hash::random(&env));
+    let mut new_signers = generate_signer_set(&env, randint(min_signers, 10), BytesN::random(&env));
 
     let len = new_signers.signer_set.signers.len();
 
