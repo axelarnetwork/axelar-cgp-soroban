@@ -80,9 +80,23 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
     }
 
     fn validate_proof(env: Env, data_hash: BytesN<32>, proof: Proof) -> bool {
+        let mut weighted_signers = Vec::new(&env);
+        for s in proof.signers.iter() {
+            weighted_signers.push_back(WeightedSigner {
+                signer: s.signer.clone(),
+                weight: s.weight.clone(),
+            });
+        }
+
+        let signer_set = WeightedSigners {
+            signers: weighted_signers,
+            threshold: proof.threshold.clone(),
+            nonce: proof.nonce.clone(),
+        };
+
         let signer_hash: BytesN<32> = env
             .crypto()
-            .keccak256(&proof.signers.clone().to_xdr(&env))
+            .keccak256(&signer_set.to_xdr(&env))
             .into();
 
         let signer_epoch: u64 = env
@@ -109,7 +123,7 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
 
         let msg_hash = Self::message_hash_to_sign(&env, signer_hash, data_hash);
 
-        if !Self::validate_signatures(&env, msg_hash, proof) {
+        if !Self::validate_signatures(&env, msg_hash.into(), proof) {
             panic!("invalid signatures");
         }
 
@@ -203,45 +217,20 @@ impl AxelarAuthVerifier {
     }
 
     fn validate_signatures(env: &Env, msg_hash: Hash<32>, proof: Proof) -> bool {
-        let Proof {
-            signers,
-            signatures,
-        } = proof;
-
-        if signatures.is_empty() {
-            return false;
-        }
-
         let mut total_weight = 0u128;
-        let mut signer_index = 0;
+        let msg_bytes = msg_hash.to_bytes();
 
-        for (signature, recovery_id) in signatures.into_iter() {
-            // TODO: check if any additional validation is needed for signature and output of ec recover, or if it's fully handled by the sdk
-            let pub_key = env
-                .crypto()
-                .secp256k1_recover(&msg_hash, &signature, recovery_id);
-            let expected_signer: BytesN<32> = env.crypto().keccak256(&pub_key.into()).into();
+        for signer in proof.signers.iter() {
+            if signer.signature.len() == 64 {
+                let signature_bytes: BytesN<64> = BytesN::from_array(env, &signer.signature.slice(0..64).try_into().unwrap());
 
-            while signer_index < signers.signers.len() {
-                let WeightedSigner { signer, .. } = signers.signers.get(signer_index).unwrap();
+                env.crypto().ed25519_verify(&signer.signer, &msg_bytes.as_ref(), &signature_bytes);
 
-                if expected_signer == signer {
-                    break;
+                total_weight = total_weight.checked_add(signer.weight).unwrap();
+
+                if total_weight >= proof.threshold {
+                    return true;
                 }
-
-                signer_index += 1;
-            }
-
-            if signer_index == signers.signers.len() {
-                return false;
-            }
-
-            let WeightedSigner { weight, .. } = signers.signers.get(signer_index).unwrap();
-
-            total_weight = total_weight.checked_add(weight).unwrap();
-
-            if total_weight >= signers.threshold {
-                return true;
             }
         }
 

@@ -1,9 +1,9 @@
-use soroban_sdk::{contracttype, Address, BytesN, String, Vec};
+use soroban_sdk::{contracttype, Address, BytesN, String, Vec, Bytes};
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WeightedSigner {
-    pub signer: BytesN<32>,
+    pub signer: BytesN<32>, // Ed25519 public key
     pub weight: u128,
 }
 
@@ -17,9 +17,18 @@ pub struct WeightedSigners {
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProofSigner {
+    pub signer: BytesN<32>, // Ed25519 public key
+    pub weight: u128,
+    pub signature: Bytes, // Ed25519 signature (empty if not present)
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Proof {
-    pub signers: WeightedSigners,
-    pub signatures: Vec<(BytesN<64>, u32)>,
+    pub signers: Vec<ProofSigner>,
+    pub threshold: u128,
+    pub nonce: BytesN<32>,
 }
 
 #[contracttype]

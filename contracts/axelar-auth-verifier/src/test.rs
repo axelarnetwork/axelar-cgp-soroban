@@ -1,7 +1,7 @@
 #![cfg(test)]
 extern crate std;
 
-use axelar_soroban_interfaces::types::{WeightedSigner, WeightedSigners};
+use axelar_soroban_interfaces::types::{ProofSigner, WeightedSigner, WeightedSigners};
 use soroban_sdk::{
     symbol_short,
     testutils::{Address as _, BytesN as _},
@@ -167,7 +167,16 @@ fn fail_validate_proof_empty_signatures() {
     let msg_hash = generate_random_payload_and_hash(&env);
     let mut proof = generate_proof(&env, msg_hash.clone(), signers);
 
-    proof.signatures = Vec::new(&env);
+    // Modify signatures to make them invalid
+    let mut new_signers = Vec::new(&env);
+    for signer in proof.signers.iter() {
+        new_signers.push_back(ProofSigner {
+            signer: signer.signer.clone(),
+            weight: signer.weight,
+            signature: Bytes::new(&env)
+        });
+    }
+    proof.signers = new_signers;
 
     // validate_proof should panic, empty signatures
     client.validate_proof(&msg_hash, &proof);
@@ -187,7 +196,7 @@ fn fail_validate_proof_invalid_signer_set() {
 
     let new_proof = generate_proof(&env, msg_hash.clone(), new_signers);
 
-    proof.signatures = new_proof.signatures;
+    proof.signers = new_proof.signers;
 
     // validate_proof should panic, signatures do not match signers
     client.validate_proof(&msg_hash, &proof);
@@ -204,22 +213,17 @@ fn fail_validate_proof_threshold_not_met() {
     let env = &env;
     let mut total_weight = 0u128;
 
-    let mut index_below_threshold = 0;
+    let msg_hash = generate_random_payload_and_hash(env);
+    let proof = generate_proof(env, msg_hash.clone(), signers);
 
     // find the index where the total weight is just below the threshold
-    for (i, WeightedSigner { weight, .. }) in signers.signer_set.signers.iter().enumerate() {
-        total_weight += weight;
-        if total_weight >= signers.signer_set.threshold {
-            index_below_threshold = i;
+    for mut signer in proof.signers.iter() {
+        total_weight += signer.weight;
+        if total_weight >= proof.threshold {
+            signer.signature = Bytes::new(env);
             break;
         }
     }
-
-    let msg_hash = generate_random_payload_and_hash(env);
-    let mut proof = generate_proof(env, msg_hash.clone(), signers);
-
-    // remove signatures to just below the threshold
-    proof.signatures = proof.signatures.slice(0..index_below_threshold as u32);
 
     // should panic, all signatures are valid but total weight is below threshold
     client.validate_proof(&msg_hash, &proof);
