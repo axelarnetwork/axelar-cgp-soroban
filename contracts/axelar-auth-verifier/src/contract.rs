@@ -84,13 +84,13 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
         for s in proof.signers.iter() {
             weighted_signers.push_back(WeightedSigner {
                 signer: s.signer.clone(),
-                weight: s.weight.clone(),
+                weight: s.weight,
             });
         }
 
         let signer_set = WeightedSigners {
             signers: weighted_signers,
-            threshold: proof.threshold.clone(),
+            threshold: proof.threshold,
             nonce: proof.nonce.clone(),
         };
 
@@ -223,7 +223,7 @@ impl AxelarAuthVerifier {
 
                 env.crypto().ed25519_verify(
                     &signer.signer,
-                    &msg_hash.to_bytes().as_ref(),
+                    msg_hash.to_bytes().as_ref(),
                     &signature_bytes,
                 );
 
