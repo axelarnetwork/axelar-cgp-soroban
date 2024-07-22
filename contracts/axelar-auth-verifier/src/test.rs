@@ -139,7 +139,7 @@ fn fail_validate_proof_invalid_epoch() {
 }
 
 #[test]
-#[should_panic(expected = "invalid signatures")]
+#[should_panic(expected = "failed ED25519 verification")]
 fn fail_validate_proof_invalid_signatures() {
     let (env, _, client) = setup_env();
     let user = Address::generate(&env);
@@ -183,7 +183,7 @@ fn fail_validate_proof_empty_signatures() {
 }
 
 #[test]
-#[should_panic(expected = "invalid signatures")]
+#[should_panic(expected = "invalid epoch")]
 fn fail_validate_proof_invalid_signer_set() {
     let (env, _, client) = setup_env();
     let user = Address::generate(&env);
@@ -214,16 +214,27 @@ fn fail_validate_proof_threshold_not_met() {
     let mut total_weight = 0u128;
 
     let msg_hash = generate_random_payload_and_hash(env);
-    let proof = generate_proof(env, msg_hash.clone(), signers);
+    let mut proof = generate_proof(env, msg_hash.clone(), signers);
 
-    // find the index where the total weight is just below the threshold
-    for mut signer in proof.signers.iter() {
+    // Modify signatures to make them invalid
+    let mut new_signers = Vec::new(&env);
+    for signer in proof.signers.iter() {
         total_weight += signer.weight;
-        if total_weight >= proof.threshold {
-            signer.signature = Bytes::new(env);
-            break;
+        if total_weight < proof.threshold {
+            new_signers.push_back(ProofSigner {
+                signer: signer.signer.clone(),
+                weight: signer.weight,
+                signature: signer.signature.clone()
+            });
+        } else {
+            new_signers.push_back(ProofSigner {
+                signer: signer.signer.clone(),
+                weight: signer.weight,
+                signature: Bytes::new(&env)
+            });
         }
     }
+    proof.signers = new_signers;
 
     // should panic, all signatures are valid but total weight is below threshold
     client.validate_proof(&msg_hash, &proof);
