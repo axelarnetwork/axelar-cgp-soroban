@@ -173,7 +173,7 @@ fn fail_validate_proof_empty_signatures() {
         new_signers.push_back(ProofSigner {
             signer: signer.signer.clone(),
             weight: signer.weight,
-            signature: Bytes::new(&env)
+            signature: Bytes::new(&env),
         });
     }
     proof.signers = new_signers;
@@ -224,13 +224,13 @@ fn fail_validate_proof_threshold_not_met() {
             new_signers.push_back(ProofSigner {
                 signer: signer.signer.clone(),
                 weight: signer.weight,
-                signature: signer.signature.clone()
+                signature: signer.signature.clone(),
             });
         } else {
             new_signers.push_back(ProofSigner {
                 signer: signer.signer.clone(),
                 weight: signer.weight,
-                signature: Bytes::new(&env)
+                signature: Bytes::new(&env),
             });
         }
     }

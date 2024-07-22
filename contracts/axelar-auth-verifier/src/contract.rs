@@ -94,10 +94,7 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
             nonce: proof.nonce.clone(),
         };
 
-        let signer_hash: BytesN<32> = env
-            .crypto()
-            .keccak256(&signer_set.to_xdr(&env))
-            .into();
+        let signer_hash: BytesN<32> = env.crypto().keccak256(&signer_set.to_xdr(&env)).into();
 
         let signer_epoch: u64 = env
             .storage()
@@ -123,7 +120,7 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
 
         let msg_hash = Self::message_hash_to_sign(&env, signer_hash, data_hash);
 
-        if !Self::validate_signatures(&env, msg_hash.into(), proof) {
+        if !Self::validate_signatures(&env, msg_hash, proof) {
             panic!("invalid signatures");
         }
 
@@ -218,13 +215,17 @@ impl AxelarAuthVerifier {
 
     fn validate_signatures(env: &Env, msg_hash: Hash<32>, proof: Proof) -> bool {
         let mut total_weight = 0u128;
-        let msg_bytes = msg_hash.to_bytes();
 
         for signer in proof.signers.iter() {
             if signer.signature.len() == 64 {
-                let signature_bytes: BytesN<64> = BytesN::from_array(env, &signer.signature.slice(0..64).try_into().unwrap());
+                let signature_bytes: BytesN<64> =
+                    BytesN::from_array(env, &signer.signature.slice(0..64).try_into().unwrap());
 
-                env.crypto().ed25519_verify(&signer.signer, &msg_bytes.as_ref(), &signature_bytes);
+                env.crypto().ed25519_verify(
+                    &signer.signer,
+                    &msg_hash.to_bytes().as_ref(),
+                    &signature_bytes,
+                );
 
                 total_weight = total_weight.checked_add(signer.weight).unwrap();
 

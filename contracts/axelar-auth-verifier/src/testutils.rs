@@ -2,9 +2,9 @@
 extern crate std;
 
 use crate::contract::AxelarAuthVerifierClient;
+use ed25519_dalek::{Signature, Signer, SigningKey};
 use rand::rngs::OsRng;
 use rand::Rng;
-use ed25519_dalek::{SigningKey, Signer, Signature};
 use soroban_sdk::vec;
 use soroban_sdk::{symbol_short, testutils::BytesN as _, xdr::ToXdr, Address, Bytes, BytesN, Env};
 
@@ -32,7 +32,7 @@ pub fn generate_signer_set(
     num_signers: u32,
     domain_separator: BytesN<32>,
 ) -> TestSignerSet {
-    let mut csprng = OsRng{};
+    let mut csprng = OsRng {};
 
     let mut signer_keypair: std::vec::Vec<_> = (0..num_signers)
         .map(|_| {
@@ -43,7 +43,11 @@ pub fn generate_signer_set(
         .collect();
 
     // Sort signers by public key
-    signer_keypair.sort_by(|a, b| a.0.verifying_key().to_bytes().cmp(&b.0.verifying_key().to_bytes()));
+    signer_keypair.sort_by(|a, b| {
+        a.0.verifying_key()
+            .to_bytes()
+            .cmp(&b.0.verifying_key().to_bytes())
+    });
 
     let total_weight = signer_keypair.iter().map(|(_, w)| w).sum::<u128>();
 
@@ -64,7 +68,10 @@ pub fn generate_signer_set(
     };
 
     TestSignerSet {
-        signers: signer_keypair.into_iter().map(|(signing_key, _)| signing_key).collect(),
+        signers: signer_keypair
+            .into_iter()
+            .map(|(signing_key, _)| signing_key)
+            .collect(),
         signer_set,
         domain_separator,
     }
@@ -156,4 +163,3 @@ pub fn rotate_signers(env: &Env, client: &AxelarAuthVerifierClient, new_signers:
         (new_signers.signer_set.clone(),),
     );
 }
-
