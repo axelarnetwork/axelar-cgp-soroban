@@ -9,16 +9,18 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 axelar-soroban-interfaces = { workspace = true }
 axelar-soroban-std = { workspace = true }
+ed25519-dalek = { version = "2.1.1" }
 rand = { version = "0.8.5", optional = true }
 secp256k1 = { version = "0.28.2", features = ["recovery", "rand"], optional = true }
 sha3 = { version = "*", optional = true }
 soroban-sdk = { workspace = true }
 
 [dev_dependencies]
-soroban-sdk = { workspace = true, features = ["testutils"] }
 axelar-soroban-std = { workspace = true, features = ["testutils"] }
+ed25519-dalek = { version = "2.1.1" }
 secp256k1 = { version = "0.28.2", features = ["recovery", "rand"] }
 sha3 = { version = "*" }
+soroban-sdk = { workspace = true, features = ["testutils"] }
 rand = { version = "0.8.5" }
 
 [features]
