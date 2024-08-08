@@ -3,9 +3,7 @@ extern crate std;
 
 use axelar_soroban_interfaces::types::{WeightedSigner, WeightedSigners};
 use soroban_sdk::{
-    symbol_short,
-    testutils::{Address as _, BytesN as _},
-    Address, Bytes, BytesN, Env, Vec,
+    symbol_short, testutils::{Address as _, BytesN as _}, xdr::ToXdr, Address, Bytes, BytesN, Env, Vec
 };
 
 use axelar_soroban_std::{assert_emitted_event, testutils::assert_invocation};
@@ -462,6 +460,16 @@ fn rotate_signers_fail_wrong_signer_order() {
     // should error because signers are in wrong order
     let res = client.try_rotate_signers(&new_signers.signer_set, &false);
     assert!(res.is_err());
+}
+
+#[test]
+fn encode_decode_test() {
+    let (env, _, _) = setup_env();
+
+    let user = Address::generate(&env);
+
+    assert_eq!(user.clone().to_xdr(&env).len(), 40);
+    assert_eq!(user.to_xdr(&env), Bytes::new(&env));
 }
 
 #[test]
