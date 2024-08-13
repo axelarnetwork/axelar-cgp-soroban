@@ -15,6 +15,9 @@ pub struct WeightedSigners {
     pub nonce: BytesN<32>,
 }
 
+/// `ProofSignature` represents an optional signature from a signer.
+/// Since Soroban doesn't support use of `Option` in it's contract interfaces,
+/// we use this enum instead.
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ProofSignature {
@@ -22,6 +25,9 @@ pub enum ProofSignature {
     Unsigned,
 }
 
+/// `ProofSigner` represents a signer in a proof. If the signer submitted a signature,
+/// and if it is being included in the proof to meet the threshold, then a `ProofSignature` is attached.
+/// Otherwise, the `ProofSignature` is `Unsigned`.
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProofSigner {
@@ -29,6 +35,9 @@ pub struct ProofSigner {
     pub signature: ProofSignature,
 }
 
+/// `Proof` represents a proof that a set of signers have signed a message.
+/// All weighted signers are included in the along with a signature, if they have signed the message,
+/// until threshold is met.
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Proof {
