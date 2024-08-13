@@ -55,7 +55,6 @@ dependencies = [
  "axelar-soroban-std",
  "ed25519-dalek",
  "rand",
- "secp256k1",
  "sha3",
  "soroban-sdk",
 ]
@@ -919,25 +918,6 @@ dependencies = [
  "generic-array",
  "subtle",
  "zeroize",
-]
-
-[[package]]
-name = "secp256k1"
-version = "0.28.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d24b59d129cdadea20aea4fb2352fa053712e5d713eee47d700cd4b2bc002f10"
-dependencies = [
- "rand",
- "secp256k1-sys",
-]
-
-[[package]]
-name = "secp256k1-sys"
-version = "0.9.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5d1746aae42c19d583c3c1a8c646bfad910498e2051c551a7f2e3c0c9fbb7eb"
-dependencies = [
- "cc",
 ]
 
 [[package]]
