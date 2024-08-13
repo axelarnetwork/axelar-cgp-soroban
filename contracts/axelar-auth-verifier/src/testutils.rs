@@ -7,7 +7,9 @@ use rand::Rng;
 use soroban_sdk::vec;
 use soroban_sdk::{symbol_short, testutils::BytesN as _, xdr::ToXdr, Address, Bytes, BytesN, Env};
 
-use axelar_soroban_interfaces::types::{Proof, ProofSignature, ProofSigner, WeightedSigner, WeightedSigners};
+use axelar_soroban_interfaces::types::{
+    Proof, ProofSignature, ProofSigner, WeightedSigner, WeightedSigners,
+};
 use axelar_soroban_std::{assert_emitted_event, traits::IntoVec};
 
 #[derive(Clone, Debug)]
@@ -104,7 +106,10 @@ pub fn generate_proof(env: &Env, data_hash: BytesN<32>, signers: TestSignerSet) 
             let signature: Signature = signing_key.sign(&msg_hash.to_array());
             ProofSigner {
                 signer: weighted_signer,
-                signature: ProofSignature::Signed(BytesN::<64>::from_array(env, &signature.to_bytes())),
+                signature: ProofSignature::Signed(BytesN::<64>::from_array(
+                    env,
+                    &signature.to_bytes(),
+                )),
             }
         })
         .collect();

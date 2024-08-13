@@ -205,13 +205,18 @@ impl AxelarAuthVerifier {
     fn validate_signatures(env: &Env, msg_hash: Hash<32>, proof: Proof) -> bool {
         let mut total_weight = 0u128;
 
-        for ProofSigner { signer: WeightedSigner { signer: public_key, weight }, signature } in proof.signers.iter() {
+        for ProofSigner {
+            signer:
+                WeightedSigner {
+                    signer: public_key,
+                    weight,
+                },
+            signature,
+        } in proof.signers.iter()
+        {
             if let ProofSignature::Signed(signature) = signature {
-                env.crypto().ed25519_verify(
-                    &public_key,
-                    msg_hash.to_bytes().as_ref(),
-                    &signature,
-                );
+                env.crypto()
+                    .ed25519_verify(&public_key, msg_hash.to_bytes().as_ref(), &signature);
 
                 total_weight = total_weight.checked_add(weight).unwrap();
 

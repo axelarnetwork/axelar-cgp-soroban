@@ -1,7 +1,9 @@
 #![cfg(test)]
 extern crate std;
 
-use axelar_soroban_interfaces::types::{ProofSignature, ProofSigner, WeightedSigner, WeightedSigners};
+use axelar_soroban_interfaces::types::{
+    ProofSignature, ProofSigner, WeightedSigner, WeightedSigners,
+};
 use soroban_sdk::{
     symbol_short,
     testutils::{Address as _, BytesN as _},
@@ -221,10 +223,7 @@ fn fail_validate_proof_threshold_not_met() {
         total_weight += signer.weight;
 
         if total_weight < proof.threshold {
-            new_signers.push_back(ProofSigner {
-                signer,
-                signature,
-            });
+            new_signers.push_back(ProofSigner { signer, signature });
         } else {
             new_signers.push_back(ProofSigner {
                 signer,
