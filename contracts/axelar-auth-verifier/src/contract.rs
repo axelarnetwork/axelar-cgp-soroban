@@ -1,5 +1,6 @@
 use core::panic;
 
+use axelar_soroban_interfaces::types::{ProofSignature, ProofSigner, WeightedSigner};
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{
     contract, contractimpl, crypto::Hash, panic_with_error, Address, Bytes, BytesN, Env, Vec,
@@ -10,7 +11,7 @@ use crate::event;
 use crate::storage_types::DataKey;
 use axelar_soroban_interfaces::{
     axelar_auth_verifier::AxelarAuthVerifierInterface,
-    types::{Proof, WeightedSigner, WeightedSigners},
+    types::{Proof, WeightedSigners},
 };
 
 #[contract]
@@ -80,19 +81,7 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
     }
 
     fn validate_proof(env: Env, data_hash: BytesN<32>, proof: Proof) -> bool {
-        let mut weighted_signers = Vec::new(&env);
-        for s in proof.signers.iter() {
-            weighted_signers.push_back(WeightedSigner {
-                signer: s.signer.clone(),
-                weight: s.weight,
-            });
-        }
-
-        let signer_set = WeightedSigners {
-            signers: weighted_signers,
-            threshold: proof.threshold,
-            nonce: proof.nonce.clone(),
-        };
+        let signer_set = proof.weighted_signers();
 
         let signer_hash: BytesN<32> = env.crypto().keccak256(&signer_set.to_xdr(&env)).into();
 
@@ -216,18 +205,15 @@ impl AxelarAuthVerifier {
     fn validate_signatures(env: &Env, msg_hash: Hash<32>, proof: Proof) -> bool {
         let mut total_weight = 0u128;
 
-        for signer in proof.signers.iter() {
-            if signer.signature.len() == 64 {
-                let signature_bytes: BytesN<64> =
-                    BytesN::from_array(env, &signer.signature.slice(0..64).try_into().unwrap());
-
+        for ProofSigner { signer: WeightedSigner { signer: public_key, weight }, signature } in proof.signers.iter() {
+            if let ProofSignature::Signed(signature) = signature {
                 env.crypto().ed25519_verify(
-                    &signer.signer,
+                    &public_key,
                     msg_hash.to_bytes().as_ref(),
-                    &signature_bytes,
+                    &signature,
                 );
 
-                total_weight = total_weight.checked_add(signer.weight).unwrap();
+                total_weight = total_weight.checked_add(weight).unwrap();
 
                 if total_weight >= proof.threshold {
                     return true;

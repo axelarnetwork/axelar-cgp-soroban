@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, Address, Bytes, BytesN, String, Vec};
+use soroban_sdk::{contracttype, Address, BytesN, String, Vec};
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -17,10 +17,16 @@ pub struct WeightedSigners {
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ProofSignature {
+    Signed(BytesN<64>), // Ed25519 signature
+    Unsigned,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProofSigner {
-    pub signer: BytesN<32>, // Ed25519 public key
-    pub weight: u128,
-    pub signature: Bytes, // Ed25519 signature (empty if not present)
+    pub signer: WeightedSigner,
+    pub signature: ProofSignature,
 }
 
 #[contracttype]
@@ -39,4 +45,21 @@ pub struct Message {
     pub source_address: String,
     pub contract_address: Address,
     pub payload_hash: BytesN<32>,
+}
+
+impl Proof {
+    /// Get the weighted signers from the proof.
+    pub fn weighted_signers(&self) -> WeightedSigners {
+        let mut signers = Vec::new(self.signers.env());
+
+        for ProofSigner { signer, .. } in self.signers.iter() {
+            signers.push_back(signer);
+        }
+
+        WeightedSigners {
+            signers,
+            threshold: self.threshold,
+            nonce: self.nonce.clone(),
+        }
+    }
 }

@@ -1,7 +1,7 @@
 #![cfg(test)]
 extern crate std;
 
-use axelar_soroban_interfaces::types::{ProofSigner, WeightedSigner, WeightedSigners};
+use axelar_soroban_interfaces::types::{ProofSignature, ProofSigner, WeightedSigner, WeightedSigners};
 use soroban_sdk::{
     symbol_short,
     testutils::{Address as _, BytesN as _},
@@ -171,9 +171,8 @@ fn fail_validate_proof_empty_signatures() {
     let mut new_signers = Vec::new(&env);
     for signer in proof.signers.iter() {
         new_signers.push_back(ProofSigner {
-            signer: signer.signer.clone(),
-            weight: signer.weight,
-            signature: Bytes::new(&env),
+            signer: signer.signer,
+            signature: ProofSignature::Unsigned,
         });
     }
     proof.signers = new_signers;
@@ -217,20 +216,19 @@ fn fail_validate_proof_threshold_not_met() {
     let mut proof = generate_proof(env, msg_hash.clone(), signers);
 
     // Modify signatures to make them invalid
-    let mut new_signers = Vec::new(&env);
-    for signer in proof.signers.iter() {
+    let mut new_signers = Vec::new(env);
+    for ProofSigner { signer, signature } in proof.signers.iter() {
         total_weight += signer.weight;
+
         if total_weight < proof.threshold {
             new_signers.push_back(ProofSigner {
-                signer: signer.signer.clone(),
-                weight: signer.weight,
-                signature: signer.signature.clone(),
+                signer,
+                signature,
             });
         } else {
             new_signers.push_back(ProofSigner {
-                signer: signer.signer.clone(),
-                weight: signer.weight,
-                signature: Bytes::new(&env),
+                signer,
+                signature: ProofSignature::Unsigned,
             });
         }
     }

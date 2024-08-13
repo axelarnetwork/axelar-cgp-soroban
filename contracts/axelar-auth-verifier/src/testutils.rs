@@ -3,12 +3,11 @@ extern crate std;
 
 use crate::contract::AxelarAuthVerifierClient;
 use ed25519_dalek::{Signature, Signer, SigningKey};
-use rand::rngs::OsRng;
 use rand::Rng;
 use soroban_sdk::vec;
 use soroban_sdk::{symbol_short, testutils::BytesN as _, xdr::ToXdr, Address, Bytes, BytesN, Env};
 
-use axelar_soroban_interfaces::types::{Proof, ProofSigner, WeightedSigner, WeightedSigners};
+use axelar_soroban_interfaces::types::{Proof, ProofSignature, ProofSigner, WeightedSigner, WeightedSigners};
 use axelar_soroban_std::{assert_emitted_event, traits::IntoVec};
 
 #[derive(Clone, Debug)]
@@ -32,12 +31,12 @@ pub fn generate_signer_set(
     num_signers: u32,
     domain_separator: BytesN<32>,
 ) -> TestSignerSet {
-    let mut csprng = OsRng {};
+    let mut rng = rand::thread_rng();
 
     let mut signer_keypair: std::vec::Vec<_> = (0..num_signers)
         .map(|_| {
-            let signing_key = SigningKey::generate(&mut csprng);
-            let weight = csprng.gen_range(1..10) as u128;
+            let signing_key = SigningKey::generate(&mut rng);
+            let weight = rng.gen_range(1..10) as u128;
             (signing_key, weight)
         })
         .collect();
@@ -59,7 +58,7 @@ pub fn generate_signer_set(
         })
         .collect();
 
-    let threshold = csprng.gen_range(1..=total_weight);
+    let threshold = rng.gen_range(1..=total_weight);
 
     let signer_set = WeightedSigners {
         signers: signer_vec.into_vec(env),
@@ -85,21 +84,27 @@ pub fn generate_proof(env: &Env, data_hash: BytesN<32>, signers: TestSignerSet) 
     let mut msg: Bytes = signers.domain_separator.into();
     msg.extend_from_array(&signer_hash.to_array());
     msg.extend_from_array(&data_hash.to_array());
-    let msg_hash = env.crypto().keccak256(&msg);
 
+    let msg_hash = env.crypto().keccak256(&msg);
     let threshold = signers.signer_set.threshold as usize;
 
     let proof_signers: std::vec::Vec<_> = signers
         .signers
         .iter()
         .zip(signers.signer_set.signers.iter())
-        .take(threshold)
-        .map(|(signing_key, weighted_signer)| {
+        .enumerate()
+        .map(|(i, (signing_key, weighted_signer))| {
+            if i > threshold {
+                return ProofSigner {
+                    signer: weighted_signer,
+                    signature: ProofSignature::Unsigned,
+                };
+            }
+
             let signature: Signature = signing_key.sign(&msg_hash.to_array());
             ProofSigner {
-                signer: BytesN::<32>::from_array(env, &signing_key.verifying_key().to_bytes()),
-                weight: weighted_signer.weight.clone(),
-                signature: Bytes::from_array(env, &signature.to_bytes()),
+                signer: weighted_signer,
+                signature: ProofSignature::Signed(BytesN::<64>::from_array(env, &signature.to_bytes())),
             }
         })
         .collect();
