@@ -1,5 +1,6 @@
 use core::panic;
 
+use axelar_soroban_interfaces::types::{ProofSignature, ProofSigner, WeightedSigner};
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{
     contract, contractimpl, crypto::Hash, panic_with_error, Address, Bytes, BytesN, Env, Vec,
@@ -10,7 +11,7 @@ use crate::event;
 use crate::storage_types::DataKey;
 use axelar_soroban_interfaces::{
     axelar_auth_verifier::AxelarAuthVerifierInterface,
-    types::{Proof, WeightedSigner, WeightedSigners},
+    types::{Proof, WeightedSigners},
 };
 
 #[contract]
@@ -80,10 +81,9 @@ impl AxelarAuthVerifierInterface for AxelarAuthVerifier {
     }
 
     fn validate_proof(env: Env, data_hash: BytesN<32>, proof: Proof) -> bool {
-        let signer_hash: BytesN<32> = env
-            .crypto()
-            .keccak256(&proof.signers.clone().to_xdr(&env))
-            .into();
+        let signer_set = proof.weighted_signers();
+
+        let signer_hash: BytesN<32> = env.crypto().keccak256(&signer_set.to_xdr(&env)).into();
 
         let signer_epoch: u64 = env
             .storage()
@@ -203,45 +203,26 @@ impl AxelarAuthVerifier {
     }
 
     fn validate_signatures(env: &Env, msg_hash: Hash<32>, proof: Proof) -> bool {
-        let Proof {
-            signers,
-            signatures,
-        } = proof;
-
-        if signatures.is_empty() {
-            return false;
-        }
-
         let mut total_weight = 0u128;
-        let mut signer_index = 0;
 
-        for (signature, recovery_id) in signatures.into_iter() {
-            // TODO: check if any additional validation is needed for signature and output of ec recover, or if it's fully handled by the sdk
-            let pub_key = env
-                .crypto()
-                .secp256k1_recover(&msg_hash, &signature, recovery_id);
-            let expected_signer: BytesN<32> = env.crypto().keccak256(&pub_key.into()).into();
+        for ProofSigner {
+            signer:
+                WeightedSigner {
+                    signer: public_key,
+                    weight,
+                },
+            signature,
+        } in proof.signers.iter()
+        {
+            if let ProofSignature::Signed(signature) = signature {
+                env.crypto()
+                    .ed25519_verify(&public_key, msg_hash.to_bytes().as_ref(), &signature);
 
-            while signer_index < signers.signers.len() {
-                let WeightedSigner { signer, .. } = signers.signers.get(signer_index).unwrap();
+                total_weight = total_weight.checked_add(weight).unwrap();
 
-                if expected_signer == signer {
-                    break;
+                if total_weight >= proof.threshold {
+                    return true;
                 }
-
-                signer_index += 1;
-            }
-
-            if signer_index == signers.signers.len() {
-                return false;
-            }
-
-            let WeightedSigner { weight, .. } = signers.signers.get(signer_index).unwrap();
-
-            total_weight = total_weight.checked_add(weight).unwrap();
-
-            if total_weight >= signers.threshold {
-                return true;
             }
         }
 
