@@ -91,7 +91,9 @@ impl AxelarOperatorsInterface for AxelarOperators {
             panic_with_error!(env, Error::NotAnOperator);
         }
 
-        let res: Val = env.invoke_contract(&contract, &func, args);
+        let res: Val = env.invoke_contract(&contract, &func.clone(), args.clone());
+
+        event::execute(&env, contract, func, args);
 
         res
     }
