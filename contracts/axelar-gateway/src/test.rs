@@ -224,15 +224,15 @@ fn rotate_signers() {
     let new_signers = generate_signer_set(&env, randint(1, 10), signers.domain_separator.clone());
 
     let data_hash = get_rotation_hash(&env, new_signers.signer_set.clone());
-    let proof = generate_proof(&env, data_hash, signers);
+    let proof = generate_proof(&env, data_hash.clone(), signers);
     client.rotate_signers(&new_signers.signer_set, &proof);
 
     assert_emitted_event(
         &env,
         -1,
         &contract_id,
-        (symbol_short!("rotated"),),
-        (new_signers.signer_set.clone(),),
+        (symbol_short!("rotated"), data_hash),
+        (),
     );
 
     // test approve with new signer set

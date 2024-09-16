@@ -173,7 +173,7 @@ impl AxelarAuthVerifier {
             &new_epoch,
         );
 
-        event::rotate_signers(env, new_epoch, new_signers, new_signer_hash);
+        event::rotate_signers(env, new_epoch, new_signer_hash);
     }
 
     fn update_rotation_timestamp(env: &Env, enforce_rotation_delay: bool) {

@@ -148,7 +148,7 @@ pub fn initialize(
         -1,
         &client.address,
         (symbol_short!("rotated"), 1u64, signer_set_hash),
-        (signers.signer_set.clone(),),
+        (),
     );
 
     signers
@@ -170,6 +170,6 @@ pub fn rotate_signers(env: &Env, client: &AxelarAuthVerifierClient, new_signers:
             epoch,
             env.crypto().keccak256(&encoded_new_signer_set),
         ),
-        (new_signers.signer_set.clone(),),
+        (),
     );
 }

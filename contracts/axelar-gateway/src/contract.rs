@@ -188,11 +188,11 @@ impl AxelarGatewayInterface for AxelarGateway {
 
         env.storage()
             .persistent()
-            .set(&DataKey::RotationExecuted(data_hash), &true);
+            .set(&DataKey::RotationExecuted(data_hash.clone()), &true);
 
         auth_module.rotate_signers(&signers, &true);
 
-        event::rotate_signers(&env, signers);
+        event::rotate_signers(&env, data_hash);
     }
 }
 
