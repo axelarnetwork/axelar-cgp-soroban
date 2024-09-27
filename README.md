@@ -14,11 +14,26 @@ cargo install --locked soroban-cli --features opt
 
 ```bash
 cargo wasm
+```
 
+## Test
+
+```bash
 cargo test
 ```
 
+## Coverage
+
+```bash
+cargo install cargo-llvm-cov
+cargo llvm-cov
+```
+
 ## Deploy
+
+- Check configuration for CLI and Identity before deployment: https://developers.stellar.org/docs/build/smart-contracts/getting-started/setup
+
+#### Build, Optimize and Deploy contract:
 
 ```bash
 soroban contract build
