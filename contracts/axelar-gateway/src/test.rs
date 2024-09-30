@@ -4,8 +4,6 @@ extern crate std;
 use axelar_soroban_interfaces::types::Message;
 use axelar_soroban_std::{assert_emitted_event, assert_invocation};
 
-use axelar_auth_verifier::testutils::{generate_proof, generate_signer_set, randint};
-
 use crate::testutils::{generate_test_message, get_approve_hash, get_rotation_hash, initialize};
 use crate::{contract::AxelarGateway, contract::AxelarGatewayClient};
 use soroban_sdk::{

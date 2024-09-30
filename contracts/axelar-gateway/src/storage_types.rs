@@ -23,4 +23,11 @@ pub enum DataKey {
     Operator,
     MessageApproval(MessageApprovalKey),
     RotationExecuted(BytesN<32>),
+    PreviousSignerRetention,
+    DomainSeparator,
+    MinimumRotationDelay,
+    Epoch,
+    LastRotationTimestamp,
+    SignerHashByEpoch(u64),
+    EpochBySignerHash(BytesN<32>),
 }

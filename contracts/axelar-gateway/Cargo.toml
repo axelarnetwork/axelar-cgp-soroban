@@ -7,7 +7,6 @@ edition = { workspace = true }
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-axelar-auth-verifier = { workspace = true, optional = true }
 axelar-soroban-interfaces = { workspace = true }
 axelar-soroban-std = { workspace = true }
 rand = { version = "0.8.5", optional = true }
@@ -15,10 +14,8 @@ soroban-sdk = { workspace = true }
 
 [dev_dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
-axelar-auth-verifier = { workspace = true, features = ["testutils"] }
 axelar-soroban-std = { workspace = true, features = ["testutils"] }
 rand = { version = "0.8.5" }
 
 [features]
-default = ["axelar-auth-verifier"]
-testutils = ["soroban-sdk/testutils", "axelar-auth-verifier/testutils", "axelar-soroban-std/testutils", "rand"]
+testutils = ["soroban-sdk/testutils", "axelar-soroban-std/testutils", "rand"]

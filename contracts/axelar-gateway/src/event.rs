@@ -30,7 +30,19 @@ pub(crate) fn execute_contract_call(env: &Env, message_id: String) {
     env.events().publish(topics, ());
 }
 
-pub(crate) fn rotate_signers(env: &Env, signers: WeightedSigners) {
-    let topics = (symbol_short!("rotated"),);
-    env.events().publish(topics, (signers,));
+pub(crate) fn rotate_signers_set(
+    env: &Env,
+    epoch: u64,
+    signers: WeightedSigners,
+    signer_hash: BytesN<32>,
+) {
+    let topics = (symbol_short!("rotated"), epoch, signer_hash);
+    env.events().publish(topics, (signers,)); // TODO: use a tuple or the type directly?
+}
+
+pub(crate) fn transfer_operatorship(env: &Env, previous_operator: Address, new_operator: Address) {
+    let topics = (
+        String::from_str(&env, "transferred"), previous_operator, new_operator
+    );
+    env.events().publish(topics, ());
 }

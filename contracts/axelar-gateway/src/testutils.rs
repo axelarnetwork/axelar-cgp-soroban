@@ -2,7 +2,6 @@
 extern crate std;
 
 use crate::{contract::AxelarGatewayClient, types::CommandType};
-use axelar_auth_verifier::{contract::AxelarAuthVerifier, testutils::TestSignerSet};
 use axelar_soroban_interfaces::types::{Message, WeightedSigners};
 use rand::Rng;
 use soroban_sdk::xdr::ToXdr;
