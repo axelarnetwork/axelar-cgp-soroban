@@ -7,7 +7,7 @@ use crate::types::CommandType;
 use crate::{error::Error, event, auth};
 use axelar_soroban_interfaces::{
     axelar_gateway::AxelarGatewayInterface,
-    types::{WeightedSigners},
+    types::WeightedSigners,
 };
 
 #[contract]
@@ -36,7 +36,7 @@ impl AxelarGatewayInterface for AxelarGateway {
 
         env.storage().instance().set(&DataKey::Operator, &operator);
 
-        auth::init_auth_verifier(env, domain_separator, minimum_rotation_delay, previous_signer_retention, initial_signers);
+        auth::initialize_auth(env, domain_separator, minimum_rotation_delay, previous_signer_retention, initial_signers);
     }
 
     fn call_contract(
@@ -194,7 +194,9 @@ impl AxelarGatewayInterface for AxelarGateway {
         let operator: Address = Self::operator(&env);
         operator.require_auth();
 
-        auth::rotate_signers_set(&env, signers, true);
+        auth::rotate_signers(&env, &signers, true);
+
+        event::rotate_signers(&env, signers);
     }
 
     fn transfer_operatorship(env: Env, new_operator: Address) {

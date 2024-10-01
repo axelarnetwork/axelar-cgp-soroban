@@ -2,49 +2,49 @@ use axelar_soroban_interfaces::types::{ProofSignature, ProofSigner, WeightedSign
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{crypto::Hash, panic_with_error, Bytes, BytesN, Env, Vec};
 
-use crate::storage_types::AuthDataKey;
+use crate::storage_types::DataKey;
 use crate::{error::AuthError, event, auth};
 use axelar_soroban_interfaces::types::{Proof, WeightedSigners};
 
-pub(crate) fn init_auth_verifier(
+pub fn initialize_auth(
     env: Env,
     domain_separator: BytesN<32>,
     minimum_rotation_delay: u64,
     previous_signer_retention: u64,
     initial_signers: Vec<WeightedSigners>,
 ) {
-    if env.storage().instance().has(&AuthDataKey::Initialized) {
+    if env.storage().instance().has(&DataKey::AuthInitialized) {
         panic!("Already initialized");
     }
 
-    env.storage().instance().set(&AuthDataKey::Initialized, &true);
+    env.storage().instance().set(&DataKey::Initialized, &true);
 
-    env.storage().instance().set(&AuthDataKey::Epoch, &0_u64);
+    env.storage().instance().set(&DataKey::Epoch, &0_u64);
 
     // TODO: Do we need to manually expose these in a query, or can it be read directly off of storage in Stellar?
     env.storage().instance().set(
-        &AuthDataKey::PreviousSignerRetention,
+        &DataKey::PreviousSignerRetention,
         &previous_signer_retention,
     );
 
     env.storage()
         .instance()
-        .set(&AuthDataKey::DomainSeparator, &domain_separator);
+        .set(&DataKey::DomainSeparator, &domain_separator);
 
     env.storage()
         .instance()
-        .set(&AuthDataKey::MinimumRotationDelay, &minimum_rotation_delay);
+        .set(&DataKey::MinimumRotationDelay, &minimum_rotation_delay);
 
     if initial_signers.is_empty() {
         panic_with_error!(env, AuthError::InvalidSigners);
     }
 
     for signers in initial_signers.into_iter() {
-        auth::rotate_signers_set(&env, signers, false);
+        auth::rotate_signers(&env, &signers, false);
     }
 }
 
-pub(crate) fn validate_proof(env: &Env, data_hash: BytesN<32>, proof: Proof) -> bool {
+pub fn validate_proof(env: &Env, data_hash: BytesN<32>, proof: Proof) -> bool {
     let signer_set = proof.weighted_signers();
 
     let signer_hash: BytesN<32> = env.crypto().keccak256(&signer_set.to_xdr(&env)).into();
@@ -52,7 +52,7 @@ pub(crate) fn validate_proof(env: &Env, data_hash: BytesN<32>, proof: Proof) -> 
     let signer_epoch: u64 = env
         .storage()
         .persistent()
-        .get(&AuthDataKey::EpochBySignerHash(signer_hash.clone()))
+        .get(&DataKey::EpochBySignerHash(signer_hash.clone()))
         .unwrap_or(0);
 
     if signer_epoch == 0 {
@@ -66,7 +66,7 @@ pub(crate) fn validate_proof(env: &Env, data_hash: BytesN<32>, proof: Proof) -> 
     let previous_signer_retention: u64 = env
         .storage()
         .instance()
-        .get(&AuthDataKey::PreviousSignerRetention)
+        .get(&DataKey::PreviousSignerRetention)
         .unwrap();
 
     if current_epoch - signer_epoch > previous_signer_retention {
@@ -82,7 +82,7 @@ pub(crate) fn validate_proof(env: &Env, data_hash: BytesN<32>, proof: Proof) -> 
     is_latest_signers
 }
 
-pub(crate) fn rotate_signers_set(env: &Env, new_signers: WeightedSigners, enforce_rotation_delay: bool) {
+pub fn rotate_signers(env: &Env, new_signers: &WeightedSigners, enforce_rotation_delay: bool) {
     auth::validate_signers(env, &new_signers);
 
     auth::update_rotation_timestamp(env, enforce_rotation_delay);
@@ -93,26 +93,24 @@ pub(crate) fn rotate_signers_set(env: &Env, new_signers: WeightedSigners, enforc
         .into();
     let new_epoch: u64 = auth::epoch(&env) + 1;
 
-    env.storage().instance().set(&AuthDataKey::Epoch, &new_epoch);
+    env.storage().instance().set(&DataKey::Epoch, &new_epoch);
 
     env.storage()
         .persistent()
-        .set(&AuthDataKey::SignerHashByEpoch(new_epoch), &new_signer_hash);
+        .set(&DataKey::SignerHashByEpoch(new_epoch), &new_signer_hash);
 
     // If new_signers has been rotated to before, we will overwrite the epoch to point to the latest
     env.storage().persistent().set(
-        &AuthDataKey::EpochBySignerHash(new_signer_hash.clone()),
+        &DataKey::EpochBySignerHash(new_signer_hash.clone()),
         &new_epoch,
     );
-
-    event::rotate_signers_set(env, new_epoch, new_signers, new_signer_hash);
 }
 
 fn message_hash_to_sign(env: &Env, signer_hash: BytesN<32>, data_hash: BytesN<32>) -> Hash<32> {
     let domain_separator: BytesN<32> = env
         .storage()
         .instance()
-        .get(&AuthDataKey::DomainSeparator)
+        .get(&DataKey::DomainSeparator)
         .unwrap();
 
     let mut msg: Bytes = domain_separator.into();
@@ -127,13 +125,13 @@ fn update_rotation_timestamp(env: &Env, enforce_rotation_delay: bool) {
     let minimum_rotation_delay: u64 = env
         .storage()
         .instance()
-        .get(&AuthDataKey::MinimumRotationDelay)
+        .get(&DataKey::MinimumRotationDelay)
         .unwrap();
 
     let last_rotation_timestamp: u64 = env
         .storage()
         .instance()
-        .get(&AuthDataKey::LastRotationTimestamp)
+        .get(&DataKey::LastRotationTimestamp)
         .unwrap_or(0);
 
     let current_timestamp = env.ledger().timestamp();
@@ -146,7 +144,7 @@ fn update_rotation_timestamp(env: &Env, enforce_rotation_delay: bool) {
 
     env.storage()
         .instance()
-        .set(&AuthDataKey::LastRotationTimestamp, &current_timestamp);
+        .set(&DataKey::LastRotationTimestamp, &current_timestamp);
 }
 
 fn validate_signatures(env: &Env, msg_hash: Hash<32>, proof: Proof) -> bool {
@@ -207,5 +205,5 @@ fn validate_signers(env: &Env, weighted_signers: &WeightedSigners) {
 }
 
 fn epoch(env: &Env) -> u64 {
-    env.storage().instance().get(&AuthDataKey::Epoch).unwrap()
+    env.storage().instance().get(&DataKey::Epoch).unwrap()
 }
