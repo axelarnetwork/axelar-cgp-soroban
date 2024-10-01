@@ -23,6 +23,12 @@ pub enum DataKey {
     Operator,
     MessageApproval(MessageApprovalKey),
     RotationExecuted(BytesN<32>),
+}
+
+#[contracttype]
+#[derive(Clone, Debug)]
+pub enum AuthDataKey {
+    Initialized,
     PreviousSignerRetention,
     DomainSeparator,
     MinimumRotationDelay,
