@@ -31,5 +31,5 @@ pub enum OperatorError {
     OperatorAlreadyAdded = 1,
     NotAnOperator = 2,
     AlreadyInitialized = 3,
-    ResourceNotFound = 4,
+    NotInitialized = 4,
 }

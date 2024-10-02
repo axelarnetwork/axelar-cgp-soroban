@@ -281,3 +281,14 @@ fn fail_execute_when_target_panics() {
         &Vec::new(&env),
     );
 }
+
+#[test]
+fn fail_on_uninitialized() {
+    let (env, _, client, _) = setup_env();
+
+    let operator = Address::generate(&env);
+    assert_eq!(
+        client.try_add_operator(&operator),
+        Err(Ok(OperatorError::NotInitialized))
+    )
+}

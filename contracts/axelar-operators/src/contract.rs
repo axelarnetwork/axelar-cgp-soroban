@@ -14,7 +14,7 @@ impl AxelarOperators {
             .storage()
             .instance()
             .get(&DataKey::Owner)
-            .ok_or(OperatorError::ResourceNotFound)?;
+            .ok_or(OperatorError::NotInitialized)?;
 
         owner.require_auth();
 
@@ -28,7 +28,7 @@ impl AxelarOperators {
         env.storage()
             .instance()
             .get(&DataKey::Owner)
-            .ok_or(OperatorError::ResourceNotFound)
+            .ok_or(OperatorError::NotInitialized)
     }
 }
 
@@ -61,7 +61,7 @@ impl AxelarOperatorsInterface for AxelarOperators {
             .storage()
             .instance()
             .get(&DataKey::Owner)
-            .ok_or(OperatorError::ResourceNotFound)?;
+            .ok_or(OperatorError::NotInitialized)?;
 
         owner.require_auth();
 
@@ -78,7 +78,12 @@ impl AxelarOperatorsInterface for AxelarOperators {
     }
 
     fn remove_operator(env: Env, account: Address) -> Result<(), OperatorError> {
-        let owner: Address = env.storage().instance().get(&DataKey::Owner).unwrap();
+        let owner: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Owner)
+            .ok_or(OperatorError::NotInitialized)?;
+
         owner.require_auth();
 
         let key = DataKey::Operators(account.clone());
