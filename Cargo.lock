@@ -62,6 +62,7 @@ version = "0.1.0"
 dependencies = [
  "axelar-soroban-interfaces",
  "axelar-soroban-std",
+ "ed25519-dalek",
  "rand",
  "soroban-sdk",
 ]

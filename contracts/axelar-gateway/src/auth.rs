@@ -3,7 +3,7 @@ use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{crypto::Hash, panic_with_error, Bytes, BytesN, Env, Vec};
 
 use crate::storage_types::DataKey;
-use crate::{error::AuthError, event, auth};
+use crate::{error::AuthError, auth};
 use axelar_soroban_interfaces::types::{Proof, WeightedSigners};
 
 pub fn initialize_auth(

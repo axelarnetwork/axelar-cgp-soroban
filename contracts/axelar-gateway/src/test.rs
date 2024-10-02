@@ -4,7 +4,15 @@ extern crate std;
 use axelar_soroban_interfaces::types::Message;
 use axelar_soroban_std::{assert_emitted_event, assert_invocation};
 
-use crate::testutils::{generate_test_message, get_approve_hash, get_rotation_hash, initialize};
+use crate::testutils::{
+    generate_proof,
+    generate_test_message,
+    generate_signer_set,
+    get_approve_hash,
+    get_rotation_hash,
+    initialize,
+    randint
+};
 use crate::{contract::AxelarGateway, contract::AxelarGatewayClient};
 use soroban_sdk::{
     bytes, symbol_short,
@@ -29,10 +37,11 @@ fn setup_env<'a>() -> (Env, Address, AxelarGatewayClient<'a>) {
 #[should_panic(expected = "Already initialized")]
 fn fails_if_already_initialized() {
     let (env, _contract_id, client) = setup_env();
+    let operator = Address::generate(&env);
 
-    initialize(&env, &client, 1, randint(1, 10));
+    initialize(&env, &client, operator.clone(), 1, randint(1, 10));
 
-    initialize(&env, &client, 1, randint(1, 10));
+    initialize(&env, &client, operator.clone(), 1, randint(1, 10));
 }
 
 #[test]
@@ -125,7 +134,8 @@ fn approve_message() {
         payload_hash,
     } = message.clone();
 
-    let signers = initialize(&env, &client, 1, randint(1, 10));
+    let operator = Address::generate(&env);
+    let signers = initialize(&env, &client, operator, 1, randint(1, 10));
 
     let messages = vec![&env, message.clone()];
     let data_hash = get_approve_hash(&env, messages.clone());
@@ -163,6 +173,17 @@ fn approve_message() {
     );
     assert!(approved);
 
+    assert_emitted_event(
+        &env,
+        -1,
+        &contract_id,
+        (
+            symbol_short!("executed"),
+            message_id.clone(),
+        ),
+        (),
+    );
+
     let is_approved = client.is_message_approved(
         &message_id,
         &source_chain,
@@ -180,8 +201,8 @@ fn approve_message() {
 fn fail_execute_invalid_proof() {
     let (env, _contract_id, client) = setup_env();
     let (message, _) = generate_test_message(&env);
-
-    let signers = initialize(&env, &client, 1, randint(1, 10));
+    let operator = Address::generate(&env);
+    let signers = initialize(&env, &client, operator, 1, randint(1, 10));
 
     let invalid_signers = generate_signer_set(&env, randint(1, 10), signers.domain_separator);
 
@@ -197,8 +218,9 @@ fn fail_execute_invalid_proof() {
 fn approve_messages_skip_duplicate_message() {
     let (env, _, client) = setup_env();
     let (message, _) = generate_test_message(&env);
+    let operator = Address::generate(&env);
 
-    let signers = initialize(&env, &client, 1, randint(1, 10));
+    let signers = initialize(&env, &client, operator, 1, randint(1, 10));
 
     let messages = vec![&env, message.clone()];
     let data_hash = get_approve_hash(&env, messages.clone());
@@ -209,15 +231,16 @@ fn approve_messages_skip_duplicate_message() {
     let res = client.try_approve_messages(&messages, &proof);
     assert!(res.is_ok());
 
-    // should not emit any more events (2 total because of rotate signers in auth initialize)
-    assert_eq!(env.events().all().len(), 2);
+    // should not emit any more events (1 total because of rotate signers)
+    assert_eq!(env.events().all().len(), 1);
 }
 
 #[test]
 fn rotate_signers() {
     let (env, contract_id, client) = setup_env();
+    let operator = Address::generate(&env);
 
-    let signers = initialize(&env, &client, 1, randint(1, 10));
+    let signers = initialize(&env, &client, operator, 1, randint(1, 10));
 
     let new_signers = generate_signer_set(&env, randint(1, 10), signers.domain_separator.clone());
 
