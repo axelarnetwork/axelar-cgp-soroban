@@ -37,10 +37,10 @@ impl AxelarOperators {
 impl AxelarOperatorsInterface for AxelarOperators {
     fn initialize(env: Env, owner: Address) -> Result<(), OperatorError> {
         ensure!(
-            !env.storage()
+            env.storage()
                 .instance()
                 .get::<DataKey, bool>(&DataKey::Initialized)
-                .is_some(),
+                .is_none(),
             OperatorError::AlreadyInitialized
         );
 
