@@ -188,7 +188,7 @@ impl AxelarGatewayInterface for AxelarGateway {
             panic_with_error!(env, Error::RotationAlreadyExecuted);
         }
 
-        let is_latest_signers = auth::validate_proof(&env, data_hash.clone(), proof.clone());
+        let is_latest_signers = auth::validate_proof(&env, data_hash.clone(), proof);
         if !is_latest_signers {
             panic_with_error!(env, Error::NotLatestSigners);
         }

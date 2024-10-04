@@ -40,7 +40,7 @@ pub fn initialize_auth(
     }
 
     for signers in initial_signers.into_iter() {
-        auth::rotate_signers(&env, &signers, false);
+        rotate_signers(&env, &signers, false);
     }
 }
 
@@ -75,7 +75,7 @@ pub fn validate_proof(env: &Env, data_hash: BytesN<32>, proof: Proof) -> bool {
 
     let msg_hash = auth::message_hash_to_sign(&env, signer_hash, data_hash);
 
-    if !auth::validate_signatures(&env, msg_hash, proof.clone()) {
+    if !auth::validate_signatures(&env, msg_hash, proof) {
         panic_with_error!(env, AuthError::InvalidSignatures);
     }
 
@@ -100,10 +100,9 @@ pub fn rotate_signers(env: &Env, new_signers: &WeightedSigners, enforce_rotation
         .set(&DataKey::SignerHashByEpoch(new_epoch), &new_signer_hash);
 
     // If new_signers has been rotated to before, we will overwrite the epoch to point to the latest
-    env.storage().persistent().set(
-        &DataKey::EpochBySignerHash(new_signer_hash.clone()),
-        &new_epoch,
-    );
+    env.storage()
+        .persistent()
+        .set(&DataKey::EpochBySignerHash(new_signer_hash), &new_epoch);
 }
 
 fn message_hash_to_sign(env: &Env, signer_hash: BytesN<32>, data_hash: BytesN<32>) -> Hash<32> {
