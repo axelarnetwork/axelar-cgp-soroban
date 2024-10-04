@@ -47,7 +47,7 @@ pub fn initialize_auth(
 pub fn validate_proof(env: &Env, data_hash: BytesN<32>, proof: Proof) -> bool {
     let signer_set = proof.weighted_signers();
 
-    let signer_hash: BytesN<32> = env.crypto().keccak256(&signer_set.to_xdr(&env)).into();
+    let signer_hash: BytesN<32> = env.crypto().keccak256(&signer_set.to_xdr(env)).into();
 
     let signer_epoch: u64 = env
         .storage()
@@ -59,7 +59,7 @@ pub fn validate_proof(env: &Env, data_hash: BytesN<32>, proof: Proof) -> bool {
         panic_with_error!(env, AuthError::InvalidSigners);
     }
 
-    let current_epoch: u64 = auth::epoch(&env);
+    let current_epoch: u64 = auth::epoch(env);
 
     let is_latest_signers: bool = signer_epoch == current_epoch;
 
@@ -73,9 +73,9 @@ pub fn validate_proof(env: &Env, data_hash: BytesN<32>, proof: Proof) -> bool {
         panic_with_error!(env, AuthError::InvalidSigners);
     }
 
-    let msg_hash = auth::message_hash_to_sign(&env, signer_hash, data_hash);
+    let msg_hash = auth::message_hash_to_sign(env, signer_hash, data_hash);
 
-    if !auth::validate_signatures(&env, msg_hash, proof) {
+    if !auth::validate_signatures(env, msg_hash, proof) {
         panic_with_error!(env, AuthError::InvalidSignatures);
     }
 
@@ -83,7 +83,7 @@ pub fn validate_proof(env: &Env, data_hash: BytesN<32>, proof: Proof) -> bool {
 }
 
 pub fn rotate_signers(env: &Env, new_signers: &WeightedSigners, enforce_rotation_delay: bool) {
-    auth::validate_signers(env, &new_signers);
+    auth::validate_signers(env, new_signers);
 
     auth::update_rotation_timestamp(env, enforce_rotation_delay);
 
@@ -91,7 +91,7 @@ pub fn rotate_signers(env: &Env, new_signers: &WeightedSigners, enforce_rotation
         .crypto()
         .keccak256(&new_signers.clone().to_xdr(env))
         .into();
-    let new_epoch: u64 = auth::epoch(&env) + 1;
+    let new_epoch: u64 = auth::epoch(env) + 1;
 
     env.storage().instance().set(&DataKey::Epoch, &new_epoch);
 
