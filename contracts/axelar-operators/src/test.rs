@@ -52,15 +52,7 @@ fn test_initialize() {
             .unwrap()
     }),);
 
-    assert_eq!(
-        env.as_contract(&contract_id, || {
-            env.storage()
-                .instance()
-                .get::<DataKey, Address>(&DataKey::Owner)
-                .unwrap()
-        }),
-        user
-    );
+    assert_eq!(client.owner(), user);
 }
 
 #[test]

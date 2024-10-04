@@ -1,3 +1,4 @@
+use axelar_soroban_std::ensure;
 use soroban_sdk::{contract, contractimpl, Address, Env, Symbol, Val, Vec};
 
 use crate::event;
@@ -35,14 +36,13 @@ impl AxelarOperators {
 #[contractimpl]
 impl AxelarOperatorsInterface for AxelarOperators {
     fn initialize(env: Env, owner: Address) -> Result<(), OperatorError> {
-        if env
-            .storage()
-            .instance()
-            .get::<DataKey, bool>(&DataKey::Initialized)
-            .is_some()
-        {
-            Err(OperatorError::AlreadyInitialized)?
-        }
+        ensure!(
+            !env.storage()
+                .instance()
+                .get::<DataKey, bool>(&DataKey::Initialized)
+                .is_some(),
+            OperatorError::AlreadyInitialized
+        );
 
         env.storage().instance().set(&DataKey::Initialized, &true);
 
@@ -67,9 +67,10 @@ impl AxelarOperatorsInterface for AxelarOperators {
 
         let key = DataKey::Operators(account.clone());
 
-        if env.storage().persistent().has(&key) {
-            Err(OperatorError::OperatorAlreadyAdded)?
-        }
+        ensure!(
+            !env.storage().persistent().has(&key),
+            OperatorError::OperatorAlreadyAdded
+        );
 
         env.storage().persistent().set(&key, &true);
 
@@ -88,9 +89,10 @@ impl AxelarOperatorsInterface for AxelarOperators {
 
         let key = DataKey::Operators(account.clone());
 
-        if !env.storage().persistent().has(&key) {
-            Err(OperatorError::NotAnOperator)?
-        }
+        ensure!(
+            env.storage().persistent().has(&key),
+            OperatorError::NotAnOperator
+        );
 
         env.storage().persistent().remove(&key);
 
@@ -109,9 +111,10 @@ impl AxelarOperatorsInterface for AxelarOperators {
 
         let key = DataKey::Operators(operator.clone());
 
-        if !env.storage().persistent().has(&key) {
-            Err(OperatorError::NotAnOperator)?
-        }
+        ensure!(
+            env.storage().persistent().has(&key),
+            OperatorError::NotAnOperator
+        );
 
         let res: Val = env.invoke_contract(&contract, &func, args);
 

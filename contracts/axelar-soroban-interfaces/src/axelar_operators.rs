@@ -1,4 +1,15 @@
 use soroban_sdk::{contractclient, contracterror, Address, Env, Symbol, Val, Vec};
+
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum OperatorError {
+    OperatorAlreadyAdded = 1,
+    NotAnOperator = 2,
+    AlreadyInitialized = 3,
+    NotInitialized = 4,
+}
+
 /// Interface for the Axelar Operators contract.
 #[contractclient(name = "AxelarOperators")]
 pub trait AxelarOperatorsInterface {
@@ -22,14 +33,4 @@ pub trait AxelarOperatorsInterface {
         function_name: Symbol,
         args: Vec<Val>,
     ) -> Result<Val, OperatorError>;
-}
-
-#[contracterror]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
-#[repr(u32)]
-pub enum OperatorError {
-    OperatorAlreadyAdded = 1,
-    NotAnOperator = 2,
-    AlreadyInitialized = 3,
-    NotInitialized = 4,
 }
