@@ -2,8 +2,8 @@ use axelar_soroban_interfaces::types::{ProofSignature, ProofSigner, WeightedSign
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{crypto::Hash, panic_with_error, Bytes, BytesN, Env, Vec};
 
+use crate::error::AuthError;
 use crate::storage_types::DataKey;
-use crate::{auth, error::AuthError};
 use axelar_soroban_interfaces::types::{Proof, WeightedSigners};
 
 pub fn initialize_auth(
