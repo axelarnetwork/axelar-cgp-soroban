@@ -1,14 +1,13 @@
-use axelar_soroban_interfaces::types::{Message};
+use axelar_soroban_interfaces::types::Message;
 use soroban_sdk::xdr::ToXdr;
-use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, Vec, String};
+use soroban_sdk::{
+    contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, String, Vec,
+};
 
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::types::CommandType;
-use crate::{error::Error, event, auth};
-use axelar_soroban_interfaces::{
-    axelar_gateway::AxelarGatewayInterface,
-    types::WeightedSigners,
-};
+use crate::{auth, error::Error, event};
+use axelar_soroban_interfaces::{axelar_gateway::AxelarGatewayInterface, types::WeightedSigners};
 
 #[contract]
 pub struct AxelarGateway;
@@ -21,7 +20,7 @@ impl AxelarGatewayInterface for AxelarGateway {
         domain_separator: BytesN<32>,
         minimum_rotation_delay: u64,
         previous_signer_retention: u64,
-        initial_signers: Vec<WeightedSigners>
+        initial_signers: Vec<WeightedSigners>,
     ) {
         if env
             .storage()
@@ -36,7 +35,13 @@ impl AxelarGatewayInterface for AxelarGateway {
 
         env.storage().instance().set(&DataKey::Operator, &operator);
 
-        auth::initialize_auth(env, domain_separator, minimum_rotation_delay, previous_signer_retention, initial_signers);
+        auth::initialize_auth(
+            env,
+            domain_separator,
+            minimum_rotation_delay,
+            previous_signer_retention,
+            initial_signers,
+        );
     }
 
     fn call_contract(
@@ -178,7 +183,8 @@ impl AxelarGatewayInterface for AxelarGateway {
         if env
             .storage()
             .persistent()
-            .has(&DataKey::RotationExecuted(data_hash.clone())) {
+            .has(&DataKey::RotationExecuted(data_hash.clone()))
+        {
             panic_with_error!(env, Error::RotationAlreadyExecuted);
         }
 
@@ -203,7 +209,9 @@ impl AxelarGatewayInterface for AxelarGateway {
         let operator: Address = Self::operator(&env);
         operator.require_auth();
 
-        env.storage().instance().set(&DataKey::Operator, &new_operator);
+        env.storage()
+            .instance()
+            .set(&DataKey::Operator, &new_operator);
 
         event::transfer_operatorship(&env, operator, new_operator);
     }
@@ -239,5 +247,4 @@ impl AxelarGateway {
     fn message_approval_hash(env: &Env, message: Message) -> MessageApprovalValue {
         MessageApprovalValue::Approved(env.crypto().keccak256(&message.to_xdr(env)).into())
     }
-
 }

@@ -5,8 +5,8 @@ use crate::{contract::AxelarGatewayClient, types::CommandType};
 use ed25519_dalek::{Signature, Signer, SigningKey};
 use rand::Rng;
 
-use soroban_sdk::{vec, String, testutils::BytesN as _, xdr::ToXdr, Bytes, BytesN, Env, Vec};
 use soroban_sdk::{testutils::Address as _, Address};
+use soroban_sdk::{testutils::BytesN as _, vec, xdr::ToXdr, Bytes, BytesN, Env, String, Vec};
 
 use axelar_soroban_interfaces::types::{
     Message, Proof, ProofSignature, ProofSigner, WeightedSigner, WeightedSigners,

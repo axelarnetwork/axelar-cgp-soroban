@@ -5,13 +5,8 @@ use axelar_soroban_interfaces::types::Message;
 use axelar_soroban_std::{assert_emitted_event, assert_invocation};
 
 use crate::testutils::{
-    generate_proof,
-    generate_test_message,
-    generate_signer_set,
-    get_approve_hash,
-    get_rotation_hash,
-    initialize,
-    randint
+    generate_proof, generate_signer_set, generate_test_message, get_approve_hash,
+    get_rotation_hash, initialize, randint,
 };
 use crate::{contract::AxelarGateway, contract::AxelarGatewayClient};
 use soroban_sdk::{
@@ -177,10 +172,7 @@ fn approve_message() {
         &env,
         -1,
         &contract_id,
-        (
-            symbol_short!("executed"),
-            message_id.clone(),
-        ),
+        (symbol_short!("executed"), message_id.clone()),
         (),
     );
 

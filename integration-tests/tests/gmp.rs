@@ -1,16 +1,14 @@
 #![cfg(test)]
 extern crate std;
 
-use axelar_auth_verifier::contract::AxelarAuthVerifier;
-
-use axelar_auth_verifier::testutils::{generate_proof, TestSignerSet};
-
 use axelar_gateway::contract::{AxelarGateway, AxelarGatewayClient};
-use axelar_gateway::testutils::get_approve_hash;
+use axelar_gateway::testutils::{generate_proof, get_approve_hash, initialize, TestSignerSet};
 use axelar_soroban_interfaces::types::Message;
 use axelar_soroban_std::assert_emitted_event;
 use soroban_sdk::{contract, contractimpl, log, symbol_short, Bytes};
-use soroban_sdk::{testutils::BytesN as _, vec, Address, BytesN, Env, String};
+use soroban_sdk::{
+    testutils::Address as _, testutils::BytesN as _, vec, Address, BytesN, Env, String,
+};
 
 use axelar_soroban_interfaces::axelar_executable::AxelarExecutableInterface;
 
@@ -66,20 +64,8 @@ impl AxelarApp {
 fn setup_gateway<'a>(env: &Env) -> (AxelarGatewayClient<'a>, TestSignerSet) {
     let gateway_id = env.register_contract(None, AxelarGateway);
     let gateway_client = AxelarGatewayClient::new(env, &gateway_id);
-
-    let auth_contract_id = env.register_contract(None, AxelarAuthVerifier);
-    let auth_client =
-        axelar_auth_verifier::contract::AxelarAuthVerifierClient::new(env, &auth_contract_id);
-
-    let signers = axelar_auth_verifier::testutils::initialize(
-        env,
-        &auth_client,
-        gateway_client.address.clone(),
-        0,
-        5,
-    );
-
-    gateway_client.initialize(&auth_contract_id, &gateway_client.address.clone());
+    let operator = Address::generate(&env);
+    let signers = initialize(&env, &gateway_client, operator, 0, 5);
 
     (gateway_client, signers)
 }

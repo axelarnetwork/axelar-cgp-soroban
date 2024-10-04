@@ -12,7 +12,7 @@ pub trait AxelarGatewayInterface {
         domain_separator: BytesN<32>,
         previous_signer_retention: u64,
         minimum_rotation_delay: u64,
-        initial_signers: Vec<WeightedSigners>
+        initial_signers: Vec<WeightedSigners>,
     );
 
     /// Call a contract on another chain with the given payload. The destination address can validate the contract call on the destination gateway.

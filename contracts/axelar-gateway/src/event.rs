@@ -37,7 +37,9 @@ pub(crate) fn rotate_signers(env: &Env, signers: WeightedSigners) {
 
 pub(crate) fn transfer_operatorship(env: &Env, previous_operator: Address, new_operator: Address) {
     let topics = (
-        String::from_str(&env, "transferred"), previous_operator, new_operator
+        String::from_str(&env, "transferred"),
+        previous_operator,
+        new_operator,
     );
     env.events().publish(topics, ());
 }

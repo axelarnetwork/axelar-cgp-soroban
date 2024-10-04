@@ -3,7 +3,7 @@ use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{crypto::Hash, panic_with_error, Bytes, BytesN, Env, Vec};
 
 use crate::storage_types::DataKey;
-use crate::{error::AuthError, auth};
+use crate::{auth, error::AuthError};
 use axelar_soroban_interfaces::types::{Proof, WeightedSigners};
 
 pub fn initialize_auth(
@@ -151,11 +151,10 @@ fn validate_signatures(env: &Env, msg_hash: Hash<32>, proof: Proof) -> bool {
     let mut total_weight = 0u128;
 
     for ProofSigner {
-        signer:
-            WeightedSigner {
-                signer: public_key,
-                weight,
-            },
+        signer: WeightedSigner {
+            signer: public_key,
+            weight,
+        },
         signature,
     } in proof.signers.iter()
     {
