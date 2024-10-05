@@ -1,5 +1,6 @@
 #![no_std]
 
+mod auth;
 mod error;
 mod event;
 mod storage_types;

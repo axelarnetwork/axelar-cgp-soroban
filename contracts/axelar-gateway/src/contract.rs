@@ -1,20 +1,27 @@
 use axelar_soroban_interfaces::types::Message;
 use soroban_sdk::xdr::ToXdr;
-use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, String};
-
-use axelar_soroban_interfaces::axelar_auth_verifier::AxelarAuthVerifierClient;
+use soroban_sdk::{
+    contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, String, Vec,
+};
 
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::types::CommandType;
-use crate::{error::Error, event};
-use axelar_soroban_interfaces::axelar_gateway::AxelarGatewayInterface;
+use crate::{auth, error::Error, event};
+use axelar_soroban_interfaces::{axelar_gateway::AxelarGatewayInterface, types::WeightedSigners};
 
 #[contract]
 pub struct AxelarGateway;
 
 #[contractimpl]
 impl AxelarGatewayInterface for AxelarGateway {
-    fn initialize(env: Env, auth_module: Address, operator: Address) {
+    fn initialize(
+        env: Env,
+        operator: Address,
+        domain_separator: BytesN<32>,
+        minimum_rotation_delay: u64,
+        previous_signer_retention: u64,
+        initial_signers: Vec<WeightedSigners>,
+    ) {
         if env
             .storage()
             .instance()
@@ -26,11 +33,15 @@ impl AxelarGatewayInterface for AxelarGateway {
 
         env.storage().instance().set(&DataKey::Initialized, &true);
 
-        env.storage()
-            .instance()
-            .set(&DataKey::AuthModule, &auth_module);
-
         env.storage().instance().set(&DataKey::Operator, &operator);
+
+        auth::initialize_auth(
+            env,
+            domain_separator,
+            minimum_rotation_delay,
+            previous_signer_retention,
+            initial_signers,
+        );
     }
 
     fn call_contract(
@@ -126,14 +137,12 @@ impl AxelarGatewayInterface for AxelarGateway {
         messages: soroban_sdk::Vec<axelar_soroban_interfaces::types::Message>,
         proof: axelar_soroban_interfaces::types::Proof,
     ) {
-        let data_hash = env
+        let data_hash: BytesN<32> = env
             .crypto()
             .keccak256(&(CommandType::ApproveMessages, messages.clone()).to_xdr(&env))
             .into();
 
-        let auth_module = Self::auth_module(&env);
-
-        auth_module.validate_proof(&data_hash, &proof);
+        auth::validate_proof(&env, data_hash.clone(), proof.clone());
 
         if messages.is_empty() {
             panic_with_error!(env, Error::EmptyMessages);
@@ -170,8 +179,6 @@ impl AxelarGatewayInterface for AxelarGateway {
             .keccak256(&(CommandType::RotateSigners, signers.clone()).to_xdr(&env))
             .into();
 
-        let auth_module = Self::auth_module(&env);
-
         // TODO: Add rotation delay governance
         if env
             .storage()
@@ -181,7 +188,7 @@ impl AxelarGatewayInterface for AxelarGateway {
             panic_with_error!(env, Error::RotationAlreadyExecuted);
         }
 
-        let is_latest_signers = auth_module.validate_proof(&data_hash, &proof);
+        let is_latest_signers = auth::validate_proof(&env, data_hash.clone(), proof);
         if !is_latest_signers {
             panic_with_error!(env, Error::NotLatestSigners);
         }
@@ -190,27 +197,28 @@ impl AxelarGatewayInterface for AxelarGateway {
             .persistent()
             .set(&DataKey::RotationExecuted(data_hash), &true);
 
-        auth_module.rotate_signers(&signers, &true);
+        auth::rotate_signers(&env, &signers, true);
 
         event::rotate_signers(&env, signers);
+    }
+
+    fn transfer_operatorship(env: Env, new_operator: Address) {
+        let operator: Address = Self::operator(&env);
+        operator.require_auth();
+
+        env.storage()
+            .instance()
+            .set(&DataKey::Operator, &new_operator);
+
+        event::transfer_operatorship(&env, operator, new_operator);
+    }
+
+    fn operator(env: &Env) -> Address {
+        env.storage().instance().get(&DataKey::Operator).unwrap()
     }
 }
 
 impl AxelarGateway {
-    fn auth_module(env: &Env) -> AxelarAuthVerifierClient {
-        AxelarAuthVerifierClient::new(
-            env,
-            match &env.storage().instance().get(&DataKey::AuthModule) {
-                Some(auth) => auth,
-                None => panic_with_error!(env, Error::Uninitialized),
-            },
-        )
-    }
-
-    fn message_approval_hash(env: &Env, message: Message) -> MessageApprovalValue {
-        MessageApprovalValue::Approved(env.crypto().keccak256(&message.to_xdr(env)).into())
-    }
-
     /// Get the message approval value by message_id and source_chain, defaulting to `MessageNotApproved`
     fn message_approval(
         env: &Env,
@@ -231,5 +239,9 @@ impl AxelarGateway {
             .persistent()
             .get(&DataKey::MessageApproval(key))
             .unwrap_or(MessageApprovalValue::NotApproved)
+    }
+
+    fn message_approval_hash(env: &Env, message: Message) -> MessageApprovalValue {
+        MessageApprovalValue::Approved(env.crypto().keccak256(&message.to_xdr(env)).into())
     }
 }
