@@ -197,9 +197,6 @@ impl AxelarGatewayInterface for AxelarGateway {
             .persistent()
             .set(&DataKey::RotationExecuted(data_hash), &true);
 
-        let operator: Address = Self::operator(&env);
-        operator.require_auth();
-
         auth::rotate_signers(&env, &signers, true);
 
         event::rotate_signers(&env, signers);
