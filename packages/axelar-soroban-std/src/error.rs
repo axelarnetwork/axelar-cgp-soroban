@@ -1,3 +1,5 @@
+use core::fmt::Debug;
+
 /// Return with an error if a condition is not met.
 ///
 ///
@@ -11,8 +13,8 @@ macro_rules! ensure {
     };
 }
 
-// The following macros are mostly intended to serve as pseudo-documentation within tests,
-// in addition to convenience/clarity
+// The following definitions are mostly intended to serve as pseudo-documentation within tests
+// and help with convenience/clarity.
 
 /// Assert that a [`Result`] is [`Ok`]
 ///
@@ -52,23 +54,36 @@ macro_rules! assert_some {
     };
 }
 
-/// Assert that a [`Result`] is [`Err`] and matches a desired error
-#[macro_export]
-macro_rules! assert_err {
-    ( $x:expr, $e:expr ) => {
-        match $x {
-            std::result::Result::Err(e) => {
-                if $e != e {
-                    panic!("Expected error {}, got {:?} instead", stringify!($e), e)
-                }
+/// Assert that a [`Result`] is [`Err`] and matches a desired error.
+///
+/// `given` corresponds to the return type from `try_*` functions in Soroban.
+/// The function needs to fail, and successfully pass down the intended error type.
+/// So, for the assert to succeed, the parameters would be in the form:
+///
+/// given: `Err(Ok(ContractError))`
+/// expected: `ContractError`
+///
+/// Putting it together in a function call:
+///
+/// `assert_contract_err(client.try_fun(...), ContractError);`
+pub fn assert_contract_err<A, B, C, D>(given: Result<Result<A, B>, Result<C, D>>, expected: C)
+where
+    A: Debug,
+    B: Debug,
+    C: PartialEq + Debug,
+    D: Debug,
+{
+    match given {
+        Ok(v) => panic!("Expected error {:?}, got {:?} instead", expected, v),
+        Err(e) => match e {
+            Ok(v) => {
+                assert_eq!(
+                    v, expected,
+                    "Expected error {:?}, got {:?} instead",
+                    expected, v
+                )
             }
-            std::result::Result::Ok(v) => {
-                panic!(
-                    "Expected error when calling {}, got {:?} instead",
-                    stringify!($x),
-                    v
-                );
-            }
-        }
-    };
+            Err(e) => panic!("Unexpected error {e:?}"),
+        },
+    }
 }
