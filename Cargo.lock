@@ -48,18 +48,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
-name = "axelar-auth-verifier"
-version = "0.1.0"
-dependencies = [
- "axelar-soroban-interfaces",
- "axelar-soroban-std",
- "ed25519-dalek",
- "rand",
- "sha3",
- "soroban-sdk",
-]
-
-[[package]]
 name = "axelar-gas-service"
 version = "0.1.0"
 dependencies = [
@@ -72,9 +60,9 @@ dependencies = [
 name = "axelar-gateway"
 version = "0.1.0"
 dependencies = [
- "axelar-auth-verifier",
  "axelar-soroban-interfaces",
  "axelar-soroban-std",
+ "ed25519-dalek",
  "rand",
  "soroban-sdk",
 ]
@@ -616,7 +604,6 @@ checksum = "8e04e2fd2b8188ea827b32ef11de88377086d690286ab35747ef7f9bf3ccb590"
 name = "integration-tests"
 version = "0.1.0"
 dependencies = [
- "axelar-auth-verifier",
  "axelar-gateway",
  "axelar-soroban-interfaces",
  "axelar-soroban-std",

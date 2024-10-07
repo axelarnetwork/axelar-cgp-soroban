@@ -18,9 +18,19 @@ pub enum MessageApprovalValue {
 #[contracttype]
 #[derive(Clone, Debug)]
 pub enum DataKey {
+    /// Gateway
     Initialized,
     AuthModule,
     Operator,
     MessageApproval(MessageApprovalKey),
     RotationExecuted(BytesN<32>),
+    /// Auth Module
+    AuthInitialized,
+    PreviousSignerRetention,
+    DomainSeparator,
+    MinimumRotationDelay,
+    Epoch,
+    LastRotationTimestamp,
+    SignerHashByEpoch(u64),
+    EpochBySignerHash(BytesN<32>),
 }
