@@ -22,6 +22,7 @@ impl AxelarOperators {
         env.storage().instance().set(&DataKey::Owner, &new_owner);
 
         event::transfer_ownership(&env, owner, new_owner);
+
         Ok(())
     }
 

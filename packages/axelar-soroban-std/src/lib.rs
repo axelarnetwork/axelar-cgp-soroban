@@ -11,15 +11,4 @@ pub mod traits;
 
 pub mod types;
 
-/// Return with an error if a condition is not met.
-///
-///
-/// Simplifies the pattern of checking for a condition and returning with an error.
-#[macro_export]
-macro_rules! ensure {
-    ($cond:expr, $e:expr $(,)?) => {
-        if !$cond {
-            return Err($e);
-        }
-    };
-}
+pub mod error;
