@@ -32,9 +32,7 @@ cargo llvm-cov
 ## Coverage Report
 
 ```bash
-cargo install cargo-tarpaulin
-cargo tarpaulin --out Html
-open tarpaulin-report.html
+cargo llvm-cov --html or cargo llvm-cov --open
 ```
 
 ## Deploy

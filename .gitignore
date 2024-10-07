@@ -21,7 +21,6 @@ test_snapshots
 # Coverage files
 coverage
 lcov.info
-tarpaulin-report.html
 
 # JetBrains
 /.idea/
