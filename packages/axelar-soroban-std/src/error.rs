@@ -1,6 +1,5 @@
 /// Return with an error if a condition is not met.
 ///
-///
 /// Simplifies the pattern of checking for a condition and returning with an error.
 #[macro_export]
 macro_rules! ensure {
