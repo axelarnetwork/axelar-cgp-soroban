@@ -11,8 +11,8 @@ use crate::testutils::{
 use crate::{contract::AxelarGateway, contract::AxelarGatewayClient};
 use soroban_sdk::{
     bytes, symbol_short,
-    testutils::{Address as _, Events},
-    vec, Address, Env, String,
+    testutils::{Address as _, Events, MockAuth, MockAuthInvoke},
+    vec, Address, Env, IntoVal, String,
 };
 
 const DESTINATION_CHAIN: &str = "ethereum";
@@ -287,7 +287,17 @@ fn transfer_operatorship() {
 
     assert_eq!(client.operator(), operator);
 
-    client.transfer_operatorship(&new_operator);
+    client
+        .mock_auths(&[MockAuth {
+            address: &operator,
+            invoke: &MockAuthInvoke {
+                contract: &contract_id,
+                fn_name: "transfer_operatorship",
+                args: (&new_operator,).into_val(&env),
+                sub_invokes: &[],
+            },
+        }])
+        .transfer_operatorship(&new_operator);
 
     assert_emitted_event(
         &env,
@@ -302,4 +312,29 @@ fn transfer_operatorship() {
     );
 
     assert_eq!(client.operator(), new_operator);
+}
+
+#[test]
+#[should_panic(expected = "HostError: Error(Auth, InvalidAction)")] // Unauthorized
+fn transfer_operatorship_unauthorized() {
+    let (env, contract_id, client) = setup_env();
+    let operator = Address::generate(&env);
+    let new_operator = Address::generate(&env);
+    let user = Address::generate(&env);
+
+    initialize(&env, &client, operator.clone(), 1, randint(1, 10));
+
+    assert_eq!(client.operator(), operator);
+
+    client
+        .mock_auths(&[MockAuth {
+            address: &user,
+            invoke: &MockAuthInvoke {
+                contract: &contract_id,
+                fn_name: "transfer_operatorship",
+                args: (&new_operator,).into_val(&env),
+                sub_invokes: &[],
+            },
+        }])
+        .transfer_operatorship(&new_operator);
 }
