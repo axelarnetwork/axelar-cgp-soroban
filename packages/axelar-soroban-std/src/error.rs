@@ -1,5 +1,3 @@
-use core::fmt::Debug;
-
 /// Return with an error if a condition is not met.
 ///
 ///
