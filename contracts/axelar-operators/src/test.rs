@@ -65,7 +65,7 @@ fn fail_already_initialized() {
 
     assert_contract_err(
         client.try_initialize(&user),
-        OperatorError::NotAnOperator,
+        OperatorError::AlreadyInitialized,
     );
 }
 
