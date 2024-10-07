@@ -29,6 +29,14 @@ cargo install cargo-llvm-cov
 cargo llvm-cov
 ```
 
+## Coverage Report
+
+```bash
+cargo install cargo-tarpaulin
+cargo tarpaulin --out Html
+open tarpaulin-report.html
+```
+
 ## Deploy
 
 - Check configuration for CLI and Identity before deployment: https://developers.stellar.org/docs/build/smart-contracts/getting-started/setup

@@ -276,3 +276,30 @@ fn rotate_signers() {
         (source_chain, source_address),
     );
 }
+
+#[test]
+fn transfer_operatorship() {
+    let (env, contract_id, client) = setup_env();
+    let operator = Address::generate(&env);
+    let new_operator = Address::generate(&env);
+
+    initialize(&env, &client, operator.clone(), 1, randint(1, 10));
+
+    assert_eq!(client.operator(), operator);
+
+    client.transfer_operatorship(&new_operator);
+
+    assert_emitted_event(
+        &env,
+        -1,
+        &contract_id,
+        (
+            String::from_str(&env, "transferred"),
+            operator.clone(),
+            new_operator.clone(),
+        ),
+        (),
+    );
+
+    assert_eq!(client.operator(), new_operator);
+}
