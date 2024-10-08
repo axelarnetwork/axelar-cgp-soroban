@@ -1,6 +1,6 @@
 use soroban_sdk::{contract, contractimpl, panic_with_error, token, Address, Bytes, Env, String};
 
-use axelar_soroban_std::types::Token;
+use axelar_soroban_std::{ensure, types::Token};
 
 use crate::event;
 use crate::storage_types::DataKey;
@@ -12,10 +12,13 @@ pub struct AxelarGasService;
 #[contractimpl]
 impl AxelarGasServiceInterface for AxelarGasService {
     fn initialize(env: Env, gas_collector: Address) -> Result<(), GasServiceError> {
-        env.storage()
-            .instance()
-            .get::<DataKey, bool>(&DataKey::Initialized)
-            .ok_or(GasServiceError::AlreadyInitialized)?;
+        ensure!(
+            env.storage()
+                .instance()
+                .get::<DataKey, bool>(&DataKey::Initialized)
+                .is_none(),
+            GasServiceError::AlreadyInitialized
+        );
 
         env.storage().instance().set(&DataKey::Initialized, &true);
 
