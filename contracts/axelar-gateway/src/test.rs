@@ -1,18 +1,18 @@
 #![cfg(test)]
 extern crate std;
 
-use axelar_soroban_interfaces::types::Message;
-use axelar_soroban_std::{assert_emitted_event, assert_invocation};
-
 use crate::testutils::{
-    generate_proof, generate_signer_set, generate_test_message, get_approve_hash,
-    get_rotation_hash, initialize, randint,
+    generate_proof, generate_signers_set, generate_test_message, get_approve_hash,
+    get_rotation_hash, get_signers_hash, initialize, randint,
 };
 use crate::{contract::AxelarGateway, contract::AxelarGatewayClient};
+use axelar_soroban_interfaces::types::Message;
+use axelar_soroban_std::{assert_emitted_event, assert_invocation};
+use soroban_sdk::testutils::{MockAuth, MockAuthInvoke};
 use soroban_sdk::{
     bytes, symbol_short,
     testutils::{Address as _, Events},
-    vec, Address, Env, String,
+    vec, Address, Env, IntoVal, String,
 };
 
 const DESTINATION_CHAIN: &str = "ethereum";
@@ -196,7 +196,7 @@ fn fail_execute_invalid_proof() {
     let operator = Address::generate(&env);
     let signers = initialize(&env, &client, operator, 1, randint(1, 10));
 
-    let invalid_signers = generate_signer_set(&env, randint(1, 10), signers.domain_separator);
+    let invalid_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator);
 
     let messages = vec![&env, message.clone()];
     let data_hash = get_approve_hash(&env, messages.clone());
@@ -223,29 +223,28 @@ fn approve_messages_skip_duplicate_message() {
     let res = client.try_approve_messages(&messages, &proof);
     assert!(res.is_ok());
 
-    // should not emit any more events (1 total because of rotate signers)
-    assert_eq!(env.events().all().len(), 1);
+    // should not emit any more events (2 total because of rotate signers in auth)
+    assert_eq!(env.events().all().len(), 2);
 }
 
 #[test]
 fn rotate_signers() {
     let (env, contract_id, client) = setup_env();
     let operator = Address::generate(&env);
+    let signers = initialize(&env, &client, operator, 1, 5);
+    let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
+    let signers_hash = get_signers_hash(&env, new_signers.signers_set.clone());
+    let data_hash = get_rotation_hash(&env, new_signers.signers_set.clone());
+    let proof = generate_proof(&env, data_hash.clone(), signers);
 
-    let signers = initialize(&env, &client, operator, 1, randint(1, 10));
-
-    let new_signers = generate_signer_set(&env, randint(1, 10), signers.domain_separator.clone());
-
-    let data_hash = get_rotation_hash(&env, new_signers.signer_set.clone());
-    let proof = generate_proof(&env, data_hash, signers);
-    client.rotate_signers(&new_signers.signer_set, &proof);
+    client.rotate_signers(&new_signers.signers_set, &proof, &false);
 
     assert_emitted_event(
         &env,
         -1,
         &contract_id,
         (symbol_short!("rotated"),),
-        (new_signers.signer_set.clone(),),
+        (signers_hash, new_signers.signers_set.clone()),
     );
 
     // test approve with new signer set
@@ -275,4 +274,59 @@ fn rotate_signers() {
         ),
         (source_chain, source_address),
     );
+}
+
+#[test]
+fn rotate_signers_with_enforce_rotation_delay() {
+    let (env, contract_id, client) = setup_env();
+    let operator = Address::generate(&env);
+    let signers = initialize(&env, &client, operator.clone(), 1, 5);
+    let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
+    let signers_hash = get_signers_hash(&env, new_signers.signers_set.clone());
+    let data_hash = get_rotation_hash(&env, new_signers.signers_set.clone());
+    let proof = generate_proof(&env, data_hash.clone(), signers);
+
+    client
+        .mock_auths(&[MockAuth {
+            address: &operator,
+            invoke: &MockAuthInvoke {
+                contract: &contract_id,
+                fn_name: "rotate_signers",
+                args: (new_signers.signers_set.clone(), proof.clone(), true).into_val(&env),
+                sub_invokes: &[],
+            },
+        }])
+        .rotate_signers(&new_signers.signers_set, &proof, &true);
+
+    assert_emitted_event(
+        &env,
+        -1,
+        &contract_id,
+        (symbol_short!("rotated"),),
+        (signers_hash, new_signers.signers_set.clone()),
+    );
+}
+
+#[test]
+#[should_panic(expected = "HostError: Error(Auth, InvalidAction)")] // Unauthorized
+fn rotate_signers_with_enforce_rotation_delay_fail_if_not_operator() {
+    let (env, contract_id, client) = setup_env();
+    let operator = Address::generate(&env);
+    let user = Address::generate(&env);
+    let signers = initialize(&env, &client, operator.clone(), 1, 5);
+    let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
+    let data_hash = get_rotation_hash(&env, new_signers.signers_set.clone());
+    let proof = generate_proof(&env, data_hash.clone(), signers);
+
+    client
+        .mock_auths(&[MockAuth {
+            address: &user,
+            invoke: &MockAuthInvoke {
+                contract: &contract_id,
+                fn_name: "rotate_signers",
+                args: (new_signers.signers_set.clone(), proof.clone(), true).into_val(&env),
+                sub_invokes: &[],
+            },
+        }])
+        .rotate_signers(&new_signers.signers_set, &proof, &true);
 }
