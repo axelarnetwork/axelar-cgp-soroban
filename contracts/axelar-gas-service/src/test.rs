@@ -22,14 +22,14 @@ fn setup_env<'a>() -> (Env, Address, Address, AxelarGasServiceClient<'a>) {
 
     let client = AxelarGasServiceClient::new(&env, &contract_id);
     let gas_collector: Address = Address::generate(&env);
-    client.initialize(&gas_collector);
 
     (env, contract_id, gas_collector, client)
 }
 
 #[test]
 fn pay_gas_for_contract_call() {
-    let (env, contract_id, _, client) = setup_env();
+    let (env, contract_id, gas_collector, client) = setup_env();
+    client.initialize(&gas_collector);
 
     let token_address: Address = env.register_stellar_asset_contract(Address::generate(&env));
     let sender: Address = Address::generate(&env);
@@ -84,6 +84,8 @@ fn pay_gas_for_contract_call() {
 #[test]
 fn collect_fees() {
     let (env, contract_id, gas_collector, client) = setup_env();
+    client.initialize(&gas_collector);
+
     let token_address: Address = env.register_stellar_asset_contract(Address::generate(&env));
     let token_client = TokenClient::new(&env, &token_address);
     let supply: i128 = 1000;
@@ -110,7 +112,9 @@ fn collect_fees() {
 
 #[test]
 fn refund() {
-    let (env, contract_id, _, client) = setup_env();
+    let (env, contract_id, gas_collector, client) = setup_env();
+    client.initialize(&gas_collector);
+
     let token_address: Address = env.register_stellar_asset_contract(Address::generate(&env));
     let token_client = TokenClient::new(&env, &token_address);
     let supply: i128 = 1000;
@@ -144,3 +148,6 @@ fn refund() {
         (),
     );
 }
+
+// #[test]
+// fn alread
