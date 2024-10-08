@@ -1,4 +1,4 @@
-use soroban_sdk::{contract, contractimpl, panic_with_error, token, Address, Bytes, Env, String};
+use soroban_sdk::{contract, contractimpl, token, Address, Bytes, Env, String};
 
 use axelar_soroban_std::{ensure, types::Token};
 
