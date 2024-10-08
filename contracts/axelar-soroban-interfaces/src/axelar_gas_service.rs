@@ -33,5 +33,10 @@ pub trait AxelarGasServiceInterface {
     fn collect_fees(env: Env, receiver: Address, token: Token) -> Result<(), GasServiceError>;
 
     /// Refunds gas payment to the receiver in relation to a specific cross-chain transaction. Only callable by the gas_collector.
-    fn refund(env: Env, message_id: String, receiver: Address, token: Token) -> Result<(), GasServiceError>;
+    fn refund(
+        env: Env,
+        message_id: String,
+        receiver: Address,
+        token: Token,
+    ) -> Result<(), GasServiceError>;
 }
