@@ -32,7 +32,7 @@ cargo llvm-cov
 ## Coverage Report
 
 ```bash
-cargo llvm-cov --html or cargo llvm-cov --open
+cargo llvm-cov --html # or cargo llvm-cov --open
 ```
 
 ## Deploy
