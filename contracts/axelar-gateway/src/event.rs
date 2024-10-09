@@ -32,7 +32,7 @@ pub(crate) fn execute_contract_call(env: &Env, message_id: String) {
 
 pub(crate) fn rotate_signers(env: &Env, signers: WeightedSigners) {
     let topics = (symbol_short!("rotated"),);
-    env.events().publish(topics, (signers,));
+    env.events().publish(topics, signers);
 }
 
 pub(crate) fn transfer_operatorship(env: &Env, previous_operator: Address, new_operator: Address) {

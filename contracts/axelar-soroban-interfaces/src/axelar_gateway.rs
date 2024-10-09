@@ -10,7 +10,7 @@ pub trait AxelarGatewayInterface {
         env: Env,
         operator: Address,
         domain_separator: BytesN<32>,
-        previous_signer_retention: u64,
+        previous_signers_retention: u64,
         minimum_rotation_delay: u64,
         initial_signers: Vec<WeightedSigners>,
     );
@@ -51,7 +51,12 @@ pub trait AxelarGatewayInterface {
     /// Return true if a contract call with the given payload BytesN<32> and source caller info has been executed.
     fn is_message_executed(env: Env, message_id: String, source_chain: String) -> bool;
 
-    fn rotate_signers(env: Env, signers: WeightedSigners, proof: Proof);
+    fn rotate_signers(
+        env: Env,
+        signers: WeightedSigners,
+        proof: Proof,
+        enforce_rotation_delay: bool,
+    );
 
     fn transfer_operatorship(env: Env, new_operator: Address);
 

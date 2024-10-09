@@ -19,8 +19,8 @@ const DESTINATION_ADDRESS: &str = "0x4EFE356BEDeCC817cb89B4E9b796dB8bC188DC59";
 
 #[derive(Clone, Debug)]
 pub struct TestSignerSet {
-    pub signers: std::vec::Vec<SigningKey>,
-    pub signer_set: WeightedSigners,
+    pub signer_keys: std::vec::Vec<SigningKey>,
+    pub signers: WeightedSigners,
     pub domain_separator: BytesN<32>,
 }
 
@@ -28,22 +28,22 @@ pub fn initialize(
     env: &Env,
     client: &AxelarGatewayClient,
     operator: Address,
-    previous_signer_retention: u32,
+    previous_signers_retention: u32,
     num_signers: u32,
 ) -> TestSignerSet {
-    let signers = generate_signer_set(env, num_signers, BytesN::random(env));
-    let signer_sets = vec![&env, signers.signer_set.clone()];
+    let signer_set = generate_signers_set(env, num_signers, BytesN::random(env));
+    let initial_signers = vec![&env, signer_set.signers.clone()];
     let minimum_rotation_delay = 0;
 
     client.initialize(
         &operator,
-        &signers.domain_separator,
+        &signer_set.domain_separator,
         &minimum_rotation_delay,
-        &(previous_signer_retention as u64),
-        &signer_sets,
+        &(previous_signers_retention as u64),
+        &initial_signers,
     );
 
-    signers
+    signer_set
 }
 
 pub fn get_approve_hash(env: &Env, messages: Vec<Message>) -> BytesN<32> {
@@ -82,7 +82,7 @@ pub fn randint(a: u32, b: u32) -> u32 {
     rand::thread_rng().gen_range(a..b)
 }
 
-pub fn generate_signer_set(
+pub fn generate_signers_set(
     env: &Env,
     num_signers: u32,
     domain_separator: BytesN<32>,
@@ -116,38 +116,38 @@ pub fn generate_signer_set(
 
     let threshold = rng.gen_range(1..=total_weight);
 
-    let signer_set = WeightedSigners {
+    let signers = WeightedSigners {
         signers: signer_vec.into_vec(env),
         threshold,
         nonce: BytesN::<32>::from_array(env, &[0; 32]),
     };
 
     TestSignerSet {
-        signers: signer_keypair
+        signer_keys: signer_keypair
             .into_iter()
             .map(|(signing_key, _)| signing_key)
             .collect(),
-        signer_set,
+        signers,
         domain_separator,
     }
 }
 
-pub fn generate_proof(env: &Env, data_hash: BytesN<32>, signers: TestSignerSet) -> Proof {
-    let signer_hash = env
+pub fn generate_proof(env: &Env, data_hash: BytesN<32>, signer_set: TestSignerSet) -> Proof {
+    let signers_hash = env
         .crypto()
-        .keccak256(&signers.signer_set.clone().to_xdr(env));
+        .keccak256(&signer_set.signers.clone().to_xdr(env));
 
-    let mut msg: Bytes = signers.domain_separator.into();
-    msg.extend_from_array(&signer_hash.to_array());
+    let mut msg: Bytes = signer_set.domain_separator.into();
+    msg.extend_from_array(&signers_hash.to_array());
     msg.extend_from_array(&data_hash.to_array());
 
     let msg_hash = env.crypto().keccak256(&msg);
-    let threshold = signers.signer_set.threshold as usize;
+    let threshold = signer_set.signers.threshold as usize;
 
-    let proof_signers: std::vec::Vec<_> = signers
-        .signers
+    let proof_signers: std::vec::Vec<_> = signer_set
+        .signer_keys
         .iter()
-        .zip(signers.signer_set.signers.iter())
+        .zip(signer_set.signers.signers.iter())
         .enumerate()
         .map(|(i, (signing_key, weighted_signer))| {
             if i > threshold {
@@ -170,7 +170,7 @@ pub fn generate_proof(env: &Env, data_hash: BytesN<32>, signers: TestSignerSet) 
 
     Proof {
         signers: proof_signers.into_vec(env),
-        threshold: signers.signer_set.threshold,
-        nonce: signers.signer_set.nonce,
+        threshold: signer_set.signers.threshold,
+        nonce: signer_set.signers.nonce,
     }
 }

@@ -1,14 +1,13 @@
 #![cfg(test)]
 extern crate std;
 
-use axelar_soroban_interfaces::types::Message;
-use axelar_soroban_std::{assert_invocation, assert_last_emitted_event};
-
 use crate::testutils::{
-    generate_proof, generate_signer_set, generate_test_message, get_approve_hash,
+    generate_proof, generate_signers_set, generate_test_message, get_approve_hash,
     get_rotation_hash, initialize, randint,
 };
 use crate::{contract::AxelarGateway, contract::AxelarGatewayClient};
+use axelar_soroban_interfaces::types::Message;
+use axelar_soroban_std::{assert_invocation, assert_last_emitted_event};
 use soroban_sdk::{
     bytes, symbol_short,
     testutils::{Address as _, Events, MockAuth, MockAuthInvoke},
@@ -193,7 +192,7 @@ fn fail_execute_invalid_proof() {
     let operator = Address::generate(&env);
     let signers = initialize(&env, &client, operator, 1, randint(1, 10));
 
-    let invalid_signers = generate_signer_set(&env, randint(1, 10), signers.domain_separator);
+    let invalid_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator);
 
     let messages = vec![&env, message.clone()];
     let data_hash = get_approve_hash(&env, messages.clone());
@@ -220,28 +219,27 @@ fn approve_messages_skip_duplicate_message() {
     let res = client.try_approve_messages(&messages, &proof);
     assert!(res.is_ok());
 
-    // should not emit any more events (1 total because of rotate signers)
-    assert_eq!(env.events().all().len(), 1);
+    // should not emit any more events (2 total because of rotate signers in auth)
+    assert_eq!(env.events().all().len(), 2);
 }
 
 #[test]
 fn rotate_signers() {
     let (env, contract_id, client) = setup_env();
     let operator = Address::generate(&env);
+    let signers = initialize(&env, &client, operator, 1, 5);
+    let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
+    let data_hash = get_rotation_hash(&env, new_signers.signers.clone());
+    let proof = generate_proof(&env, data_hash.clone(), signers);
+    let bypass_rotation_delay = false;
 
-    let signers = initialize(&env, &client, operator, 1, randint(1, 10));
-
-    let new_signers = generate_signer_set(&env, randint(1, 10), signers.domain_separator.clone());
-
-    let data_hash = get_rotation_hash(&env, new_signers.signer_set.clone());
-    let proof = generate_proof(&env, data_hash, signers);
-    client.rotate_signers(&new_signers.signer_set, &proof);
+    client.rotate_signers(&new_signers.signers, &proof, &bypass_rotation_delay);
 
     assert_last_emitted_event(
         &env,
         &contract_id,
         (symbol_short!("rotated"),),
-        (new_signers.signer_set.clone(),),
+        new_signers.signers.clone(),
     );
 
     // test approve with new signer set
@@ -270,6 +268,71 @@ fn rotate_signers() {
         ),
         (source_chain, source_address),
     );
+}
+
+#[test]
+fn rotate_signers_bypass_rotation_delay() {
+    let (env, contract_id, client) = setup_env();
+    let operator = Address::generate(&env);
+    let signers = initialize(&env, &client, operator.clone(), 1, 5);
+    let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
+    let data_hash = get_rotation_hash(&env, new_signers.signers.clone());
+    let proof = generate_proof(&env, data_hash.clone(), signers.clone());
+    let bypass_rotation_delay = true;
+
+    client
+        .mock_auths(&[MockAuth {
+            address: &operator,
+            invoke: &MockAuthInvoke {
+                contract: &contract_id,
+                fn_name: "rotate_signers",
+                args: (
+                    new_signers.signers.clone(),
+                    proof.clone(),
+                    bypass_rotation_delay,
+                )
+                    .into_val(&env),
+                sub_invokes: &[],
+            },
+        }])
+        .rotate_signers(&new_signers.signers, &proof, &bypass_rotation_delay);
+
+    assert_last_emitted_event(
+        &env,
+        &contract_id,
+        (symbol_short!("rotated"),),
+        new_signers.signers,
+    );
+}
+
+#[test]
+#[should_panic(expected = "HostError: Error(Auth, InvalidAction)")] // Unauthorized
+fn rotate_signers_bypass_rotation_delay_fail_if_not_operator() {
+    let (env, contract_id, client) = setup_env();
+    let operator = Address::generate(&env);
+    let user = Address::generate(&env);
+    let signers = initialize(&env, &client, operator.clone(), 1, 5);
+    let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
+    let data_hash = get_rotation_hash(&env, new_signers.signers.clone());
+    let proof = generate_proof(&env, data_hash.clone(), signers);
+    let bypass_rotation_delay = true;
+
+    client
+        .mock_auths(&[MockAuth {
+            address: &user,
+            invoke: &MockAuthInvoke {
+                contract: &contract_id,
+                fn_name: "rotate_signers",
+                args: (
+                    new_signers.signers.clone(),
+                    proof.clone(),
+                    bypass_rotation_delay,
+                )
+                    .into_val(&env),
+                sub_invokes: &[],
+            },
+        }])
+        .rotate_signers(&new_signers.signers, &proof, &bypass_rotation_delay);
 }
 
 #[test]
@@ -319,7 +382,6 @@ fn transfer_operatorship_unauthorized() {
     initialize(&env, &client, operator.clone(), 1, randint(1, 10));
 
     assert_eq!(client.operator(), operator);
-
     client
         .mock_auths(&[MockAuth {
             address: &user,

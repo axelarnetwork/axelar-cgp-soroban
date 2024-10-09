@@ -1,4 +1,4 @@
-use axelar_soroban_interfaces::types::Message;
+use axelar_soroban_interfaces::types::{Message, Proof};
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{
     contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, String, Vec,
@@ -19,7 +19,7 @@ impl AxelarGatewayInterface for AxelarGateway {
         operator: Address,
         domain_separator: BytesN<32>,
         minimum_rotation_delay: u64,
-        previous_signer_retention: u64,
+        previous_signers_retention: u64,
         initial_signers: Vec<WeightedSigners>,
     ) {
         if env
@@ -39,7 +39,7 @@ impl AxelarGatewayInterface for AxelarGateway {
             env,
             domain_separator,
             minimum_rotation_delay,
-            previous_signer_retention,
+            previous_signers_retention,
             initial_signers,
         );
     }
@@ -169,17 +169,22 @@ impl AxelarGatewayInterface for AxelarGateway {
         }
     }
 
+    // TODO: add docstring about how bypass_rotation_delay supposed to be used.
     fn rotate_signers(
         env: Env,
-        signers: axelar_soroban_interfaces::types::WeightedSigners,
-        proof: axelar_soroban_interfaces::types::Proof,
+        signers: WeightedSigners,
+        proof: Proof,
+        bypass_rotation_delay: bool,
     ) {
+        if bypass_rotation_delay {
+            Self::operator(&env).require_auth();
+        }
+
         let data_hash: BytesN<32> = env
             .crypto()
             .keccak256(&(CommandType::RotateSigners, signers.clone()).to_xdr(&env))
             .into();
 
-        // TODO: Add rotation delay governance
         if env
             .storage()
             .persistent()
@@ -189,7 +194,7 @@ impl AxelarGatewayInterface for AxelarGateway {
         }
 
         let is_latest_signers = auth::validate_proof(&env, data_hash.clone(), proof);
-        if !is_latest_signers {
+        if !bypass_rotation_delay && !is_latest_signers {
             panic_with_error!(env, Error::NotLatestSigners);
         }
 
@@ -197,9 +202,7 @@ impl AxelarGatewayInterface for AxelarGateway {
             .persistent()
             .set(&DataKey::RotationExecuted(data_hash), &true);
 
-        auth::rotate_signers(&env, &signers, true);
-
-        event::rotate_signers(&env, signers);
+        auth::rotate_signers(&env, &signers, !bypass_rotation_delay);
     }
 
     fn transfer_operatorship(env: Env, new_operator: Address) {
