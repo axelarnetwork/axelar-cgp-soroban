@@ -8,7 +8,6 @@ use crate::testutils::{
 use crate::{contract::AxelarGateway, contract::AxelarGatewayClient};
 use axelar_soroban_interfaces::types::Message;
 use axelar_soroban_std::{assert_invocation, assert_last_emitted_event};
-use soroban_sdk::testutils::{MockAuth, MockAuthInvoke};
 use soroban_sdk::{
     bytes, symbol_short,
     testutils::{Address as _, Events, MockAuth, MockAuthInvoke},
@@ -327,12 +326,6 @@ fn rotate_signers_with_enforce_rotation_delay_fail_if_not_operator() {
             },
         }])
         .rotate_signers(&new_signers.signers, &proof, &false);
-                fn_name: "transfer_operatorship",
-                args: (&new_operator,).into_val(&env),
-                sub_invokes: &[],
-            },
-        }])
-        .transfer_operatorship(&new_operator);
 }
 
 #[test]
@@ -345,7 +338,7 @@ fn transfer_operatorship() {
 
     assert_eq!(client.operator(), operator);
 
-      client
+    client
         .mock_auths(&[MockAuth {
             address: &operator,
             invoke: &MockAuthInvoke {
@@ -370,7 +363,7 @@ fn transfer_operatorship() {
 
     assert_eq!(client.operator(), new_operator);
 }
-  
+
 #[test]
 #[should_panic(expected = "HostError: Error(Auth, InvalidAction)")] // Unauthorized
 fn transfer_operatorship_unauthorized() {
