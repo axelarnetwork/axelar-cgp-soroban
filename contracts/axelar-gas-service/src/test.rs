@@ -4,7 +4,7 @@ extern crate std;
 use std::format;
 
 use axelar_soroban_interfaces::axelar_gas_service::GasServiceError;
-use axelar_soroban_std::{assert_contract_err, assert_emitted_event, types::Token};
+use axelar_soroban_std::{assert_contract_err, assert_emitted_event, assert_some, types::Token};
 
 use crate::{
     contract::{AxelarGasService, AxelarGasServiceClient},
@@ -82,22 +82,18 @@ fn fail_not_initialized() {
 fn test_initialize() {
     let (env, contract_id, gas_collector, _client) = setup_env();
 
-    assert!(env.as_contract(&contract_id, || {
+    assert!(assert_some!(env.as_contract(&contract_id, || {
         env.storage()
             .instance()
             .get::<DataKey, bool>(&DataKey::Initialized)
-            .unwrap()
-    }));
+    })));
 
-    assert_eq!(
-        env.as_contract(&contract_id, || {
-            env.storage()
-                .instance()
-                .get::<DataKey, Address>(&DataKey::GasCollector)
-                .unwrap()
-        }),
-        gas_collector
-    );
+    let gc_addr = assert_some!(env.as_contract(&contract_id, || {
+        env.storage()
+            .instance()
+            .get::<DataKey, Address>(&DataKey::GasCollector)
+    }));
+    assert_eq!(gc_addr, gas_collector);
 }
 
 #[test]
