@@ -7,11 +7,11 @@ use crate::testutils::{
 };
 use crate::{contract::AxelarGateway, contract::AxelarGatewayClient};
 use axelar_soroban_interfaces::types::Message;
-use axelar_soroban_std::{assert_emitted_event, assert_invocation};
+use axelar_soroban_std::{assert_invocation, assert_last_emitted_event};
 use soroban_sdk::testutils::{MockAuth, MockAuthInvoke};
 use soroban_sdk::{
     bytes, symbol_short,
-    testutils::{Address as _, Events},
+    testutils::{Address as _, Events, MockAuth, MockAuthInvoke},
     vec, Address, Env, IntoVal, String,
 };
 
@@ -63,9 +63,8 @@ fn call_contract() {
         ),
     );
 
-    assert_emitted_event(
+    assert_last_emitted_event(
         &env,
-        0,
         &contract_id,
         (
             symbol_short!("called"),
@@ -137,9 +136,8 @@ fn approve_message() {
     let proof = generate_proof(&env, data_hash, signers);
     client.approve_messages(&messages, &proof);
 
-    assert_emitted_event(
+    assert_last_emitted_event(
         &env,
-        -1,
         &contract_id,
         (
             symbol_short!("approved"),
@@ -168,9 +166,8 @@ fn approve_message() {
     );
     assert!(approved);
 
-    assert_emitted_event(
+    assert_last_emitted_event(
         &env,
-        -1,
         &contract_id,
         (symbol_short!("executed"), message_id.clone()),
         (),
@@ -238,9 +235,8 @@ fn rotate_signers() {
 
     client.rotate_signers(&new_signers.signers, &proof, &true);
 
-    assert_emitted_event(
+    assert_last_emitted_event(
         &env,
-        -1,
         &contract_id,
         (symbol_short!("rotated"),),
         new_signers.signers.clone(),
@@ -261,9 +257,8 @@ fn rotate_signers() {
     let proof = generate_proof(&env, data_hash, new_signers);
     client.approve_messages(&messages, &proof);
 
-    assert_emitted_event(
+    assert_last_emitted_event(
         &env,
-        -1,
         &contract_id,
         (
             symbol_short!("approved"),
@@ -302,9 +297,8 @@ fn rotate_signers_with_enforce_rotation_delay() {
         }])
         .rotate_signers(&new_signers.signers, &proof, &enforce_rotation_delay);
 
-    assert_emitted_event(
+    assert_last_emitted_event(
         &env,
-        -1,
         &contract_id,
         (symbol_short!("rotated"),),
         new_signers.signers,
@@ -333,4 +327,70 @@ fn rotate_signers_with_enforce_rotation_delay_fail_if_not_operator() {
             },
         }])
         .rotate_signers(&new_signers.signers, &proof, &false);
+                fn_name: "transfer_operatorship",
+                args: (&new_operator,).into_val(&env),
+                sub_invokes: &[],
+            },
+        }])
+        .transfer_operatorship(&new_operator);
+}
+
+#[test]
+fn transfer_operatorship() {
+    let (env, contract_id, client) = setup_env();
+    let operator = Address::generate(&env);
+    let new_operator = Address::generate(&env);
+
+    initialize(&env, &client, operator.clone(), 1, randint(1, 10));
+
+    assert_eq!(client.operator(), operator);
+
+      client
+        .mock_auths(&[MockAuth {
+            address: &operator,
+            invoke: &MockAuthInvoke {
+                contract: &contract_id,
+                fn_name: "transfer_operatorship",
+                args: (&new_operator,).into_val(&env),
+                sub_invokes: &[],
+            },
+        }])
+        .transfer_operatorship(&new_operator);
+
+    assert_last_emitted_event(
+        &env,
+        &contract_id,
+        (
+            String::from_str(&env, "transferred"),
+            operator.clone(),
+            new_operator.clone(),
+        ),
+        (),
+    );
+
+    assert_eq!(client.operator(), new_operator);
+}
+  
+#[test]
+#[should_panic(expected = "HostError: Error(Auth, InvalidAction)")] // Unauthorized
+fn transfer_operatorship_unauthorized() {
+    let (env, contract_id, client) = setup_env();
+    let operator = Address::generate(&env);
+    let new_operator = Address::generate(&env);
+    let user = Address::generate(&env);
+
+    initialize(&env, &client, operator.clone(), 1, randint(1, 10));
+
+    assert_eq!(client.operator(), operator);
+    client
+        .mock_auths(&[MockAuth {
+            address: &user,
+            invoke: &MockAuthInvoke {
+                contract: &contract_id,
+                fn_name: "transfer_operatorship",
+                args: (&new_operator,).into_val(&env),
+                sub_invokes: &[],
+            },
+        }])
+        .transfer_operatorship(&new_operator);
 }

@@ -6,7 +6,7 @@ use soroban_sdk::{
     Bytes, BytesN, Env, String,
 };
 
-use axelar_soroban_std::testutils::assert_emitted_event;
+use axelar_soroban_std::testutils::assert_last_emitted_event;
 
 use axelar_gateway::contract::AxelarGatewayClient;
 
@@ -119,5 +119,5 @@ fn test_execute() {
 
     client.execute(&command_id, &source_chain, &source_address, &payload);
 
-    assert_emitted_event(&env, -1, &client.address, (symbol_short!("executed"),), ());
+    assert_last_emitted_event(&env, &client.address, (symbol_short!("executed"),), ());
 }
