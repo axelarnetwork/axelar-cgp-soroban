@@ -3,7 +3,7 @@ extern crate std;
 
 use crate::testutils::{
     generate_proof, generate_signers_set, generate_test_message, get_approve_hash,
-    get_rotation_hash, get_signers_hash, initialize, randint,
+    get_rotation_hash, initialize, randint,
 };
 use crate::{contract::AxelarGateway, contract::AxelarGatewayClient};
 use axelar_soroban_interfaces::types::Message;
@@ -233,18 +233,17 @@ fn rotate_signers() {
     let operator = Address::generate(&env);
     let signers = initialize(&env, &client, operator, 1, 5);
     let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
-    let signers_hash = get_signers_hash(&env, new_signers.signers_set.clone());
-    let data_hash = get_rotation_hash(&env, new_signers.signers_set.clone());
+    let data_hash = get_rotation_hash(&env, new_signers.signers.clone());
     let proof = generate_proof(&env, data_hash.clone(), signers);
 
-    client.rotate_signers(&new_signers.signers_set, &proof, &false);
+    client.rotate_signers(&new_signers.signers, &proof, &true);
 
     assert_emitted_event(
         &env,
         -1,
         &contract_id,
         (symbol_short!("rotated"),),
-        (signers_hash, new_signers.signers_set.clone()),
+        new_signers.signers.clone(),
     );
 
     // test approve with new signer set
@@ -282,9 +281,9 @@ fn rotate_signers_with_enforce_rotation_delay() {
     let operator = Address::generate(&env);
     let signers = initialize(&env, &client, operator.clone(), 1, 5);
     let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
-    let signers_hash = get_signers_hash(&env, new_signers.signers_set.clone());
-    let data_hash = get_rotation_hash(&env, new_signers.signers_set.clone());
-    let proof = generate_proof(&env, data_hash.clone(), signers);
+    let data_hash = get_rotation_hash(&env, new_signers.signers.clone());
+    let proof = generate_proof(&env, data_hash.clone(), signers.clone());
+    let enforce_rotation_delay = true;
 
     client
         .mock_auths(&[MockAuth {
@@ -292,18 +291,23 @@ fn rotate_signers_with_enforce_rotation_delay() {
             invoke: &MockAuthInvoke {
                 contract: &contract_id,
                 fn_name: "rotate_signers",
-                args: (new_signers.signers_set.clone(), proof.clone(), true).into_val(&env),
+                args: (
+                    new_signers.signers.clone(),
+                    proof.clone(),
+                    enforce_rotation_delay,
+                )
+                    .into_val(&env),
                 sub_invokes: &[],
             },
         }])
-        .rotate_signers(&new_signers.signers_set, &proof, &true);
+        .rotate_signers(&new_signers.signers, &proof, &enforce_rotation_delay);
 
     assert_emitted_event(
         &env,
         -1,
         &contract_id,
         (symbol_short!("rotated"),),
-        (signers_hash, new_signers.signers_set.clone()),
+        new_signers.signers,
     );
 }
 
@@ -315,7 +319,7 @@ fn rotate_signers_with_enforce_rotation_delay_fail_if_not_operator() {
     let user = Address::generate(&env);
     let signers = initialize(&env, &client, operator.clone(), 1, 5);
     let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
-    let data_hash = get_rotation_hash(&env, new_signers.signers_set.clone());
+    let data_hash = get_rotation_hash(&env, new_signers.signers.clone());
     let proof = generate_proof(&env, data_hash.clone(), signers);
 
     client
@@ -324,9 +328,9 @@ fn rotate_signers_with_enforce_rotation_delay_fail_if_not_operator() {
             invoke: &MockAuthInvoke {
                 contract: &contract_id,
                 fn_name: "rotate_signers",
-                args: (new_signers.signers_set.clone(), proof.clone(), true).into_val(&env),
+                args: (new_signers.signers.clone(), proof.clone(), false).into_val(&env),
                 sub_invokes: &[],
             },
         }])
-        .rotate_signers(&new_signers.signers_set, &proof, &true);
+        .rotate_signers(&new_signers.signers, &proof, &false);
 }

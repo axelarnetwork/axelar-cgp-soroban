@@ -30,9 +30,9 @@ pub(crate) fn execute_contract_call(env: &Env, message_id: String) {
     env.events().publish(topics, ());
 }
 
-pub(crate) fn rotate_signers(env: &Env, signers_hash: BytesN<32>, signers: WeightedSigners) {
+pub(crate) fn rotate_signers(env: &Env, signers: WeightedSigners) {
     let topics = (symbol_short!("rotated"),);
-    env.events().publish(topics, (signers_hash, signers));
+    env.events().publish(topics, signers);
 }
 
 pub(crate) fn transfer_operatorship(env: &Env, previous_operator: Address, new_operator: Address) {
