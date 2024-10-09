@@ -3,7 +3,7 @@ extern crate std;
 
 use axelar_soroban_interfaces::axelar_operators::OperatorError;
 use axelar_soroban_std::{
-    assert_contract_err, assert_emitted_event, assert_some, testutils::assert_invocation,
+    assert_contract_err, assert_last_emitted_event, assert_some, testutils::assert_invocation,
 };
 
 use crate::{
@@ -89,9 +89,8 @@ fn transfer_owner() {
         (new_owner.clone(),),
     );
 
-    assert_emitted_event(
+    assert_last_emitted_event(
         &env,
-        0,
         &client.address,
         (symbol_short!("ownership"), initial_owner, new_owner.clone()),
         (),
@@ -124,9 +123,8 @@ fn test_add_operator() {
         (operator.clone(),),
     );
 
-    assert_emitted_event(
+    assert_last_emitted_event(
         &env,
-        0,
         &client.address,
         (symbol_short!("added"), operator.clone()),
         (),
@@ -184,9 +182,8 @@ fn test_remove_operator() {
         (operator.clone(),),
     );
 
-    assert_emitted_event(
+    assert_last_emitted_event(
         &env,
-        -1,
         &client.address,
         (symbol_short!("removed"), operator.clone()),
         (),
@@ -235,7 +232,7 @@ fn test_execute() {
         &Vec::new(&env),
     );
 
-    assert_emitted_event(&env, -1, &target, (symbol_short!("executed"),), ());
+    assert_last_emitted_event(&env, &target, (symbol_short!("executed"),), ());
 }
 
 #[test]
