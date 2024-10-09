@@ -65,8 +65,9 @@ fn fail_already_initialized() {
 }
 
 #[test]
+/// Ensure paying gas fails when gas_amount <= 0.
 fn fail_pay_gas_invalid_amount() {
-    let (env, contract_id, gas_collector, client) = setup_env();
+    let (env, contract_id, _gas_collector, client) = setup_env();
 
     let token_address: Address = env.register_stellar_asset_contract(Address::generate(&env));
     let sender: Address = Address::generate(&env);
@@ -106,7 +107,7 @@ fn fail_pay_gas_invalid_amount() {
 
 #[test]
 fn pay_gas_for_contract_call() {
-    let (env, contract_id, gas_collector, client) = setup_env();
+    let (env, contract_id, _gas_collector, client) = setup_env();
 
     let token_address: Address = env.register_stellar_asset_contract(Address::generate(&env));
     let sender: Address = Address::generate(&env);
@@ -160,6 +161,7 @@ fn pay_gas_for_contract_call() {
 }
 
 #[test]
+/// Ensure failure occurs when refund_amount <= 0
 fn fail_collect_fees_invalid_amount() {
     let (env, contract_id, gas_collector, client) = setup_env();
     client.initialize(&gas_collector);
@@ -167,7 +169,6 @@ fn fail_collect_fees_invalid_amount() {
     let token_address: Address = env.register_stellar_asset_contract(Address::generate(&env));
 
     let supply: i128 = 1000;
-    // refund_amount <= 0
     let refund_amount = 0;
 
     let token = Token {
@@ -183,13 +184,13 @@ fn fail_collect_fees_invalid_amount() {
 }
 
 #[test]
+/// Ensure failure occurs when the amount requested exceeds balance
 fn fail_collect_fees_insufficient_balance() {
     let (env, contract_id, gas_collector, client) = setup_env();
     client.initialize(&gas_collector);
 
     let token_address: Address = env.register_stellar_asset_contract(Address::generate(&env));
 
-    // supply < refund_amount
     let supply: i128 = 5;
     let refund_amount = 10;
 
