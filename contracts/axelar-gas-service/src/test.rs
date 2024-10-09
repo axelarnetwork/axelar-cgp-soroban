@@ -4,7 +4,9 @@ extern crate std;
 use std::format;
 
 use axelar_soroban_interfaces::axelar_gas_service::GasServiceError;
-use axelar_soroban_std::{assert_contract_err, assert_emitted_event, assert_some, types::Token};
+use axelar_soroban_std::{
+    assert_contract_err, assert_last_emitted_event, assert_some, types::Token,
+};
 
 use crate::{
     contract::{AxelarGasService, AxelarGasServiceClient},
@@ -188,9 +190,8 @@ fn pay_gas_for_contract_call() {
     assert_eq!(gas_amount, token_client.balance(&contract_id));
     assert_eq!(token_client.allowance(&sender, &contract_id), 0);
 
-    assert_emitted_event(
+    assert_last_emitted_event(
         &env,
-        -1,
         &contract_id,
         (
             symbol_short!("gas_paid"),
@@ -263,9 +264,8 @@ fn collect_fees() {
     assert_eq!(refund_amount, token_client.balance(&gas_collector));
     assert_eq!(supply - refund_amount, token_client.balance(&contract_id));
 
-    assert_emitted_event(
+    assert_last_emitted_event(
         &env,
-        -1,
         &contract_id,
         (symbol_short!("collected"), gas_collector, token),
         (),
@@ -301,9 +301,8 @@ fn refund() {
     assert_eq!(refund_amount, token_client.balance(&receiver));
     assert_eq!(supply - refund_amount, token_client.balance(&contract_id));
 
-    assert_emitted_event(
+    assert_last_emitted_event(
         &env,
-        -1,
         &contract_id,
         (symbol_short!("refunded"), message_id, receiver, token),
         (),
