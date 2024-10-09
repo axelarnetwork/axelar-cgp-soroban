@@ -32,6 +32,53 @@ fn setup_env<'a>() -> (Env, Address, Address, AxelarGasServiceClient<'a>) {
 }
 
 #[test]
+fn fail_not_initialized() {
+    // only collect_fees() and refund() require initialization, so setup and call those.
+
+    // do setup_env without initializing at the end
+    let env = Env::default();
+
+    env.mock_all_auths();
+
+    let contract_id = env.register_contract(None, AxelarGasService);
+
+    let client = AxelarGasServiceClient::new(&env, &contract_id);
+    let gas_collector: Address = Address::generate(&env);
+
+    // collect_fees() setup
+
+    let asset = env.register_stellar_asset_contract_v2(Address::generate(&env));
+    let supply: i128 = 1000;
+    let refund_amount = 1;
+    let token = Token {
+        address: asset.address(),
+        amount: refund_amount,
+    };
+    StellarAssetClient::new(&env, &token.address).mint(&contract_id, &supply);
+
+    assert_contract_err!(
+        client.try_collect_fees(&gas_collector, &token),
+        GasServiceError::NotInitialized
+    );
+
+    // refund() setup
+
+    let receiver: Address = Address::generate(&env);
+    let message_id = String::from_str(
+        &env,
+        &format!(
+            "{}-{}",
+            "0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d", 0
+        ),
+    );
+
+    assert_contract_err!(
+        client.try_refund(&message_id, &receiver, &token),
+        GasServiceError::NotInitialized
+    );
+}
+
+#[test]
 fn test_initialize() {
     let (env, contract_id, gas_collector, _client) = setup_env();
 
