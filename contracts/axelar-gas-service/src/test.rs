@@ -207,8 +207,7 @@ fn pay_gas_for_contract_call() {
 }
 
 #[test]
-/// Ensure failure occurs when refund_amount <= 0
-fn fail_collect_fees_invalid_amount() {
+fn fail_collect_fees_zero_refund_amount() {
     let (env, contract_id, gas_collector, client) = setup_env();
 
     let asset = env.register_stellar_asset_contract_v2(Address::generate(&env));
@@ -229,7 +228,6 @@ fn fail_collect_fees_invalid_amount() {
 }
 
 #[test]
-/// Ensure failure occurs when the amount requested exceeds balance
 fn fail_collect_fees_insufficient_balance() {
     let (env, contract_id, gas_collector, client) = setup_env();
 
