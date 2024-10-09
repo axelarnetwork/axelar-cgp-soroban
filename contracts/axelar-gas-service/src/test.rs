@@ -94,12 +94,12 @@ fn test_initialize() {
             .get::<DataKey, bool>(&DataKey::Initialized)
     })));
 
-    let gc_addr = assert_some!(env.as_contract(&contract_id, || {
+    let stored_collector_address = assert_some!(env.as_contract(&contract_id, || {
         env.storage()
             .instance()
             .get::<DataKey, Address>(&DataKey::GasCollector)
     }));
-    assert_eq!(gc_addr, gas_collector);
+    assert_eq!(stored_collector_address, gas_collector);
 }
 
 #[test]
