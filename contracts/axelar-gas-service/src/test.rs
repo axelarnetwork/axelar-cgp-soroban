@@ -49,11 +49,15 @@ fn fail_not_initialized() {
 
     // collect_fees() setup
 
-    let asset = env.register_stellar_asset_contract_v2(Address::generate(&env));
+    let asset = StellarAssetClient::new(
+        &env,
+        &env.register_stellar_asset_contract(Address::generate(&env)),
+    );
+
     let supply: i128 = 1000;
     let refund_amount = 1;
     let token = Token {
-        address: asset.address(),
+        address: asset.address,
         amount: refund_amount,
     };
     StellarAssetClient::new(&env, &token.address).mint(&contract_id, &supply);
@@ -112,11 +116,15 @@ fn fail_already_initialized() {
 fn fail_pay_gas_zero_gas_amount() {
     let (env, contract_id, _gas_collector, client) = setup_env();
 
-    let asset = env.register_stellar_asset_contract_v2(Address::generate(&env));
+    let asset = StellarAssetClient::new(
+        &env,
+        &env.register_stellar_asset_contract(Address::generate(&env)),
+    );
+
     let sender: Address = Address::generate(&env);
     let gas_amount: i128 = 0;
     let token = Token {
-        address: asset.address(),
+        address: asset.address.clone(),
         amount: gas_amount,
     };
     let refund_address: Address = Address::generate(&env);
@@ -125,8 +133,8 @@ fn fail_pay_gas_zero_gas_amount() {
     let destination_address: String =
         String::from_str(&env, "0x4EFE356BEDeCC817cb89B4E9b796dB8bC188DC59");
 
-    let token_client = TokenClient::new(&env, &asset.address());
-    StellarAssetClient::new(&env, &asset.address()).mint(&sender, &gas_amount);
+    let token_client = TokenClient::new(&env, &asset.address.clone());
+    StellarAssetClient::new(&env, &asset.address).mint(&sender, &gas_amount);
 
     let expiration_ledger = &env.ledger().sequence() + 200;
 
@@ -152,11 +160,14 @@ fn fail_pay_gas_zero_gas_amount() {
 fn pay_gas_for_contract_call() {
     let (env, contract_id, _gas_collector, client) = setup_env();
 
-    let asset = env.register_stellar_asset_contract_v2(Address::generate(&env));
+    let asset = StellarAssetClient::new(
+        &env,
+        &env.register_stellar_asset_contract(Address::generate(&env)),
+    );
     let sender: Address = Address::generate(&env);
     let gas_amount: i128 = 1;
     let token = Token {
-        address: asset.address(),
+        address: asset.address.clone(),
         amount: gas_amount,
     };
 
@@ -166,8 +177,8 @@ fn pay_gas_for_contract_call() {
     let destination_address: String =
         String::from_str(&env, "0x4EFE356BEDeCC817cb89B4E9b796dB8bC188DC59");
 
-    let token_client = TokenClient::new(&env, &asset.address());
-    StellarAssetClient::new(&env, &asset.address()).mint(&sender, &gas_amount);
+    let token_client = TokenClient::new(&env, &asset.address);
+    StellarAssetClient::new(&env, &asset.address).mint(&sender, &gas_amount);
 
     let expiration_ledger = &env.ledger().sequence() + 200;
 
@@ -206,13 +217,16 @@ fn pay_gas_for_contract_call() {
 fn fail_collect_fees_zero_refund_amount() {
     let (env, contract_id, gas_collector, client) = setup_env();
 
-    let asset = env.register_stellar_asset_contract_v2(Address::generate(&env));
+    let asset = StellarAssetClient::new(
+        &env,
+        &env.register_stellar_asset_contract(Address::generate(&env)),
+    );
 
     let supply: i128 = 1000;
     let refund_amount = 0;
 
     let token = Token {
-        address: asset.address().clone(),
+        address: asset.address,
         amount: refund_amount,
     };
     StellarAssetClient::new(&env, &token.address).mint(&contract_id, &supply);
@@ -227,13 +241,16 @@ fn fail_collect_fees_zero_refund_amount() {
 fn fail_collect_fees_insufficient_balance() {
     let (env, contract_id, gas_collector, client) = setup_env();
 
-    let asset = env.register_stellar_asset_contract_v2(Address::generate(&env));
+    let asset = StellarAssetClient::new(
+        &env,
+        &env.register_stellar_asset_contract(Address::generate(&env)),
+    );
 
     let supply: i128 = 5;
     let refund_amount = 10;
 
     let token = Token {
-        address: asset.address(),
+        address: asset.address,
         amount: refund_amount,
     };
     StellarAssetClient::new(&env, &token.address).mint(&contract_id, &supply);
@@ -248,12 +265,15 @@ fn fail_collect_fees_insufficient_balance() {
 fn collect_fees() {
     let (env, contract_id, gas_collector, client) = setup_env();
 
-    let asset = env.register_stellar_asset_contract_v2(Address::generate(&env));
-    let token_client = TokenClient::new(&env, &asset.address());
+    let asset = StellarAssetClient::new(
+        &env,
+        &env.register_stellar_asset_contract(Address::generate(&env)),
+    );
+    let token_client = TokenClient::new(&env, &asset.address);
     let supply: i128 = 1000;
     let refund_amount = 1;
     let token = Token {
-        address: asset.address(),
+        address: asset.address,
         amount: refund_amount,
     };
     StellarAssetClient::new(&env, &token.address).mint(&contract_id, &supply);
@@ -275,15 +295,18 @@ fn collect_fees() {
 fn refund() {
     let (env, contract_id, _gas_collector, client) = setup_env();
 
-    let asset = env.register_stellar_asset_contract_v2(Address::generate(&env));
-    let token_client = TokenClient::new(&env, &asset.address());
+    let asset = StellarAssetClient::new(
+        &env,
+        &env.register_stellar_asset_contract(Address::generate(&env)),
+    );
+    let token_client = TokenClient::new(&env, &asset.address);
     let supply: i128 = 1000;
-    StellarAssetClient::new(&env, &asset.address()).mint(&contract_id, &supply);
+    StellarAssetClient::new(&env, &asset.address).mint(&contract_id, &supply);
 
     let receiver: Address = Address::generate(&env);
     let refund_amount: i128 = 1;
     let token = Token {
-        address: asset.address(),
+        address: asset.address,
         amount: refund_amount,
     };
 
