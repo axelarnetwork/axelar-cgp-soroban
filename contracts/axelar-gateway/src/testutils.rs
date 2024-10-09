@@ -32,7 +32,7 @@ pub fn initialize(
     num_signers: u32,
 ) -> TestSignerSet {
     let signer_set = generate_signers_set(env, num_signers, BytesN::random(env));
-    let signers = vec![&env, signer_set.signers.clone()];
+    let initial_signers = vec![&env, signer_set.signers.clone()];
     let minimum_rotation_delay = 0;
 
     client.initialize(
@@ -40,7 +40,7 @@ pub fn initialize(
         &signer_set.domain_separator,
         &minimum_rotation_delay,
         &(previous_signers_retention as u64),
-        &signers,
+        &initial_signers,
     );
 
     signer_set

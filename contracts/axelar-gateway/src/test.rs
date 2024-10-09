@@ -231,8 +231,9 @@ fn rotate_signers() {
     let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
     let data_hash = get_rotation_hash(&env, new_signers.signers.clone());
     let proof = generate_proof(&env, data_hash.clone(), signers);
+    let bypass_rotation_delay = false;
 
-    client.rotate_signers(&new_signers.signers, &proof, &true);
+    client.rotate_signers(&new_signers.signers, &proof, &bypass_rotation_delay);
 
     assert_last_emitted_event(
         &env,
@@ -270,14 +271,14 @@ fn rotate_signers() {
 }
 
 #[test]
-fn rotate_signers_with_enforce_rotation_delay() {
+fn rotate_signers_bypass_rotation_delay() {
     let (env, contract_id, client) = setup_env();
     let operator = Address::generate(&env);
     let signers = initialize(&env, &client, operator.clone(), 1, 5);
     let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
     let data_hash = get_rotation_hash(&env, new_signers.signers.clone());
     let proof = generate_proof(&env, data_hash.clone(), signers.clone());
-    let enforce_rotation_delay = true;
+    let bypass_rotation_delay = true;
 
     client
         .mock_auths(&[MockAuth {
@@ -288,13 +289,13 @@ fn rotate_signers_with_enforce_rotation_delay() {
                 args: (
                     new_signers.signers.clone(),
                     proof.clone(),
-                    enforce_rotation_delay,
+                    bypass_rotation_delay,
                 )
                     .into_val(&env),
                 sub_invokes: &[],
             },
         }])
-        .rotate_signers(&new_signers.signers, &proof, &enforce_rotation_delay);
+        .rotate_signers(&new_signers.signers, &proof, &bypass_rotation_delay);
 
     assert_last_emitted_event(
         &env,
@@ -306,7 +307,7 @@ fn rotate_signers_with_enforce_rotation_delay() {
 
 #[test]
 #[should_panic(expected = "HostError: Error(Auth, InvalidAction)")] // Unauthorized
-fn rotate_signers_with_enforce_rotation_delay_fail_if_not_operator() {
+fn rotate_signers_bypass_rotation_delay_fail_if_not_operator() {
     let (env, contract_id, client) = setup_env();
     let operator = Address::generate(&env);
     let user = Address::generate(&env);
@@ -314,6 +315,7 @@ fn rotate_signers_with_enforce_rotation_delay_fail_if_not_operator() {
     let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
     let data_hash = get_rotation_hash(&env, new_signers.signers.clone());
     let proof = generate_proof(&env, data_hash.clone(), signers);
+    let bypass_rotation_delay = true;
 
     client
         .mock_auths(&[MockAuth {
@@ -321,11 +323,16 @@ fn rotate_signers_with_enforce_rotation_delay_fail_if_not_operator() {
             invoke: &MockAuthInvoke {
                 contract: &contract_id,
                 fn_name: "rotate_signers",
-                args: (new_signers.signers.clone(), proof.clone(), false).into_val(&env),
+                args: (
+                    new_signers.signers.clone(),
+                    proof.clone(),
+                    bypass_rotation_delay,
+                )
+                    .into_val(&env),
                 sub_invokes: &[],
             },
         }])
-        .rotate_signers(&new_signers.signers, &proof, &false);
+        .rotate_signers(&new_signers.signers, &proof, &bypass_rotation_delay);
 }
 
 #[test]

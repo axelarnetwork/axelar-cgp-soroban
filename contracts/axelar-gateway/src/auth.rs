@@ -1,10 +1,42 @@
 use axelar_soroban_interfaces::types::{ProofSignature, ProofSigner, WeightedSigner};
-use soroban_sdk::{crypto::Hash, panic_with_error, xdr::ToXdr, Bytes, BytesN, Env};
+use soroban_sdk::{crypto::Hash, panic_with_error, xdr::ToXdr, Bytes, BytesN, Env, Vec};
 
 use crate::error::AuthError;
 use crate::event;
 use crate::storage_types::DataKey;
 use axelar_soroban_interfaces::types::{Proof, WeightedSigners};
+
+pub fn initialize_auth(
+    env: Env,
+    domain_separator: BytesN<32>,
+    minimum_rotation_delay: u64,
+    previous_signer_retention: u64,
+    initial_signers: Vec<WeightedSigners>,
+) {
+    env.storage().instance().set(&DataKey::Epoch, &0_u64);
+
+    // TODO: Do we need to manually expose these in a query, or can it be read directly off of storage in Stellar?
+    env.storage().instance().set(
+        &DataKey::PreviousSignerRetention,
+        &previous_signer_retention,
+    );
+
+    env.storage()
+        .instance()
+        .set(&DataKey::DomainSeparator, &domain_separator);
+
+    env.storage()
+        .instance()
+        .set(&DataKey::MinimumRotationDelay, &minimum_rotation_delay);
+
+    if initial_signers.is_empty() {
+        panic_with_error!(env, AuthError::InvalidSigners);
+    }
+
+    for signers in initial_signers.into_iter() {
+        rotate_signers(&env, &signers, false);
+    }
+}
 
 pub fn validate_proof(env: &Env, data_hash: BytesN<32>, proof: Proof) -> bool {
     let signers_set = proof.weighted_signers();

@@ -4,7 +4,6 @@ use soroban_sdk::{
     contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, String, Vec,
 };
 
-use crate::error::AuthError;
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::types::CommandType;
 use crate::{auth, error::Error, event};
@@ -36,29 +35,13 @@ impl AxelarGatewayInterface for AxelarGateway {
 
         env.storage().instance().set(&DataKey::Operator, &operator);
 
-        env.storage().instance().set(&DataKey::Epoch, &0_u64);
-
-        // TODO: Do we need to manually expose these in a query, or can it be read directly off of storage in Stellar?
-        env.storage().instance().set(
-            &DataKey::PreviousSignerRetention,
-            &previous_signers_retention,
+        auth::initialize_auth(
+            env,
+            domain_separator,
+            minimum_rotation_delay,
+            previous_signers_retention,
+            initial_signers,
         );
-
-        env.storage()
-            .instance()
-            .set(&DataKey::DomainSeparator, &domain_separator);
-
-        env.storage()
-            .instance()
-            .set(&DataKey::MinimumRotationDelay, &minimum_rotation_delay);
-
-        if initial_signers.is_empty() {
-            panic_with_error!(env, AuthError::InvalidSigners);
-        }
-
-        for signers in initial_signers.into_iter() {
-            auth::rotate_signers(&env, &signers, false);
-        }
     }
 
     fn call_contract(
@@ -186,21 +169,21 @@ impl AxelarGatewayInterface for AxelarGateway {
         }
     }
 
-    // TODO: add docstring about how enforce_rotation_delay supposed to be used.
+    // TODO: add docstring about how bypass_rotation_delay supposed to be used.
     fn rotate_signers(
         env: Env,
         signers: WeightedSigners,
         proof: Proof,
-        enforce_rotation_delay: bool,
+        bypass_rotation_delay: bool,
     ) {
+        if bypass_rotation_delay {
+            Self::operator(&env).require_auth();
+        }
+
         let data_hash: BytesN<32> = env
             .crypto()
             .keccak256(&(CommandType::RotateSigners, signers.clone()).to_xdr(&env))
             .into();
-
-        if !enforce_rotation_delay {
-            Self::operator(&env).require_auth();
-        }
 
         if env
             .storage()
@@ -211,7 +194,7 @@ impl AxelarGatewayInterface for AxelarGateway {
         }
 
         let is_latest_signers = auth::validate_proof(&env, data_hash.clone(), proof);
-        if enforce_rotation_delay && !is_latest_signers {
+        if !bypass_rotation_delay && !is_latest_signers {
             panic_with_error!(env, Error::NotLatestSigners);
         }
 
@@ -219,7 +202,7 @@ impl AxelarGatewayInterface for AxelarGateway {
             .persistent()
             .set(&DataKey::RotationExecuted(data_hash), &true);
 
-        auth::rotate_signers(&env, &signers, enforce_rotation_delay);
+        auth::rotate_signers(&env, &signers, !bypass_rotation_delay);
     }
 
     fn transfer_operatorship(env: Env, new_operator: Address) {
