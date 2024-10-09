@@ -1,9 +1,15 @@
 #![cfg(test)]
 extern crate std;
 
-use axelar_soroban_std::{assert_last_emitted_event, testutils::assert_invocation};
+use axelar_soroban_interfaces::axelar_operators::OperatorError;
+use axelar_soroban_std::{
+    assert_contract_err, assert_last_emitted_event, assert_some, testutils::assert_invocation,
+};
 
-use crate::contract::{AxelarOperators, AxelarOperatorsClient};
+use crate::{
+    contract::{AxelarOperators, AxelarOperatorsClient},
+    storage_types::DataKey,
+};
 use soroban_sdk::{
     contract, contractimpl, symbol_short, testutils::Address as _, Address, Env, Vec,
 };
@@ -36,21 +42,31 @@ fn setup_env<'a>() -> (Env, Address, AxelarOperatorsClient<'a>, Address) {
 
 #[test]
 fn test_initialize() {
-    let (env, _, client, _) = setup_env();
+    let (env, contract_id, client, _) = setup_env();
     let user = Address::generate(&env);
 
     client.initialize(&user);
+
+    assert_some!(env.as_contract(&contract_id, || {
+        env.storage()
+            .instance()
+            .get::<DataKey, bool>(&DataKey::Initialized)
+    }));
+
+    assert_eq!(client.owner(), user);
 }
 
 #[test]
-#[should_panic(expected = "Already initialized")]
 fn fail_already_initialized() {
     let (env, _, client, _) = setup_env();
     let user = Address::generate(&env);
 
     client.initialize(&user);
 
-    client.initialize(&user);
+    assert_contract_err!(
+        client.try_initialize(&user),
+        OperatorError::AlreadyInitialized
+    );
 }
 
 #[test]
@@ -134,8 +150,10 @@ fn fail_add_operator_duplicate() {
     client.add_operator(&operator);
 
     // set existing operator as an operator, should panic
-    let res = client.try_add_operator(&operator);
-    assert!(res.is_err());
+    assert_contract_err!(
+        client.try_add_operator(&operator),
+        OperatorError::OperatorAlreadyAdded
+    );
 }
 
 #[test]
@@ -188,8 +206,10 @@ fn fail_remove_operator_non_existant() {
     assert!(!is_operator_initial);
 
     // remove operator that is not an operator, should panic
-    let res = client.try_remove_operator(&operator);
-    assert!(res.is_err());
+    assert_contract_err!(
+        client.try_remove_operator(&operator),
+        OperatorError::NotAnOperator
+    );
 }
 
 #[test]
@@ -228,9 +248,10 @@ fn fail_execute_not_operator() {
     client.add_operator(&operator);
 
     // call execute with a non-operator, should panic
-    let res = client.try_execute(&owner, &target, &symbol_short!("method"), &Vec::new(&env));
-
-    assert!(res.is_err());
+    assert_contract_err!(
+        client.try_execute(&owner, &target, &symbol_short!("method"), &Vec::new(&env)),
+        OperatorError::NotAnOperator
+    );
 }
 
 #[test]
@@ -253,4 +274,15 @@ fn fail_execute_when_target_panics() {
         &symbol_short!("failing"),
         &Vec::new(&env),
     );
+}
+
+#[test]
+fn fail_on_uninitialized() {
+    let (env, _, client, _) = setup_env();
+
+    let operator = Address::generate(&env);
+    assert_contract_err!(
+        client.try_add_operator(&operator),
+        OperatorError::NotInitialized
+    )
 }
