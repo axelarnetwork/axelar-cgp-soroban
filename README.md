@@ -31,15 +31,23 @@ cargo llvm-cov
 
 ## Coverage Report
 
+### Generate report
+
 ```bash
-cargo llvm-cov --html # or cargo llvm-cov --open
+cargo llvm-cov --html
+```
+
+### Generate and Open report
+
+```bash
+cargo llvm-cov --open
 ```
 
 ## Deploy
 
-- Check configuration for CLI and Identity before deployment: https://developers.stellar.org/docs/build/smart-contracts/getting-started/setup
+> Check configuration for CLI and Identity before deployment: https://developers.stellar.org/docs/build/smart-contracts/getting-started/setup
 
-#### Build, Optimize and Deploy contract:
+### Build, Optimize and Deploy contract:
 
 ```bash
 soroban contract build

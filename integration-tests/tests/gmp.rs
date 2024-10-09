@@ -4,7 +4,7 @@ extern crate std;
 use axelar_gateway::contract::{AxelarGateway, AxelarGatewayClient};
 use axelar_gateway::testutils::{generate_proof, get_approve_hash, initialize, TestSignerSet};
 use axelar_soroban_interfaces::types::Message;
-use axelar_soroban_std::assert_emitted_event;
+use axelar_soroban_std::assert_last_emitted_event;
 use soroban_sdk::{contract, contractimpl, log, symbol_short, Bytes};
 use soroban_sdk::{
     testutils::Address as _, testutils::BytesN as _, vec, Address, BytesN, Env, String,
@@ -111,9 +111,8 @@ fn test_gmp() {
 
     log!(env, "Confirming message from source Axelar gateway");
 
-    assert_emitted_event(
+    assert_last_emitted_event(
         &env,
-        -1,
         &source_gateway_client.address,
         (
             symbol_short!("called"),
@@ -152,9 +151,8 @@ fn test_gmp() {
 
     destination_app.execute(&message_id, &source_chain, &source_address, &payload);
 
-    assert_emitted_event(
+    assert_last_emitted_event(
         &env,
-        -1,
         &destination_app_id,
         (symbol_short!("executed"),),
         (payload,),

@@ -62,3 +62,11 @@ pub fn assert_emitted_event<U, V>(
     assert_eq!(event.1, topics.into_val(env));
     assert_eq!(vec![env, event.2], vec![env, data.into_val(env)]);
 }
+
+pub fn assert_last_emitted_event<U, V>(env: &Env, contract_id: &Address, topics: U, data: V)
+where
+    U: IntoVal<Env, Vec<Val>>,
+    V: IntoVal<Env, Val>,
+{
+    assert_emitted_event(&env, -1, contract_id, topics, data);
+}

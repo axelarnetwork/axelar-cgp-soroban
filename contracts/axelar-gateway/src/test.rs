@@ -2,7 +2,7 @@
 extern crate std;
 
 use axelar_soroban_interfaces::types::Message;
-use axelar_soroban_std::{assert_emitted_event, assert_invocation};
+use axelar_soroban_std::{assert_invocation, assert_last_emitted_event};
 
 use crate::testutils::{
     generate_proof, generate_signer_set, generate_test_message, get_approve_hash,
@@ -63,9 +63,8 @@ fn call_contract() {
         ),
     );
 
-    assert_emitted_event(
+    assert_last_emitted_event(
         &env,
-        0,
         &contract_id,
         (
             symbol_short!("called"),
@@ -137,9 +136,8 @@ fn approve_message() {
     let proof = generate_proof(&env, data_hash, signers);
     client.approve_messages(&messages, &proof);
 
-    assert_emitted_event(
+    assert_last_emitted_event(
         &env,
-        -1,
         &contract_id,
         (
             symbol_short!("approved"),
@@ -168,9 +166,8 @@ fn approve_message() {
     );
     assert!(approved);
 
-    assert_emitted_event(
+    assert_last_emitted_event(
         &env,
-        -1,
         &contract_id,
         (symbol_short!("executed"), message_id.clone()),
         (),
@@ -240,9 +237,8 @@ fn rotate_signers() {
     let proof = generate_proof(&env, data_hash, signers);
     client.rotate_signers(&new_signers.signer_set, &proof);
 
-    assert_emitted_event(
+    assert_last_emitted_event(
         &env,
-        -1,
         &contract_id,
         (symbol_short!("rotated"),),
         (new_signers.signer_set.clone(),),
@@ -263,9 +259,8 @@ fn rotate_signers() {
     let proof = generate_proof(&env, data_hash, new_signers);
     client.approve_messages(&messages, &proof);
 
-    assert_emitted_event(
+    assert_last_emitted_event(
         &env,
-        -1,
         &contract_id,
         (
             symbol_short!("approved"),
@@ -299,9 +294,8 @@ fn transfer_operatorship() {
         }])
         .transfer_operatorship(&new_operator);
 
-    assert_emitted_event(
+    assert_last_emitted_event(
         &env,
-        -1,
         &contract_id,
         (
             String::from_str(&env, "transferred"),
