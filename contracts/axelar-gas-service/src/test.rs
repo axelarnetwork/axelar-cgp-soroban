@@ -109,8 +109,7 @@ fn fail_already_initialized() {
 }
 
 #[test]
-/// Ensure paying gas fails when gas_amount <= 0.
-fn fail_pay_gas_invalid_amount() {
+fn fail_pay_gas_zero_gas_amount() {
     let (env, contract_id, _gas_collector, client) = setup_env();
 
     let asset = env.register_stellar_asset_contract_v2(Address::generate(&env));
