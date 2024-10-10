@@ -1,31 +1,32 @@
-use soroban_sdk::{contract, contractimpl, panic_with_error, token, Address, Bytes, Env, String};
+use soroban_sdk::{contract, contractimpl, token, Address, Bytes, Env, String};
 
-use axelar_soroban_std::types::Token;
+use axelar_soroban_std::{ensure, types::Token};
 
+use crate::event;
 use crate::storage_types::DataKey;
-use crate::{error::Error, event};
-use axelar_soroban_interfaces::axelar_gas_service::AxelarGasServiceInterface;
+use axelar_soroban_interfaces::axelar_gas_service::{AxelarGasServiceInterface, GasServiceError};
 
 #[contract]
 pub struct AxelarGasService;
 
 #[contractimpl]
 impl AxelarGasServiceInterface for AxelarGasService {
-    fn initialize(env: Env, gas_collector: Address) {
-        if env
-            .storage()
-            .instance()
-            .get(&DataKey::Initialized)
-            .unwrap_or(false)
-        {
-            panic!("Already initialized");
-        }
+    fn initialize(env: Env, gas_collector: Address) -> Result<(), GasServiceError> {
+        ensure!(
+            env.storage()
+                .instance()
+                .get::<DataKey, bool>(&DataKey::Initialized)
+                .is_none(),
+            GasServiceError::AlreadyInitialized
+        );
 
         env.storage().instance().set(&DataKey::Initialized, &true);
 
         env.storage()
             .instance()
             .set(&DataKey::GasCollector, &gas_collector);
+
+        Ok(())
     }
 
     fn pay_gas_for_contract_call(
@@ -36,12 +37,10 @@ impl AxelarGasServiceInterface for AxelarGasService {
         payload: Bytes,
         refund_address: Address,
         token: Token,
-    ) {
+    ) -> Result<(), GasServiceError> {
         sender.require_auth();
 
-        if token.amount <= 0 {
-            panic_with_error!(env, Error::InvalidAmount);
-        }
+        ensure!(token.amount > 0, GasServiceError::InvalidAmount);
 
         token::Client::new(&env, &token.address).transfer_from(
             &env.current_contract_address(),
@@ -59,40 +58,47 @@ impl AxelarGasServiceInterface for AxelarGasService {
             refund_address,
             token,
         );
+
+        Ok(())
     }
 
-    fn collect_fees(env: Env, receiver: Address, token: Token) {
+    fn collect_fees(env: Env, receiver: Address, token: Token) -> Result<(), GasServiceError> {
         let gas_collector: Address = env
             .storage()
             .instance()
             .get(&DataKey::GasCollector)
-            .unwrap();
+            .ok_or(GasServiceError::NotInitialized)?;
 
         gas_collector.require_auth();
 
-        if token.amount <= 0 {
-            panic_with_error!(env, Error::InvalidAmount);
-        }
+        ensure!(token.amount > 0, GasServiceError::InvalidAmount);
 
         let token_client = token::Client::new(&env, &token.address);
 
         let contract_token_balance = token_client.balance(&env.current_contract_address());
 
-        if contract_token_balance >= token.amount {
-            token_client.transfer(&env.current_contract_address(), &receiver, &token.amount)
-        } else {
-            panic_with_error!(env, Error::InsufficientBalance);
-        }
+        ensure!(
+            contract_token_balance >= token.amount,
+            GasServiceError::InsufficientBalance
+        );
+        token_client.transfer(&env.current_contract_address(), &receiver, &token.amount);
 
         event::fee_collected(&env, gas_collector, token);
+
+        Ok(())
     }
 
-    fn refund(env: Env, message_id: String, receiver: Address, token: Token) {
+    fn refund(
+        env: Env,
+        message_id: String,
+        receiver: Address,
+        token: Token,
+    ) -> Result<(), GasServiceError> {
         let gas_collector: Address = env
             .storage()
             .instance()
             .get(&DataKey::GasCollector)
-            .unwrap();
+            .ok_or(GasServiceError::NotInitialized)?;
 
         gas_collector.require_auth();
 
@@ -103,5 +109,7 @@ impl AxelarGasServiceInterface for AxelarGasService {
         );
 
         event::refunded(&env, message_id, receiver, token);
+
+        Ok(())
     }
 }
