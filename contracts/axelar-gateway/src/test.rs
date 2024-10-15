@@ -168,8 +168,13 @@ fn approve_message() {
     assert_last_emitted_event(
         &env,
         &contract_id,
-        (symbol_short!("executed"), message_id.clone()),
-        (),
+        (
+            symbol_short!("executed"),
+            message_id.clone(),
+            contract_address.clone(),
+            payload_hash.clone(),
+        ),
+        (source_chain.clone(), source_address.clone()),
     );
 
     let is_approved = client.is_message_approved(
