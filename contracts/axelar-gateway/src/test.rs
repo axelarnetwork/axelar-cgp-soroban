@@ -239,10 +239,7 @@ fn rotate_signers() {
         &env,
         &contract_id,
         (symbol_short!("rotated"),),
-        (
-            new_signers.signers.get_hash(&env),
-            new_signers.signers.clone(),
-        ),
+        new_signers.signers.get_hash(&env),
     );
 
     // test approve with new signer set
@@ -304,7 +301,7 @@ fn rotate_signers_bypass_rotation_delay() {
         &env,
         &contract_id,
         (symbol_short!("rotated"),),
-        (new_signers.signers.get_hash(&env), new_signers.signers),
+        new_signers.signers.get_hash(&env),
     );
 }
 

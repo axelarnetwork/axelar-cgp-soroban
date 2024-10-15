@@ -99,7 +99,7 @@ pub fn rotate_signers(env: &Env, new_signers: &WeightedSigners, enforce_rotation
         &new_epoch,
     );
 
-    event::rotate_signers(env, new_signers_hash, new_signers.clone());
+    event::rotate_signers(env, new_signers_hash);
 }
 
 fn message_hash_to_sign(env: &Env, signers_hash: BytesN<32>, data_hash: BytesN<32>) -> Hash<32> {
