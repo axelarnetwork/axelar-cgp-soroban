@@ -1,7 +1,6 @@
-use axelar_soroban_interfaces::types::{ProofSignature, ProofSigner, WeightedSigner};
+use axelar_soroban_interfaces::{axelar_gateway::AuthError, types::{ProofSignature, ProofSigner, WeightedSigner}};
 use soroban_sdk::{crypto::Hash, panic_with_error, xdr::ToXdr, Bytes, BytesN, Env, Vec};
 
-use crate::error::AuthError;
 use crate::event;
 use crate::storage_types::DataKey;
 use axelar_soroban_interfaces::types::{Proof, WeightedSigners};

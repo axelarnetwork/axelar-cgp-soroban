@@ -2,6 +2,36 @@ use soroban_sdk::{contractclient, Address, Bytes, BytesN, Env, String, Vec};
 
 use crate::types::{Message, Proof, WeightedSigners};
 
+use soroban_sdk::contracterror;
+
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum GatewayError {
+    Uninitialized = 1,
+    EmptyMessages = 2,
+    RotationAlreadyExecuted = 3,
+    NotLatestSigners = 4,
+    InvalidOperators = 5,
+    NotInitialized = 6,
+    AlreadyInitialized = 7,
+}
+
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum AuthError {
+    InvalidThreshold = 1,
+    DuplicateOperators = 2,
+    MalformedSigners = 3,
+    LowSignaturesWeight = 4,
+    InvalidProof = 5,
+    InvalidSigners = 6,
+    InsufficientRotationDelay = 7,
+    InvalidSignatures = 8,
+    InvalidWeights = 9,
+}
+
 /// Interface for the Axelar Gateway.
 #[contractclient(name = "AxelarGatewayClient")]
 pub trait AxelarGatewayInterface {
@@ -13,7 +43,7 @@ pub trait AxelarGatewayInterface {
         previous_signers_retention: u64,
         minimum_rotation_delay: u64,
         initial_signers: Vec<WeightedSigners>,
-    );
+    ) -> Result<(), GatewayError>;
 
     /// Call a contract on another chain with the given payload. The destination address can validate the contract call on the destination gateway.
     fn call_contract(
@@ -24,7 +54,7 @@ pub trait AxelarGatewayInterface {
         payload: Bytes,
     );
 
-    fn approve_messages(env: Env, messages: Vec<Message>, proof: Proof);
+    fn approve_messages(env: Env, messages: Vec<Message>, proof: Proof) -> Result<(), GatewayError>;
 
     /// Validate if a contract call with the given payload BytesN<32> and source caller info is approved,
     /// preventing re-validation (i.e distinct contract calls can be validated at most once).
@@ -56,9 +86,9 @@ pub trait AxelarGatewayInterface {
         signers: WeightedSigners,
         proof: Proof,
         enforce_rotation_delay: bool,
-    );
+    ) -> Result<(), GatewayError>;
 
-    fn transfer_operatorship(env: Env, new_operator: Address);
+    fn transfer_operatorship(env: Env, new_operator: Address) -> Result<(), GatewayError>;
 
-    fn operator(env: &Env) -> Address;
+    fn operator(env: &Env) -> Result<Address, GatewayError>;
 }
