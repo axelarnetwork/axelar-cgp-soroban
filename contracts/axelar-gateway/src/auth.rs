@@ -1,5 +1,5 @@
 use axelar_soroban_interfaces::{
-    axelar_gateway::AuthError,
+    axelar_gateway::GatewayAuthError,
     types::{ProofSignature, ProofSigner, WeightedSigner},
 };
 use axelar_soroban_std::ensure;
@@ -15,7 +15,7 @@ pub fn initialize_auth(
     minimum_rotation_delay: u64,
     previous_signer_retention: u64,
     initial_signers: Vec<WeightedSigners>,
-) -> Result<(), AuthError> {
+) -> Result<(), GatewayAuthError> {
     env.storage().instance().set(&DataKey::Epoch, &0_u64);
 
     // TODO: Do we need to manually expose these in a query, or can it be read directly off of storage in Stellar?
@@ -32,7 +32,7 @@ pub fn initialize_auth(
         .instance()
         .set(&DataKey::MinimumRotationDelay, &minimum_rotation_delay);
 
-    ensure!(!initial_signers.is_empty(), AuthError::InvalidSigners);
+    ensure!(!initial_signers.is_empty(), GatewayAuthError::InvalidSigners);
 
     for signers in initial_signers.into_iter() {
         rotate_signers(&env, &signers, false)?;
@@ -41,7 +41,7 @@ pub fn initialize_auth(
     Ok(())
 }
 
-pub fn validate_proof(env: &Env, data_hash: BytesN<32>, proof: Proof) -> Result<bool, AuthError> {
+pub fn validate_proof(env: &Env, data_hash: BytesN<32>, proof: Proof) -> Result<bool, GatewayAuthError> {
     let signers_set = proof.weighted_signers();
 
     let signers_hash: BytesN<32> = env.crypto().keccak256(&signers_set.to_xdr(env)).into();
@@ -52,7 +52,7 @@ pub fn validate_proof(env: &Env, data_hash: BytesN<32>, proof: Proof) -> Result<
         .get(&DataKey::EpochBySignerHash(signers_hash.clone()))
         .unwrap_or(0);
 
-    ensure!(signers_epoch != 0, AuthError::InvalidSigners);
+    ensure!(signers_epoch != 0, GatewayAuthError::InvalidSigners);
 
     let current_epoch: u64 = epoch(env)?;
 
@@ -62,18 +62,18 @@ pub fn validate_proof(env: &Env, data_hash: BytesN<32>, proof: Proof) -> Result<
         .storage()
         .instance()
         .get(&DataKey::PreviousSignerRetention)
-        .ok_or(AuthError::NotInitialized)?;
+        .ok_or(GatewayAuthError::NotInitialized)?;
 
     ensure!(
         current_epoch - signers_epoch <= previous_signers_retention,
-        AuthError::InvalidSigners
+        GatewayAuthError::InvalidSigners
     );
 
     let msg_hash = message_hash_to_sign(env, signers_hash, data_hash);
 
     ensure!(
         validate_signatures(env, msg_hash, proof),
-        AuthError::InvalidSignatures
+        GatewayAuthError::InvalidSignatures
     );
     Ok(is_latest_signers)
 }
@@ -82,7 +82,7 @@ pub fn rotate_signers(
     env: &Env,
     new_signers: &WeightedSigners,
     enforce_rotation_delay: bool,
-) -> Result<(), AuthError> {
+) -> Result<(), GatewayAuthError> {
     validate_signers(env, new_signers)?;
 
     update_rotation_timestamp(env, enforce_rotation_delay)?;
@@ -124,7 +124,7 @@ fn message_hash_to_sign(env: &Env, signers_hash: BytesN<32>, data_hash: BytesN<3
     env.crypto().keccak256(&msg)
 }
 
-fn update_rotation_timestamp(env: &Env, enforce_rotation_delay: bool) -> Result<(), AuthError> {
+fn update_rotation_timestamp(env: &Env, enforce_rotation_delay: bool) -> Result<(), GatewayAuthError> {
     let minimum_rotation_delay: u64 = env
         .storage()
         .instance()
@@ -142,7 +142,7 @@ fn update_rotation_timestamp(env: &Env, enforce_rotation_delay: bool) -> Result<
     ensure!(
         !enforce_rotation_delay
             || (current_timestamp - last_rotation_timestamp >= minimum_rotation_delay),
-        AuthError::InsufficientRotationDelay
+        GatewayAuthError::InsufficientRotationDelay
     );
 
     env.storage()
@@ -179,10 +179,10 @@ fn validate_signatures(env: &Env, msg_hash: Hash<32>, proof: Proof) -> bool {
 
 /// Check if signer set is valid, i.e signer/pub key hash are in sorted order,
 /// weights are non-zero and sum to at least threshold
-fn validate_signers(env: &Env, weighted_signers: &WeightedSigners) -> Result<(), AuthError> {
+fn validate_signers(env: &Env, weighted_signers: &WeightedSigners) -> Result<(), GatewayAuthError> {
     ensure!(
         !weighted_signers.signers.is_empty(),
-        AuthError::InvalidSigners
+        GatewayAuthError::InvalidSigners
     );
 
     // TODO: what's the min address/hash?
@@ -190,9 +190,9 @@ fn validate_signers(env: &Env, weighted_signers: &WeightedSigners) -> Result<(),
     let mut total_weight = 0u128;
 
     for signer in weighted_signers.signers.iter() {
-        ensure!(previous_signer < signer.signer, AuthError::InvalidSigners);
+        ensure!(previous_signer < signer.signer, GatewayAuthError::InvalidSigners);
 
-        ensure!(signer.weight != 0, AuthError::InvalidWeights);
+        ensure!(signer.weight != 0, GatewayAuthError::InvalidWeights);
 
         previous_signer = signer.signer;
         total_weight = total_weight.checked_add(signer.weight).unwrap();
@@ -201,14 +201,14 @@ fn validate_signers(env: &Env, weighted_signers: &WeightedSigners) -> Result<(),
     let threshold = weighted_signers.threshold;
     ensure!(
         threshold != 0 && total_weight >= threshold,
-        AuthError::InvalidThreshold
+        GatewayAuthError::InvalidThreshold
     );
     Ok(())
 }
 
-fn epoch(env: &Env) -> Result<u64, AuthError> {
+fn epoch(env: &Env) -> Result<u64, GatewayAuthError> {
     env.storage()
         .instance()
         .get(&DataKey::Epoch)
-        .ok_or(AuthError::NotInitialized)
+        .ok_or(GatewayAuthError::NotInitialized)
 }

@@ -7,33 +7,21 @@ use soroban_sdk::contracterror;
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
-pub enum GatewayError {
+pub enum GatewayAuthError {
+    // General
     NotInitialized = 1,
-    EmptyMessages = 2,
-    RotationAlreadyExecuted = 3,
-    NotLatestSigners = 4,
-    // REVIEW: unused
-    InvalidOperators = 5,
-    AlreadyInitialized = 6,
-    ValidationFailed = 7,
-    RotationFailed = 8,
-    AuthInitializationFailed = 9,
-}
-
-#[contracterror]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
-#[repr(u32)]
-pub enum AuthError {
-    InvalidThreshold = 1,
-    DuplicateOperators = 2,
-    MalformedSigners = 3,
-    LowSignaturesWeight = 4,
-    InvalidProof = 5,
-    InvalidSigners = 6,
-    InsufficientRotationDelay = 7,
-    InvalidSignatures = 8,
-    InvalidWeights = 9,
-    NotInitialized = 10,
+    AlreadyInitialized = 2,
+    // Auth
+    InvalidThreshold = 3,
+    InvalidProof = 4,
+    InvalidSigners = 5,
+    InsufficientRotationDelay = 6,
+    InvalidSignatures = 7,
+    InvalidWeights = 8,
+    // Gateway
+    EmptyMessages = 9,
+    RotationAlreadyExecuted = 10,
+    NotLatestSigners = 11,
 }
 
 /// Interface for the Axelar Gateway.
@@ -47,7 +35,7 @@ pub trait AxelarGatewayInterface {
         previous_signers_retention: u64,
         minimum_rotation_delay: u64,
         initial_signers: Vec<WeightedSigners>,
-    ) -> Result<(), GatewayError>;
+    ) -> Result<(), GatewayAuthError>;
 
     /// Call a contract on another chain with the given payload. The destination address can validate the contract call on the destination gateway.
     fn call_contract(
@@ -58,7 +46,7 @@ pub trait AxelarGatewayInterface {
         payload: Bytes,
     );
 
-    fn approve_messages(env: Env, messages: Vec<Message>, proof: Proof) -> Result<(), GatewayError>;
+    fn approve_messages(env: Env, messages: Vec<Message>, proof: Proof) -> Result<(), GatewayAuthError>;
 
     /// Validate if a contract call with the given payload BytesN<32> and source caller info is approved,
     /// preventing re-validation (i.e distinct contract calls can be validated at most once).
@@ -90,9 +78,9 @@ pub trait AxelarGatewayInterface {
         signers: WeightedSigners,
         proof: Proof,
         enforce_rotation_delay: bool,
-    ) -> Result<(), GatewayError>;
+    ) -> Result<(), GatewayAuthError>;
 
-    fn transfer_operatorship(env: Env, new_operator: Address) -> Result<(), GatewayError>;
+    fn transfer_operatorship(env: Env, new_operator: Address) -> Result<(), GatewayAuthError>;
 
-    fn operator(env: &Env) -> Result<Address, GatewayError>;
+    fn operator(env: &Env) -> Result<Address, GatewayAuthError>;
 }

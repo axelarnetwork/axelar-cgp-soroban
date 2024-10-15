@@ -6,7 +6,7 @@ use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, V
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::types::CommandType;
 use crate::{auth, event};
-use axelar_soroban_interfaces::axelar_gateway::GatewayError;
+use axelar_soroban_interfaces::axelar_gateway::GatewayAuthError;
 use axelar_soroban_interfaces::{axelar_gateway::AxelarGatewayInterface, types::WeightedSigners};
 
 #[contract]
@@ -21,13 +21,13 @@ impl AxelarGatewayInterface for AxelarGateway {
         minimum_rotation_delay: u64,
         previous_signers_retention: u64,
         initial_signers: Vec<WeightedSigners>,
-    ) -> Result<(), GatewayError> {
+    ) -> Result<(), GatewayAuthError> {
         ensure!(
             env.storage()
                 .instance()
                 .get::<DataKey, bool>(&DataKey::Initialized)
                 .is_none(),
-            GatewayError::AlreadyInitialized
+            GatewayAuthError::AlreadyInitialized
         );
 
         env.storage().instance().set(&DataKey::Initialized, &true);
@@ -40,8 +40,7 @@ impl AxelarGatewayInterface for AxelarGateway {
             minimum_rotation_delay,
             previous_signers_retention,
             initial_signers,
-        )
-        .map_err(|_| GatewayError::AuthInitializationFailed)?;
+        )?;
 
         Ok(())
     }
@@ -138,15 +137,15 @@ impl AxelarGatewayInterface for AxelarGateway {
         env: Env,
         messages: soroban_sdk::Vec<axelar_soroban_interfaces::types::Message>,
         proof: axelar_soroban_interfaces::types::Proof,
-    ) -> Result<(), GatewayError> {
+    ) -> Result<(), GatewayAuthError> {
         let data_hash: BytesN<32> = env
             .crypto()
             .keccak256(&(CommandType::ApproveMessages, messages.clone()).to_xdr(&env))
             .into();
 
-        auth::validate_proof(&env, data_hash.clone(), proof.clone()).map_err(|_| GatewayError::ValidationFailed)?;
+        auth::validate_proof(&env, data_hash.clone(), proof.clone())?;
 
-        ensure!(!messages.is_empty(), GatewayError::EmptyMessages);
+        ensure!(!messages.is_empty(), GatewayAuthError::EmptyMessages);
 
         for message in messages.into_iter() {
             let key = MessageApprovalKey {
@@ -177,7 +176,7 @@ impl AxelarGatewayInterface for AxelarGateway {
         signers: WeightedSigners,
         proof: Proof,
         bypass_rotation_delay: bool,
-    ) -> Result<(), GatewayError> {
+    ) -> Result<(), GatewayAuthError> {
         if bypass_rotation_delay {
             Self::operator(&env)?.require_auth();
         }
@@ -191,14 +190,13 @@ impl AxelarGatewayInterface for AxelarGateway {
             !env.storage()
                 .persistent()
                 .has(&DataKey::RotationExecuted(data_hash.clone())),
-            GatewayError::RotationAlreadyExecuted
+            GatewayAuthError::RotationAlreadyExecuted
         );
 
-        let is_latest_signers = auth::validate_proof(&env, data_hash.clone(), proof)
-            .map_err(|_| GatewayError::ValidationFailed)?;
+        let is_latest_signers = auth::validate_proof(&env, data_hash.clone(), proof)?;
         ensure!(
             bypass_rotation_delay || is_latest_signers,
-            GatewayError::NotLatestSigners
+            GatewayAuthError::NotLatestSigners
         );
 
         env.storage()
@@ -206,10 +204,9 @@ impl AxelarGatewayInterface for AxelarGateway {
             .set(&DataKey::RotationExecuted(data_hash), &true);
 
         auth::rotate_signers(&env, &signers, !bypass_rotation_delay)
-            .map_err(|_| GatewayError::RotationFailed)
     }
 
-    fn transfer_operatorship(env: Env, new_operator: Address) -> Result<(), GatewayError> {
+    fn transfer_operatorship(env: Env, new_operator: Address) -> Result<(), GatewayAuthError> {
         let operator: Address = Self::operator(&env)?;
         operator.require_auth();
 
@@ -221,11 +218,11 @@ impl AxelarGatewayInterface for AxelarGateway {
         Ok(())
     }
 
-    fn operator(env: &Env) -> Result<Address, GatewayError> {
+    fn operator(env: &Env) -> Result<Address, GatewayAuthError> {
         env.storage()
             .instance()
             .get(&DataKey::Operator)
-            .ok_or(GatewayError::NotInitialized)
+            .ok_or(GatewayAuthError::NotInitialized)
     }
 }
 
