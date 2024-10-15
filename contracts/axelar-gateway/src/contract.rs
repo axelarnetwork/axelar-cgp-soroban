@@ -40,7 +40,8 @@ impl AxelarGatewayInterface for AxelarGateway {
             minimum_rotation_delay,
             previous_signers_retention,
             initial_signers,
-        );
+        )
+        .map_err(|_| GatewayError::AuthInitializationFailed)?;
 
         Ok(())
     }
@@ -143,7 +144,7 @@ impl AxelarGatewayInterface for AxelarGateway {
             .keccak256(&(CommandType::ApproveMessages, messages.clone()).to_xdr(&env))
             .into();
 
-        auth::validate_proof(&env, data_hash.clone(), proof.clone());
+        auth::validate_proof(&env, data_hash.clone(), proof.clone()).map_err(|_| GatewayError::ValidationFailed)?;
 
         ensure!(!messages.is_empty(), GatewayError::EmptyMessages);
 
@@ -193,7 +194,8 @@ impl AxelarGatewayInterface for AxelarGateway {
             GatewayError::RotationAlreadyExecuted
         );
 
-        let is_latest_signers = auth::validate_proof(&env, data_hash.clone(), proof);
+        let is_latest_signers = auth::validate_proof(&env, data_hash.clone(), proof)
+            .map_err(|_| GatewayError::ValidationFailed)?;
         ensure!(
             bypass_rotation_delay || is_latest_signers,
             GatewayError::NotLatestSigners
@@ -203,8 +205,8 @@ impl AxelarGatewayInterface for AxelarGateway {
             .persistent()
             .set(&DataKey::RotationExecuted(data_hash), &true);
 
-        auth::rotate_signers(&env, &signers, !bypass_rotation_delay);
-        Ok(())
+        auth::rotate_signers(&env, &signers, !bypass_rotation_delay)
+            .map_err(|_| GatewayError::RotationFailed)
     }
 
     fn transfer_operatorship(env: Env, new_operator: Address) -> Result<(), GatewayError> {

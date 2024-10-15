@@ -8,13 +8,16 @@ use soroban_sdk::contracterror;
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
 pub enum GatewayError {
-    Uninitialized = 1,
+    NotInitialized = 1,
     EmptyMessages = 2,
     RotationAlreadyExecuted = 3,
     NotLatestSigners = 4,
+    // REVIEW: unused
     InvalidOperators = 5,
-    NotInitialized = 6,
-    AlreadyInitialized = 7,
+    AlreadyInitialized = 6,
+    ValidationFailed = 7,
+    RotationFailed = 8,
+    AuthInitializationFailed = 9,
 }
 
 #[contracterror]
@@ -30,6 +33,7 @@ pub enum AuthError {
     InsufficientRotationDelay = 7,
     InvalidSignatures = 8,
     InvalidWeights = 9,
+    NotInitialized = 10,
 }
 
 /// Interface for the Axelar Gateway.
