@@ -1,4 +1,4 @@
-use axelar_soroban_interfaces::types::{Message, WeightedSigners};
+use axelar_soroban_interfaces::types::Message;
 use soroban_sdk::{symbol_short, Address, Bytes, BytesN, Env, String};
 
 pub(crate) fn call_contract(
@@ -24,9 +24,9 @@ pub(crate) fn execute_contract_call(env: &Env, message: Message) {
     env.events().publish(topics, message);
 }
 
-pub(crate) fn rotate_signers(env: &Env, signers: WeightedSigners) {
+pub(crate) fn rotate_signers(env: &Env, signers_hash: BytesN<32>) {
     let topics = (symbol_short!("rotated"),);
-    env.events().publish(topics, signers);
+    env.events().publish(topics, signers_hash);
 }
 
 pub(crate) fn transfer_operatorship(env: &Env, previous_operator: Address, new_operator: Address) {

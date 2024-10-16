@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, Address, BytesN, String, Vec};
+use soroban_sdk::{contracttype, xdr::ToXdr, Address, BytesN, Env, String, Vec};
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -54,6 +54,13 @@ pub struct Message {
     pub source_address: String,
     pub contract_address: Address,
     pub payload_hash: BytesN<32>,
+}
+
+impl WeightedSigners {
+    // Get hash of WeightedSigners
+    pub fn hash(&self, env: &Env) -> BytesN<32> {
+        env.crypto().keccak256(&self.clone().to_xdr(env)).into()
+    }
 }
 
 impl Proof {
