@@ -61,4 +61,6 @@ pub trait AxelarGatewayInterface {
     fn transfer_operatorship(env: Env, new_operator: Address);
 
     fn operator(env: &Env) -> Address;
+
+    fn epoch(env: &Env) -> u64;
 }

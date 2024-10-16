@@ -219,6 +219,10 @@ impl AxelarGatewayInterface for AxelarGateway {
     fn operator(env: &Env) -> Address {
         env.storage().instance().get(&DataKey::Operator).unwrap()
     }
+
+    fn epoch(env: &Env) -> u64 {
+        auth::epoch(env)
+    }
 }
 
 impl AxelarGateway {

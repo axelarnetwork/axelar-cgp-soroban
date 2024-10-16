@@ -99,7 +99,11 @@ pub fn rotate_signers(env: &Env, new_signers: &WeightedSigners, enforce_rotation
         &new_epoch,
     );
 
-    event::rotate_signers(env, new_signers_hash);
+    event::rotate_signers(env, new_signers_hash, new_epoch);
+}
+
+pub fn epoch(env: &Env) -> u64 {
+    env.storage().instance().get(&DataKey::Epoch).unwrap()
 }
 
 fn message_hash_to_sign(env: &Env, signers_hash: BytesN<32>, data_hash: BytesN<32>) -> Hash<32> {
@@ -197,8 +201,4 @@ fn validate_signers(env: &Env, weighted_signers: &WeightedSigners) {
     if threshold == 0 || total_weight < threshold {
         panic_with_error!(env, AuthError::InvalidThreshold);
     }
-}
-
-fn epoch(env: &Env) -> u64 {
-    env.storage().instance().get(&DataKey::Epoch).unwrap()
 }
