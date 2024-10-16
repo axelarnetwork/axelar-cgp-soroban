@@ -58,7 +58,7 @@ pub struct Message {
 
 impl WeightedSigners {
     // Get hash of WeightedSigners
-    pub fn get_hash(&self, env: &Env) -> BytesN<32> {
+    pub fn hash(&self, env: &Env) -> BytesN<32> {
         env.crypto().keccak256(&self.clone().to_xdr(env)).into()
     }
 }
