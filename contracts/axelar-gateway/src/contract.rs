@@ -118,13 +118,13 @@ impl AxelarGatewayInterface for AxelarGateway {
             payload_hash,
         };
 
-        if message_approval == Self::message_approval_hash(&env, message) {
+        if message_approval == Self::message_approval_hash(&env, message.clone()) {
             env.storage().persistent().set(
                 &DataKey::MessageApproval(key),
                 &MessageApprovalValue::Executed,
             );
 
-            event::execute_contract_call(&env, message_id);
+            event::execute_contract_call(&env, message);
 
             return true;
         }
