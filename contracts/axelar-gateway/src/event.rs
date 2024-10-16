@@ -15,25 +15,13 @@ pub(crate) fn call_contract(
 }
 
 pub(crate) fn approve_message(env: &Env, message: Message) {
-    let topics = (
-        symbol_short!("approved"),
-        message.message_id,
-        message.contract_address,
-        message.payload_hash,
-    );
-    env.events()
-        .publish(topics, (message.source_chain, message.source_address));
+    let topics = (symbol_short!("approved"),);
+    env.events().publish(topics, message);
 }
 
 pub(crate) fn execute_contract_call(env: &Env, message: Message) {
-    let topics = (
-        symbol_short!("executed"),
-        message.message_id,
-        message.contract_address,
-        message.payload_hash,
-    );
-    env.events()
-        .publish(topics, (message.source_chain, message.source_address));
+    let topics = (symbol_short!("executed"),);
+    env.events().publish(topics, message);
 }
 
 pub(crate) fn rotate_signers(env: &Env, signers: WeightedSigners) {

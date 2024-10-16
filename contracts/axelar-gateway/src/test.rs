@@ -138,13 +138,8 @@ fn approve_message() {
     assert_last_emitted_event(
         &env,
         &contract_id,
-        (
-            symbol_short!("approved"),
-            message_id.clone(),
-            contract_address.clone(),
-            payload_hash.clone(),
-        ),
-        (source_chain.clone(), source_address.clone()),
+        (symbol_short!("approved"),),
+        message.clone(),
     );
 
     let is_approved = client.is_message_approved(
@@ -168,13 +163,8 @@ fn approve_message() {
     assert_last_emitted_event(
         &env,
         &contract_id,
-        (
-            symbol_short!("executed"),
-            message_id.clone(),
-            contract_address.clone(),
-            payload_hash.clone(),
-        ),
-        (source_chain.clone(), source_address.clone()),
+        (symbol_short!("executed"),),
+        message.clone(),
     );
 
     let is_approved = client.is_message_approved(
@@ -249,30 +239,12 @@ fn rotate_signers() {
 
     // test approve with new signer set
     let (message, _) = generate_test_message(&env);
-    let Message {
-        message_id,
-        source_chain,
-        source_address,
-        contract_address,
-        payload_hash,
-    } = message.clone();
-
     let messages = vec![&env, message.clone()];
     let data_hash = get_approve_hash(&env, messages.clone());
     let proof = generate_proof(&env, data_hash, new_signers);
     client.approve_messages(&messages, &proof);
 
-    assert_last_emitted_event(
-        &env,
-        &contract_id,
-        (
-            symbol_short!("approved"),
-            message_id.clone(),
-            contract_address,
-            payload_hash,
-        ),
-        (source_chain, source_address),
-    );
+    assert_last_emitted_event(&env, &contract_id, (symbol_short!("approved"),), message);
 }
 
 #[test]
