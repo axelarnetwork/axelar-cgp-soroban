@@ -143,7 +143,7 @@ impl AxelarGatewayInterface for AxelarGateway {
             .keccak256(&(CommandType::ApproveMessages, messages.clone()).to_xdr(&env))
             .into();
 
-        auth::validate_proof(&env, data_hash.clone(), proof.clone())?;
+        auth::validate_proof(&env, &data_hash, proof.clone())?;
 
         ensure!(!messages.is_empty(), GatewayAuthError::EmptyMessages);
 
@@ -193,7 +193,7 @@ impl AxelarGatewayInterface for AxelarGateway {
             GatewayAuthError::RotationAlreadyExecuted
         );
 
-        let is_latest_signers = auth::validate_proof(&env, data_hash.clone(), proof)?;
+        let is_latest_signers = auth::validate_proof(&env, &data_hash, proof)?;
         ensure!(
             bypass_rotation_delay || is_latest_signers,
             GatewayAuthError::NotLatestSigners

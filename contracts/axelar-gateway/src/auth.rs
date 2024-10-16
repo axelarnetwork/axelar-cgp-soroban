@@ -41,7 +41,7 @@ pub fn initialize_auth(
     Ok(())
 }
 
-pub fn validate_proof(env: &Env, data_hash: BytesN<32>, proof: Proof) -> Result<bool, GatewayAuthError> {
+pub fn validate_proof(env: &Env, data_hash: &BytesN<32>, proof: Proof) -> Result<bool, GatewayAuthError> {
     let signers_set = proof.weighted_signers();
 
     let signers_hash: BytesN<32> = env.crypto().keccak256(&signers_set.to_xdr(env)).into();
@@ -109,7 +109,7 @@ pub fn rotate_signers(
     Ok(())
 }
 
-fn message_hash_to_sign(env: &Env, signers_hash: BytesN<32>, data_hash: BytesN<32>) -> Hash<32> {
+fn message_hash_to_sign(env: &Env, signers_hash: BytesN<32>, data_hash: &BytesN<32>) -> Hash<32> {
     let domain_separator: BytesN<32> = env
         .storage()
         .instance()
