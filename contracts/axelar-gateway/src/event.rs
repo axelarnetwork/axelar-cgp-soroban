@@ -24,9 +24,9 @@ pub(crate) fn execute_contract_call(env: &Env, message: Message) {
     env.events().publish(topics, message);
 }
 
-pub(crate) fn rotate_signers(env: &Env, signers_hash: BytesN<32>) {
+pub(crate) fn rotate_signers(env: &Env, signers_hash: BytesN<32>, epoch: u64) {
     let topics = (symbol_short!("rotated"),);
-    env.events().publish(topics, signers_hash);
+    env.events().publish(topics, (signers_hash, epoch));
 }
 
 pub(crate) fn transfer_operatorship(env: &Env, previous_operator: Address, new_operator: Address) {

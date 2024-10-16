@@ -227,6 +227,7 @@ fn rotate_signers() {
     let data_hash = get_rotation_hash(&env, new_signers.signers.clone());
     let proof = generate_proof(&env, data_hash.clone(), signers);
     let bypass_rotation_delay = false;
+    let new_epoch: u64 = client.epoch() + 1;
 
     client.rotate_signers(&new_signers.signers, &proof, &bypass_rotation_delay);
 
@@ -234,7 +235,7 @@ fn rotate_signers() {
         &env,
         &contract_id,
         (symbol_short!("rotated"),),
-        new_signers.signers.hash(&env),
+        (new_signers.signers.hash(&env), new_epoch),
     );
 
     // test approve with new signer set
@@ -256,6 +257,7 @@ fn rotate_signers_bypass_rotation_delay() {
     let data_hash = get_rotation_hash(&env, new_signers.signers.clone());
     let proof = generate_proof(&env, data_hash.clone(), signers.clone());
     let bypass_rotation_delay = true;
+    let new_epoch: u64 = client.epoch() + 1;
 
     client
         .mock_auths(&[MockAuth {
@@ -278,7 +280,7 @@ fn rotate_signers_bypass_rotation_delay() {
         &env,
         &contract_id,
         (symbol_short!("rotated"),),
-        new_signers.signers.hash(&env),
+        (new_signers.signers.hash(&env), new_epoch),
     );
 }
 
