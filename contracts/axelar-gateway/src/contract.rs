@@ -1,7 +1,7 @@
 use axelar_soroban_interfaces::types::{Message, Proof};
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{
-    contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, String, Vec,
+    contract, contractimpl, panic_with_error, vec, Address, Bytes, BytesN, Env, String, Vec,
 };
 
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
@@ -222,6 +222,16 @@ impl AxelarGatewayInterface for AxelarGateway {
 
     fn epoch(env: &Env) -> u64 {
         auth::epoch(env)
+    }
+
+    fn version(env: Env) -> Vec<u32> {
+        vec![&env, 0, 0, 1]
+    }
+
+    fn upgrade(env: Env, new_wasm_hash: BytesN<32>) {
+        Self::operator(&env).require_auth();
+
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
     }
 }
 

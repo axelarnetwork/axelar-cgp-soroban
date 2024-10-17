@@ -63,4 +63,8 @@ pub trait AxelarGatewayInterface {
     fn operator(env: &Env) -> Address;
 
     fn epoch(env: &Env) -> u64;
+
+    fn version(env: Env) -> Vec<u32>;
+
+    fn upgrade(env: Env, new_wasm_hash: BytesN<32>);
 }
