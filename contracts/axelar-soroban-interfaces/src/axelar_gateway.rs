@@ -18,10 +18,11 @@ pub enum GatewayAuthError {
     InsufficientRotationDelay = 6,
     InvalidSignatures = 7,
     InvalidWeights = 8,
+    WeightOverflow = 9,
     // Gateway
-    EmptyMessages = 9,
-    RotationAlreadyExecuted = 10,
-    NotLatestSigners = 11,
+    EmptyMessages = 10,
+    RotationAlreadyExecuted = 11,
+    NotLatestSigners = 12,
 }
 
 /// Interface for the Axelar Gateway.

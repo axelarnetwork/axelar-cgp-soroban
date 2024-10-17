@@ -215,7 +215,9 @@ fn validate_signers(env: &Env, weighted_signers: &WeightedSigners) -> Result<(),
         ensure!(signer.weight != 0, GatewayAuthError::InvalidWeights);
 
         previous_signer = signer.signer;
-        total_weight = total_weight.checked_add(signer.weight).unwrap();
+        total_weight = total_weight
+            .checked_add(signer.weight)
+            .ok_or(GatewayAuthError::WeightOverflow)?;
     }
 
     let threshold = weighted_signers.threshold;
