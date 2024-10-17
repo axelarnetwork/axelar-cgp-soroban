@@ -1,7 +1,7 @@
 use axelar_soroban_interfaces::types::{Message, Proof};
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{
-    contract, contractimpl, panic_with_error, vec, Address, Bytes, BytesN, Env, String, Vec,
+    contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, String, Vec,
 };
 
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
