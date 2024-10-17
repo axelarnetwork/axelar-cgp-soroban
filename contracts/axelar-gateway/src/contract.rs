@@ -9,6 +9,8 @@ use crate::types::CommandType;
 use crate::{auth, error::Error, event};
 use axelar_soroban_interfaces::{axelar_gateway::AxelarGatewayInterface, types::WeightedSigners};
 
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 #[contract]
 pub struct AxelarGateway;
 
@@ -224,8 +226,8 @@ impl AxelarGatewayInterface for AxelarGateway {
         auth::epoch(env)
     }
 
-    fn version(env: Env) -> Vec<u32> {
-        vec![&env, 0, 0, 1]
+    fn version(env: Env) -> String {
+        String::from_str(&env, CONTRACT_VERSION)
     }
 
     fn upgrade(env: Env, new_wasm_hash: BytesN<32>) {
