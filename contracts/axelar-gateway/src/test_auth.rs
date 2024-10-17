@@ -6,7 +6,7 @@ use axelar_soroban_interfaces::types::{
 };
 use soroban_sdk::{
     testutils::{Address as _, BytesN as _},
-    Address, Bytes, BytesN, Env, IntoVal, Vec,
+    Address, Bytes, BytesN, Env, Vec,
 };
 
 use axelar_soroban_std::testutils::assert_invocation;
@@ -77,44 +77,6 @@ fn fails_with_empty_signer_set() {
     // assert!(res.is_err());
 }
 
-// #[test]
-// fn transfer_ownership() {
-//     let (env, _, client) = setup_env();
-
-//     let initial_owner = Address::generate(&env);
-//     let new_owner = Address::generate(&env);
-
-//     initialize(
-//         &env,
-//         &client,
-//         initial_owner.clone(),
-//         randint(1, 10),
-//         randint(1, 10),
-//     );
-
-//     // transfer ownership to the new owner
-//     client.transfer_ownership(&new_owner);
-
-//     assert_invocation(
-//         &env,
-//         &initial_owner,
-//         &client.address,
-//         "transfer_ownership",
-//         (new_owner.clone(),),
-//     );
-
-//     assert_emitted_event(
-//         &env,
-//         -1,
-//         &client.address,
-//         (symbol_short!("ownership"), initial_owner, new_owner.clone()),
-//         (),
-//     );
-
-//     let retrieved_owner = client.owner();
-//     assert_eq!(retrieved_owner, new_owner);
-// }
-
 #[test]
 fn validate_proof() {
     let (env, contract_id, client) = setup_env();
@@ -130,8 +92,6 @@ fn validate_proof() {
         let latest_signer_set = auth::validate_proof(&env, msg_hash, proof);
         assert!(latest_signer_set);
     });
-    // let latest_signer_set = auth::validate_proof(&env, msg_hash, proof);
-    // assert!(latest_signer_set);
 }
 
 #[test]
@@ -147,7 +107,7 @@ fn fail_validate_proof_invalid_epoch() {
     let msg_hash = generate_random_payload_and_hash(&env);
     let proof = generate_proof(&env, msg_hash.clone(), different_signers);
 
-    // // should panic, epoch should return zero for unknown signer set
+    // should panic, epoch should return zero for unknown signer set
     env.as_contract(&contract_id, || {
         auth::validate_proof(&env, msg_hash, proof);
     })
@@ -365,7 +325,6 @@ fn rotate_signers_fail_zero_weight() {
 
     // should throw an error, last signer weight is zero
     auth::rotate_signers(&env, &new_signers.signers, false);
-    // assert!(res.is_err());
 }
 
 #[test]
@@ -397,7 +356,6 @@ fn rotate_signers_fail_weight_overflow() {
     // should throw an error, last signer weight should cause overflow
 
     auth::rotate_signers(&env, &new_signers.signers, false);
-    // client.rotate_signers(&new_signers.signer_set, &false);
 }
 
 #[test]
@@ -424,8 +382,6 @@ fn rotate_signers_fail_zero_threshold() {
     // should error because the threshold is set to zero
 
     auth::rotate_signers(&env, &new_signers.signers, false);
-    // let res = client.try_rotate_signers(&new_signers.signer_set, &false);
-    // assert!(res.is_err());
 }
 
 #[test]
@@ -461,8 +417,6 @@ fn rotate_signers_fail_low_total_weight() {
 
     // should error because the threshold is set to zero
     auth::rotate_signers(&env, &new_signers.signers, false);
-    // let res = client.try_rotate_signers(&new_signers.signer_set, &false);
-    // assert!(res.is_err());
 }
 
 #[test]
@@ -500,8 +454,6 @@ fn rotate_signers_fail_wrong_signer_order() {
     // should error because signers are in wrong order
     //
     auth::rotate_signers(&env, &new_signers.signers, false);
-    // let res = client.try_rotate_signers(&new_signers.signer_set, &false);
-    // assert!(res.is_err());
 }
 
 #[test]
