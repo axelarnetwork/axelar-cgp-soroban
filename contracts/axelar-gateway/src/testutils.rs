@@ -185,25 +185,17 @@ pub fn generate_random_payload_and_hash(env: &Env) -> BytesN<32> {
     env.crypto().keccak256(&payload).into()
 }
 
-pub fn rotate_signers(
-    env: &Env,
-    client: &AxelarGatewayClient,
-    new_signers: TestSignerSet,
-    contract_id: &Address,
-) {
+pub fn rotate_signers(env: &Env, contract_id: &Address, new_signers: TestSignerSet) {
     let mut epoch_val: u64 = 0;
-    env.as_contract(contract_id, || {
+    env.as_contract(&contract_id, || {
         epoch_val = epoch(&env) + 1;
-    });
-
-    env.as_contract(contract_id, || {
         auth::rotate_signers(env, &new_signers.signers, false);
     });
 
     assert_emitted_event(
         env,
         -1,
-        &client.address,
+        &contract_id,
         (symbol_short!("rotated"),),
         (new_signers.signers.hash(&env), epoch_val),
     );

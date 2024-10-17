@@ -6,7 +6,7 @@ use axelar_soroban_interfaces::types::{
 };
 use soroban_sdk::{
     testutils::{Address as _, BytesN as _},
-    Address, Bytes, BytesN, Env, Vec,
+    Address, Bytes, BytesN, Env, IntoVal, Vec,
 };
 
 use axelar_soroban_std::testutils::assert_invocation;
@@ -303,16 +303,12 @@ fn test_rotate_signers() {
 
     let new_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator);
 
-    // rotate_signers(&env, &client, new_signers.clone());
-    testutils::rotate_signers(&env, &client, new_signers.clone(), &contract_id);
-    // env.as_contract(&contract_id, || {
-    //     auth::rotate_signers(&env, &new_signers.signers, false);
-    // })
+    testutils::rotate_signers(&env, &contract_id, new_signers.clone());
 
     assert_invocation(
         &env,
         &user,
-        &client.address,
+        &contract_id,
         "rotate_signers",
         (new_signers.signers.clone(), false),
     );
@@ -534,7 +530,7 @@ fn multi_rotate_signers() {
             original_signers.domain_separator.clone(),
         );
 
-        testutils::rotate_signers(&env, &client, new_signers.clone(), &contract_id);
+        testutils::rotate_signers(&env, &contract_id, new_signers.clone());
 
         let proof = generate_proof(&env, msg_hash.clone(), new_signers.clone());
 
@@ -585,7 +581,7 @@ fn rotate_signers_panics_on_outdated_signer_set() {
             randint(1, 10),
             original_signers.domain_separator.clone(),
         );
-        testutils::rotate_signers(&env, &client, new_signers.clone(), &contract_id);
+        testutils::rotate_signers(&env, &contract_id, new_signers.clone());
     }
 
     // Proof from the first signer set should fail
