@@ -1,7 +1,6 @@
 #![no_std]
 
 mod auth;
-mod error;
 mod event;
 mod storage_types;
 pub mod types;
@@ -15,4 +14,7 @@ compile_error!("'testutils' feature is not supported on 'wasm' target");
 pub mod testutils;
 
 #[cfg(test)]
-mod test;
+mod test_gateway;
+
+#[cfg(test)]
+mod test_auth;

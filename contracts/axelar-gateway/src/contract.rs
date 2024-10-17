@@ -1,12 +1,12 @@
 use axelar_soroban_interfaces::types::{Message, Proof};
+use axelar_soroban_std::ensure;
 use soroban_sdk::xdr::ToXdr;
-use soroban_sdk::{
-    contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, String, Vec,
-};
+use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
 
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::types::CommandType;
-use crate::{auth, error::Error, event};
+use crate::{auth, event};
+use axelar_soroban_interfaces::axelar_gateway::GatewayAuthError;
 use axelar_soroban_interfaces::{axelar_gateway::AxelarGatewayInterface, types::WeightedSigners};
 
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -23,15 +23,14 @@ impl AxelarGatewayInterface for AxelarGateway {
         minimum_rotation_delay: u64,
         previous_signers_retention: u64,
         initial_signers: Vec<WeightedSigners>,
-    ) {
-        if env
-            .storage()
-            .instance()
-            .get(&DataKey::Initialized)
-            .unwrap_or(false)
-        {
-            panic!("Already initialized");
-        }
+    ) -> Result<(), GatewayAuthError> {
+        ensure!(
+            env.storage()
+                .instance()
+                .get::<DataKey, bool>(&DataKey::Initialized)
+                .is_none(),
+            GatewayAuthError::AlreadyInitialized
+        );
 
         env.storage().instance().set(&DataKey::Initialized, &true);
 
@@ -43,7 +42,9 @@ impl AxelarGatewayInterface for AxelarGateway {
             minimum_rotation_delay,
             previous_signers_retention,
             initial_signers,
-        );
+        )?;
+
+        Ok(())
     }
 
     fn call_contract(
@@ -138,17 +139,15 @@ impl AxelarGatewayInterface for AxelarGateway {
         env: Env,
         messages: soroban_sdk::Vec<axelar_soroban_interfaces::types::Message>,
         proof: axelar_soroban_interfaces::types::Proof,
-    ) {
+    ) -> Result<(), GatewayAuthError> {
         let data_hash: BytesN<32> = env
             .crypto()
             .keccak256(&(CommandType::ApproveMessages, messages.clone()).to_xdr(&env))
             .into();
 
-        auth::validate_proof(&env, data_hash.clone(), proof.clone());
+        auth::validate_proof(&env, &data_hash, proof.clone())?;
 
-        if messages.is_empty() {
-            panic_with_error!(env, Error::EmptyMessages);
-        }
+        ensure!(!messages.is_empty(), GatewayAuthError::EmptyMessages);
 
         for message in messages.into_iter() {
             let key = MessageApprovalKey {
@@ -169,6 +168,8 @@ impl AxelarGatewayInterface for AxelarGateway {
 
             event::approve_message(&env, message);
         }
+
+        Ok(())
     }
 
     // TODO: add docstring about how bypass_rotation_delay supposed to be used.
@@ -177,9 +178,9 @@ impl AxelarGatewayInterface for AxelarGateway {
         signers: WeightedSigners,
         proof: Proof,
         bypass_rotation_delay: bool,
-    ) {
+    ) -> Result<(), GatewayAuthError> {
         if bypass_rotation_delay {
-            Self::operator(&env).require_auth();
+            Self::operator(&env)?.require_auth();
         }
 
         let data_hash: BytesN<32> = env
@@ -187,28 +188,28 @@ impl AxelarGatewayInterface for AxelarGateway {
             .keccak256(&(CommandType::RotateSigners, signers.clone()).to_xdr(&env))
             .into();
 
-        if env
-            .storage()
-            .persistent()
-            .has(&DataKey::RotationExecuted(data_hash.clone()))
-        {
-            panic_with_error!(env, Error::RotationAlreadyExecuted);
-        }
+        ensure!(
+            !env.storage()
+                .persistent()
+                .has(&DataKey::RotationExecuted(data_hash.clone())),
+            GatewayAuthError::RotationAlreadyExecuted
+        );
 
-        let is_latest_signers = auth::validate_proof(&env, data_hash.clone(), proof);
-        if !bypass_rotation_delay && !is_latest_signers {
-            panic_with_error!(env, Error::NotLatestSigners);
-        }
+        let is_latest_signers = auth::validate_proof(&env, &data_hash, proof)?;
+        ensure!(
+            bypass_rotation_delay || is_latest_signers,
+            GatewayAuthError::NotLatestSigners
+        );
 
         env.storage()
             .persistent()
             .set(&DataKey::RotationExecuted(data_hash), &true);
 
-        auth::rotate_signers(&env, &signers, !bypass_rotation_delay);
+        auth::rotate_signers(&env, &signers, !bypass_rotation_delay)
     }
 
-    fn transfer_operatorship(env: Env, new_operator: Address) {
-        let operator: Address = Self::operator(&env);
+    fn transfer_operatorship(env: Env, new_operator: Address) -> Result<(), GatewayAuthError> {
+        let operator: Address = Self::operator(&env)?;
         operator.require_auth();
 
         env.storage()
@@ -216,13 +217,17 @@ impl AxelarGatewayInterface for AxelarGateway {
             .set(&DataKey::Operator, &new_operator);
 
         event::transfer_operatorship(&env, operator, new_operator);
+        Ok(())
     }
 
-    fn operator(env: &Env) -> Address {
-        env.storage().instance().get(&DataKey::Operator).unwrap()
+    fn operator(env: &Env) -> Result<Address, GatewayAuthError> {
+        env.storage()
+            .instance()
+            .get(&DataKey::Operator)
+            .ok_or(GatewayAuthError::NotInitialized)
     }
 
-    fn epoch(env: &Env) -> u64 {
+    fn epoch(env: &Env) -> Result<u64, GatewayAuthError> {
         auth::epoch(env)
     }
 
@@ -230,10 +235,12 @@ impl AxelarGatewayInterface for AxelarGateway {
         String::from_str(&env, CONTRACT_VERSION)
     }
 
-    fn upgrade(env: Env, new_wasm_hash: BytesN<32>) {
-        Self::operator(&env).require_auth();
+    fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), GatewayAuthError> {
+        Self::operator(&env)?.require_auth();
 
         env.deployer().update_current_contract_wasm(new_wasm_hash);
+
+        Ok(())
     }
 }
 
