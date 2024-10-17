@@ -1,4 +1,4 @@
-use axelar_soroban_interfaces::types::{Message, WeightedSigners};
+use axelar_soroban_interfaces::types::Message;
 use soroban_sdk::{symbol_short, Address, Bytes, BytesN, Env, String};
 
 pub(crate) fn call_contract(
@@ -15,24 +15,18 @@ pub(crate) fn call_contract(
 }
 
 pub(crate) fn approve_message(env: &Env, message: Message) {
-    let topics = (
-        symbol_short!("approved"),
-        message.message_id,
-        message.contract_address,
-        message.payload_hash,
-    );
-    env.events()
-        .publish(topics, (message.source_chain, message.source_address));
+    let topics = (symbol_short!("approved"),);
+    env.events().publish(topics, message);
 }
 
-pub(crate) fn execute_contract_call(env: &Env, message_id: String) {
-    let topics = (symbol_short!("executed"), message_id);
-    env.events().publish(topics, ());
+pub(crate) fn execute_contract_call(env: &Env, message: Message) {
+    let topics = (symbol_short!("executed"),);
+    env.events().publish(topics, message);
 }
 
-pub(crate) fn rotate_signers(env: &Env, signers: WeightedSigners) {
+pub(crate) fn rotate_signers(env: &Env, signers_hash: BytesN<32>, epoch: u64) {
     let topics = (symbol_short!("rotated"),);
-    env.events().publish(topics, signers);
+    env.events().publish(topics, (signers_hash, epoch));
 }
 
 pub(crate) fn transfer_operatorship(env: &Env, previous_operator: Address, new_operator: Address) {

@@ -9,6 +9,8 @@ use crate::{auth, event};
 use axelar_soroban_interfaces::axelar_gateway::GatewayAuthError;
 use axelar_soroban_interfaces::{axelar_gateway::AxelarGatewayInterface, types::WeightedSigners};
 
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 #[contract]
 pub struct AxelarGateway;
 
@@ -119,13 +121,13 @@ impl AxelarGatewayInterface for AxelarGateway {
             payload_hash,
         };
 
-        if message_approval == Self::message_approval_hash(&env, message) {
+        if message_approval == Self::message_approval_hash(&env, message.clone()) {
             env.storage().persistent().set(
                 &DataKey::MessageApproval(key),
                 &MessageApprovalValue::Executed,
             );
 
-            event::execute_contract_call(&env, message_id);
+            event::execute_contract_call(&env, message);
 
             return true;
         }
@@ -223,6 +225,22 @@ impl AxelarGatewayInterface for AxelarGateway {
             .instance()
             .get(&DataKey::Operator)
             .ok_or(GatewayAuthError::NotInitialized)
+    }
+
+    fn epoch(env: &Env) -> Result<u64, GatewayAuthError> {
+        auth::epoch(env)
+    }
+
+    fn version(env: Env) -> String {
+        String::from_str(&env, CONTRACT_VERSION)
+    }
+
+    fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), GatewayAuthError> {
+        Self::operator(&env)?.require_auth();
+
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
+
+        Ok(())
     }
 }
 

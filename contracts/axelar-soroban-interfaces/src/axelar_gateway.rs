@@ -83,4 +83,10 @@ pub trait AxelarGatewayInterface {
     fn transfer_operatorship(env: Env, new_operator: Address) -> Result<(), GatewayAuthError>;
 
     fn operator(env: &Env) -> Result<Address, GatewayAuthError>;
+
+    fn epoch(env: &Env) -> Result<u64, GatewayAuthError>;
+
+    fn version(env: Env) -> String;
+
+    fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), GatewayAuthError>;
 }
