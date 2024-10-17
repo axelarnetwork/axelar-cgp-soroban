@@ -1,10 +1,13 @@
 #![cfg(any(test, feature = "testutils"))]
 extern crate std;
 
+use crate::auth::{self, epoch};
 use crate::{contract::AxelarGatewayClient, types::CommandType};
+use axelar_soroban_std::assert_emitted_event;
 use ed25519_dalek::{Signature, Signer, SigningKey};
 use rand::Rng;
 
+use soroban_sdk::symbol_short;
 use soroban_sdk::{testutils::Address as _, Address};
 use soroban_sdk::{testutils::BytesN as _, vec, xdr::ToXdr, Bytes, BytesN, Env, String, Vec};
 
@@ -173,4 +176,35 @@ pub fn generate_proof(env: &Env, data_hash: BytesN<32>, signer_set: TestSignerSe
         threshold: signer_set.signers.threshold,
         nonce: signer_set.signers.nonce,
     }
+}
+
+// auth utils
+
+pub fn generate_random_payload_and_hash(env: &Env) -> BytesN<32> {
+    let payload: Bytes = BytesN::<10>::random(env).into();
+    env.crypto().keccak256(&payload).into()
+}
+
+pub fn rotate_signers(
+    env: &Env,
+    client: &AxelarGatewayClient,
+    new_signers: TestSignerSet,
+    contract_id: &Address,
+) {
+    let mut epoch_val: u64 = 0;
+    env.as_contract(contract_id, || {
+        epoch_val = epoch(&env) + 1;
+    });
+
+    env.as_contract(contract_id, || {
+        auth::rotate_signers(env, &new_signers.signers, false);
+    });
+
+    assert_emitted_event(
+        env,
+        -1,
+        &client.address,
+        (symbol_short!("rotated"),),
+        (new_signers.signers.hash(&env), epoch_val),
+    );
 }
