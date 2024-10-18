@@ -25,8 +25,8 @@ macro_rules! ensure {
 macro_rules! assert_ok {
     ( $x:expr ) => {
         match $x {
-            std::result::Result::Ok(v) => v,
-            std::result::Result::Err(e) => {
+            Ok(v) => v,
+            Err(e) => {
                 panic!("Error calling {}: {:?}", stringify!($x), e);
             }
         }
@@ -38,31 +38,13 @@ macro_rules! assert_ok {
 macro_rules! assert_err {
     ( $x:expr, $expected:pat ) => {
         match $x {
-            std::result::Result::Err(e) => {
+            Err(e) => {
                 if !matches!(e, $expected) {
                     panic!("Expected error {}: {:?}", stringify!($expected), e);
                 }
             }
-            std::result::Result::Ok(v) => {
+            Ok(v) => {
                 panic!("Expected error {}, found {:?}", stringify!($expected), v)
-            }
-        }
-    };
-}
-
-/// Assert that an [`Option`] is [`Some`]
-///
-/// If the provided expresion evaulates to [`Some`], then the
-/// macro returns the value contained within the [`Some`]. If
-/// the [`Option`] is [`None`] then the macro will [`panic`]
-/// with a message that includes the expression
-#[macro_export]
-macro_rules! assert_some {
-    ( $x:expr ) => {
-        match $x {
-            core::option::Option::Some(s) => s,
-            core::option::Option::None => {
-                panic!("Expected value when calling {}, got None", stringify!($x));
             }
         }
     };
@@ -101,6 +83,24 @@ macro_rules! assert_contract_err {
                 }
                 Err(e) => panic!("Unexpected error {e:?}"),
             },
+        }
+    };
+}
+
+/// Assert that an [`Option`] is [`Some`]
+///
+/// If the provided expresion evaulates to [`Some`], then the
+/// macro returns the value contained within the [`Some`]. If
+/// the [`Option`] is [`None`] then the macro will [`panic`]
+/// with a message that includes the expression
+#[macro_export]
+macro_rules! assert_some {
+    ( $x:expr ) => {
+        match $x {
+            core::option::Option::Some(s) => s,
+            core::option::Option::None => {
+                panic!("Expected value when calling {}, got None", stringify!($x));
+            }
         }
     };
 }
