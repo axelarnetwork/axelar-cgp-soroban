@@ -238,8 +238,8 @@ fn rotate_signers() {
         &contract_id,
         (
             symbol_short!("rotated"),
-            new_signers.signers.hash(&env),
             new_epoch,
+            new_signers.signers.hash(&env),
         ),
         (),
     );
@@ -287,8 +287,8 @@ fn rotate_signers_bypass_rotation_delay() {
         &contract_id,
         (
             symbol_short!("rotated"),
-            new_signers.signers.hash(&env),
             new_epoch,
+            new_signers.signers.hash(&env),
         ),
         (),
     );
