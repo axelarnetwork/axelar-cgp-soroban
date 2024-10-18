@@ -79,6 +79,7 @@ pub fn validate_proof(
         validate_signatures(env, msg_hash, proof),
         GatewayError::InvalidSignatures
     );
+
     Ok(is_latest_signers)
 }
 
@@ -110,6 +111,7 @@ pub fn rotate_signers(
     );
 
     event::rotate_signers(env, new_signers_hash, new_epoch);
+
     Ok(())
 }
 
