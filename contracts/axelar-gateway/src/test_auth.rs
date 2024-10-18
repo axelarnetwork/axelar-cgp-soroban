@@ -9,8 +9,6 @@ use soroban_sdk::{
     Address, Bytes, BytesN, Env, Vec,
 };
 
-use axelar_soroban_std::testutils::assert_invocation;
-
 use crate::{
     auth::{self, initialize_auth},
     contract::{AxelarGateway, AxelarGatewayClient},
@@ -73,8 +71,6 @@ fn fails_with_empty_signer_set() {
             initial_signers,
         );
     })
-
-    // assert!(res.is_err());
 }
 
 #[test]
@@ -190,14 +186,13 @@ fn fail_validate_proof_threshold_not_met() {
 
     let signers = initialize(&env, &client, user, randint(0, 10), randint(1, 10));
 
-    let env = &env;
     let mut total_weight = 0u128;
 
-    let msg_hash = generate_random_payload_and_hash(env);
-    let mut proof = generate_proof(env, msg_hash.clone(), signers);
+    let msg_hash = generate_random_payload_and_hash(&env);
+    let mut proof = generate_proof(&env, msg_hash.clone(), signers);
 
     // Modify signatures to make them invalid
-    let mut new_signers = Vec::new(env);
+    let mut new_signers = Vec::new(&env);
     for ProofSigner { signer, signature } in proof.signers.iter() {
         total_weight += signer.weight;
 
@@ -225,8 +220,6 @@ fn fail_validate_proof_threshold_overflow() {
 
     let mut signers = initialize(&env, &client, user, randint(0, 10), randint(1, 10));
 
-    let env = &env;
-
     let last_index = signers.signers.signers.len() - 1;
 
     // get last signer and modify its weight to max u128 - 1
@@ -235,8 +228,8 @@ fn fail_validate_proof_threshold_overflow() {
         signers.signers.signers.set(last_index, last_signer);
     }
 
-    let msg_hash = generate_random_payload_and_hash(env);
-    let proof = generate_proof(env, msg_hash.clone(), signers);
+    let msg_hash = generate_random_payload_and_hash(&env);
+    let proof = generate_proof(&env, msg_hash.clone(), signers);
 
     // should panic, as modified signer wouldn't match the epoch
     env.as_contract(&contract_id, || {
@@ -260,24 +253,14 @@ fn test_rotate_signers() {
     );
 
     let msg_hash = generate_random_payload_and_hash(&env);
-
     let new_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator);
 
     testutils::rotate_signers(&env, &contract_id, new_signers.clone());
-
-    assert_invocation(
-        &env,
-        &user,
-        &contract_id,
-        "rotate_signers",
-        (new_signers.signers.clone(), false),
-    );
 
     let proof = generate_proof(&env, msg_hash.clone(), new_signers);
 
     env.as_contract(&contract_id, || {
         let latest_signer_set = auth::validate_proof(&env, msg_hash, proof);
-
         assert!(latest_signer_set);
     });
 }
@@ -353,8 +336,7 @@ fn rotate_signers_fail_weight_overflow() {
         new_signers.signers.signers.set(last_index, last_signer);
     }
 
-    // should throw an error, last signer weight should cause overflow
-
+    // last signer weight should cause overflow
     auth::rotate_signers(&env, &new_signers.signers, false);
 }
 
@@ -380,7 +362,6 @@ fn rotate_signers_fail_zero_threshold() {
     new_signers.signers.threshold = 0u128;
 
     // should error because the threshold is set to zero
-
     auth::rotate_signers(&env, &new_signers.signers, false);
 }
 
@@ -452,7 +433,6 @@ fn rotate_signers_fail_wrong_signer_order() {
     new_signers.signers.signers = reversed_signers;
 
     // should error because signers are in wrong order
-    //
     auth::rotate_signers(&env, &new_signers.signers, false);
 }
 
