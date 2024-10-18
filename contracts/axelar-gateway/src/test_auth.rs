@@ -1,23 +1,21 @@
 #![cfg(test)]
 extern crate std;
 
-use axelar_soroban_interfaces::types::{
-    ProofSignature, ProofSigner, WeightedSigner, WeightedSigners,
+use axelar_soroban_interfaces::{
+    axelar_gateway::GatewayError,
+    types::{ProofSignature, ProofSigner, WeightedSigner, WeightedSigners},
 };
 use soroban_sdk::{
     testutils::{Address as _, BytesN as _},
-    Address, Bytes, BytesN, Env, Vec,
+    Address, BytesN, Env, Vec,
 };
 
-use axelar_soroban_std::testutils::assert_invocation;
+use axelar_soroban_std::{assert_err, assert_ok, testutils::assert_invocation};
 
 use crate::{
     auth::{self, initialize_auth},
     contract::{AxelarGateway, AxelarGatewayClient},
-    testutils::{
-        self, generate_proof, generate_random_payload_and_hash, generate_signers_set, initialize,
-        randint,
-    },
+    testutils::{self, generate_proof, generate_signers_set, initialize, randint},
 };
 
 fn setup_env<'a>() -> (Env, Address, AxelarGatewayClient<'a>) {
@@ -39,20 +37,6 @@ fn test_initialize() {
 }
 
 #[test]
-#[should_panic(expected = "Already initialized")]
-fn fails_if_already_initialized() {
-    let (env, _, client) = setup_env();
-    let user_one = Address::generate(&env);
-    let user_two = Address::generate(&env);
-
-    initialize(&env, &client, user_one, randint(0, 10), randint(1, 10));
-
-    // second initialization should panic
-    initialize(&env, &client, user_two, randint(0, 10), randint(1, 10));
-}
-
-#[test]
-#[should_panic(expected = "Error(Contract, #6)")]
 fn fails_with_empty_signer_set() {
     let (env, contract_id, _client) = setup_env();
 
@@ -65,16 +49,17 @@ fn fails_with_empty_signer_set() {
 
     // call should panic because signer set is empty
     env.as_contract(&contract_id, || {
-        initialize_auth(
-            env.clone(),
-            domain_separator,
-            minimum_rotation_delay,
-            previous_signer_retention,
-            initial_signers,
+        assert_err!(
+            initialize_auth(
+                env.clone(),
+                domain_separator,
+                minimum_rotation_delay,
+                previous_signer_retention,
+                initial_signers,
+            ),
+            GatewayError::InvalidSigners
         );
     })
-
-    // assert!(res.is_err());
 }
 
 #[test]
@@ -84,18 +69,16 @@ fn validate_proof() {
 
     let signers = initialize(&env, &client, user, randint(0, 10), randint(1, 10));
 
-    let msg_hash = generate_random_payload_and_hash(&env);
+    let msg_hash: BytesN<32> = BytesN::random(&env);
     let proof = generate_proof(&env, msg_hash.clone(), signers);
 
     // validate_proof shouldn't panic
     env.as_contract(&contract_id, || {
-        let latest_signer_set = auth::validate_proof(&env, msg_hash, proof);
-        assert!(latest_signer_set);
+        assert!(assert_ok!(auth::validate_proof(&env, &msg_hash, proof)));
     });
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #6)")]
 fn fail_validate_proof_invalid_epoch() {
     let (env, contract_id, client) = setup_env();
     let user = Address::generate(&env);
@@ -104,12 +87,15 @@ fn fail_validate_proof_invalid_epoch() {
 
     let different_signers = generate_signers_set(&env, randint(1, 10), BytesN::random(&env));
 
-    let msg_hash = generate_random_payload_and_hash(&env);
+    let msg_hash: BytesN<32> = BytesN::random(&env);
     let proof = generate_proof(&env, msg_hash.clone(), different_signers);
 
     // should panic, epoch should return zero for unknown signer set
     env.as_contract(&contract_id, || {
-        auth::validate_proof(&env, msg_hash, proof);
+        assert_err!(
+            auth::validate_proof(&env, &msg_hash, proof),
+            GatewayError::InvalidSigners
+        );
     })
 }
 
@@ -121,27 +107,26 @@ fn fail_validate_proof_invalid_signatures() {
 
     let signers = initialize(&env, &client, user, randint(0, 10), randint(1, 10));
 
-    let msg_hash = generate_random_payload_and_hash(&env);
+    let msg_hash: BytesN<32> = BytesN::random(&env);
     let proof = generate_proof(&env, msg_hash.clone(), signers);
 
-    let different_msg = Bytes::from_array(&env, &[0x04, 0x05, 0x06]);
-    let different_msg_hash = env.crypto().keccak256(&different_msg).into();
+    let different_msg_hash: BytesN<32> = BytesN::random(&env);
 
     // should panic, proof is for different message hash
+    // NOTE: panic occurs in std function cannot handle explicitly
     env.as_contract(&contract_id, || {
-        auth::validate_proof(&env, different_msg_hash, proof);
+        assert_ok!(auth::validate_proof(&env, &different_msg_hash, proof));
     })
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #8)")]
 fn fail_validate_proof_empty_signatures() {
     let (env, contract_id, client) = setup_env();
     let user = Address::generate(&env);
 
     let signers = initialize(&env, &client, user, randint(0, 10), randint(1, 10));
 
-    let msg_hash = generate_random_payload_and_hash(&env);
+    let msg_hash: BytesN<32> = BytesN::random(&env);
     let mut proof = generate_proof(&env, msg_hash.clone(), signers);
 
     // Modify signatures to make them invalid
@@ -156,12 +141,14 @@ fn fail_validate_proof_empty_signatures() {
 
     // validate_proof should panic, empty signatures
     env.as_contract(&contract_id, || {
-        auth::validate_proof(&env, msg_hash, proof);
+        assert_err!(
+            auth::validate_proof(&env, &msg_hash, proof),
+            GatewayError::InvalidSignatures
+        );
     })
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #6)")]
 fn fail_validate_proof_invalid_signer_set() {
     let (env, contract_id, client) = setup_env();
     let user = Address::generate(&env);
@@ -169,7 +156,7 @@ fn fail_validate_proof_invalid_signer_set() {
     let signers = initialize(&env, &client, user, randint(0, 10), randint(1, 10));
     let new_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator.clone());
 
-    let msg_hash = generate_random_payload_and_hash(&env);
+    let msg_hash: BytesN<32> = BytesN::random(&env);
     let mut proof = generate_proof(&env, msg_hash.clone(), signers);
 
     let new_proof = generate_proof(&env, msg_hash.clone(), new_signers);
@@ -178,12 +165,14 @@ fn fail_validate_proof_invalid_signer_set() {
 
     // validate_proof should panic, signatures do not match signers
     env.as_contract(&contract_id, || {
-        auth::validate_proof(&env, msg_hash, proof);
+        assert_err!(
+            auth::validate_proof(&env, &msg_hash, proof),
+            GatewayError::InvalidSigners
+        );
     })
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #8)")]
 fn fail_validate_proof_threshold_not_met() {
     let (env, contract_id, client) = setup_env();
     let user = Address::generate(&env);
@@ -193,7 +182,7 @@ fn fail_validate_proof_threshold_not_met() {
     let env = &env;
     let mut total_weight = 0u128;
 
-    let msg_hash = generate_random_payload_and_hash(env);
+    let msg_hash: BytesN<32> = BytesN::random(&env);
     let mut proof = generate_proof(env, msg_hash.clone(), signers);
 
     // Modify signatures to make them invalid
@@ -214,11 +203,13 @@ fn fail_validate_proof_threshold_not_met() {
 
     // should panic, all signatures are valid but total weight is below threshold
     env.as_contract(&contract_id, || {
-        auth::validate_proof(&env, msg_hash, proof);
+        assert_err!(
+            auth::validate_proof(&env, &msg_hash, proof),
+            GatewayError::InvalidSignatures
+        );
     })
 }
 #[test]
-#[should_panic(expected = "Error(Contract, #6)")]
 fn fail_validate_proof_threshold_overflow() {
     let (env, contract_id, client) = setup_env();
     let user = Address::generate(&env);
@@ -235,12 +226,15 @@ fn fail_validate_proof_threshold_overflow() {
         signers.signers.signers.set(last_index, last_signer);
     }
 
-    let msg_hash = generate_random_payload_and_hash(env);
+    let msg_hash: BytesN<32> = BytesN::random(&env);
     let proof = generate_proof(env, msg_hash.clone(), signers);
 
     // should panic, as modified signer wouldn't match the epoch
     env.as_contract(&contract_id, || {
-        auth::validate_proof(&env, msg_hash, proof);
+        assert_err!(
+            auth::validate_proof(&env, &msg_hash, proof),
+            GatewayError::InvalidSigners
+        );
     });
 }
 
@@ -259,7 +253,7 @@ fn test_rotate_signers() {
         randint(1, 10),
     );
 
-    let msg_hash = generate_random_payload_and_hash(&env);
+    let msg_hash: BytesN<32> = BytesN::random(&env);
 
     let new_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator);
 
@@ -276,14 +270,11 @@ fn test_rotate_signers() {
     let proof = generate_proof(&env, msg_hash.clone(), new_signers);
 
     env.as_contract(&contract_id, || {
-        let latest_signer_set = auth::validate_proof(&env, msg_hash, proof);
-
-        assert!(latest_signer_set);
+        assert!(assert_ok!(auth::validate_proof(&env, &msg_hash, proof)));
     });
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #6)")]
 fn rotate_signers_fail_empty_signers() {
     let (env, _, _client) = setup_env();
 
@@ -294,11 +285,13 @@ fn rotate_signers_fail_empty_signers() {
     };
 
     // should throw an error, empty signer set
-    auth::rotate_signers(&env, &empty_signers, false);
+    assert_err!(
+        auth::rotate_signers(&env, &empty_signers, false),
+        GatewayError::InvalidSigners
+    );
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #9)")]
 fn rotate_signers_fail_zero_weight() {
     let (env, _, client) = setup_env();
 
@@ -324,11 +317,13 @@ fn rotate_signers_fail_zero_weight() {
     }
 
     // should throw an error, last signer weight is zero
-    auth::rotate_signers(&env, &new_signers.signers, false);
+    assert_err!(
+        auth::rotate_signers(&env, &new_signers.signers, false),
+        GatewayError::InvalidWeight
+    )
 }
 
 #[test]
-#[should_panic(expected = "called `Option::unwrap()` on a `None` value")]
 fn rotate_signers_fail_weight_overflow() {
     let (env, _, client) = setup_env();
 
@@ -353,13 +348,14 @@ fn rotate_signers_fail_weight_overflow() {
         new_signers.signers.signers.set(last_index, last_signer);
     }
 
-    // should throw an error, last signer weight should cause overflow
-
-    auth::rotate_signers(&env, &new_signers.signers, false);
+    // last signer weight should cause overflow
+    assert_err!(
+        auth::rotate_signers(&env, &new_signers.signers, false),
+        GatewayError::WeightOverflow
+    )
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #1)")]
 fn rotate_signers_fail_zero_threshold() {
     let (env, _, client) = setup_env();
 
@@ -380,12 +376,13 @@ fn rotate_signers_fail_zero_threshold() {
     new_signers.signers.threshold = 0u128;
 
     // should error because the threshold is set to zero
-
-    auth::rotate_signers(&env, &new_signers.signers, false);
+    assert_err!(
+        auth::rotate_signers(&env, &new_signers.signers, false),
+        GatewayError::InvalidThreshold
+    );
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #1)")]
 fn rotate_signers_fail_low_total_weight() {
     let (env, _, client) = setup_env();
 
@@ -416,11 +413,14 @@ fn rotate_signers_fail_low_total_weight() {
     new_signers.signers.threshold = new_threshold;
 
     // should error because the threshold is set to zero
-    auth::rotate_signers(&env, &new_signers.signers, false);
+
+    assert_err!(
+        auth::rotate_signers(&env, &new_signers.signers, false),
+        GatewayError::InvalidThreshold
+    )
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #6)")]
 fn rotate_signers_fail_wrong_signer_order() {
     let (env, _, client) = setup_env();
 
@@ -452,8 +452,10 @@ fn rotate_signers_fail_wrong_signer_order() {
     new_signers.signers.signers = reversed_signers;
 
     // should error because signers are in wrong order
-    //
-    auth::rotate_signers(&env, &new_signers.signers, false);
+    assert_err!(
+        auth::rotate_signers(&env, &new_signers.signers, false),
+        GatewayError::InvalidSigners
+    )
 }
 
 #[test]
@@ -471,7 +473,7 @@ fn multi_rotate_signers() {
         randint(1, 10),
     );
 
-    let msg_hash = generate_random_payload_and_hash(&env);
+    let msg_hash: BytesN<32> = BytesN::random(&env);
 
     let mut previous_signers = original_signers.clone();
 
@@ -487,15 +489,13 @@ fn multi_rotate_signers() {
         let proof = generate_proof(&env, msg_hash.clone(), new_signers.clone());
 
         env.as_contract(&contract_id, || {
-            let latest_signer_set = auth::validate_proof(&env, msg_hash.clone(), proof);
-            assert!(latest_signer_set);
+            assert!(assert_ok!(auth::validate_proof(&env, &msg_hash, proof)));
         });
 
         let proof = generate_proof(&env, msg_hash.clone(), previous_signers.clone());
 
         env.as_contract(&contract_id, || {
-            let latest_signer_set = auth::validate_proof(&env, msg_hash.clone(), proof);
-            assert!(!latest_signer_set);
+            assert!(!assert_ok!(auth::validate_proof(&env, &msg_hash, proof)));
         });
 
         previous_signers = new_signers;
@@ -504,13 +504,11 @@ fn multi_rotate_signers() {
     // Proof from the first signer set should still be valid
     let proof = generate_proof(&env, msg_hash.clone(), original_signers.clone());
     env.as_contract(&contract_id, || {
-        let latest_signer_set = auth::validate_proof(&env, msg_hash, proof);
-        assert!(!latest_signer_set);
+        assert!(!assert_ok!(auth::validate_proof(&env, &msg_hash, proof)));
     })
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #6)")]
 fn rotate_signers_panics_on_outdated_signer_set() {
     let (env, contract_id, client) = setup_env();
 
@@ -525,7 +523,7 @@ fn rotate_signers_panics_on_outdated_signer_set() {
         randint(1, 10),
     );
 
-    let msg_hash = generate_random_payload_and_hash(&env);
+    let msg_hash: BytesN<32> = BytesN::random(&env);
 
     for _ in 0..(previous_signer_retention + 1) {
         let new_signers = generate_signers_set(
@@ -540,6 +538,9 @@ fn rotate_signers_panics_on_outdated_signer_set() {
     let proof = generate_proof(&env, msg_hash.clone(), original_signers.clone());
 
     env.as_contract(&contract_id, || {
-        auth::validate_proof(&env, msg_hash, proof);
+        assert_err!(
+            auth::validate_proof(&env, &msg_hash, proof),
+            GatewayError::InvalidSigners
+        )
     });
 }

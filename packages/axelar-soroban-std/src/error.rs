@@ -25,10 +25,64 @@ macro_rules! ensure {
 macro_rules! assert_ok {
     ( $x:expr ) => {
         match $x {
-            std::result::Result::Ok(v) => v,
-            std::result::Result::Err(e) => {
+            Ok(v) => v,
+            Err(e) => {
                 panic!("Error calling {}: {:?}", stringify!($x), e);
             }
+        }
+    };
+}
+
+/// Assert that a [`Result`] is [`Err`] and matches an error variant
+#[macro_export]
+macro_rules! assert_err {
+    ( $x:expr, $expected:pat ) => {
+        match $x {
+            Err(e) => {
+                if !matches!(e, $expected) {
+                    panic!("Expected error {}: {:?}", stringify!($expected), e);
+                }
+            }
+            Ok(v) => {
+                panic!("Expected error {}, found {:?}", stringify!($expected), v)
+            }
+        }
+    };
+}
+
+/// Assert that a [`Result`] from a contract call is [`Err`] and matches an error variant
+///
+/// `given` corresponds to the return type from `try_*` functions in Soroban.
+/// For the assert to succeed, the function needs to fail and successfully pass
+/// down the intended error type. So, the parameters would be in the form:
+///
+/// given: `Err(Ok(ContractError))`
+/// expected: `ContractError`
+///
+/// Putting it together in a function call:
+///
+/// `assert_contract_err(client.try_fun(...), ContractError);`
+#[macro_export]
+macro_rules! assert_contract_err {
+    ($given:expr, $expected:pat) => {
+        match $given {
+            Ok(v) => panic!(
+                "Expected error {:?}, got {:?} instead",
+                stringify!($expected),
+                v
+            ),
+            Err(e) => match e {
+                Ok(v) => {
+                    if !matches!(v, $expected) {
+                        panic!(
+                            "Expected error {}, got {:?} instead",
+                            stringify!($expected),
+                            v
+                        )
+                    }
+                }
+                Err(e) => panic!("Unexpected error {e:?}"),
+            },
         }
     };
 }
@@ -47,43 +101,6 @@ macro_rules! assert_some {
             core::option::Option::None => {
                 panic!("Expected value when calling {}, got None", stringify!($x));
             }
-        }
-    };
-}
-
-/// Assert that a [`Result`] is [`Err`] and matches a desired error
-///
-/// `given` corresponds to the return type from `try_*` functions in Soroban.
-/// For the assert to succeed, the function needs to fail and successfully pass
-/// down the intended error type. So, the parameters would be in the form:
-///
-/// given: `Err(Ok(ContractError))`
-/// expected: `ContractError`
-///
-/// Putting it together in a function call:
-///
-/// `assert_contract_err(client.try_fun(...), ContractError);`
-#[macro_export]
-macro_rules! assert_contract_err {
-    ($given:expr, $expected:expr) => {
-        match $given {
-            Ok(v) => panic!(
-                "Expected error {:?}, got {:?} instead",
-                stringify!($expected),
-                v
-            ),
-            Err(e) => match e {
-                Ok(v) => {
-                    assert_eq!(
-                        v,
-                        $expected,
-                        "Expected error {}, got {:?} instead",
-                        stringify!($expected),
-                        v
-                    )
-                }
-                Err(e) => panic!("Unexpected error {e:?}"),
-            },
         }
     };
 }
