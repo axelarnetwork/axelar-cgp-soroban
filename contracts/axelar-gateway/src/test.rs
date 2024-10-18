@@ -68,9 +68,11 @@ fn call_contract() {
         (
             symbol_short!("called"),
             user,
+            destination_chain,
+            destination_address,
             env.crypto().keccak256(&payload),
         ),
-        (destination_chain, destination_address, payload),
+        payload,
     );
 }
 
@@ -234,8 +236,12 @@ fn rotate_signers() {
     assert_last_emitted_event(
         &env,
         &contract_id,
-        (symbol_short!("rotated"),),
-        (new_signers.signers.hash(&env), new_epoch),
+        (
+            symbol_short!("rotated"),
+            new_signers.signers.hash(&env),
+            new_epoch,
+        ),
+        (),
     );
 
     // test approve with new signer set
@@ -279,8 +285,12 @@ fn rotate_signers_bypass_rotation_delay() {
     assert_last_emitted_event(
         &env,
         &contract_id,
-        (symbol_short!("rotated"),),
-        (new_signers.signers.hash(&env), new_epoch),
+        (
+            symbol_short!("rotated"),
+            new_signers.signers.hash(&env),
+            new_epoch,
+        ),
+        (),
     );
 }
 

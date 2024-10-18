@@ -9,9 +9,14 @@ pub(crate) fn call_contract(
     payload: Bytes,
     payload_hash: BytesN<32>,
 ) {
-    let topics = (symbol_short!("called"), caller, payload_hash);
-    env.events()
-        .publish(topics, (destination_chain, destination_address, payload));
+    let topics = (
+        symbol_short!("called"),
+        caller,
+        destination_chain,
+        destination_address,
+        payload_hash,
+    );
+    env.events().publish(topics, payload);
 }
 
 pub(crate) fn approve_message(env: &Env, message: Message) {
@@ -25,8 +30,8 @@ pub(crate) fn execute_contract_call(env: &Env, message: Message) {
 }
 
 pub(crate) fn rotate_signers(env: &Env, signers_hash: BytesN<32>, epoch: u64) {
-    let topics = (symbol_short!("rotated"),);
-    env.events().publish(topics, (signers_hash, epoch));
+    let topics = (symbol_short!("rotated"), signers_hash, epoch);
+    env.events().publish(topics, ());
 }
 
 pub(crate) fn transfer_operatorship(env: &Env, previous_operator: Address, new_operator: Address) {

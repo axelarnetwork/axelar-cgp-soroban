@@ -117,9 +117,11 @@ fn test_gmp() {
         (
             symbol_short!("called"),
             source_app.address.clone(),
+            destination_chain,
+            destination_address,
             payload_hash.clone(),
         ),
-        (destination_chain, destination_address, payload.clone()),
+        payload.clone(),
     );
 
     // Axelar hub signs the message approval
