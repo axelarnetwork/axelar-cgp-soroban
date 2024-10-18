@@ -99,7 +99,7 @@ pub fn rotate_signers(env: &Env, new_signers: &WeightedSigners, enforce_rotation
         &new_epoch,
     );
 
-    event::rotate_signers(env, new_signers_hash, new_epoch);
+    event::rotate_signers(env, new_epoch, new_signers_hash);
 }
 
 pub fn epoch(env: &Env) -> u64 {
