@@ -1,12 +1,25 @@
-use soroban_sdk::{contractclient, Address, Bytes, BytesN, Env, String};
+use soroban_sdk::{contractclient, contracterror, Address, Bytes, BytesN, Env, String};
 
-use crate::axelar_executable::AxelarExecutableInterface;
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum InterchainTokenServiceError {
+    NotInitialized = 1,
+    AlreadyInitialized = 2,
+    NotOwner = 3,
+    TrustedAddressAlreadyAdded = 4,
+    NotTrustedAddress = 5,
+}
 
 /// Interface for the Interchain Token Service.
 #[contractclient(name = "InterchainTokenServiceClient")]
-pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
-    /// Initialize the gateway with the given auth module address.
-    fn initialize(env: Env, auth_module: Address);
+pub trait InterchainTokenServiceInterface {
+
+    /// Initialize with owner address
+    fn initialize(
+        env: Env,
+        owner: Address,
+    ) -> Result<(), InterchainTokenServiceError>;
 
     /// Compute the interchain token id for the given deployer and salt.
     fn interchain_token_id(
@@ -37,7 +50,7 @@ pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
         destination_chain: String,
         name: String,
         symbol: String,
-        decimals: u8,
+        decimals: u64, // changed to u64 as u8 was causing trait bound error - must fix
         minter: Bytes,
     ) -> BytesN<32>;
 
@@ -51,4 +64,5 @@ pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
         destination_address: String,
         metadata: Bytes,
     );
+
 }
