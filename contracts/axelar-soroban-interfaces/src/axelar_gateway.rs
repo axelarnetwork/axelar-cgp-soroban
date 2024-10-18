@@ -7,7 +7,7 @@ use soroban_sdk::contracterror;
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
-pub enum GatewayAuthError {
+pub enum GatewayError {
     // General
     NotInitialized = 1,
     AlreadyInitialized = 2,
@@ -17,12 +17,12 @@ pub enum GatewayAuthError {
     InvalidSigners = 5,
     InsufficientRotationDelay = 6,
     InvalidSignatures = 7,
-    InvalidWeights = 8,
+    InvalidWeight = 8,
     WeightOverflow = 9,
-    // Gateway
-    EmptyMessages = 10,
-    RotationAlreadyExecuted = 11,
-    NotLatestSigners = 12,
+    RotationAlreadyExecuted = 10,
+    NotLatestSigners = 11,
+    // Messages
+    EmptyMessages = 12,
 }
 
 /// Interface for the Axelar Gateway.
@@ -36,7 +36,7 @@ pub trait AxelarGatewayInterface {
         previous_signers_retention: u64,
         minimum_rotation_delay: u64,
         initial_signers: Vec<WeightedSigners>,
-    ) -> Result<(), GatewayAuthError>;
+    ) -> Result<(), GatewayError>;
 
     /// Call a contract on another chain with the given payload. The destination address can validate the contract call on the destination gateway.
     fn call_contract(
@@ -47,7 +47,8 @@ pub trait AxelarGatewayInterface {
         payload: Bytes,
     );
 
-    fn approve_messages(env: Env, messages: Vec<Message>, proof: Proof) -> Result<(), GatewayAuthError>;
+    fn approve_messages(env: Env, messages: Vec<Message>, proof: Proof)
+        -> Result<(), GatewayError>;
 
     /// Validate if a contract call with the given payload BytesN<32> and source caller info is approved,
     /// preventing re-validation (i.e distinct contract calls can be validated at most once).
@@ -79,15 +80,15 @@ pub trait AxelarGatewayInterface {
         signers: WeightedSigners,
         proof: Proof,
         enforce_rotation_delay: bool,
-    ) -> Result<(), GatewayAuthError>;
+    ) -> Result<(), GatewayError>;
 
-    fn transfer_operatorship(env: Env, new_operator: Address) -> Result<(), GatewayAuthError>;
+    fn transfer_operatorship(env: Env, new_operator: Address) -> Result<(), GatewayError>;
 
-    fn operator(env: &Env) -> Result<Address, GatewayAuthError>;
+    fn operator(env: &Env) -> Result<Address, GatewayError>;
 
-    fn epoch(env: &Env) -> Result<u64, GatewayAuthError>;
+    fn epoch(env: &Env) -> Result<u64, GatewayError>;
 
     fn version(env: Env) -> String;
 
-    fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), GatewayAuthError>;
+    fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), GatewayError>;
 }

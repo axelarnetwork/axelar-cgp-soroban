@@ -3,7 +3,7 @@ extern crate std;
 
 use crate::auth::{self, epoch};
 use crate::{contract::AxelarGatewayClient, types::CommandType};
-use axelar_soroban_std::{assert_emitted_event, assert_ok};
+use axelar_soroban_std::{assert_last_emitted_event, assert_ok};
 use ed25519_dalek::{Signature, Signer, SigningKey};
 use rand::Rng;
 
@@ -178,13 +178,6 @@ pub fn generate_proof(env: &Env, data_hash: BytesN<32>, signer_set: TestSignerSe
     }
 }
 
-// auth utils
-
-pub fn generate_random_payload_and_hash(env: &Env) -> BytesN<32> {
-    let payload: Bytes = BytesN::<10>::random(env).into();
-    env.crypto().keccak256(&payload).into()
-}
-
 pub fn rotate_signers(env: &Env, contract_id: &Address, new_signers: TestSignerSet) {
     let mut epoch_val: u64 = 0;
     env.as_contract(&contract_id, || {
@@ -192,9 +185,8 @@ pub fn rotate_signers(env: &Env, contract_id: &Address, new_signers: TestSignerS
         assert_ok!(auth::rotate_signers(env, &new_signers.signers, false));
     });
 
-    assert_emitted_event(
+    assert_last_emitted_event(
         env,
-        -1,
         &contract_id,
         (symbol_short!("rotated"),),
         (new_signers.signers.hash(&env), epoch_val),

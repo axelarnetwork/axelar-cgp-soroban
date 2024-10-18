@@ -6,7 +6,7 @@ use crate::testutils::{
     get_rotation_hash, initialize, randint,
 };
 use crate::{contract::AxelarGateway, contract::AxelarGatewayClient};
-use axelar_soroban_interfaces::axelar_gateway::GatewayAuthError;
+use axelar_soroban_interfaces::axelar_gateway::GatewayError;
 use axelar_soroban_interfaces::types::Message;
 use axelar_soroban_std::{assert_contract_err, assert_invocation, assert_last_emitted_event};
 use soroban_sdk::testutils::BytesN as _;
@@ -60,22 +60,21 @@ fn fails_if_already_initialized() {
             &(previous_signers_retention as u64),
             &initial_signers,
         ),
-        GatewayAuthError::AlreadyInitialized
+        GatewayError::AlreadyInitialized
     );
 }
 
 #[test]
+/// Two functions in the gateway contract require initialization:
+/// rotate_signers when bypass_rotation_delay = true
+/// transfer_operatorship
 fn fail_if_not_initialized() {
-    // two functions in the gateway contract require initialization:
-    // rotate_signers when bypass_rotation_delay = true
-    // transfer_operatorship
-
     let (env, _contract_id, client) = setup_env();
     let new_operator = Address::generate(&env);
 
     assert_contract_err!(
         client.try_transfer_operatorship(&new_operator),
-        GatewayAuthError::NotInitialized
+        GatewayError::NotInitialized
     );
 
     let num_signers = randint(1, 10);
@@ -88,7 +87,7 @@ fn fail_if_not_initialized() {
     let bypass_rotation_delay = true;
     assert_contract_err!(
         client.try_rotate_signers(&new_signers.signers, &proof, &bypass_rotation_delay),
-        GatewayAuthError::NotInitialized
+        GatewayError::NotInitialized
     );
 }
 
@@ -249,7 +248,7 @@ fn fail_execute_invalid_proof() {
 
     assert_contract_err!(
         client.try_approve_messages(&messages, &proof),
-        GatewayAuthError::InvalidSigners
+        GatewayError::InvalidSigners
     );
 }
 
@@ -266,7 +265,7 @@ fn approve_messages_fail_empty_messages() {
 
     assert_contract_err!(
         client.try_approve_messages(&messages, &proof),
-        GatewayAuthError::EmptyMessages
+        GatewayError::EmptyMessages
     );
 }
 
@@ -371,7 +370,7 @@ fn rotate_signers_fail_if_rotation_executed() {
 
     assert_contract_err!(
         client.try_rotate_signers(&new_signers.signers, &proof, &bypass_rotation_delay),
-        GatewayAuthError::RotationAlreadyExecuted
+        GatewayError::RotationAlreadyExecuted
     );
 }
 
@@ -393,7 +392,7 @@ fn rotate_signers_fail_not_latest_signers() {
 
     assert_contract_err!(
         client.try_rotate_signers(&second_signers.signers, &proof, &bypass_rotation_delay),
-        GatewayAuthError::NotLatestSigners
+        GatewayError::NotLatestSigners
     );
 }
 
