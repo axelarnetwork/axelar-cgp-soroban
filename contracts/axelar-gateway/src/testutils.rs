@@ -68,8 +68,8 @@ pub fn generate_test_message(env: &Env) -> (Message, Bytes) {
 
     (
         Message {
-            message_id: String::from_str(env, "test"),
             source_chain: String::from_str(env, DESTINATION_CHAIN),
+            message_id: String::from_str(env, "test"),
             source_address: String::from_str(env, DESTINATION_ADDRESS),
             contract_address: Address::generate(env),
             payload_hash: env.crypto().keccak256(&payload).into(),

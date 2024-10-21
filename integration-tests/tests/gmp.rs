@@ -23,15 +23,15 @@ impl AxelarExecutableInterface for AxelarApp {
 
     fn execute(
         env: Env,
-        message_id: String,
         source_chain: String,
+        message_id: String,
         source_address: String,
         payload: Bytes,
     ) {
         Self::validate(
             env.clone(),
-            message_id,
             source_chain,
+            message_id,
             source_address,
             payload.clone(),
         );
@@ -130,8 +130,8 @@ fn test_gmp() {
     let messages = vec![
         &env,
         Message {
-            message_id: message_id.clone(),
             source_chain: source_chain.clone(),
+            message_id: message_id.clone(),
             source_address: source_address.clone(),
             contract_address: destination_app_id.clone(),
             payload_hash,
@@ -151,7 +151,7 @@ fn test_gmp() {
     // Execute the app
     log!(env, "Executing message on destination app");
 
-    destination_app.execute(&message_id, &source_chain, &source_address, &payload);
+    destination_app.execute(&source_chain, &message_id, &source_address, &payload);
 
     assert_last_emitted_event(
         &env,
