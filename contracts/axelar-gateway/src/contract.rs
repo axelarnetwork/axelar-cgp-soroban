@@ -187,22 +187,10 @@ impl AxelarGatewayInterface for AxelarGateway {
             .keccak256(&(CommandType::RotateSigners, signers.clone()).to_xdr(&env))
             .into();
 
-        if env
-            .storage()
-            .persistent()
-            .has(&DataKey::RotationExecuted(data_hash.clone()))
-        {
-            panic_with_error!(env, Error::RotationAlreadyExecuted);
-        }
-
         let is_latest_signers = auth::validate_proof(&env, data_hash.clone(), proof);
         if !bypass_rotation_delay && !is_latest_signers {
             panic_with_error!(env, Error::NotLatestSigners);
         }
-
-        env.storage()
-            .persistent()
-            .set(&DataKey::RotationExecuted(data_hash), &true);
 
         auth::rotate_signers(&env, &signers, !bypass_rotation_delay);
     }

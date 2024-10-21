@@ -23,7 +23,6 @@ pub enum DataKey {
     AuthModule,
     Operator,
     MessageApproval(MessageApprovalKey),
-    RotationExecuted(BytesN<32>),
     /// Auth Module
     PreviousSignerRetention,
     DomainSeparator,
