@@ -193,7 +193,11 @@ pub fn rotate_signers(env: &Env, contract_id: &Address, new_signers: TestSignerS
     assert_last_emitted_event(
         env,
         &contract_id,
-        (symbol_short!("rotated"),),
-        (new_signers.signers.hash(&env), epoch_val),
+        (
+            symbol_short!("rotated"),
+            epoch_val,
+            new_signers.signers.hash(&env),
+        ),
+        (),
     );
 }
