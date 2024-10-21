@@ -9,6 +9,8 @@ use crate::types::CommandType;
 use crate::{auth, error::Error, event};
 use axelar_soroban_interfaces::{axelar_gateway::AxelarGatewayInterface, types::WeightedSigners};
 
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 #[contract]
 pub struct AxelarGateway;
 
@@ -67,21 +69,21 @@ impl AxelarGatewayInterface for AxelarGateway {
 
     fn is_message_approved(
         env: Env,
-        message_id: String,
         source_chain: String,
+        message_id: String,
         source_address: String,
         contract_address: Address,
         payload_hash: BytesN<32>,
     ) -> bool {
         let message_approval =
-            Self::message_approval(&env, message_id.clone(), source_chain.clone());
+            Self::message_approval(&env, source_chain.clone(), message_id.clone());
 
         message_approval
             == Self::message_approval_hash(
                 &env,
                 Message {
-                    message_id,
                     source_chain,
+                    message_id,
                     source_address,
                     contract_address,
                     payload_hash,
@@ -89,8 +91,8 @@ impl AxelarGatewayInterface for AxelarGateway {
             )
     }
 
-    fn is_message_executed(env: Env, message_id: String, source_chain: String) -> bool {
-        let message_approval = Self::message_approval(&env, message_id, source_chain);
+    fn is_message_executed(env: Env, source_chain: String, message_id: String) -> bool {
+        let message_approval = Self::message_approval(&env, source_chain, message_id);
 
         message_approval == MessageApprovalValue::Executed
     }
@@ -98,21 +100,21 @@ impl AxelarGatewayInterface for AxelarGateway {
     fn validate_message(
         env: Env,
         caller: Address,
-        message_id: String,
         source_chain: String,
+        message_id: String,
         source_address: String,
         payload_hash: BytesN<32>,
     ) -> bool {
         caller.require_auth();
 
         let key = MessageApprovalKey {
-            message_id: message_id.clone(),
             source_chain: source_chain.clone(),
+            message_id: message_id.clone(),
         };
         let message_approval = Self::message_approval_by_key(&env, key.clone());
         let message = Message {
-            message_id: message_id.clone(),
             source_chain,
+            message_id: message_id.clone(),
             source_address,
             contract_address: caller,
             payload_hash,
@@ -150,8 +152,8 @@ impl AxelarGatewayInterface for AxelarGateway {
 
         for message in messages.into_iter() {
             let key = MessageApprovalKey {
-                message_id: message.message_id.clone(),
                 source_chain: message.source_chain.clone(),
+                message_id: message.message_id.clone(),
             };
 
             // Prevent replay if message is already approved/executed
@@ -223,18 +225,28 @@ impl AxelarGatewayInterface for AxelarGateway {
     fn epoch(env: &Env) -> u64 {
         auth::epoch(env)
     }
+
+    fn version(env: Env) -> String {
+        String::from_str(&env, CONTRACT_VERSION)
+    }
+
+    fn upgrade(env: Env, new_wasm_hash: BytesN<32>) {
+        Self::operator(&env).require_auth();
+
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
+    }
 }
 
 impl AxelarGateway {
-    /// Get the message approval value by message_id and source_chain, defaulting to `MessageNotApproved`
+    /// Get the message approval value by source_chain and message_id, defaulting to `MessageNotApproved`
     fn message_approval(
         env: &Env,
-        message_id: String,
         source_chain: String,
+        message_id: String,
     ) -> MessageApprovalValue {
         let key = MessageApprovalKey {
-            message_id,
             source_chain,
+            message_id,
         };
 
         Self::message_approval_by_key(env, key)
