@@ -82,8 +82,8 @@ fn validate_message() {
 
     let (
         Message {
-            message_id,
             source_chain,
+            message_id,
             source_address,
             contract_address,
             payload_hash,
@@ -93,8 +93,8 @@ fn validate_message() {
 
     let approved = client.validate_message(
         &contract_address,
-        &message_id,
         &source_chain,
+        &message_id,
         &source_address,
         &payload_hash,
     );
@@ -107,8 +107,8 @@ fn validate_message() {
         "validate_message",
         (
             &contract_address,
-            message_id.clone(),
             source_chain.clone(),
+            message_id.clone(),
             source_address.clone(),
             payload_hash.clone(),
         ),
@@ -122,8 +122,8 @@ fn approve_message() {
     let (env, contract_id, client) = setup_env();
     let (message, _) = generate_test_message(&env);
     let Message {
-        message_id,
         source_chain,
+        message_id,
         source_address,
         contract_address,
         payload_hash,
@@ -145,8 +145,8 @@ fn approve_message() {
     );
 
     let is_approved = client.is_message_approved(
-        &message_id,
         &source_chain,
+        &message_id,
         &source_address,
         &contract_address,
         &payload_hash,
@@ -155,8 +155,8 @@ fn approve_message() {
 
     let approved = client.validate_message(
         &contract_address,
-        &message_id,
         &source_chain,
+        &message_id,
         &source_address,
         &payload_hash,
     );
@@ -170,15 +170,15 @@ fn approve_message() {
     );
 
     let is_approved = client.is_message_approved(
-        &message_id,
         &source_chain,
+        &message_id,
         &source_address,
         &contract_address,
         &payload_hash,
     );
     assert!(!is_approved);
 
-    let is_executed = client.is_message_executed(&message_id, &source_chain);
+    let is_executed = client.is_message_executed(&source_chain, &message_id);
     assert!(is_executed);
 }
 

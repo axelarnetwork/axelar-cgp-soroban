@@ -49,8 +49,8 @@ pub struct Proof {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Message {
-    pub message_id: String,
     pub source_chain: String,
+    pub message_id: String,
     pub source_address: String,
     pub contract_address: Address,
     pub payload_hash: BytesN<32>,

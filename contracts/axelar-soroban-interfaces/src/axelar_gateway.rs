@@ -32,8 +32,8 @@ pub trait AxelarGatewayInterface {
     fn validate_message(
         env: Env,
         caller: Address,
-        message_id: String,
         source_chain: String,
+        message_id: String,
         source_address: String,
         payload_hash: BytesN<32>,
     ) -> bool;
@@ -41,15 +41,15 @@ pub trait AxelarGatewayInterface {
     /// Return true if a contract call with the given payload BytesN<32> and source caller info is approved.
     fn is_message_approved(
         env: Env,
-        message_id: String,
         source_chain: String,
+        message_id: String,
         source_address: String,
         contract_address: Address,
         payload_hash: BytesN<32>,
     ) -> bool;
 
     /// Return true if a contract call with the given payload BytesN<32> and source caller info has been executed.
-    fn is_message_executed(env: Env, message_id: String, source_chain: String) -> bool;
+    fn is_message_executed(env: Env, source_chain: String, message_id: String) -> bool;
 
     fn rotate_signers(
         env: Env,
