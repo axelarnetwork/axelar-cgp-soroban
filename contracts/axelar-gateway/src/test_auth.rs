@@ -523,3 +523,36 @@ fn rotate_signers_panics_on_outdated_signer_set() {
         auth::validate_proof(&env, msg_hash, proof);
     });
 }
+
+#[test]
+#[should_panic(expected = "Error(Contract, #10)")] // AuthError::DuplicateSigners
+fn rotate_signers_fail_dupliated_signers() {
+    let (env, contract_id, client) = setup_env();
+
+    let user = Address::generate(&env);
+    let previous_signer_retention = 1;
+
+    let signers = initialize(
+        &env,
+        &client,
+        user.clone(),
+        previous_signer_retention,
+        randint(1, 10),
+    );
+
+    let msg_hash = generate_random_payload_and_hash(&env);
+    let new_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator);
+    let duplicated_signers = new_signers.clone();
+
+    testutils::rotate_signers(&env, &contract_id, new_signers.clone());
+
+    let proof = generate_proof(&env, msg_hash.clone(), new_signers);
+
+    env.as_contract(&contract_id, || {
+        let latest_signer_set = auth::validate_proof(&env, msg_hash, proof);
+        assert!(latest_signer_set);
+    });
+
+    // should panic, duplicated signers
+    testutils::rotate_signers(&env, &contract_id, duplicated_signers.clone());
+}
