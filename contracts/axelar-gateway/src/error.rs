@@ -6,9 +6,8 @@ use soroban_sdk::contracterror;
 pub enum Error {
     Uninitialized = 1,
     EmptyMessages = 2,
-    RotationAlreadyExecuted = 3,
-    NotLatestSigners = 4,
-    InvalidOperators = 5,
+    NotLatestSigners = 3,
+    InvalidOperators = 4,
 }
 
 #[contracterror]
@@ -24,4 +23,5 @@ pub enum AuthError {
     InsufficientRotationDelay = 7,
     InvalidSignatures = 8,
     InvalidWeights = 9,
+    DuplicateSigners = 10,
 }
