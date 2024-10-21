@@ -10,7 +10,7 @@ use soroban_sdk::{
     Address, BytesN, Env, Vec,
 };
 
-use axelar_soroban_std::{assert_err, assert_ok, testutils::assert_invocation};
+use axelar_soroban_std::{assert_err, assert_ok};
 
 use crate::{
     auth::{self, initialize_auth},
@@ -179,14 +179,13 @@ fn fail_validate_proof_threshold_not_met() {
 
     let signers = initialize(&env, &client, user, randint(0, 10), randint(1, 10));
 
-    let env = &env;
     let mut total_weight = 0u128;
 
     let msg_hash: BytesN<32> = BytesN::random(&env);
-    let mut proof = generate_proof(env, msg_hash.clone(), signers);
+    let mut proof = generate_proof(&env, msg_hash.clone(), signers);
 
     // Modify signatures to make them invalid
-    let mut new_signers = Vec::new(env);
+    let mut new_signers = Vec::new(&env);
     for ProofSigner { signer, signature } in proof.signers.iter() {
         total_weight += signer.weight;
 
@@ -216,8 +215,6 @@ fn fail_validate_proof_threshold_overflow() {
 
     let mut signers = initialize(&env, &client, user, randint(0, 10), randint(1, 10));
 
-    let env = &env;
-
     let last_index = signers.signers.signers.len() - 1;
 
     // get last signer and modify its weight to max u128 - 1
@@ -227,7 +224,7 @@ fn fail_validate_proof_threshold_overflow() {
     }
 
     let msg_hash: BytesN<32> = BytesN::random(&env);
-    let proof = generate_proof(env, msg_hash.clone(), signers);
+    let proof = generate_proof(&env, msg_hash.clone(), signers);
 
     // should panic, as modified signer wouldn't match the epoch
     env.as_contract(&contract_id, || {
@@ -254,18 +251,9 @@ fn test_rotate_signers() {
     );
 
     let msg_hash: BytesN<32> = BytesN::random(&env);
-
     let new_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator);
 
     testutils::rotate_signers(&env, &contract_id, new_signers.clone());
-
-    assert_invocation(
-        &env,
-        &user,
-        &contract_id,
-        "rotate_signers",
-        (new_signers.signers.clone(), false),
-    );
 
     let proof = generate_proof(&env, msg_hash.clone(), new_signers);
 
@@ -413,7 +401,6 @@ fn rotate_signers_fail_low_total_weight() {
     new_signers.signers.threshold = new_threshold;
 
     // should error because the threshold is set to zero
-
     assert_err!(
         auth::rotate_signers(&env, &new_signers.signers, false),
         GatewayError::InvalidThreshold

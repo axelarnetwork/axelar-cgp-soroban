@@ -71,8 +71,8 @@ pub fn generate_test_message(env: &Env) -> (Message, Bytes) {
 
     (
         Message {
-            message_id: String::from_str(env, "test"),
             source_chain: String::from_str(env, DESTINATION_CHAIN),
+            message_id: String::from_str(env, "test"),
             source_address: String::from_str(env, DESTINATION_ADDRESS),
             contract_address: Address::generate(env),
             payload_hash: env.crypto().keccak256(&payload).into(),
@@ -188,7 +188,11 @@ pub fn rotate_signers(env: &Env, contract_id: &Address, new_signers: TestSignerS
     assert_last_emitted_event(
         env,
         &contract_id,
-        (symbol_short!("rotated"),),
-        (new_signers.signers.hash(&env), epoch_val),
+        (
+            symbol_short!("rotated"),
+            epoch_val,
+            new_signers.signers.hash(&env),
+        ),
+        (),
     );
 }

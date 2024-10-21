@@ -110,7 +110,7 @@ pub fn rotate_signers(
         &new_epoch,
     );
 
-    event::rotate_signers(env, new_signers_hash, new_epoch);
+    event::rotate_signers(env, new_epoch, new_signers_hash);
 
     Ok(())
 }
