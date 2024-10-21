@@ -68,5 +68,5 @@ where
     U: IntoVal<Env, Vec<Val>>,
     V: IntoVal<Env, Val>,
 {
-    assert_emitted_event(&env, -1, contract_id, topics, data);
+    assert_emitted_event(env, -1, contract_id, topics, data);
 }

@@ -24,4 +24,5 @@ pub enum AuthError {
     InsufficientRotationDelay = 7,
     InvalidSignatures = 8,
     InvalidWeights = 9,
+    DuplicateSigners = 10,
 }

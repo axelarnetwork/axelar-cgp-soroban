@@ -64,8 +64,8 @@ impl AxelarApp {
 fn setup_gateway<'a>(env: &Env) -> (AxelarGatewayClient<'a>, TestSignerSet) {
     let gateway_id = env.register_contract(None, AxelarGateway);
     let gateway_client = AxelarGatewayClient::new(env, &gateway_id);
-    let operator = Address::generate(&env);
-    let signers = initialize(&env, &gateway_client, operator, 0, 5);
+    let operator = Address::generate(env);
+    let signers = initialize(env, &gateway_client, operator, 0, 5);
 
     (gateway_client, signers)
 }

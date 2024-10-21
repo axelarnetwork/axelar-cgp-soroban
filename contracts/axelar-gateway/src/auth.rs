@@ -43,11 +43,7 @@ pub fn validate_proof(env: &Env, data_hash: BytesN<32>, proof: Proof) -> bool {
 
     let signers_hash: BytesN<32> = env.crypto().keccak256(&signers_set.to_xdr(env)).into();
 
-    let signers_epoch: u64 = env
-        .storage()
-        .persistent()
-        .get(&DataKey::EpochBySignerHash(signers_hash.clone()))
-        .unwrap_or(0);
+    let signers_epoch: u64 = get_signers_epoch(&env, &signers_hash);
 
     if signers_epoch == 0 {
         panic_with_error!(env, AuthError::InvalidSigners);
@@ -93,7 +89,11 @@ pub fn rotate_signers(env: &Env, new_signers: &WeightedSigners, enforce_rotation
         .persistent()
         .set(&DataKey::SignerHashByEpoch(new_epoch), &new_signers_hash);
 
-    // If new_signers has been rotated to before, we will overwrite the epoch to point to the latest
+    // signers must be distinct, since nonce should guarantee uniqueness even if signers are repeated
+    if get_signers_epoch(&env, &new_signers_hash) != 0 {
+        panic_with_error!(env, AuthError::DuplicateSigners);
+    }
+
     env.storage().persistent().set(
         &DataKey::EpochBySignerHash(new_signers_hash.clone()),
         &new_epoch,
@@ -201,4 +201,11 @@ fn validate_signers(env: &Env, weighted_signers: &WeightedSigners) {
     if threshold == 0 || total_weight < threshold {
         panic_with_error!(env, AuthError::InvalidThreshold);
     }
+}
+
+fn get_signers_epoch(env: &Env, signers_hash: &BytesN<32>) -> u64 {
+    env.storage()
+        .persistent()
+        .get(&DataKey::EpochBySignerHash(signers_hash.clone()))
+        .unwrap_or(0)
 }
