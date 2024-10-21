@@ -2,7 +2,7 @@
 extern crate std;
 
 use crate::auth::{self, epoch};
-use crate::{contract::AxelarGatewayClient, types::CommandType};
+use crate::contract::AxelarGatewayClient;
 use axelar_soroban_std::assert_last_emitted_event;
 use ed25519_dalek::{Signature, Signer, SigningKey};
 use rand::Rng;
@@ -12,7 +12,7 @@ use soroban_sdk::{testutils::Address as _, Address};
 use soroban_sdk::{testutils::BytesN as _, vec, xdr::ToXdr, Bytes, BytesN, Env, String, Vec};
 
 use axelar_soroban_interfaces::types::{
-    Message, Proof, ProofSignature, ProofSigner, WeightedSigner, WeightedSigners,
+    CommandType, Message, Proof, ProofSignature, ProofSigner, WeightedSigner, WeightedSigners,
 };
 
 use axelar_soroban_std::traits::IntoVec;
@@ -52,12 +52,6 @@ pub fn initialize(
 pub fn get_approve_hash(env: &Env, messages: Vec<Message>) -> BytesN<32> {
     env.crypto()
         .keccak256(&(CommandType::ApproveMessages, messages).to_xdr(env))
-        .into()
-}
-
-pub fn get_rotation_hash(env: &Env, new_signers: WeightedSigners) -> BytesN<32> {
-    env.crypto()
-        .keccak256(&(CommandType::RotateSigners, new_signers).to_xdr(env))
         .into()
 }
 

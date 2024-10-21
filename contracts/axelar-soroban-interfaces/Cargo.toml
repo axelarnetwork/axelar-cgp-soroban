@@ -9,3 +9,4 @@ crate-type = ["rlib"]
 [dependencies]
 axelar-soroban-std = { workspace = true }
 soroban-sdk = { workspace = true }
+hex-literal = "0.3"

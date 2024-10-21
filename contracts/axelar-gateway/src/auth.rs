@@ -1,5 +1,5 @@
 use axelar_soroban_interfaces::types::{ProofSignature, ProofSigner, WeightedSigner};
-use soroban_sdk::{crypto::Hash, panic_with_error, xdr::ToXdr, Bytes, BytesN, Env, Vec};
+use soroban_sdk::{crypto::Hash, panic_with_error, Bytes, BytesN, Env, Vec};
 
 use crate::error::AuthError;
 use crate::event;
@@ -41,7 +41,7 @@ pub fn initialize_auth(
 pub fn validate_proof(env: &Env, data_hash: BytesN<32>, proof: Proof) -> bool {
     let signers_set = proof.weighted_signers();
 
-    let signers_hash: BytesN<32> = env.crypto().keccak256(&signers_set.to_xdr(env)).into();
+    let signers_hash = signers_set.hash(env);
 
     let signers_epoch = signers_epoch(env, &signers_hash)
         .unwrap_or_else(|| panic_with_error!(env, AuthError::InvalidSigners));
@@ -74,10 +74,8 @@ pub fn rotate_signers(env: &Env, new_signers: &WeightedSigners, enforce_rotation
 
     update_rotation_timestamp(env, enforce_rotation_delay);
 
-    let new_signers_hash: BytesN<32> = env
-        .crypto()
-        .keccak256(&new_signers.clone().to_xdr(env))
-        .into();
+    let new_signers_hash = new_signers.hash(env);
+
     let new_epoch: u64 = epoch(env) + 1;
 
     env.storage().instance().set(&DataKey::Epoch, &new_epoch);
