@@ -90,6 +90,7 @@ impl Proof {
         }
     }
 }
+
 #[cfg(test)]
 mod tests {
     use hex_literal::hex;
