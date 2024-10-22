@@ -179,18 +179,18 @@ pub fn generate_random_payload_and_hash(env: &Env) -> BytesN<32> {
 
 pub fn rotate_signers(env: &Env, contract_id: &Address, new_signers: TestSignerSet) {
     let mut epoch_val: u64 = 0;
-    env.as_contract(&contract_id, || {
-        epoch_val = epoch(&env) + 1;
+    env.as_contract(contract_id, || {
+        epoch_val = epoch(env) + 1;
         auth::rotate_signers(env, &new_signers.signers, false);
     });
 
     assert_last_emitted_event(
         env,
-        &contract_id,
+        contract_id,
         (
             symbol_short!("rotated"),
             epoch_val,
-            new_signers.signers.hash(&env),
+            new_signers.signers.hash(env),
         ),
         (),
     );
