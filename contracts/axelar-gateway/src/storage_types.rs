@@ -20,7 +20,7 @@ pub enum MessageApprovalValue {
 pub enum DataKey {
     /// Gateway
     Initialized,
-    AuthModule,
+    Owner,
     Operator,
     MessageApproval(MessageApprovalKey),
     /// Auth Module

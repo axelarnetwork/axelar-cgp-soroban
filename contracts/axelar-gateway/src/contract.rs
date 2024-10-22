@@ -17,6 +17,7 @@ pub struct AxelarGateway;
 impl AxelarGatewayInterface for AxelarGateway {
     fn initialize(
         env: Env,
+        owner: Address,
         operator: Address,
         domain_separator: BytesN<32>,
         minimum_rotation_delay: u64,
@@ -33,6 +34,7 @@ impl AxelarGatewayInterface for AxelarGateway {
 
         env.storage().instance().set(&DataKey::Initialized, &true);
 
+        env.storage().instance().set(&DataKey::Owner, &owner);
         env.storage().instance().set(&DataKey::Operator, &operator);
 
         auth::initialize_auth(
@@ -224,11 +226,29 @@ impl AxelarGatewayInterface for AxelarGateway {
     }
 
     fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), GatewayError> {
-        Self::operator(&env)?.require_auth();
+        Self::owner(&env)?.require_auth();
 
         env.deployer().update_current_contract_wasm(new_wasm_hash);
 
         Ok(())
+    }
+
+    fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), GatewayError> {
+        let owner: Address = Self::owner(&env)?;
+        owner.require_auth();
+
+        env.storage().instance().set(&DataKey::Owner, &new_owner);
+
+        event::transfer_ownership(&env, owner, new_owner);
+
+        Ok(())
+    }
+
+    fn owner(env: &Env) -> Result<Address, GatewayError> {
+        env.storage()
+            .instance()
+            .get(&DataKey::Owner)
+            .ok_or(GatewayError::NotInitialized)
     }
 }
 
