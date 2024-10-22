@@ -5,12 +5,15 @@ use crate::testutils::{
     randint,
 };
 use crate::{contract::AxelarGateway, contract::AxelarGatewayClient};
+use axelar_soroban_interfaces::axelar_gateway::GatewayError;
 use axelar_soroban_interfaces::types::Message;
-use axelar_soroban_std::{assert_invocation, assert_last_emitted_event};
+use axelar_soroban_std::{assert_contract_err, assert_invocation, assert_last_emitted_event};
+use soroban_sdk::testutils::BytesN as _;
+
 use soroban_sdk::{
     bytes, symbol_short,
     testutils::{Address as _, Events, MockAuth, MockAuthInvoke},
-    vec, Address, Env, IntoVal, String,
+    vec, Address, BytesN, Env, IntoVal, String,
 };
 
 const DESTINATION_CHAIN: &str = "ethereum";
@@ -27,14 +30,64 @@ fn setup_env<'a>() -> (Env, Address, AxelarGatewayClient<'a>) {
 }
 
 #[test]
-#[should_panic(expected = "Already initialized")]
 fn fails_if_already_initialized() {
     let (env, _contract_id, client) = setup_env();
     let operator = Address::generate(&env);
 
-    initialize(&env, &client, operator.clone(), 1, randint(1, 10));
+    // doing the process from testutils::initialize() manually so we can
+    // use try_initialize for the second call
+    let num_signers = randint(1, 10);
+    let previous_signers_retention = 1;
 
-    initialize(&env, &client, operator.clone(), 1, randint(1, 10));
+    let signer_set = generate_signers_set(&env, num_signers, BytesN::random(&env));
+    let initial_signers = vec![&env, signer_set.signers.clone()];
+    let minimum_rotation_delay = 0;
+
+    client.initialize(
+        &operator,
+        &signer_set.domain_separator,
+        &minimum_rotation_delay,
+        &(previous_signers_retention as u64),
+        &initial_signers,
+    );
+
+    assert_contract_err!(
+        client.try_initialize(
+            &operator,
+            &signer_set.domain_separator,
+            &minimum_rotation_delay,
+            &(previous_signers_retention as u64),
+            &initial_signers,
+        ),
+        GatewayError::AlreadyInitialized
+    );
+}
+
+#[test]
+/// Two functions in the gateway contract require initialization:
+/// rotate_signers when bypass_rotation_delay = true
+/// transfer_operatorship
+fn fail_if_not_initialized() {
+    let (env, _contract_id, client) = setup_env();
+    let new_operator = Address::generate(&env);
+
+    assert_contract_err!(
+        client.try_transfer_operatorship(&new_operator),
+        GatewayError::NotInitialized
+    );
+
+    let num_signers = randint(1, 10);
+    let signers = generate_signers_set(&env, num_signers, BytesN::random(&env));
+
+    let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
+    let data_hash = new_signers.signers.hash(&env);
+    let proof = generate_proof(&env, data_hash.clone(), signers);
+
+    let bypass_rotation_delay = true;
+    assert_contract_err!(
+        client.try_rotate_signers(&new_signers.signers, &proof, &bypass_rotation_delay),
+        GatewayError::NotInitialized
+    );
 }
 
 #[test]
@@ -194,8 +247,27 @@ fn fail_execute_invalid_proof() {
     let data_hash = get_approve_hash(&env, messages.clone());
     let proof = generate_proof(&env, data_hash, invalid_signers);
 
-    let res = client.try_approve_messages(&messages, &proof);
-    assert!(res.is_err());
+    assert_contract_err!(
+        client.try_approve_messages(&messages, &proof),
+        GatewayError::InvalidSigners
+    );
+}
+
+#[test]
+fn approve_messages_fail_empty_messages() {
+    let (env, _, client) = setup_env();
+    let operator = Address::generate(&env);
+
+    let signers = initialize(&env, &client, operator, 1, randint(1, 10));
+
+    let messages = soroban_sdk::Vec::new(&env);
+    let data_hash = get_approve_hash(&env, messages.clone());
+    let proof = generate_proof(&env, data_hash, signers);
+
+    assert_contract_err!(
+        client.try_approve_messages(&messages, &proof),
+        GatewayError::EmptyMessages
+    );
 }
 
 #[test]
@@ -290,6 +362,28 @@ fn rotate_signers_bypass_rotation_delay() {
             new_signers.signers.hash(&env),
         ),
         (),
+    );
+}
+
+#[test]
+fn rotate_signers_fail_not_latest_signers() {
+    let (env, _contract_id, client) = setup_env();
+    let operator = Address::generate(&env);
+    let signers = initialize(&env, &client, operator, 1, 5);
+    let bypass_rotation_delay = false;
+
+    let first_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
+    let data_hash = first_signers.signers.signers_rotation_hash(&env);
+    let proof = generate_proof(&env, data_hash.clone(), signers.clone());
+    client.rotate_signers(&first_signers.signers, &proof, &bypass_rotation_delay);
+
+    let second_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
+    let data_hash = second_signers.signers.signers_rotation_hash(&env);
+    let proof = generate_proof(&env, data_hash.clone(), signers.clone());
+
+    assert_contract_err!(
+        client.try_rotate_signers(&second_signers.signers, &proof, &bypass_rotation_delay),
+        GatewayError::NotLatestSigners
     );
 }
 
