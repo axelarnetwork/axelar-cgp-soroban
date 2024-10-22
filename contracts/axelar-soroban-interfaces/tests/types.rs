@@ -72,10 +72,10 @@ fn messages_approval_hash() {
     ]
     .map(|hash| BytesN::<32>::from_array(&env, &hash));
 
-    let mut messages_array = soroban_sdk::Vec::new(&env);
+    let mut messages = soroban_sdk::Vec::new(&env);
 
-    for (i, payload_hash) in payload_hashes.iter().enumerate() {
-        messages_array.push_back(Message {
+    for (i, payload_hash) in payload_hashes.into_iter().enumerate() {
+        messages.push_back(Message {
             source_chain: String::from_str(&env, &format!("source-{}", i + 1)),
             message_id: String::from_str(&env, &format!("test-{}", i + 1)),
             source_address: String::from_str(
@@ -86,13 +86,13 @@ fn messages_approval_hash() {
                 &env,
                 "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4",
             )),
-            payload_hash: payload_hash.clone(),
+            payload_hash,
         });
     }
 
     let approval_hash = env
         .crypto()
-        .keccak256(&(CommandType::ApproveMessages, messages_array).to_xdr(&env))
+        .keccak256(&(CommandType::ApproveMessages, messages).to_xdr(&env))
         .to_array();
 
     goldie::assert!(hex::encode(approval_hash));
