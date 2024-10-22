@@ -30,6 +30,7 @@ pub struct TestSignerSet {
 pub fn initialize(
     env: &Env,
     client: &AxelarGatewayClient,
+    owner: Address,
     operator: Address,
     previous_signers_retention: u32,
     num_signers: u32,
@@ -39,6 +40,7 @@ pub fn initialize(
     let minimum_rotation_delay = 0;
 
     client.initialize(
+        &owner,
         &operator,
         &signer_set.domain_separator,
         &minimum_rotation_delay,

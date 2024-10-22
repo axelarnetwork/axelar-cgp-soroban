@@ -32,6 +32,7 @@ fn setup_env<'a>() -> (Env, Address, AxelarGatewayClient<'a>) {
 #[test]
 fn fails_if_already_initialized() {
     let (env, _contract_id, client) = setup_env();
+    let owner = Address::generate(&env);
     let operator = Address::generate(&env);
 
     // doing the process from testutils::initialize() manually so we can
@@ -44,6 +45,7 @@ fn fails_if_already_initialized() {
     let minimum_rotation_delay = 0;
 
     client.initialize(
+        &owner,
         &operator,
         &signer_set.domain_separator,
         &minimum_rotation_delay,
@@ -53,6 +55,7 @@ fn fails_if_already_initialized() {
 
     assert_contract_err!(
         client.try_initialize(
+            &owner,
             &operator,
             &signer_set.domain_separator,
             &minimum_rotation_delay,
@@ -181,8 +184,9 @@ fn approve_message() {
         payload_hash,
     } = message.clone();
 
+    let owner = Address::generate(&env);
     let operator = Address::generate(&env);
-    let signers = initialize(&env, &client, operator, 1, randint(1, 10));
+    let signers = initialize(&env, &client, owner, operator, 1, randint(1, 10));
 
     let messages = vec![&env, message.clone()];
     let data_hash = get_approve_hash(&env, messages.clone());
@@ -238,8 +242,9 @@ fn approve_message() {
 fn fail_execute_invalid_proof() {
     let (env, _contract_id, client) = setup_env();
     let (message, _) = generate_test_message(&env);
+    let owner = Address::generate(&env);
     let operator = Address::generate(&env);
-    let signers = initialize(&env, &client, operator, 1, randint(1, 10));
+    let signers = initialize(&env, &client, owner, operator, 1, randint(1, 10));
 
     let invalid_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator);
 
@@ -256,9 +261,10 @@ fn fail_execute_invalid_proof() {
 #[test]
 fn approve_messages_fail_empty_messages() {
     let (env, _, client) = setup_env();
+    let owner = Address::generate(&env);
     let operator = Address::generate(&env);
 
-    let signers = initialize(&env, &client, operator, 1, randint(1, 10));
+    let signers = initialize(&env, &client, owner, operator, 1, randint(1, 10));
 
     let messages = soroban_sdk::Vec::new(&env);
     let data_hash = get_approve_hash(&env, messages.clone());
@@ -274,9 +280,10 @@ fn approve_messages_fail_empty_messages() {
 fn approve_messages_skip_duplicate_message() {
     let (env, _, client) = setup_env();
     let (message, _) = generate_test_message(&env);
+    let owner = Address::generate(&env);
     let operator = Address::generate(&env);
 
-    let signers = initialize(&env, &client, operator, 1, randint(1, 10));
+    let signers = initialize(&env, &client, owner, operator, 1, randint(1, 10));
 
     let messages = vec![&env, message.clone()];
     let data_hash = get_approve_hash(&env, messages.clone());
@@ -294,8 +301,9 @@ fn approve_messages_skip_duplicate_message() {
 #[test]
 fn rotate_signers() {
     let (env, contract_id, client) = setup_env();
+    let owner = Address::generate(&env);
     let operator = Address::generate(&env);
-    let signers = initialize(&env, &client, operator, 1, 5);
+    let signers = initialize(&env, &client, owner, operator, 1, 5);
     let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
     let data_hash = new_signers.signers.signers_rotation_hash(&env);
     let proof = generate_proof(&env, data_hash.clone(), signers);
@@ -328,8 +336,9 @@ fn rotate_signers() {
 #[test]
 fn rotate_signers_bypass_rotation_delay() {
     let (env, contract_id, client) = setup_env();
+    let owner = Address::generate(&env);
     let operator = Address::generate(&env);
-    let signers = initialize(&env, &client, operator.clone(), 1, 5);
+    let signers = initialize(&env, &client, owner, operator.clone(), 1, 5);
     let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
     let data_hash = new_signers.signers.signers_rotation_hash(&env);
     let proof = generate_proof(&env, data_hash.clone(), signers.clone());
@@ -368,8 +377,9 @@ fn rotate_signers_bypass_rotation_delay() {
 #[test]
 fn rotate_signers_fail_not_latest_signers() {
     let (env, _contract_id, client) = setup_env();
+    let owner = Address::generate(&env);
     let operator = Address::generate(&env);
-    let signers = initialize(&env, &client, operator, 1, 5);
+    let signers = initialize(&env, &client, owner, operator, 1, 5);
     let bypass_rotation_delay = false;
 
     let first_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
@@ -391,9 +401,10 @@ fn rotate_signers_fail_not_latest_signers() {
 #[should_panic(expected = "HostError: Error(Auth, InvalidAction)")] // Unauthorized
 fn rotate_signers_bypass_rotation_delay_fail_if_not_operator() {
     let (env, contract_id, client) = setup_env();
+    let owner = Address::generate(&env);
     let operator = Address::generate(&env);
     let user = Address::generate(&env);
-    let signers = initialize(&env, &client, operator.clone(), 1, 5);
+    let signers = initialize(&env, &client, owner, operator.clone(), 1, 5);
     let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
     let data_hash = new_signers.signers.signers_rotation_hash(&env);
     let proof = generate_proof(&env, data_hash.clone(), signers);
@@ -420,10 +431,11 @@ fn rotate_signers_bypass_rotation_delay_fail_if_not_operator() {
 #[test]
 fn transfer_operatorship() {
     let (env, contract_id, client) = setup_env();
+    let owner = Address::generate(&env);
     let operator = Address::generate(&env);
     let new_operator = Address::generate(&env);
 
-    initialize(&env, &client, operator.clone(), 1, randint(1, 10));
+    initialize(&env, &client, owner, operator.clone(), 1, randint(1, 10));
 
     assert_eq!(client.operator(), operator);
 
@@ -443,7 +455,7 @@ fn transfer_operatorship() {
         &env,
         &contract_id,
         (
-            String::from_str(&env, "transferred"),
+            String::from_str(&env, "operatorship_transferred"),
             operator.clone(),
             new_operator.clone(),
         ),
@@ -457,11 +469,12 @@ fn transfer_operatorship() {
 #[should_panic(expected = "HostError: Error(Auth, InvalidAction)")] // Unauthorized
 fn transfer_operatorship_unauthorized() {
     let (env, contract_id, client) = setup_env();
+    let owner = Address::generate(&env);
     let operator = Address::generate(&env);
     let new_operator = Address::generate(&env);
     let user = Address::generate(&env);
 
-    initialize(&env, &client, operator.clone(), 1, randint(1, 10));
+    initialize(&env, &client, owner, operator.clone(), 1, randint(1, 10));
 
     assert_eq!(client.operator(), operator);
     client
@@ -475,4 +488,66 @@ fn transfer_operatorship_unauthorized() {
             },
         }])
         .transfer_operatorship(&new_operator);
+}
+
+#[test]
+fn transfer_ownership() {
+    let (env, contract_id, client) = setup_env();
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
+    let new_owner = Address::generate(&env);
+
+    initialize(&env, &client, owner.clone(), operator, 1, randint(1, 10));
+
+    assert_eq!(client.owner(), owner);
+
+    client
+        .mock_auths(&[MockAuth {
+            address: &owner,
+            invoke: &MockAuthInvoke {
+                contract: &contract_id,
+                fn_name: "transfer_ownership",
+                args: (&new_owner,).into_val(&env),
+                sub_invokes: &[],
+            },
+        }])
+        .transfer_ownership(&new_owner);
+
+    assert_last_emitted_event(
+        &env,
+        &contract_id,
+        (
+            String::from_str(&env, "ownership_transferred"),
+            owner,
+            new_owner.clone(),
+        ),
+        (),
+    );
+
+    assert_eq!(client.owner(), new_owner);
+}
+
+#[test]
+#[should_panic(expected = "HostError: Error(Auth, InvalidAction)")] // Unauthorized
+fn transfer_ownership_unauthorized() {
+    let (env, contract_id, client) = setup_env();
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
+    let new_owner = Address::generate(&env);
+    let user = Address::generate(&env);
+
+    initialize(&env, &client, owner.clone(), operator, 1, randint(1, 10));
+
+    assert_eq!(client.owner(), owner);
+    client
+        .mock_auths(&[MockAuth {
+            address: &user,
+            invoke: &MockAuthInvoke {
+                contract: &contract_id,
+                fn_name: "transfer_ownership",
+                args: (&new_owner,).into_val(&env),
+                sub_invokes: &[],
+            },
+        }])
+        .transfer_ownership(&new_owner);
 }

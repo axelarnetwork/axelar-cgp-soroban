@@ -31,6 +31,7 @@ pub trait AxelarGatewayInterface {
     /// Initialize the gateway
     fn initialize(
         env: Env,
+        owner: Address,
         operator: Address,
         domain_separator: BytesN<32>,
         previous_signers_retention: u64,
@@ -91,4 +92,8 @@ pub trait AxelarGatewayInterface {
     fn version(env: Env) -> String;
 
     fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), GatewayError>;
+
+    fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), GatewayError>;
+
+    fn owner(env: &Env) -> Result<Address, GatewayError>;
 }

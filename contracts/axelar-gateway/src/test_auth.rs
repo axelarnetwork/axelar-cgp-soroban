@@ -31,9 +31,17 @@ fn setup_env<'a>() -> (Env, Address, AxelarGatewayClient<'a>) {
 #[test]
 fn test_initialize() {
     let (env, _, client) = setup_env();
-    let user = Address::generate(&env);
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
 
-    initialize(&env, &client, user, randint(0, 10), randint(1, 10));
+    initialize(
+        &env,
+        &client,
+        owner,
+        operator,
+        randint(0, 10),
+        randint(1, 10),
+    );
 }
 
 #[test]
@@ -65,9 +73,17 @@ fn fails_with_empty_signer_set() {
 #[test]
 fn validate_proof() {
     let (env, contract_id, client) = setup_env();
-    let user = Address::generate(&env);
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
 
-    let signers = initialize(&env, &client, user, randint(0, 10), randint(1, 10));
+    let signers = initialize(
+        &env,
+        &client,
+        owner,
+        operator,
+        randint(0, 10),
+        randint(1, 10),
+    );
 
     let msg_hash: BytesN<32> = BytesN::random(&env);
     let proof = generate_proof(&env, msg_hash.clone(), signers);
@@ -81,9 +97,17 @@ fn validate_proof() {
 #[test]
 fn fail_validate_proof_invalid_epoch() {
     let (env, contract_id, client) = setup_env();
-    let user = Address::generate(&env);
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
 
-    initialize(&env, &client, user, randint(0, 10), randint(1, 10));
+    initialize(
+        &env,
+        &client,
+        owner,
+        operator,
+        randint(0, 10),
+        randint(1, 10),
+    );
 
     let different_signers = generate_signers_set(&env, randint(1, 10), BytesN::random(&env));
 
@@ -103,9 +127,17 @@ fn fail_validate_proof_invalid_epoch() {
 #[should_panic(expected = "failed ED25519 verification")]
 fn fail_validate_proof_invalid_signatures() {
     let (env, contract_id, client) = setup_env();
-    let user = Address::generate(&env);
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
 
-    let signers = initialize(&env, &client, user, randint(0, 10), randint(1, 10));
+    let signers = initialize(
+        &env,
+        &client,
+        owner,
+        operator,
+        randint(0, 10),
+        randint(1, 10),
+    );
 
     let msg_hash: BytesN<32> = BytesN::random(&env);
     let proof = generate_proof(&env, msg_hash.clone(), signers);
@@ -122,9 +154,17 @@ fn fail_validate_proof_invalid_signatures() {
 #[test]
 fn fail_validate_proof_empty_signatures() {
     let (env, contract_id, client) = setup_env();
-    let user = Address::generate(&env);
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
 
-    let signers = initialize(&env, &client, user, randint(0, 10), randint(1, 10));
+    let signers = initialize(
+        &env,
+        &client,
+        owner,
+        operator,
+        randint(0, 10),
+        randint(1, 10),
+    );
 
     let msg_hash: BytesN<32> = BytesN::random(&env);
     let mut proof = generate_proof(&env, msg_hash.clone(), signers);
@@ -151,9 +191,17 @@ fn fail_validate_proof_empty_signatures() {
 #[test]
 fn fail_validate_proof_invalid_signer_set() {
     let (env, contract_id, client) = setup_env();
-    let user = Address::generate(&env);
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
 
-    let signers = initialize(&env, &client, user, randint(0, 10), randint(1, 10));
+    let signers = initialize(
+        &env,
+        &client,
+        owner,
+        operator,
+        randint(0, 10),
+        randint(1, 10),
+    );
     let new_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator.clone());
 
     let msg_hash: BytesN<32> = BytesN::random(&env);
@@ -175,9 +223,17 @@ fn fail_validate_proof_invalid_signer_set() {
 #[test]
 fn fail_validate_proof_threshold_not_met() {
     let (env, contract_id, client) = setup_env();
-    let user = Address::generate(&env);
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
 
-    let signers = initialize(&env, &client, user, randint(0, 10), randint(1, 10));
+    let signers = initialize(
+        &env,
+        &client,
+        owner,
+        operator,
+        randint(0, 10),
+        randint(1, 10),
+    );
 
     let mut total_weight = 0u128;
 
@@ -211,9 +267,17 @@ fn fail_validate_proof_threshold_not_met() {
 #[test]
 fn fail_validate_proof_threshold_overflow() {
     let (env, contract_id, client) = setup_env();
-    let user = Address::generate(&env);
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
 
-    let mut signers = initialize(&env, &client, user, randint(0, 10), randint(1, 10));
+    let mut signers = initialize(
+        &env,
+        &client,
+        owner,
+        operator,
+        randint(0, 10),
+        randint(1, 10),
+    );
 
     let last_index = signers.signers.signers.len() - 1;
 
@@ -239,13 +303,15 @@ fn fail_validate_proof_threshold_overflow() {
 fn test_rotate_signers() {
     let (env, contract_id, client) = setup_env();
 
-    let user = Address::generate(&env);
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
     let previous_signer_retention = 1;
 
     let signers = initialize(
         &env,
         &client,
-        user.clone(),
+        owner,
+        operator,
         previous_signer_retention,
         randint(1, 10),
     );
@@ -283,13 +349,15 @@ fn rotate_signers_fail_empty_signers() {
 fn rotate_signers_fail_zero_weight() {
     let (env, _, client) = setup_env();
 
-    let user = Address::generate(&env);
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
     let previous_signer_retention = 1;
 
     initialize(
         &env,
         &client,
-        user.clone(),
+        owner,
+        operator,
         previous_signer_retention,
         randint(1, 10),
     );
@@ -315,13 +383,15 @@ fn rotate_signers_fail_zero_weight() {
 fn rotate_signers_fail_weight_overflow() {
     let (env, _, client) = setup_env();
 
-    let user = Address::generate(&env);
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
     let previous_signer_retention = 1;
 
     initialize(
         &env,
         &client,
-        user.clone(),
+        owner,
+        operator,
         previous_signer_retention,
         randint(1, 10),
     );
@@ -347,13 +417,15 @@ fn rotate_signers_fail_weight_overflow() {
 fn rotate_signers_fail_zero_threshold() {
     let (env, _, client) = setup_env();
 
-    let user = Address::generate(&env);
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
     let previous_signer_retention = 1;
 
     initialize(
         &env,
         &client,
-        user.clone(),
+        owner,
+        operator,
         previous_signer_retention,
         randint(1, 10),
     );
@@ -374,13 +446,15 @@ fn rotate_signers_fail_zero_threshold() {
 fn rotate_signers_fail_low_total_weight() {
     let (env, _, client) = setup_env();
 
-    let user = Address::generate(&env);
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
     let previous_signer_retention = 1;
 
     initialize(
         &env,
         &client,
-        user.clone(),
+        owner,
+        operator,
         previous_signer_retention,
         randint(1, 10),
     );
@@ -411,13 +485,15 @@ fn rotate_signers_fail_low_total_weight() {
 fn rotate_signers_fail_wrong_signer_order() {
     let (env, _, client) = setup_env();
 
-    let user = Address::generate(&env);
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
     let previous_signer_retention = 1;
 
     initialize(
         &env,
         &client,
-        user.clone(),
+        owner,
+        operator,
         previous_signer_retention,
         randint(1, 10),
     );
@@ -449,13 +525,15 @@ fn rotate_signers_fail_wrong_signer_order() {
 fn multi_rotate_signers() {
     let (env, contract_id, client) = setup_env();
 
-    let user = Address::generate(&env);
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
     let previous_signer_retention = randint(1, 5);
 
     let original_signers = initialize(
         &env,
         &client,
-        user,
+        owner,
+        operator,
         previous_signer_retention,
         randint(1, 10),
     );
@@ -499,13 +577,15 @@ fn multi_rotate_signers() {
 fn rotate_signers_panics_on_outdated_signer_set() {
     let (env, contract_id, client) = setup_env();
 
-    let user = Address::generate(&env);
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
     let previous_signer_retention = randint(0, 5);
 
     let original_signers = initialize(
         &env,
         &client,
-        user,
+        owner,
+        operator,
         previous_signer_retention,
         randint(1, 10),
     );
@@ -536,13 +616,15 @@ fn rotate_signers_panics_on_outdated_signer_set() {
 fn rotate_signers_fail_duplicated_signers() {
     let (env, contract_id, client) = setup_env();
 
-    let user = Address::generate(&env);
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
     let previous_signer_retention = 1;
 
     let signers = initialize(
         &env,
         &client,
-        user.clone(),
+        owner,
+        operator,
         previous_signer_retention,
         randint(1, 10),
     );
