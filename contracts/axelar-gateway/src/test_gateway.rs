@@ -1,9 +1,8 @@
 #![cfg(test)]
 extern crate std;
-
 use crate::testutils::{
-    generate_proof, generate_signers_set, generate_test_message, get_approve_hash,
-    get_rotation_hash, initialize, randint,
+    generate_proof, generate_signers_set, generate_test_message, get_approve_hash, initialize,
+    randint,
 };
 use crate::{contract::AxelarGateway, contract::AxelarGatewayClient};
 use axelar_soroban_interfaces::types::Message;
@@ -226,7 +225,7 @@ fn rotate_signers() {
     let operator = Address::generate(&env);
     let signers = initialize(&env, &client, operator, 1, 5);
     let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
-    let data_hash = get_rotation_hash(&env, new_signers.signers.clone());
+    let data_hash = new_signers.signers.signers_rotation_hash(&env);
     let proof = generate_proof(&env, data_hash.clone(), signers);
     let bypass_rotation_delay = false;
     let new_epoch: u64 = client.epoch() + 1;
@@ -260,7 +259,7 @@ fn rotate_signers_bypass_rotation_delay() {
     let operator = Address::generate(&env);
     let signers = initialize(&env, &client, operator.clone(), 1, 5);
     let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
-    let data_hash = get_rotation_hash(&env, new_signers.signers.clone());
+    let data_hash = new_signers.signers.signers_rotation_hash(&env);
     let proof = generate_proof(&env, data_hash.clone(), signers.clone());
     let bypass_rotation_delay = true;
     let new_epoch: u64 = client.epoch() + 1;
@@ -302,7 +301,7 @@ fn rotate_signers_bypass_rotation_delay_fail_if_not_operator() {
     let user = Address::generate(&env);
     let signers = initialize(&env, &client, operator.clone(), 1, 5);
     let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
-    let data_hash = get_rotation_hash(&env, new_signers.signers.clone());
+    let data_hash = new_signers.signers.signers_rotation_hash(&env);
     let proof = generate_proof(&env, data_hash.clone(), signers);
     let bypass_rotation_delay = true;
 

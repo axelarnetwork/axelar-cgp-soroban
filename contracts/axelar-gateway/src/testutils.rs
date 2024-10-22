@@ -2,7 +2,7 @@
 extern crate std;
 
 use crate::auth::{self, epoch};
-use crate::{contract::AxelarGatewayClient, types::CommandType};
+use crate::contract::AxelarGatewayClient;
 use axelar_soroban_std::assert_last_emitted_event;
 use ed25519_dalek::{Signature, Signer, SigningKey};
 use rand::Rng;
@@ -12,7 +12,7 @@ use soroban_sdk::{testutils::Address as _, Address};
 use soroban_sdk::{testutils::BytesN as _, vec, xdr::ToXdr, Bytes, BytesN, Env, String, Vec};
 
 use axelar_soroban_interfaces::types::{
-    Message, Proof, ProofSignature, ProofSigner, WeightedSigner, WeightedSigners,
+    CommandType, Message, Proof, ProofSignature, ProofSigner, WeightedSigner, WeightedSigners,
 };
 
 use axelar_soroban_std::traits::IntoVec;
@@ -52,12 +52,6 @@ pub fn initialize(
 pub fn get_approve_hash(env: &Env, messages: Vec<Message>) -> BytesN<32> {
     env.crypto()
         .keccak256(&(CommandType::ApproveMessages, messages).to_xdr(env))
-        .into()
-}
-
-pub fn get_rotation_hash(env: &Env, new_signers: WeightedSigners) -> BytesN<32> {
-    env.crypto()
-        .keccak256(&(CommandType::RotateSigners, new_signers).to_xdr(env))
         .into()
 }
 
@@ -185,18 +179,18 @@ pub fn generate_random_payload_and_hash(env: &Env) -> BytesN<32> {
 
 pub fn rotate_signers(env: &Env, contract_id: &Address, new_signers: TestSignerSet) {
     let mut epoch_val: u64 = 0;
-    env.as_contract(&contract_id, || {
-        epoch_val = epoch(&env) + 1;
+    env.as_contract(contract_id, || {
+        epoch_val = epoch(env) + 1;
         auth::rotate_signers(env, &new_signers.signers, false);
     });
 
     assert_last_emitted_event(
         env,
-        &contract_id,
+        contract_id,
         (
             symbol_short!("rotated"),
             epoch_val,
-            new_signers.signers.hash(&env),
+            new_signers.signers.hash(env),
         ),
         (),
     );

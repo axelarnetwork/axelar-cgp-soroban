@@ -1,11 +1,10 @@
-use axelar_soroban_interfaces::types::{Message, Proof};
+use axelar_soroban_interfaces::types::{CommandType, Message, Proof};
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{
     contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, String, Vec,
 };
 
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
-use crate::types::CommandType;
 use crate::{auth, error::Error, event};
 use axelar_soroban_interfaces::{axelar_gateway::AxelarGatewayInterface, types::WeightedSigners};
 
@@ -134,11 +133,7 @@ impl AxelarGatewayInterface for AxelarGateway {
         false
     }
 
-    fn approve_messages(
-        env: Env,
-        messages: soroban_sdk::Vec<axelar_soroban_interfaces::types::Message>,
-        proof: axelar_soroban_interfaces::types::Proof,
-    ) {
+    fn approve_messages(env: Env, messages: Vec<Message>, proof: Proof) {
         let data_hash: BytesN<32> = env
             .crypto()
             .keccak256(&(CommandType::ApproveMessages, messages.clone()).to_xdr(&env))
@@ -182,10 +177,7 @@ impl AxelarGatewayInterface for AxelarGateway {
             Self::operator(&env).require_auth();
         }
 
-        let data_hash: BytesN<32> = env
-            .crypto()
-            .keccak256(&(CommandType::RotateSigners, signers.clone()).to_xdr(&env))
-            .into();
+        let data_hash: BytesN<32> = signers.signers_rotation_hash(&env);
 
         let is_latest_signers = auth::validate_proof(&env, data_hash.clone(), proof);
         if !bypass_rotation_delay && !is_latest_signers {

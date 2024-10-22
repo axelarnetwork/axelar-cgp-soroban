@@ -48,6 +48,13 @@ pub struct Proof {
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub enum CommandType {
+    ApproveMessages,
+    RotateSigners,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Message {
     pub source_chain: String,
     pub message_id: String,
@@ -57,9 +64,14 @@ pub struct Message {
 }
 
 impl WeightedSigners {
-    // Get hash of WeightedSigners
     pub fn hash(&self, env: &Env) -> BytesN<32> {
         env.crypto().keccak256(&self.clone().to_xdr(env)).into()
+    }
+
+    pub fn signers_rotation_hash(&self, env: &Env) -> BytesN<32> {
+        env.crypto()
+            .keccak256(&(CommandType::RotateSigners, self.clone()).to_xdr(env))
+            .into()
     }
 }
 
