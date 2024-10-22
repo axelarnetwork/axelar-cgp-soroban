@@ -12,5 +12,5 @@ soroban-sdk = { workspace = true }
 
 [dev-dependencies]
 goldie = { version = "0.5" }
-hex-literal = "0.4"
 hex = "0.4"
+hex-literal = "0.4"
