@@ -1,7 +1,7 @@
 use hex_literal::hex;
-use soroban_sdk::{BytesN, Env, Vec};
+use soroban_sdk::{xdr::ToXdr, Address, BytesN, Env, String, Vec};
 
-use axelar_soroban_interfaces::types::{WeightedSigner, WeightedSigners};
+use axelar_soroban_interfaces::types::{CommandType, Message, WeightedSigner, WeightedSigners};
 
 #[test]
 fn weighted_signers_hash() {
@@ -58,4 +58,42 @@ fn weighted_signers_hash() {
     let signers_rotation_hash = weighted_signers.signers_rotation_hash(&env).to_array();
 
     goldie::assert_json!(vec![hex::encode(hash), hex::encode(signers_rotation_hash)]);
+}
+
+#[test]
+fn messages_approval_hash() {
+    let env = Env::default();
+
+    let payload_hashes = [
+        hex!("cfa347779c9b646ddf628c4da721976ceb998f1ab2c097b52e66a575c3975a6c"),
+        hex!("fb5eb8245e3b8eb9d44f228ee142a3378f57d49fc95fa78d437ff8aa5dd564ba"),
+        hex!("90e3761c0794fbbd8b563a0d05d83395e7f88f64f30eebb7c5533329f6653e84"),
+        hex!("60e146cb9c548ba6e614a87910d8172c9d21279a3f8f4da256ff36e15b80ea30"),
+    ]
+    .map(|hash| BytesN::<32>::from_array(&env, &hash));
+
+    let mut messages_array = soroban_sdk::Vec::new(&env);
+
+    for (i, payload_hash) in payload_hashes.iter().enumerate() {
+        messages_array.push_back(Message {
+            source_chain: String::from_str(&env, &format!("source-{}", i + 1)),
+            message_id: String::from_str(&env, &format!("test-{}", i + 1)),
+            source_address: String::from_str(
+                &env,
+                "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
+            ),
+            contract_address: Address::from_string(&String::from_str(
+                &env,
+                "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4",
+            )),
+            payload_hash: payload_hash.clone(),
+        });
+    }
+
+    let approval_hash = env
+        .crypto()
+        .keccak256(&(CommandType::ApproveMessages, messages_array).to_xdr(&env))
+        .to_array();
+
+    goldie::assert!(hex::encode(approval_hash));
 }
