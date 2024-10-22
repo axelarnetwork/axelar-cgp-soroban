@@ -50,7 +50,8 @@ pub fn validate_proof(
 
     let signers_hash = signers_set.hash(env);
 
-    let signers_epoch: u64 = signers_epoch(env, &signers_hash).ok_or(GatewayError::InvalidSigners)?;
+    let signers_epoch: u64 =
+        signers_epoch(env, &signers_hash).ok_or(GatewayError::InvalidSigners)?;
 
     let current_epoch: u64 = epoch(env)?;
 
@@ -97,7 +98,10 @@ pub fn rotate_signers(
         .set(&DataKey::SignerHashByEpoch(new_epoch), &new_signers_hash);
 
     // signers must be distinct, since nonce should guarantee uniqueness even if signers are repeated
-    ensure!(signers_epoch(env, &new_signers_hash).is_none(), GatewayError::DuplicateSigners);
+    ensure!(
+        signers_epoch(env, &new_signers_hash).is_none(),
+        GatewayError::DuplicateSigners
+    );
 
     env.storage().persistent().set(
         &DataKey::EpochBySignerHash(new_signers_hash.clone()),
