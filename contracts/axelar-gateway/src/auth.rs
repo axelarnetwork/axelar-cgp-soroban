@@ -3,7 +3,7 @@ use axelar_soroban_interfaces::{
     types::{ProofSignature, ProofSigner, WeightedSigner},
 };
 use axelar_soroban_std::ensure;
-use soroban_sdk::{crypto::Hash, xdr::ToXdr, Bytes, BytesN, Env, Vec};
+use soroban_sdk::{crypto::Hash, Bytes, BytesN, Env, Vec};
 
 use crate::event;
 use crate::storage_types::DataKey;
@@ -48,15 +48,9 @@ pub fn validate_proof(
 ) -> Result<bool, GatewayError> {
     let signers_set = proof.weighted_signers();
 
-    let signers_hash: BytesN<32> = env.crypto().keccak256(&signers_set.to_xdr(env)).into();
+    let signers_hash = signers_set.hash(env);
 
-    let signers_epoch: u64 = env
-        .storage()
-        .persistent()
-        .get(&DataKey::EpochBySignerHash(signers_hash.clone()))
-        .unwrap_or(0);
-
-    ensure!(signers_epoch != 0, GatewayError::InvalidSigners);
+    let signers_epoch: u64 = signers_epoch(env, &signers_hash).ok_or(GatewayError::InvalidSigners)?;
 
     let current_epoch: u64 = epoch(env)?;
 
@@ -92,10 +86,8 @@ pub fn rotate_signers(
 
     update_rotation_timestamp(env, enforce_rotation_delay)?;
 
-    let new_signers_hash: BytesN<32> = env
-        .crypto()
-        .keccak256(&new_signers.clone().to_xdr(env))
-        .into();
+    let new_signers_hash = new_signers.hash(env);
+
     let new_epoch: u64 = epoch(env)? + 1;
 
     env.storage().instance().set(&DataKey::Epoch, &new_epoch);
@@ -104,7 +96,9 @@ pub fn rotate_signers(
         .persistent()
         .set(&DataKey::SignerHashByEpoch(new_epoch), &new_signers_hash);
 
-    // If new_signers has been rotated to before, we will overwrite the epoch to point to the latest
+    // signers must be distinct, since nonce should guarantee uniqueness even if signers are repeated
+    ensure!(signers_epoch(env, &new_signers_hash).is_none(), GatewayError::DuplicateSigners);
+
     env.storage().persistent().set(
         &DataKey::EpochBySignerHash(new_signers_hash.clone()),
         &new_epoch,
@@ -225,4 +219,10 @@ fn validate_signers(env: &Env, weighted_signers: &WeightedSigners) -> Result<(),
     );
 
     Ok(())
+}
+
+fn signers_epoch(env: &Env, signers_hash: &BytesN<32>) -> Option<u64> {
+    env.storage()
+        .persistent()
+        .get(&DataKey::EpochBySignerHash(signers_hash.clone()))
 }

@@ -19,10 +19,10 @@ pub enum GatewayError {
     InvalidSignatures = 7,
     InvalidWeight = 8,
     WeightOverflow = 9,
-    RotationAlreadyExecuted = 10,
     NotLatestSigners = 11,
+    DuplicateSigners = 12,
     // Messages
-    EmptyMessages = 12,
+    EmptyMessages = 13,
 }
 
 /// Interface for the Axelar Gateway.

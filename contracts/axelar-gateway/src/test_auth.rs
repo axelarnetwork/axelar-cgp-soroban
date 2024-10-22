@@ -531,3 +531,40 @@ fn rotate_signers_panics_on_outdated_signer_set() {
         )
     });
 }
+
+#[test]
+fn rotate_signers_fail_duplicated_signers() {
+    let (env, contract_id, client) = setup_env();
+
+    let user = Address::generate(&env);
+    let previous_signer_retention = 1;
+
+    let signers = initialize(
+        &env,
+        &client,
+        user.clone(),
+        previous_signer_retention,
+        randint(1, 10),
+    );
+
+    let msg_hash = BytesN::random(&env);
+    let new_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator);
+    let duplicated_signers = new_signers.clone();
+
+    testutils::rotate_signers(&env, &contract_id, new_signers.clone());
+
+    let proof = generate_proof(&env, msg_hash.clone(), new_signers);
+
+    env.as_contract(&contract_id, || {
+        assert!(assert_ok!(auth::validate_proof(&env, &msg_hash, proof)));
+    });
+
+    // should panic, duplicated signers
+
+    env.as_contract(&contract_id, || {
+        assert_err!(
+            auth::rotate_signers(&env, &duplicated_signers.signers, false),
+            GatewayError::DuplicateSigners
+        );
+    });
+}

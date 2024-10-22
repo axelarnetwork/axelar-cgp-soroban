@@ -1,10 +1,9 @@
-use axelar_soroban_interfaces::types::{Message, Proof};
+use axelar_soroban_interfaces::types::{CommandType, Message, Proof};
 use axelar_soroban_std::ensure;
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
 
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
-use crate::types::CommandType;
 use crate::{auth, event};
 use axelar_soroban_interfaces::axelar_gateway::GatewayError;
 use axelar_soroban_interfaces::{axelar_gateway::AxelarGatewayInterface, types::WeightedSigners};
@@ -137,8 +136,8 @@ impl AxelarGatewayInterface for AxelarGateway {
 
     fn approve_messages(
         env: Env,
-        messages: soroban_sdk::Vec<axelar_soroban_interfaces::types::Message>,
-        proof: axelar_soroban_interfaces::types::Proof,
+        messages: Vec<Message>,
+        proof: Proof,
     ) -> Result<(), GatewayError> {
         let data_hash: BytesN<32> = env
             .crypto()
@@ -183,17 +182,7 @@ impl AxelarGatewayInterface for AxelarGateway {
             Self::operator(&env)?.require_auth();
         }
 
-        let data_hash: BytesN<32> = env
-            .crypto()
-            .keccak256(&(CommandType::RotateSigners, signers.clone()).to_xdr(&env))
-            .into();
-
-        ensure!(
-            !env.storage()
-                .persistent()
-                .has(&DataKey::RotationExecuted(data_hash.clone())),
-            GatewayError::RotationAlreadyExecuted
-        );
+        let data_hash: BytesN<32> = signers.signers_rotation_hash(&env);
 
         let is_latest_signers = auth::validate_proof(&env, &data_hash, proof)?;
         ensure!(
@@ -201,11 +190,9 @@ impl AxelarGatewayInterface for AxelarGateway {
             GatewayError::NotLatestSigners
         );
 
-        env.storage()
-            .persistent()
-            .set(&DataKey::RotationExecuted(data_hash), &true);
+        auth::rotate_signers(&env, &signers, !bypass_rotation_delay)?;
 
-        auth::rotate_signers(&env, &signers, !bypass_rotation_delay)
+        Ok(())
     }
 
     fn transfer_operatorship(env: Env, new_operator: Address) -> Result<(), GatewayError> {
