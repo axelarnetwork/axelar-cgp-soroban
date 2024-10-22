@@ -95,9 +95,10 @@ impl Proof {
 #[cfg(test)]
 mod tests {
     use hex_literal::hex;
-    use soroban_sdk::{BytesN, Env, Vec};
+    use soroban_sdk::{vec, BytesN, Env, Vec};
 
     use crate::types::{WeightedSigner, WeightedSigners};
+    extern crate std;
 
     #[test]
     fn weighted_signers_hash() {
@@ -163,7 +164,9 @@ mod tests {
             &hex!("4ad8f3015146ac68334fd405f90e6ca75fbf2c276b333a8747c9ba83d9c3f1f6"),
         );
 
-        assert_eq!(hash, expected_hash);
-        assert_eq!(signers_rotation_hash, expected_signers_rotation_hash);
+        //assert_eq!(hash, expected_hash);
+        //assert_eq!(signers_rotation_hash, expected_signers_rotation_hash);
+
+        goldie::assert_json!(&vec![hash, signers_rotation_hash]);
     }
 }
