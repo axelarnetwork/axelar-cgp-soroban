@@ -369,16 +369,16 @@ fn rotate_signers_bypass_rotation_delay() {
 fn rotate_signers_fail_not_latest_signers() {
     let (env, _contract_id, client) = setup_env();
     let operator = Address::generate(&env);
-    let signers = initialize(&env, &client, operator.clone(), 1, 5);
+    let signers = initialize(&env, &client, operator, 1, 5);
     let bypass_rotation_delay = false;
 
     let first_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
-    let data_hash = first_signers.signers.hash(&env);
+    let data_hash = first_signers.signers.signers_rotation_hash(&env);
     let proof = generate_proof(&env, data_hash.clone(), signers.clone());
     client.rotate_signers(&first_signers.signers, &proof, &bypass_rotation_delay);
 
     let second_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
-    let data_hash = second_signers.signers.hash(&env);
+    let data_hash = second_signers.signers.signers_rotation_hash(&env);
     let proof = generate_proof(&env, data_hash.clone(), signers.clone());
 
     assert_contract_err!(
