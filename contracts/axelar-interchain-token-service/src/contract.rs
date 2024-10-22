@@ -1,25 +1,40 @@
 use axelar_soroban_std::ensure;
-use soroban_sdk::{
-    contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec,
-};
+use soroban_sdk::{contract, contractimpl, Address, Env, String,};
 
-use crate::storage_types::{DataKey, TrustedItsAddress};
+use crate::error::InterchainTokenServiceError;
 use crate::event;
-
-use axelar_soroban_interfaces::interchain_token_service::{InterchainTokenServiceInterface, InterchainTokenServiceError};
+use crate::storage_types::{DataKey, TrustedItsAddress};
 
 #[contract]
 pub struct InterchainTokenService;
 
 #[contractimpl]
 impl InterchainTokenService {
+    pub fn initialize(
+        env: Env,
+        owner: Address
+    ) -> Result<(), InterchainTokenServiceError> {
+        ensure!(
+            env.storage()
+                .instance()
+                .get(&DataKey::Initialized)
+                .unwrap_or(true),
+            InterchainTokenServiceError::AlreadyInitialized
+        );
+
+        env.storage().instance().set(&DataKey::Initialized, &true);
+
+        env.storage().instance().set(&DataKey::Owner, &owner);
+
+        Ok(())
+    }
+
     pub fn owner(env: &Env) -> Address {
         env.storage().instance().get(&DataKey::Owner).unwrap()
     }
 
     pub fn transfer_ownership(env: Env, new_owner: Address) {
         let owner = Self::owner(&env);
-
         owner.require_auth();
 
         env.storage().instance().set(&DataKey::Owner, &new_owner);
@@ -37,9 +52,7 @@ impl InterchainTokenService {
         chain: String, 
         address: String,
     ) -> Result<(), InterchainTokenServiceError> {
-
-        let owner = Self::owner(&env);
-        owner.require_auth();
+        Self::owner(&env).require_auth();
 
         let key = DataKey::TrustedAddress(
             TrustedItsAddress { 
@@ -64,9 +77,7 @@ impl InterchainTokenService {
         chain: String, 
         address: String,
     ) -> Result<(), InterchainTokenServiceError> {
-
-        let owner = Self::owner(&env);
-        owner.require_auth();
+        Self::owner(&env).require_auth();
 
         let key = DataKey::TrustedAddress(
             TrustedItsAddress { 
@@ -87,71 +98,3 @@ impl InterchainTokenService {
     }
 }
 
-#[contractimpl]
-impl InterchainTokenServiceInterface for InterchainTokenService {
-    fn initialize(
-        env: Env,
-        owner: Address
-    ) -> Result<(), InterchainTokenServiceError> {
-        ensure!(
-            env.storage()
-                .instance()
-                .get(&DataKey::Initialized)
-                .unwrap_or(true),
-            InterchainTokenServiceError::AlreadyInitialized
-        );
-
-        env.storage().instance().set(&DataKey::Initialized, &true);
-
-        env.storage().instance().set(&DataKey::Owner, &owner);
-
-        Ok(())
-    }
-
-    fn interchain_token_id(
-        env: Env,
-        deployer: Address,
-        salt: BytesN<32>,
-    ) -> BytesN<32> {
-        todo!("implement method");
-    }
-
-    fn valid_interchain_token_address(
-        env: Env,
-        token_id: BytesN<32>,
-    ) -> BytesN<32> {
-        todo!("implement method");
-    }
-
-    fn interchain_token_address(
-        env: Env,
-        token_id: BytesN<32>,
-    ) -> BytesN<32> {
-        todo!("implement method");
-    }
-
-    fn deploy_interchain_token(
-        env: Env,
-        caller: Address,
-        salt: BytesN<32>,
-        destination_chain: String,
-        name: String,
-        symbol: String,
-        decimals: u64, // should be u8 
-        minter: Bytes,
-    ) -> BytesN<32> {
-        todo!("implement method and fix decimals parameter (change back to u8 as originally defined)");
-    }
-
-    fn interchain_transfer(
-        env: Env,
-        caller: Address,
-        token_id: BytesN<32>,
-        amount: i128,
-        destination_chain: String,
-        destination_address: String,
-        metadata: Bytes,
-    ) {
-        todo!("implement method");
-    }
-}
