@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, BytesN, String};
+use soroban_sdk::{contracttype, String};
 
 #[contracttype]
 #[derive(Clone, Debug)]
