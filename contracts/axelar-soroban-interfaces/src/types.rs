@@ -1,4 +1,5 @@
 use soroban_sdk::{contracttype, xdr::ToXdr, Address, BytesN, Env, String, Vec};
+
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WeightedSigner {
