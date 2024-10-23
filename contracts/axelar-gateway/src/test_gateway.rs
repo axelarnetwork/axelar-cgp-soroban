@@ -1,15 +1,15 @@
 #![cfg(test)]
 extern crate std;
+
 use crate::testutils::{
     generate_proof, generate_signers_set, generate_test_message, get_approve_hash, initialize,
     randint,
 };
 use crate::{contract::AxelarGateway, contract::AxelarGatewayClient};
-use axelar_soroban_interfaces::axelar_gateway::GatewayError;
-use axelar_soroban_interfaces::types::Message;
 use axelar_soroban_std::{assert_contract_err, assert_invocation, assert_last_emitted_event};
 use soroban_sdk::testutils::BytesN as _;
 
+use crate::types::{GatewayError, Message};
 use soroban_sdk::Symbol;
 use soroban_sdk::{
     bytes,

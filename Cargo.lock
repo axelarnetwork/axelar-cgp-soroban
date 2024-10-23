@@ -69,6 +69,9 @@ dependencies = [
  "axelar-soroban-interfaces",
  "axelar-soroban-std",
  "ed25519-dalek",
+ "goldie",
+ "hex",
+ "hex-literal",
  "rand",
  "soroban-sdk",
 ]

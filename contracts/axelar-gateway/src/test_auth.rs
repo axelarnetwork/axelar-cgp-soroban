@@ -1,10 +1,8 @@
 #![cfg(test)]
 extern crate std;
 
-use axelar_soroban_interfaces::{
-    axelar_gateway::GatewayError,
-    types::{ProofSignature, ProofSigner, WeightedSigner, WeightedSigners},
-};
+use crate::types::{GatewayError, ProofSignature, ProofSigner, WeightedSigner, WeightedSigners};
+
 use soroban_sdk::{
     testutils::{Address as _, BytesN as _},
     Address, BytesN, Env, Vec,

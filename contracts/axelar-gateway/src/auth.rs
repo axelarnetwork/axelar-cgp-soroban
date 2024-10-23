@@ -1,13 +1,10 @@
-use axelar_soroban_interfaces::{
-    axelar_gateway::GatewayError,
-    types::{ProofSignature, ProofSigner, WeightedSigner},
-};
+use crate::types::{ProofSignature, ProofSigner, WeightedSigner, GatewayError,};
 use axelar_soroban_std::ensure;
 use soroban_sdk::{crypto::Hash, Bytes, BytesN, Env, Vec};
 
 use crate::event;
 use crate::storage_types::DataKey;
-use axelar_soroban_interfaces::types::{Proof, WeightedSigners};
+use crate::types::{Proof, WeightedSigners};
 
 pub fn initialize_auth(
     env: Env,

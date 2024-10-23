@@ -3,14 +3,14 @@ extern crate std;
 
 use axelar_gateway::contract::{AxelarGateway, AxelarGatewayClient};
 use axelar_gateway::testutils::{generate_proof, get_approve_hash, initialize, TestSignerSet};
-use axelar_soroban_interfaces::types::Message;
+use axelar_gateway::types::Message;
 use axelar_soroban_std::assert_last_emitted_event;
 use soroban_sdk::{contract, contractimpl, log, Bytes, Symbol};
 use soroban_sdk::{
     testutils::Address as _, testutils::BytesN as _, vec, Address, BytesN, Env, String,
 };
 
-use axelar_soroban_interfaces::axelar_executable::AxelarExecutableInterface;
+use axelar_gateway::executable::AxelarExecutableInterface;
 
 #[contract]
 pub struct AxelarApp;

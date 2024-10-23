@@ -11,7 +11,7 @@ use soroban_sdk::Symbol;
 use soroban_sdk::{testutils::Address as _, Address};
 use soroban_sdk::{testutils::BytesN as _, vec, xdr::ToXdr, Bytes, BytesN, Env, String, Vec};
 
-use axelar_soroban_interfaces::types::{
+use crate::types::{
     CommandType, Message, Proof, ProofSignature, ProofSigner, WeightedSigner, WeightedSigners,
 };
 
