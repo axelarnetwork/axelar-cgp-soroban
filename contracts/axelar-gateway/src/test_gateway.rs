@@ -12,7 +12,7 @@ use soroban_sdk::testutils::BytesN as _;
 
 use soroban_sdk::Symbol;
 use soroban_sdk::{
-    bytes, symbol_short,
+    bytes,
     testutils::{Address as _, Events, MockAuth, MockAuthInvoke},
     vec, Address, BytesN, Env, IntoVal, String,
 };
