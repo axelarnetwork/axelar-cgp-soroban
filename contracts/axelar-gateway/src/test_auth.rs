@@ -1,6 +1,3 @@
-#![cfg(test)]
-extern crate std;
-
 use crate::types::{ContractError, ProofSignature, ProofSigner, WeightedSigner, WeightedSigners};
 
 use soroban_sdk::{

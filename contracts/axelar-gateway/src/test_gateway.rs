@@ -1,6 +1,3 @@
-#![cfg(test)]
-extern crate std;
-
 use crate::testutils::{
     generate_proof, generate_signers_set, generate_test_message, get_approve_hash, initialize,
     randint,

@@ -115,12 +115,10 @@ impl Proof {
 
 #[cfg(test)]
 mod test {
-    extern crate std;
-
+    use crate::types::{CommandType, Message, WeightedSigner, WeightedSigners};
     use hex_literal::hex;
     use soroban_sdk::{xdr::ToXdr, Address, BytesN, Env, String, Vec};
 
-    use crate::types::{CommandType, Message, WeightedSigner, WeightedSigners};
     #[test]
     fn weighted_signers_hash() {
         let env = Env::default();

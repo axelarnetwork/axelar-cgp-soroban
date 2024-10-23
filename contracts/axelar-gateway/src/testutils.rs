@@ -1,4 +1,4 @@
-#![cfg(any(test, feature = "testutils"))]
+#![cfg(feature = "testutils")]
 extern crate std;
 
 use crate::auth::{self, epoch};
