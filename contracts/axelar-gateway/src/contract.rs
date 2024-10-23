@@ -1,4 +1,4 @@
-use crate::types::{CommandType, GatewayError, Message, Proof, WeightedSigners};
+use crate::types::{CommandType, ContractError, Message, Proof, WeightedSigners};
 use axelar_soroban_std::ensure;
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
@@ -22,13 +22,13 @@ impl AxelarGateway {
         minimum_rotation_delay: u64,
         previous_signers_retention: u64,
         initial_signers: Vec<WeightedSigners>,
-    ) -> Result<(), GatewayError> {
+    ) -> Result<(), ContractError> {
         ensure!(
             env.storage()
                 .instance()
                 .get::<DataKey, bool>(&DataKey::Initialized)
                 .is_none(),
-            GatewayError::AlreadyInitialized
+            ContractError::AlreadyInitialized
         );
 
         env.storage().instance().set(&DataKey::Initialized, &true);
@@ -145,7 +145,7 @@ impl AxelarGateway {
         env: Env,
         messages: Vec<Message>,
         proof: Proof,
-    ) -> Result<(), GatewayError> {
+    ) -> Result<(), ContractError> {
         let data_hash: BytesN<32> = env
             .crypto()
             .keccak256(&(CommandType::ApproveMessages, messages.clone()).to_xdr(&env))
@@ -153,7 +153,7 @@ impl AxelarGateway {
 
         auth::validate_proof(&env, &data_hash, proof.clone())?;
 
-        ensure!(!messages.is_empty(), GatewayError::EmptyMessages);
+        ensure!(!messages.is_empty(), ContractError::EmptyMessages);
 
         for message in messages.into_iter() {
             let key = MessageApprovalKey {
@@ -184,7 +184,7 @@ impl AxelarGateway {
         signers: WeightedSigners,
         proof: Proof,
         bypass_rotation_delay: bool,
-    ) -> Result<(), GatewayError> {
+    ) -> Result<(), ContractError> {
         if bypass_rotation_delay {
             Self::operator(&env)?.require_auth();
         }
@@ -194,7 +194,7 @@ impl AxelarGateway {
         let is_latest_signers = auth::validate_proof(&env, &data_hash, proof)?;
         ensure!(
             bypass_rotation_delay || is_latest_signers,
-            GatewayError::NotLatestSigners
+            ContractError::NotLatestSigners
         );
 
         auth::rotate_signers(&env, &signers, !bypass_rotation_delay)?;
@@ -202,7 +202,7 @@ impl AxelarGateway {
         Ok(())
     }
 
-    pub fn transfer_operatorship(env: Env, new_operator: Address) -> Result<(), GatewayError> {
+    pub fn transfer_operatorship(env: Env, new_operator: Address) -> Result<(), ContractError> {
         let operator: Address = Self::operator(&env)?;
         operator.require_auth();
 
@@ -215,14 +215,14 @@ impl AxelarGateway {
         Ok(())
     }
 
-    pub fn operator(env: &Env) -> Result<Address, GatewayError> {
+    pub fn operator(env: &Env) -> Result<Address, ContractError> {
         env.storage()
             .instance()
             .get(&DataKey::Operator)
-            .ok_or(GatewayError::NotInitialized)
+            .ok_or(ContractError::NotInitialized)
     }
 
-    pub fn epoch(env: &Env) -> Result<u64, GatewayError> {
+    pub fn epoch(env: &Env) -> Result<u64, ContractError> {
         auth::epoch(env)
     }
 
@@ -230,7 +230,7 @@ impl AxelarGateway {
         String::from_str(&env, CONTRACT_VERSION)
     }
 
-    pub fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), GatewayError> {
+    pub fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), ContractError> {
         Self::owner(&env)?.require_auth();
 
         env.deployer().update_current_contract_wasm(new_wasm_hash);
@@ -238,7 +238,7 @@ impl AxelarGateway {
         Ok(())
     }
 
-    pub fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), GatewayError> {
+    pub fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), ContractError> {
         let owner: Address = Self::owner(&env)?;
         owner.require_auth();
 
@@ -249,11 +249,11 @@ impl AxelarGateway {
         Ok(())
     }
 
-    pub fn owner(env: &Env) -> Result<Address, GatewayError> {
+    pub fn owner(env: &Env) -> Result<Address, ContractError> {
         env.storage()
             .instance()
             .get(&DataKey::Owner)
-            .ok_or(GatewayError::NotInitialized)
+            .ok_or(ContractError::NotInitialized)
     }
 }
 

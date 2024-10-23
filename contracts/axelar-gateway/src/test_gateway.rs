@@ -9,7 +9,7 @@ use crate::{contract::AxelarGateway, contract::AxelarGatewayClient};
 use axelar_soroban_std::{assert_contract_err, assert_invocation, assert_last_emitted_event};
 use soroban_sdk::testutils::BytesN as _;
 
-use crate::types::{GatewayError, Message};
+use crate::types::{ContractError, Message};
 use soroban_sdk::Symbol;
 use soroban_sdk::{
     bytes,
@@ -63,7 +63,7 @@ fn fails_if_already_initialized() {
             &(previous_signers_retention as u64),
             &initial_signers,
         ),
-        GatewayError::AlreadyInitialized
+        ContractError::AlreadyInitialized
     );
 }
 
@@ -77,7 +77,7 @@ fn fail_if_not_initialized() {
 
     assert_contract_err!(
         client.try_transfer_operatorship(&new_operator),
-        GatewayError::NotInitialized
+        ContractError::NotInitialized
     );
 
     let num_signers = randint(1, 10);
@@ -90,7 +90,7 @@ fn fail_if_not_initialized() {
     let bypass_rotation_delay = true;
     assert_contract_err!(
         client.try_rotate_signers(&new_signers.signers, &proof, &bypass_rotation_delay),
-        GatewayError::NotInitialized
+        ContractError::NotInitialized
     );
 }
 
@@ -255,7 +255,7 @@ fn fail_execute_invalid_proof() {
 
     assert_contract_err!(
         client.try_approve_messages(&messages, &proof),
-        GatewayError::InvalidSigners
+        ContractError::InvalidSigners
     );
 }
 
@@ -273,7 +273,7 @@ fn approve_messages_fail_empty_messages() {
 
     assert_contract_err!(
         client.try_approve_messages(&messages, &proof),
-        GatewayError::EmptyMessages
+        ContractError::EmptyMessages
     );
 }
 
@@ -399,7 +399,7 @@ fn rotate_signers_fail_not_latest_signers() {
 
     assert_contract_err!(
         client.try_rotate_signers(&second_signers.signers, &proof, &bypass_rotation_delay),
-        GatewayError::NotLatestSigners
+        ContractError::NotLatestSigners
     );
 }
 

@@ -3,7 +3,7 @@ use soroban_sdk::{contracterror, contracttype, xdr::ToXdr, Address, BytesN, Env,
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
-pub enum GatewayError {
+pub enum ContractError {
     // General
     NotInitialized = 1,
     AlreadyInitialized = 2,

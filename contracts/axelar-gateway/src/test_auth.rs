@@ -1,7 +1,7 @@
 #![cfg(test)]
 extern crate std;
 
-use crate::types::{GatewayError, ProofSignature, ProofSigner, WeightedSigner, WeightedSigners};
+use crate::types::{ContractError, ProofSignature, ProofSigner, WeightedSigner, WeightedSigners};
 
 use soroban_sdk::{
     testutils::{Address as _, BytesN as _},
@@ -63,7 +63,7 @@ fn fails_with_empty_signer_set() {
                 previous_signer_retention,
                 initial_signers,
             ),
-            GatewayError::InvalidSigners
+            ContractError::InvalidSigners
         );
     })
 }
@@ -116,7 +116,7 @@ fn fail_validate_proof_invalid_epoch() {
     env.as_contract(&contract_id, || {
         assert_err!(
             auth::validate_proof(&env, &msg_hash, proof),
-            GatewayError::InvalidSigners
+            ContractError::InvalidSigners
         );
     })
 }
@@ -181,7 +181,7 @@ fn fail_validate_proof_empty_signatures() {
     env.as_contract(&contract_id, || {
         assert_err!(
             auth::validate_proof(&env, &msg_hash, proof),
-            GatewayError::InvalidSignatures
+            ContractError::InvalidSignatures
         );
     })
 }
@@ -213,7 +213,7 @@ fn fail_validate_proof_invalid_signer_set() {
     env.as_contract(&contract_id, || {
         assert_err!(
             auth::validate_proof(&env, &msg_hash, proof),
-            GatewayError::InvalidSigners
+            ContractError::InvalidSigners
         );
     })
 }
@@ -258,7 +258,7 @@ fn fail_validate_proof_threshold_not_met() {
     env.as_contract(&contract_id, || {
         assert_err!(
             auth::validate_proof(&env, &msg_hash, proof),
-            GatewayError::InvalidSignatures
+            ContractError::InvalidSignatures
         );
     })
 }
@@ -292,7 +292,7 @@ fn fail_validate_proof_threshold_overflow() {
     env.as_contract(&contract_id, || {
         assert_err!(
             auth::validate_proof(&env, &msg_hash, proof),
-            GatewayError::InvalidSigners
+            ContractError::InvalidSigners
         );
     });
 }
@@ -339,7 +339,7 @@ fn rotate_signers_fail_empty_signers() {
     // should throw an error, empty signer set
     assert_err!(
         auth::rotate_signers(&env, &empty_signers, false),
-        GatewayError::InvalidSigners
+        ContractError::InvalidSigners
     );
 }
 
@@ -373,7 +373,7 @@ fn rotate_signers_fail_zero_weight() {
     // should throw an error, last signer weight is zero
     assert_err!(
         auth::rotate_signers(&env, &new_signers.signers, false),
-        GatewayError::InvalidWeight
+        ContractError::InvalidWeight
     )
 }
 
@@ -407,7 +407,7 @@ fn rotate_signers_fail_weight_overflow() {
     // last signer weight should cause overflow
     assert_err!(
         auth::rotate_signers(&env, &new_signers.signers, false),
-        GatewayError::WeightOverflow
+        ContractError::WeightOverflow
     )
 }
 
@@ -436,7 +436,7 @@ fn rotate_signers_fail_zero_threshold() {
     // should error because the threshold is set to zero
     assert_err!(
         auth::rotate_signers(&env, &new_signers.signers, false),
-        GatewayError::InvalidThreshold
+        ContractError::InvalidThreshold
     );
 }
 
@@ -475,7 +475,7 @@ fn rotate_signers_fail_low_total_weight() {
     // should error because the threshold is set to zero
     assert_err!(
         auth::rotate_signers(&env, &new_signers.signers, false),
-        GatewayError::InvalidThreshold
+        ContractError::InvalidThreshold
     )
 }
 
@@ -515,7 +515,7 @@ fn rotate_signers_fail_wrong_signer_order() {
     // should error because signers are in wrong order
     assert_err!(
         auth::rotate_signers(&env, &new_signers.signers, false),
-        GatewayError::InvalidSigners
+        ContractError::InvalidSigners
     )
 }
 
@@ -605,7 +605,7 @@ fn rotate_signers_panics_on_outdated_signer_set() {
     env.as_contract(&contract_id, || {
         assert_err!(
             auth::validate_proof(&env, &msg_hash, proof),
-            GatewayError::InvalidSigners
+            ContractError::InvalidSigners
         )
     });
 }
@@ -644,7 +644,7 @@ fn rotate_signers_fail_duplicated_signers() {
     env.as_contract(&contract_id, || {
         assert_err!(
             auth::rotate_signers(&env, &duplicated_signers.signers, false),
-            GatewayError::DuplicateSigners
+            ContractError::DuplicateSigners
         );
     });
 }
