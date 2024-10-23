@@ -13,7 +13,7 @@ use crate::{
     storage_types::DataKey,
 };
 use soroban_sdk::{
-    bytes, symbol_short,
+    bytes,
     testutils::Address as _,
     token::{StellarAssetClient, TokenClient},
     Address, Env, String, Symbol,
@@ -204,7 +204,7 @@ fn pay_gas_for_contract_call() {
         &env,
         &contract_id,
         (
-            symbol_short!("gas_paid"),
+            Symbol::new(&env, "gas_paid"),
             env.crypto().keccak256(&payload),
             sender,
             destination_chain,

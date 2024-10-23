@@ -7,7 +7,7 @@ use axelar_soroban_std::{assert_last_emitted_event, assert_ok};
 use ed25519_dalek::{Signature, Signer, SigningKey};
 use rand::Rng;
 
-use soroban_sdk::{symbol_short, Symbol};
+use soroban_sdk::Symbol;
 use soroban_sdk::{testutils::Address as _, Address};
 use soroban_sdk::{testutils::BytesN as _, vec, xdr::ToXdr, Bytes, BytesN, Env, String, Vec};
 
