@@ -11,7 +11,7 @@ use crate::{
     storage_types::DataKey,
 };
 use soroban_sdk::{
-    contract, contractimpl, symbol_short, testutils::Address as _, Address, Env, Vec,
+    contract, contractimpl, symbol_short, testutils::Address as _, Address, Env, Symbol, Vec,
 };
 
 #[contract]
@@ -92,7 +92,11 @@ fn transfer_owner() {
     assert_last_emitted_event(
         &env,
         &client.address,
-        (symbol_short!("ownership"), initial_owner, new_owner.clone()),
+        (
+            Symbol::new(&env, "ownership_transferred"),
+            initial_owner,
+            new_owner.clone(),
+        ),
         (),
     );
 
@@ -126,7 +130,7 @@ fn test_add_operator() {
     assert_last_emitted_event(
         &env,
         &client.address,
-        (symbol_short!("added"), operator.clone()),
+        (Symbol::new(&env, "operator_added"), operator.clone()),
         (),
     );
 
@@ -185,7 +189,7 @@ fn test_remove_operator() {
     assert_last_emitted_event(
         &env,
         &client.address,
-        (symbol_short!("removed"), operator.clone()),
+        (Symbol::new(&env, "operator_removed"), operator.clone()),
         (),
     );
 

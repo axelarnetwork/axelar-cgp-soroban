@@ -10,6 +10,7 @@ use axelar_soroban_interfaces::types::Message;
 use axelar_soroban_std::{assert_contract_err, assert_invocation, assert_last_emitted_event};
 use soroban_sdk::testutils::BytesN as _;
 
+use soroban_sdk::Symbol;
 use soroban_sdk::{
     bytes, symbol_short,
     testutils::{Address as _, Events, MockAuth, MockAuthInvoke},
@@ -121,7 +122,7 @@ fn call_contract() {
         &env,
         &contract_id,
         (
-            symbol_short!("called"),
+            Symbol::new(&env, "contract_called"),
             user,
             destination_chain,
             destination_address,
@@ -196,8 +197,8 @@ fn approve_message() {
     assert_last_emitted_event(
         &env,
         &contract_id,
-        (symbol_short!("approved"),),
-        message.clone(),
+        (Symbol::new(&env, "message_approved"), message.clone()),
+        (),
     );
 
     let is_approved = client.is_message_approved(
@@ -221,8 +222,8 @@ fn approve_message() {
     assert_last_emitted_event(
         &env,
         &contract_id,
-        (symbol_short!("executed"),),
-        message.clone(),
+        (Symbol::new(&env, "message_executed"), message.clone()),
+        (),
     );
 
     let is_approved = client.is_message_approved(
@@ -316,7 +317,7 @@ fn rotate_signers() {
         &env,
         &contract_id,
         (
-            symbol_short!("rotated"),
+            Symbol::new(&env, "signers_rotated"),
             new_epoch,
             new_signers.signers.hash(&env),
         ),
@@ -330,7 +331,12 @@ fn rotate_signers() {
     let proof = generate_proof(&env, data_hash, new_signers);
     client.approve_messages(&messages, &proof);
 
-    assert_last_emitted_event(&env, &contract_id, (symbol_short!("approved"),), message);
+    assert_last_emitted_event(
+        &env,
+        &contract_id,
+        (Symbol::new(&env, "message_approved"), message),
+        (),
+    );
 }
 
 #[test]
@@ -366,7 +372,7 @@ fn rotate_signers_bypass_rotation_delay() {
         &env,
         &contract_id,
         (
-            symbol_short!("rotated"),
+            Symbol::new(&env, "signers_rotated"),
             new_epoch,
             new_signers.signers.hash(&env),
         ),
@@ -455,7 +461,7 @@ fn transfer_operatorship() {
         &env,
         &contract_id,
         (
-            String::from_str(&env, "operatorship_transferred"),
+            Symbol::new(&env, "operatorship_transferred"),
             operator.clone(),
             new_operator.clone(),
         ),
@@ -517,7 +523,7 @@ fn transfer_ownership() {
         &env,
         &contract_id,
         (
-            String::from_str(&env, "ownership_transferred"),
+            Symbol::new(&env, "ownership_transferred"),
             owner,
             new_owner.clone(),
         ),

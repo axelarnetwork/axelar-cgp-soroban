@@ -128,7 +128,7 @@ impl AxelarGatewayInterface for AxelarGateway {
                 &MessageApprovalValue::Executed,
             );
 
-            event::execute_contract_call(&env, message);
+            event::execute_message(&env, message);
 
             return true;
         }
