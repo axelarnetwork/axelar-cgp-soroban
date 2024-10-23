@@ -13,10 +13,10 @@ use crate::{
     storage_types::DataKey,
 };
 use soroban_sdk::{
-    bytes, symbol_short,
+    bytes,
     testutils::Address as _,
     token::{StellarAssetClient, TokenClient},
-    Address, Env, String,
+    Address, Env, String, Symbol,
 };
 
 fn setup_env<'a>() -> (Env, Address, Address, AxelarGasServiceClient<'a>) {
@@ -204,7 +204,7 @@ fn pay_gas_for_contract_call() {
         &env,
         &contract_id,
         (
-            symbol_short!("gas_paid"),
+            Symbol::new(&env, "gas_paid"),
             env.crypto().keccak256(&payload),
             sender,
             destination_chain,
@@ -286,7 +286,7 @@ fn collect_fees() {
     assert_last_emitted_event(
         &env,
         &contract_id,
-        (symbol_short!("collected"), gas_collector, token),
+        (Symbol::new(&env, "gas_collected"), gas_collector, token),
         (),
     );
 }
@@ -326,7 +326,12 @@ fn refund() {
     assert_last_emitted_event(
         &env,
         &contract_id,
-        (symbol_short!("refunded"), message_id, receiver, token),
+        (
+            Symbol::new(&env, "gas_refunded"),
+            message_id,
+            receiver,
+            token,
+        ),
         (),
     );
 }

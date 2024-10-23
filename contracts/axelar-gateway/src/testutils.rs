@@ -7,7 +7,7 @@ use axelar_soroban_std::{assert_last_emitted_event, assert_ok};
 use ed25519_dalek::{Signature, Signer, SigningKey};
 use rand::Rng;
 
-use soroban_sdk::symbol_short;
+use soroban_sdk::Symbol;
 use soroban_sdk::{testutils::Address as _, Address};
 use soroban_sdk::{testutils::BytesN as _, vec, xdr::ToXdr, Bytes, BytesN, Env, String, Vec};
 
@@ -177,7 +177,7 @@ pub fn generate_proof(env: &Env, data_hash: BytesN<32>, signer_set: TestSignerSe
 pub fn rotate_signers(env: &Env, contract_id: &Address, new_signers: TestSignerSet) {
     let mut epoch_val: u64 = 0;
     env.as_contract(contract_id, || {
-        epoch_val = assert_ok!(epoch(&env)) + 1;
+        epoch_val = assert_ok!(epoch(env)) + 1;
         assert_ok!(auth::rotate_signers(env, &new_signers.signers, false));
     });
 
@@ -185,7 +185,7 @@ pub fn rotate_signers(env: &Env, contract_id: &Address, new_signers: TestSignerS
         env,
         contract_id,
         (
-            symbol_short!("rotated"),
+            Symbol::new(&env, "signers_rotated"),
             epoch_val,
             new_signers.signers.hash(env),
         ),

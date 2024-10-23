@@ -5,7 +5,7 @@ use axelar_gateway::contract::{AxelarGateway, AxelarGatewayClient};
 use axelar_gateway::testutils::{generate_proof, get_approve_hash, initialize, TestSignerSet};
 use axelar_soroban_interfaces::types::Message;
 use axelar_soroban_std::assert_last_emitted_event;
-use soroban_sdk::{contract, contractimpl, log, symbol_short, Bytes};
+use soroban_sdk::{contract, contractimpl, log, Bytes, Symbol};
 use soroban_sdk::{
     testutils::Address as _, testutils::BytesN as _, vec, Address, BytesN, Env, String,
 };
@@ -37,7 +37,7 @@ impl AxelarExecutableInterface for AxelarApp {
         );
 
         env.events()
-            .publish((symbol_short!("executed"),), (payload,));
+            .publish((Symbol::new(&env, "executed"),), (payload,));
     }
 }
 
@@ -116,7 +116,7 @@ fn test_gmp() {
         &env,
         &source_gateway_client.address,
         (
-            symbol_short!("called"),
+            Symbol::new(&env, "contract_called"),
             source_app.address.clone(),
             destination_chain,
             destination_address,
@@ -157,7 +157,7 @@ fn test_gmp() {
     assert_last_emitted_event(
         &env,
         &destination_app_id,
-        (symbol_short!("executed"),),
+        (Symbol::new(&env, "executed"),),
         (payload,),
     );
 }
