@@ -5,8 +5,8 @@ mod event;
 mod storage_types;
 
 pub mod contract;
-pub mod types;
 pub mod executable;
+pub mod types;
 
 #[cfg(all(target_family = "wasm", feature = "testutils"))]
 compile_error!("'testutils' feature is not supported on 'wasm' target");
