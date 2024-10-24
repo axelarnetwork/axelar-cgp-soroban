@@ -4,12 +4,12 @@ extern crate std;
 use std::format;
 
 use crate::error::ContractError;
-use axelar_soroban_std::{
-    assert_contract_err, assert_last_emitted_event, assert_some, types::Token,
-};
 use crate::{
     contract::{AxelarGasService, AxelarGasServiceClient},
     storage_types::DataKey,
+};
+use axelar_soroban_std::{
+    assert_contract_err, assert_last_emitted_event, assert_some, types::Token,
 };
 use soroban_sdk::{
     bytes,

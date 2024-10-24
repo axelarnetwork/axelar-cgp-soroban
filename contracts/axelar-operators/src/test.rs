@@ -1,7 +1,7 @@
 #![cfg(test)]
 extern crate std;
 
-use axelar_soroban_interfaces::axelar_operators::OperatorError;
+use crate::error::ContractError;
 use axelar_soroban_std::{
     assert_contract_err, assert_last_emitted_event, assert_some, testutils::assert_invocation,
 };
@@ -65,7 +65,7 @@ fn fail_already_initialized() {
 
     assert_contract_err!(
         client.try_initialize(&user),
-        OperatorError::AlreadyInitialized
+        ContractError::AlreadyInitialized
     );
 }
 
@@ -156,7 +156,7 @@ fn fail_add_operator_duplicate() {
     // set existing operator as an operator, should panic
     assert_contract_err!(
         client.try_add_operator(&operator),
-        OperatorError::OperatorAlreadyAdded
+        ContractError::OperatorAlreadyAdded
     );
 }
 
@@ -212,7 +212,7 @@ fn fail_remove_operator_non_existant() {
     // remove operator that is not an operator, should panic
     assert_contract_err!(
         client.try_remove_operator(&operator),
-        OperatorError::NotAnOperator
+        ContractError::NotAnOperator
     );
 }
 
@@ -254,7 +254,7 @@ fn fail_execute_not_operator() {
     // call execute with a non-operator, should panic
     assert_contract_err!(
         client.try_execute(&owner, &target, &symbol_short!("method"), &Vec::new(&env)),
-        OperatorError::NotAnOperator
+        ContractError::NotAnOperator
     );
 }
 
@@ -287,6 +287,6 @@ fn fail_on_uninitialized() {
     let operator = Address::generate(&env);
     assert_contract_err!(
         client.try_add_operator(&operator),
-        OperatorError::NotInitialized
+        ContractError::NotInitialized
     )
 }
