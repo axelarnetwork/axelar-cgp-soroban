@@ -59,7 +59,9 @@ impl AxelarOperators {
         env.storage().persistent().has(&key)
     }
 
-    /// Add an address as an operator. Only callable by the contract owner.
+    /// Add an address as an operator.
+    ///
+    /// Only callable by the contract owner.
     pub fn add_operator(env: Env, account: Address) -> Result<(), ContractError> {
         let owner: Address = env
             .storage()
@@ -82,7 +84,9 @@ impl AxelarOperators {
         Ok(())
     }
 
-    /// Remove an address as an operator. Only callable by the contract owner.
+    /// Remove an address as an operator.
+    ///
+    /// Only callable by the contract owner.
     pub fn remove_operator(env: Env, account: Address) -> Result<(), ContractError> {
         let owner: Address = env
             .storage()
