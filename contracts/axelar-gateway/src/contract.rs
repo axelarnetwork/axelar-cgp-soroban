@@ -69,7 +69,11 @@ impl AxelarGateway {
         );
     }
 
-    /// Return true if a contract call with the given payload BytesN<32> and source caller info is approved.
+    /// Checks if a message is approved
+    ///
+    /// Determines whether a given message, identified by its `source_chain` and `message_id`, is approved.
+    ///
+    /// Returns true if a contract call with the given `payload_hash`  is approved.
     pub fn is_message_approved(
         env: Env,
         source_chain: String,
@@ -94,7 +98,9 @@ impl AxelarGateway {
             )
     }
 
-    /// Return true if a contract call with the given payload BytesN<32> and source caller info has been executed.
+    /// Checks if a message is executed.
+    ///
+    /// Returns true if the message is executed, false otherwise.
     pub fn is_message_executed(env: Env, source_chain: String, message_id: String) -> bool {
         let message_approval = Self::message_approval(&env, source_chain, message_id);
 
@@ -258,7 +264,7 @@ impl AxelarGateway {
 }
 
 impl AxelarGateway {
-    /// Get the message approval value by source_chain and message_id, defaulting to `MessageNotApproved`
+    /// Get the message approval value by `source_chain` and `message_id`, defaulting to `MessageNotApproved`
     fn message_approval(
         env: &Env,
         source_chain: String,
