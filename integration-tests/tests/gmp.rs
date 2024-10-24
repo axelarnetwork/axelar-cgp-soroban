@@ -1,6 +1,3 @@
-#![cfg(test)]
-extern crate std;
-
 use axelar_gateway::contract::AxelarGateway;
 use axelar_gateway::testutils::{generate_proof, get_approve_hash, initialize, TestSignerSet};
 use axelar_gateway::types::Message;
