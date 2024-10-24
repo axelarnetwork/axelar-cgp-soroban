@@ -1,4 +1,4 @@
-use axelar_soroban_interfaces::types::Message;
+use crate::types::Message;
 use soroban_sdk::{Address, Bytes, BytesN, Env, String, Symbol};
 
 pub(crate) fn call_contract(
