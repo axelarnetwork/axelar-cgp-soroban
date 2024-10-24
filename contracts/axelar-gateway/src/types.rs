@@ -123,7 +123,7 @@ mod test {
     fn weighted_signers_hash() {
         let env = Env::default();
 
-        let signers_array = [
+        let signers = [
             WeightedSigner {
                 signer: BytesN::<32>::from_array(
                     &env,
@@ -162,7 +162,7 @@ mod test {
         ];
 
         let weighted_signers = WeightedSigners {
-            signers: Vec::from_array(&env, signers_array),
+            signers: Vec::from_array(&env, signers),
             threshold: 8u128,
             nonce: BytesN::<32>::from_array(
                 &env,
