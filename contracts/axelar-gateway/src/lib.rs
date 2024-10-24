@@ -21,6 +21,7 @@ mod test_gateway;
 #[cfg(test)]
 mod test_auth;
 
+// Allows using std (and its macros) in test modules
 #[cfg(test)]
 #[macro_use]
 extern crate std;
