@@ -1,4 +1,5 @@
-use crate::types::{ContractError, ProofSignature, ProofSigner, WeightedSigner, WeightedSigners};
+use crate::error::ContractError;
+use crate::types::{ProofSignature, ProofSigner, WeightedSigner, WeightedSigners};
 
 use soroban_sdk::{
     testutils::{Address as _, BytesN as _},

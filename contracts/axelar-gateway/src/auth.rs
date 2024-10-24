@@ -1,4 +1,5 @@
-use crate::types::{ContractError, ProofSignature, ProofSigner, WeightedSigner};
+use crate::error::ContractError;
+use crate::types::{ProofSignature, ProofSigner, WeightedSigner};
 use axelar_soroban_std::ensure;
 use soroban_sdk::{crypto::Hash, Bytes, BytesN, Env, Vec};
 

@@ -6,7 +6,8 @@ use crate::{contract::AxelarGateway, contract::AxelarGatewayClient};
 use axelar_soroban_std::{assert_contract_err, assert_invocation, assert_last_emitted_event};
 use soroban_sdk::testutils::BytesN as _;
 
-use crate::types::{ContractError, Message};
+use crate::error::ContractError;
+use crate::types::Message;
 use soroban_sdk::Symbol;
 use soroban_sdk::{
     bytes,

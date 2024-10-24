@@ -1,4 +1,5 @@
-use crate::types::{CommandType, ContractError, Message, Proof, WeightedSigners};
+use crate::error::ContractError;
+use crate::types::{CommandType, Message, Proof, WeightedSigners};
 use axelar_soroban_std::ensure;
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
