@@ -1,21 +1,21 @@
 use axelar_soroban_std::ensure;
 use soroban_sdk::{contract, contractimpl, Address, Env, Symbol, Val, Vec};
 
+use crate::error::ContractError;
 use crate::event;
 use crate::storage_types::DataKey;
-use axelar_soroban_interfaces::axelar_operators::{AxelarOperatorsInterface, OperatorError};
 
 #[contract]
 pub struct AxelarOperators;
 
 #[contractimpl]
 impl AxelarOperators {
-    pub fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), OperatorError> {
+    pub fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), ContractError> {
         let owner: Address = env
             .storage()
             .instance()
             .get(&DataKey::Owner)
-            .ok_or(OperatorError::NotInitialized)?;
+            .ok_or(ContractError::NotInitialized)?;
 
         owner.require_auth();
 
@@ -26,23 +26,24 @@ impl AxelarOperators {
         Ok(())
     }
 
-    pub fn owner(env: &Env) -> Result<Address, OperatorError> {
+    pub fn owner(env: &Env) -> Result<Address, ContractError> {
         env.storage()
             .instance()
             .get(&DataKey::Owner)
-            .ok_or(OperatorError::NotInitialized)
+            .ok_or(ContractError::NotInitialized)
     }
 }
 
 #[contractimpl]
-impl AxelarOperatorsInterface for AxelarOperators {
-    fn initialize(env: Env, owner: Address) -> Result<(), OperatorError> {
+impl AxelarOperators {
+    /// Initialize the operators contract with an owner.
+    pub fn initialize(env: Env, owner: Address) -> Result<(), ContractError> {
         ensure!(
             env.storage()
                 .instance()
                 .get::<DataKey, bool>(&DataKey::Initialized)
                 .is_none(),
-            OperatorError::AlreadyInitialized
+            ContractError::AlreadyInitialized
         );
 
         env.storage().instance().set(&DataKey::Initialized, &true);
@@ -51,18 +52,22 @@ impl AxelarOperatorsInterface for AxelarOperators {
         Ok(())
     }
 
-    fn is_operator(env: Env, account: Address) -> bool {
+    /// Return true if the account is an operator.
+    pub fn is_operator(env: Env, account: Address) -> bool {
         let key = DataKey::Operators(account);
 
         env.storage().persistent().has(&key)
     }
 
-    fn add_operator(env: Env, account: Address) -> Result<(), OperatorError> {
+    /// Add an address as an operator.
+    ///
+    /// Only callable by the contract owner.
+    pub fn add_operator(env: Env, account: Address) -> Result<(), ContractError> {
         let owner: Address = env
             .storage()
             .instance()
             .get(&DataKey::Owner)
-            .ok_or(OperatorError::NotInitialized)?;
+            .ok_or(ContractError::NotInitialized)?;
 
         owner.require_auth();
 
@@ -70,7 +75,7 @@ impl AxelarOperatorsInterface for AxelarOperators {
 
         ensure!(
             !env.storage().persistent().has(&key),
-            OperatorError::OperatorAlreadyAdded
+            ContractError::OperatorAlreadyAdded
         );
 
         env.storage().persistent().set(&key, &true);
@@ -79,12 +84,15 @@ impl AxelarOperatorsInterface for AxelarOperators {
         Ok(())
     }
 
-    fn remove_operator(env: Env, account: Address) -> Result<(), OperatorError> {
+    /// Remove an address as an operator.
+    ///
+    /// Only callable by the contract owner.
+    pub fn remove_operator(env: Env, account: Address) -> Result<(), ContractError> {
         let owner: Address = env
             .storage()
             .instance()
             .get(&DataKey::Owner)
-            .ok_or(OperatorError::NotInitialized)?;
+            .ok_or(ContractError::NotInitialized)?;
 
         owner.require_auth();
 
@@ -92,7 +100,7 @@ impl AxelarOperatorsInterface for AxelarOperators {
 
         ensure!(
             env.storage().persistent().has(&key),
-            OperatorError::NotAnOperator
+            ContractError::NotAnOperator
         );
 
         env.storage().persistent().remove(&key);
@@ -101,20 +109,21 @@ impl AxelarOperatorsInterface for AxelarOperators {
         Ok(())
     }
 
-    fn execute(
+    /// Execute a function on a contract as an operator.
+    pub fn execute(
         env: Env,
         operator: Address,
         contract: Address,
         func: Symbol,
         args: Vec<Val>,
-    ) -> Result<Val, OperatorError> {
+    ) -> Result<Val, ContractError> {
         operator.require_auth();
 
         let key = DataKey::Operators(operator.clone());
 
         ensure!(
             env.storage().persistent().has(&key),
-            OperatorError::NotAnOperator
+            ContractError::NotAnOperator
         );
 
         let res: Val = env.invoke_contract(&contract, &func, args);

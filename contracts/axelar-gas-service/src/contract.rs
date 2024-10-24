@@ -2,22 +2,23 @@ use soroban_sdk::{contract, contractimpl, token, Address, Bytes, Env, String};
 
 use axelar_soroban_std::{ensure, types::Token};
 
+use crate::error::ContractError;
 use crate::event;
 use crate::storage_types::DataKey;
-use axelar_soroban_interfaces::axelar_gas_service::{AxelarGasServiceInterface, GasServiceError};
 
 #[contract]
 pub struct AxelarGasService;
 
 #[contractimpl]
-impl AxelarGasServiceInterface for AxelarGasService {
-    fn initialize(env: Env, gas_collector: Address) -> Result<(), GasServiceError> {
+impl AxelarGasService {
+    /// Initialize the gas service contract with a gas_collector address.
+    pub fn initialize(env: Env, gas_collector: Address) -> Result<(), ContractError> {
         ensure!(
             env.storage()
                 .instance()
                 .get::<DataKey, bool>(&DataKey::Initialized)
                 .is_none(),
-            GasServiceError::AlreadyInitialized
+            ContractError::AlreadyInitialized
         );
 
         env.storage().instance().set(&DataKey::Initialized, &true);
@@ -29,7 +30,10 @@ impl AxelarGasServiceInterface for AxelarGasService {
         Ok(())
     }
 
-    fn pay_gas_for_contract_call(
+    /// Pay for gas using a token for a contract call on a destination chain.
+    ///
+    /// This function is called on the source chain before calling the gateway to execute a remote contract.
+    pub fn pay_gas_for_contract_call(
         env: Env,
         sender: Address,
         destination_chain: String,
@@ -37,10 +41,10 @@ impl AxelarGasServiceInterface for AxelarGasService {
         payload: Bytes,
         refund_address: Address,
         token: Token,
-    ) -> Result<(), GasServiceError> {
+    ) -> Result<(), ContractError> {
         sender.require_auth();
 
-        ensure!(token.amount > 0, GasServiceError::InvalidAmount);
+        ensure!(token.amount > 0, ContractError::InvalidAmount);
 
         token::Client::new(&env, &token.address).transfer_from(
             &env.current_contract_address(),
@@ -62,16 +66,19 @@ impl AxelarGasServiceInterface for AxelarGasService {
         Ok(())
     }
 
-    fn collect_fees(env: Env, receiver: Address, token: Token) -> Result<(), GasServiceError> {
+    /// Allows the `gas_collector` to collect accumulated fees from the contract.
+    ///
+    /// Only callable by the gas_collector.
+    pub fn collect_fees(env: Env, receiver: Address, token: Token) -> Result<(), ContractError> {
         let gas_collector: Address = env
             .storage()
             .instance()
             .get(&DataKey::GasCollector)
-            .ok_or(GasServiceError::NotInitialized)?;
+            .ok_or(ContractError::NotInitialized)?;
 
         gas_collector.require_auth();
 
-        ensure!(token.amount > 0, GasServiceError::InvalidAmount);
+        ensure!(token.amount > 0, ContractError::InvalidAmount);
 
         let token_client = token::Client::new(&env, &token.address);
 
@@ -79,7 +86,7 @@ impl AxelarGasServiceInterface for AxelarGasService {
 
         ensure!(
             contract_token_balance >= token.amount,
-            GasServiceError::InsufficientBalance
+            ContractError::InsufficientBalance
         );
         token_client.transfer(&env.current_contract_address(), &receiver, &token.amount);
 
@@ -88,17 +95,20 @@ impl AxelarGasServiceInterface for AxelarGasService {
         Ok(())
     }
 
-    fn refund(
+    /// Refunds gas payment to the receiver in relation to a specific cross-chain transaction.
+    ///
+    /// Only callable by the gas_collector.
+    pub fn refund(
         env: Env,
         message_id: String,
         receiver: Address,
         token: Token,
-    ) -> Result<(), GasServiceError> {
+    ) -> Result<(), ContractError> {
         let gas_collector: Address = env
             .storage()
             .instance()
             .get(&DataKey::GasCollector)
-            .ok_or(GasServiceError::NotInitialized)?;
+            .ok_or(ContractError::NotInitialized)?;
 
         gas_collector.require_auth();
 
