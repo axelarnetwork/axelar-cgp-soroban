@@ -1,12 +1,12 @@
 use soroban_sdk::contracterror;
 
 #[contracterror]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(u32)]
-pub enum InterchainTokenServiceError {
+pub enum ContractError {
     NotInitialized = 1,
     AlreadyInitialized = 2,
     NotOwner = 3,
-    TrustedAddressAlreadyAdded = 4,
+    TrustedAddressAlreadySet = 4,
     NotTrustedAddress = 5,
 }

@@ -1,5 +1,5 @@
 [package]
-name = "axelar-interchain-token-service"
+name = "interchain-token-service"
 version = "0.1.0"
 edition.workspace = true
 
@@ -14,4 +14,3 @@ soroban-sdk = { workspace = true }
 [dev_dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
 axelar-soroban-std = { workspace = true, features = ["testutils"] }
-
