@@ -8,5 +8,5 @@ pub enum ContractError {
     AlreadyInitialized = 2,
     NotOwner = 3,
     TrustedAddressAlreadySet = 4,
-    NotTrustedAddress = 5,
+    NoTrustedAddressSet = 5,
 }

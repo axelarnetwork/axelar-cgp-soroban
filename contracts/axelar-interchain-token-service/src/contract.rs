@@ -66,24 +66,21 @@ impl InterchainTokenService {
         Ok(())
     }
 
-    pub fn remove_trusted_address(
-        env: Env,
-        chain: String,
-        address: String,
-    ) -> Result<(), ContractError> {
+    pub fn remove_trusted_address(env: Env, chain: String) -> Result<(), ContractError> {
         Self::owner(&env).require_auth();
 
         let key = DataKey::TrustedAddress(chain.clone());
 
-        if !env.storage().persistent().has(&key)
-            || Self::trusted_address(&env, chain.clone()).unwrap() != address
-        {
-            return Err(ContractError::NotTrustedAddress);
-        }
+        ensure!(
+            env.storage().persistent().has(&key),
+            ContractError::NoTrustedAddressSet
+        );
+
+        let trusted_address = Self::trusted_address(&env, chain.clone()).unwrap();
 
         env.storage().persistent().remove(&key);
 
-        event::remove_trusted_address(&env, chain, address);
+        event::remove_trusted_address(&env, chain, trusted_address);
 
         Ok(())
     }
