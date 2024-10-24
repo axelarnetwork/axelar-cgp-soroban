@@ -48,7 +48,12 @@ impl AxelarGateway {
         Ok(())
     }
 
-    /// Call a contract on another chain with the given payload. The destination address can validate the contract call on the destination gateway.
+    /// Sends a message to the specified destination chain and contarct address with a given payload.
+    ///
+    /// This function is the entry point for general message passing between chains.
+    ///
+    /// A registered chain name on Axelar must be used for `destination_chain`. `payload` usually represents
+    /// an encoded function call with arguments.
     pub fn call_contract(
         env: Env,
         caller: Address,
@@ -108,8 +113,9 @@ impl AxelarGateway {
         message_approval == MessageApprovalValue::Executed
     }
 
-    /// Validate if a contract call with the given payload BytesN<32> and source caller info is approved,
-    /// preventing re-validation (i.e distinct contract calls can be validated at most once).
+    /// Validates if a message is approved. If message was in approved status, status is updated to executed to avoid
+    /// replay.
+    ///
     /// `caller` must be the intended `destination_address` of the contract call for validation to succeed.
     pub fn validate_message(
         env: Env,
@@ -148,6 +154,7 @@ impl AxelarGateway {
         false
     }
 
+    /// Approves a collection of messages.
     pub fn approve_messages(
         env: Env,
         messages: Vec<Message>,
