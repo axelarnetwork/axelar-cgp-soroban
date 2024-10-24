@@ -2,7 +2,7 @@ use core::panic;
 
 use soroban_sdk::{contractclient, Address, Bytes, Env, String};
 
-use crate::contract::AxelarGatewayClient;
+use crate::AxelarGatewayClient;
 
 /// Interface for an Axelar Executable app.
 #[contractclient(name = "AxelarExecutableClient")]

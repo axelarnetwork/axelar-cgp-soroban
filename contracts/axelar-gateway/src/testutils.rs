@@ -2,7 +2,7 @@
 extern crate std;
 
 use crate::auth::{self, epoch};
-use crate::contract::AxelarGatewayClient;
+use crate::AxelarGatewayClient;
 use axelar_soroban_std::{assert_last_emitted_event, assert_ok};
 use ed25519_dalek::{Signature, Signer, SigningKey};
 use rand::Rng;

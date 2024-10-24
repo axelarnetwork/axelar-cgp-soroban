@@ -25,3 +25,5 @@ mod test_auth;
 #[cfg(test)]
 #[macro_use]
 extern crate std;
+
+pub use contract::AxelarGatewayClient;

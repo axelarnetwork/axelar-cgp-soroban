@@ -1,9 +1,10 @@
 #![cfg(test)]
 extern crate std;
 
-use axelar_gateway::contract::{AxelarGateway, AxelarGatewayClient};
+use axelar_gateway::contract::AxelarGateway;
 use axelar_gateway::testutils::{generate_proof, get_approve_hash, initialize, TestSignerSet};
 use axelar_gateway::types::Message;
+use axelar_gateway::AxelarGatewayClient;
 use axelar_soroban_std::assert_last_emitted_event;
 use soroban_sdk::{contract, contractimpl, log, Bytes, Symbol};
 use soroban_sdk::{
