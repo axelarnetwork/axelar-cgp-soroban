@@ -3,6 +3,7 @@
 pub mod contract;
 mod event;
 mod storage_types;
+mod error;
 
 #[cfg(test)]
 mod test;
