@@ -1,9 +1,8 @@
-use crate::contract::AxelarGateway;
 use crate::testutils::{
     generate_proof, generate_signers_set, generate_test_message, get_approve_hash, initialize,
     randint,
 };
-use crate::AxelarGatewayClient;
+use crate::{AxelarGateway, AxelarGatewayClient};
 use axelar_soroban_std::{assert_contract_err, assert_invocation, assert_last_emitted_event};
 use soroban_sdk::testutils::BytesN as _;
 
