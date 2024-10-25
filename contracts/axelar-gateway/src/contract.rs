@@ -52,8 +52,7 @@ impl AxelarGateway {
     ///
     /// This function is the entry point for general message passing between chains.
     ///
-    /// A registered chain name on Axelar must be used for `destination_chain`. `payload` usually represents
-    /// an encoded function call with arguments.
+    /// A registered chain name on Axelar must be used for `destination_chain`.
     pub fn call_contract(
         env: Env,
         caller: Address,
@@ -79,7 +78,7 @@ impl AxelarGateway {
     ///
     /// Determines whether a given message, identified by its `source_chain` and `message_id`, is approved.
     ///
-    /// Returns true if a contract call with the given `payload_hash`  is approved.
+    /// Returns true if a message with the given `payload_hash`  is approved.
     pub fn is_message_approved(
         env: Env,
         source_chain: String,

@@ -1,11 +1,11 @@
 #![no_std]
 
 mod auth;
-mod error;
 mod event;
 mod storage_types;
 
 pub mod contract;
+pub mod error;
 pub mod executable;
 pub mod types;
 
