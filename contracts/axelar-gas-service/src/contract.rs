@@ -68,7 +68,7 @@ impl AxelarGasService {
 
     /// Allows the `gas_collector` to collect accumulated fees from the contract.
     ///
-    /// Only callable by the gas_collector.
+    /// Only callable by the `gas_collector`.
     pub fn collect_fees(env: Env, receiver: Address, token: Token) -> Result<(), ContractError> {
         let gas_collector: Address = env
             .storage()
@@ -97,7 +97,7 @@ impl AxelarGasService {
 
     /// Refunds gas payment to the receiver in relation to a specific cross-chain transaction.
     ///
-    /// Only callable by the gas_collector.
+    /// Only callable by the `gas_collector`.
     pub fn refund(
         env: Env,
         message_id: String,
