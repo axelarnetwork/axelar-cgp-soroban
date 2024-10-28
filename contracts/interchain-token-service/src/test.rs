@@ -25,7 +25,7 @@ fn initialize(_env: &Env, client: &InterchainTokenServiceClient, owner: Address)
 
 #[test]
 fn initialize_succeeds() {
-    let (env, _contract_id, client) = setup_env();
+    let (env, _, client) = setup_env();
     let owner = Address::generate(&env);
 
     initialize(&env, &client, owner.clone());
@@ -35,7 +35,7 @@ fn initialize_succeeds() {
 
 #[test]
 fn initialize_fails_if_already_initialized() {
-    let (env, _contract_id, client) = setup_env();
+    let (env, _, client) = setup_env();
     let owner = Address::generate(&env);
 
     initialize(&env, &client, owner.clone());
@@ -101,7 +101,7 @@ fn set_trusted_address_fails_if_not_owner() {
 
 #[test]
 fn set_trusted_address_fails_if_already_set() {
-    let (env, _contract_id, client) = setup_env();
+    let (env, _, client) = setup_env();
     let owner = Address::generate(&env);
 
     initialize(&env, &client, owner);
@@ -156,7 +156,7 @@ fn remove_trusted_address() {
 
 #[test]
 fn remove_trusted_address_fails_if_address_not_set() {
-    let (env, _contract_id, client) = setup_env();
+    let (env, _, client) = setup_env();
     let owner = Address::generate(&env);
 
     initialize(&env, &client, owner);
