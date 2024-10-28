@@ -3,8 +3,8 @@ use soroban_sdk::{contracttype, BytesN, String};
 #[contracttype]
 #[derive(Clone, Debug)]
 pub struct MessageApprovalKey {
-    pub message_id: String,
     pub source_chain: String,
+    pub message_id: String,
 }
 
 #[contracttype]
@@ -20,10 +20,9 @@ pub enum MessageApprovalValue {
 pub enum DataKey {
     /// Gateway
     Initialized,
-    AuthModule,
+    Owner,
     Operator,
     MessageApproval(MessageApprovalKey),
-    RotationExecuted(BytesN<32>),
     /// Auth Module
     PreviousSignerRetention,
     DomainSeparator,

@@ -1,16 +1,13 @@
-#![cfg(test)]
-extern crate std;
-
-use axelar_gateway::contract::{AxelarGateway, AxelarGatewayClient};
 use axelar_gateway::testutils::{generate_proof, get_approve_hash, initialize, TestSignerSet};
-use axelar_soroban_interfaces::types::Message;
+use axelar_gateway::types::Message;
+use axelar_gateway::{AxelarGateway, AxelarGatewayClient};
 use axelar_soroban_std::assert_last_emitted_event;
-use soroban_sdk::{contract, contractimpl, log, symbol_short, Bytes};
+use soroban_sdk::{contract, contractimpl, log, Bytes, Symbol};
 use soroban_sdk::{
     testutils::Address as _, testutils::BytesN as _, vec, Address, BytesN, Env, String,
 };
 
-use axelar_soroban_interfaces::axelar_executable::AxelarExecutableInterface;
+use axelar_gateway::executable::AxelarExecutableInterface;
 
 #[contract]
 pub struct AxelarApp;
@@ -23,21 +20,21 @@ impl AxelarExecutableInterface for AxelarApp {
 
     fn execute(
         env: Env,
-        message_id: String,
         source_chain: String,
+        message_id: String,
         source_address: String,
         payload: Bytes,
     ) {
         Self::validate(
             env.clone(),
-            message_id,
             source_chain,
+            message_id,
             source_address,
             payload.clone(),
         );
 
         env.events()
-            .publish((symbol_short!("executed"),), (payload,));
+            .publish((Symbol::new(&env, "executed"),), (payload,));
     }
 }
 
@@ -64,8 +61,9 @@ impl AxelarApp {
 fn setup_gateway<'a>(env: &Env) -> (AxelarGatewayClient<'a>, TestSignerSet) {
     let gateway_id = env.register_contract(None, AxelarGateway);
     let gateway_client = AxelarGatewayClient::new(env, &gateway_id);
-    let operator = Address::generate(&env);
-    let signers = initialize(&env, &gateway_client, operator, 0, 5);
+    let owner = Address::generate(env);
+    let operator = Address::generate(env);
+    let signers = initialize(env, &gateway_client, owner, operator, 0, 5);
 
     (gateway_client, signers)
 }
@@ -115,11 +113,13 @@ fn test_gmp() {
         &env,
         &source_gateway_client.address,
         (
-            symbol_short!("called"),
+            Symbol::new(&env, "contract_called"),
             source_app.address.clone(),
+            destination_chain,
+            destination_address,
             payload_hash.clone(),
         ),
-        (destination_chain, destination_address, payload.clone()),
+        payload.clone(),
     );
 
     // Axelar hub signs the message approval
@@ -128,8 +128,8 @@ fn test_gmp() {
     let messages = vec![
         &env,
         Message {
-            message_id: message_id.clone(),
             source_chain: source_chain.clone(),
+            message_id: message_id.clone(),
             source_address: source_address.clone(),
             contract_address: destination_app_id.clone(),
             payload_hash,
@@ -149,12 +149,12 @@ fn test_gmp() {
     // Execute the app
     log!(env, "Executing message on destination app");
 
-    destination_app.execute(&message_id, &source_chain, &source_address, &payload);
+    destination_app.execute(&source_chain, &message_id, &source_address, &payload);
 
     assert_last_emitted_event(
         &env,
         &destination_app_id,
-        (symbol_short!("executed"),),
+        (Symbol::new(&env, "executed"),),
         (payload,),
     );
 }

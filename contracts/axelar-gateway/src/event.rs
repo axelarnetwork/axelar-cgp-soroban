@@ -1,5 +1,5 @@
-use axelar_soroban_interfaces::types::Message;
-use soroban_sdk::{symbol_short, Address, Bytes, BytesN, Env, String};
+use crate::types::Message;
+use soroban_sdk::{Address, Bytes, BytesN, Env, String, Symbol};
 
 pub(crate) fn call_contract(
     env: &Env,
@@ -9,31 +9,45 @@ pub(crate) fn call_contract(
     payload: Bytes,
     payload_hash: BytesN<32>,
 ) {
-    let topics = (symbol_short!("called"), caller, payload_hash);
-    env.events()
-        .publish(topics, (destination_chain, destination_address, payload));
+    let topics = (
+        Symbol::new(env, "contract_called"),
+        caller,
+        destination_chain,
+        destination_address,
+        payload_hash,
+    );
+    env.events().publish(topics, payload);
 }
 
 pub(crate) fn approve_message(env: &Env, message: Message) {
-    let topics = (symbol_short!("approved"),);
-    env.events().publish(topics, message);
+    let topics = (Symbol::new(env, "message_approved"), message);
+    env.events().publish(topics, ());
 }
 
-pub(crate) fn execute_contract_call(env: &Env, message: Message) {
-    let topics = (symbol_short!("executed"),);
-    env.events().publish(topics, message);
+pub(crate) fn execute_message(env: &Env, message: Message) {
+    let topics = (Symbol::new(env, "message_executed"), message);
+    env.events().publish(topics, ());
 }
 
-pub(crate) fn rotate_signers(env: &Env, signers_hash: BytesN<32>, epoch: u64) {
-    let topics = (symbol_short!("rotated"),);
-    env.events().publish(topics, (signers_hash, epoch));
+pub(crate) fn rotate_signers(env: &Env, epoch: u64, signers_hash: BytesN<32>) {
+    let topics = (Symbol::new(env, "signers_rotated"), epoch, signers_hash);
+    env.events().publish(topics, ());
 }
 
 pub(crate) fn transfer_operatorship(env: &Env, previous_operator: Address, new_operator: Address) {
     let topics = (
-        String::from_str(env, "transferred"),
+        Symbol::new(env, "operatorship_transferred"),
         previous_operator,
         new_operator,
+    );
+    env.events().publish(topics, ());
+}
+
+pub(crate) fn transfer_ownership(env: &Env, previous_owner: Address, new_owner: Address) {
+    let topics = (
+        Symbol::new(env, "ownership_transferred"),
+        previous_owner,
+        new_owner,
     );
     env.events().publish(topics, ());
 }

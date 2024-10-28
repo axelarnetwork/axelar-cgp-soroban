@@ -3,20 +3,19 @@ extern crate std;
 
 use std::format;
 
-use axelar_soroban_interfaces::axelar_gas_service::GasServiceError;
-use axelar_soroban_std::{
-    assert_contract_err, assert_last_emitted_event, assert_some, types::Token,
-};
-
+use crate::error::ContractError;
 use crate::{
     contract::{AxelarGasService, AxelarGasServiceClient},
     storage_types::DataKey,
 };
+use axelar_soroban_std::{
+    assert_contract_err, assert_last_emitted_event, assert_some, types::Token,
+};
 use soroban_sdk::{
-    bytes, symbol_short,
+    bytes,
     testutils::Address as _,
     token::{StellarAssetClient, TokenClient},
-    Address, Env, String,
+    Address, Env, String, Symbol,
 };
 
 fn setup_env<'a>() -> (Env, Address, Address, AxelarGasServiceClient<'a>) {
@@ -64,7 +63,7 @@ fn fail_not_initialized() {
 
     assert_contract_err!(
         client.try_collect_fees(&gas_collector, &token),
-        GasServiceError::NotInitialized
+        ContractError::NotInitialized
     );
 
     // refund() setup
@@ -80,7 +79,7 @@ fn fail_not_initialized() {
 
     assert_contract_err!(
         client.try_refund(&message_id, &receiver, &token),
-        GasServiceError::NotInitialized
+        ContractError::NotInitialized
     );
 }
 
@@ -108,7 +107,7 @@ fn fail_already_initialized() {
 
     assert_contract_err!(
         client.try_initialize(&gas_collector),
-        GasServiceError::AlreadyInitialized
+        ContractError::AlreadyInitialized
     );
 }
 
@@ -152,7 +151,7 @@ fn fail_pay_gas_zero_gas_amount() {
             &refund_address,
             &token,
         ),
-        GasServiceError::InvalidAmount
+        ContractError::InvalidAmount
     );
 }
 
@@ -204,7 +203,7 @@ fn pay_gas_for_contract_call() {
         &env,
         &contract_id,
         (
-            symbol_short!("gas_paid"),
+            Symbol::new(&env, "gas_paid"),
             env.crypto().keccak256(&payload),
             sender,
             destination_chain,
@@ -233,7 +232,7 @@ fn fail_collect_fees_zero_refund_amount() {
 
     assert_contract_err!(
         client.try_collect_fees(&gas_collector, &token),
-        GasServiceError::InvalidAmount
+        ContractError::InvalidAmount
     );
 }
 
@@ -257,7 +256,7 @@ fn fail_collect_fees_insufficient_balance() {
 
     assert_contract_err!(
         client.try_collect_fees(&gas_collector, &token),
-        GasServiceError::InsufficientBalance
+        ContractError::InsufficientBalance
     );
 }
 
@@ -286,7 +285,7 @@ fn collect_fees() {
     assert_last_emitted_event(
         &env,
         &contract_id,
-        (symbol_short!("collected"), gas_collector, token),
+        (Symbol::new(&env, "gas_collected"), gas_collector, token),
         (),
     );
 }
@@ -326,7 +325,12 @@ fn refund() {
     assert_last_emitted_event(
         &env,
         &contract_id,
-        (symbol_short!("refunded"), message_id, receiver, token),
+        (
+            Symbol::new(&env, "gas_refunded"),
+            message_id,
+            receiver,
+            token,
+        ),
         (),
     );
 }

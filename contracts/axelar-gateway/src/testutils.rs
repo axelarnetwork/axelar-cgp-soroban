@@ -1,15 +1,18 @@
-#![cfg(any(test, feature = "testutils"))]
+#![cfg(feature = "testutils")]
 extern crate std;
 
-use crate::{contract::AxelarGatewayClient, types::CommandType};
+use crate::auth::{self, epoch};
+use crate::AxelarGatewayClient;
+use axelar_soroban_std::{assert_last_emitted_event, assert_ok};
 use ed25519_dalek::{Signature, Signer, SigningKey};
 use rand::Rng;
 
+use soroban_sdk::Symbol;
 use soroban_sdk::{testutils::Address as _, Address};
 use soroban_sdk::{testutils::BytesN as _, vec, xdr::ToXdr, Bytes, BytesN, Env, String, Vec};
 
-use axelar_soroban_interfaces::types::{
-    Message, Proof, ProofSignature, ProofSigner, WeightedSigner, WeightedSigners,
+use crate::types::{
+    CommandType, Message, Proof, ProofSignature, ProofSigner, WeightedSigner, WeightedSigners,
 };
 
 use axelar_soroban_std::traits::IntoVec;
@@ -27,6 +30,7 @@ pub struct TestSignerSet {
 pub fn initialize(
     env: &Env,
     client: &AxelarGatewayClient,
+    owner: Address,
     operator: Address,
     previous_signers_retention: u32,
     num_signers: u32,
@@ -36,6 +40,7 @@ pub fn initialize(
     let minimum_rotation_delay = 0;
 
     client.initialize(
+        &owner,
         &operator,
         &signer_set.domain_separator,
         &minimum_rotation_delay,
@@ -52,12 +57,6 @@ pub fn get_approve_hash(env: &Env, messages: Vec<Message>) -> BytesN<32> {
         .into()
 }
 
-pub fn get_rotation_hash(env: &Env, new_signers: WeightedSigners) -> BytesN<32> {
-    env.crypto()
-        .keccak256(&(CommandType::RotateSigners, new_signers).to_xdr(env))
-        .into()
-}
-
 pub fn generate_test_message(env: &Env) -> (Message, Bytes) {
     let mut rng = rand::thread_rng();
     let len = rng.gen_range(0..20);
@@ -68,8 +67,8 @@ pub fn generate_test_message(env: &Env) -> (Message, Bytes) {
 
     (
         Message {
-            message_id: String::from_str(env, "test"),
             source_chain: String::from_str(env, DESTINATION_CHAIN),
+            message_id: String::from_str(env, "test"),
             source_address: String::from_str(env, DESTINATION_ADDRESS),
             contract_address: Address::generate(env),
             payload_hash: env.crypto().keccak256(&payload).into(),
@@ -173,4 +172,23 @@ pub fn generate_proof(env: &Env, data_hash: BytesN<32>, signer_set: TestSignerSe
         threshold: signer_set.signers.threshold,
         nonce: signer_set.signers.nonce,
     }
+}
+
+pub fn rotate_signers(env: &Env, contract_id: &Address, new_signers: TestSignerSet) {
+    let mut epoch_val: u64 = 0;
+    env.as_contract(contract_id, || {
+        epoch_val = assert_ok!(epoch(env)) + 1;
+        assert_ok!(auth::rotate_signers(env, &new_signers.signers, false));
+    });
+
+    assert_last_emitted_event(
+        env,
+        contract_id,
+        (
+            Symbol::new(&env, "signers_rotated"),
+            epoch_val,
+            new_signers.signers.hash(env),
+        ),
+        (),
+    );
 }

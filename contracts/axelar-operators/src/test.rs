@@ -1,7 +1,7 @@
 #![cfg(test)]
 extern crate std;
 
-use axelar_soroban_interfaces::axelar_operators::OperatorError;
+use crate::error::ContractError;
 use axelar_soroban_std::{
     assert_contract_err, assert_last_emitted_event, assert_some, testutils::assert_invocation,
 };
@@ -11,7 +11,7 @@ use crate::{
     storage_types::DataKey,
 };
 use soroban_sdk::{
-    contract, contractimpl, symbol_short, testutils::Address as _, Address, Env, Vec,
+    contract, contractimpl, symbol_short, testutils::Address as _, Address, Env, Symbol, Vec,
 };
 
 #[contract]
@@ -65,7 +65,7 @@ fn fail_already_initialized() {
 
     assert_contract_err!(
         client.try_initialize(&user),
-        OperatorError::AlreadyInitialized
+        ContractError::AlreadyInitialized
     );
 }
 
@@ -92,7 +92,11 @@ fn transfer_owner() {
     assert_last_emitted_event(
         &env,
         &client.address,
-        (symbol_short!("ownership"), initial_owner, new_owner.clone()),
+        (
+            Symbol::new(&env, "ownership_transferred"),
+            initial_owner,
+            new_owner.clone(),
+        ),
         (),
     );
 
@@ -126,7 +130,7 @@ fn test_add_operator() {
     assert_last_emitted_event(
         &env,
         &client.address,
-        (symbol_short!("added"), operator.clone()),
+        (Symbol::new(&env, "operator_added"), operator.clone()),
         (),
     );
 
@@ -152,7 +156,7 @@ fn fail_add_operator_duplicate() {
     // set existing operator as an operator, should panic
     assert_contract_err!(
         client.try_add_operator(&operator),
-        OperatorError::OperatorAlreadyAdded
+        ContractError::OperatorAlreadyAdded
     );
 }
 
@@ -185,7 +189,7 @@ fn test_remove_operator() {
     assert_last_emitted_event(
         &env,
         &client.address,
-        (symbol_short!("removed"), operator.clone()),
+        (Symbol::new(&env, "operator_removed"), operator.clone()),
         (),
     );
 
@@ -208,7 +212,7 @@ fn fail_remove_operator_non_existant() {
     // remove operator that is not an operator, should panic
     assert_contract_err!(
         client.try_remove_operator(&operator),
-        OperatorError::NotAnOperator
+        ContractError::NotAnOperator
     );
 }
 
@@ -250,7 +254,7 @@ fn fail_execute_not_operator() {
     // call execute with a non-operator, should panic
     assert_contract_err!(
         client.try_execute(&owner, &target, &symbol_short!("method"), &Vec::new(&env)),
-        OperatorError::NotAnOperator
+        ContractError::NotAnOperator
     );
 }
 
@@ -283,6 +287,6 @@ fn fail_on_uninitialized() {
     let operator = Address::generate(&env);
     assert_contract_err!(
         client.try_add_operator(&operator),
-        OperatorError::NotInitialized
+        ContractError::NotInitialized
     )
 }
