@@ -644,6 +644,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "interchain-token-service"
+version = "0.1.0"
+dependencies = [
+ "axelar-soroban-interfaces",
+ "axelar-soroban-std",
+ "soroban-sdk",
+]
+
+[[package]]
 name = "itertools"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
