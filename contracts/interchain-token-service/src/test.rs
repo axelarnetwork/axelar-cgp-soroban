@@ -3,6 +3,7 @@ extern crate std;
 
 use crate::error::ContractError;
 use crate::{contract::InterchainTokenService, contract::InterchainTokenServiceClient};
+
 use axelar_soroban_std::{assert_contract_err, assert_last_emitted_event};
 use soroban_sdk::{
     testutils::{Address as _, MockAuth, MockAuthInvoke},
@@ -23,7 +24,7 @@ fn initialize(_env: &Env, client: &InterchainTokenServiceClient, owner: Address)
 }
 
 #[test]
-fn initialize_sets_owner() {
+fn initialize_succeeds() {
     let (env, _contract_id, client) = setup_env();
     let owner = Address::generate(&env);
 

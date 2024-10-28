@@ -1,6 +1,6 @@
 #![no_std]
 
-mod error;
+pub mod error;
 mod event;
 mod storage_types;
 
