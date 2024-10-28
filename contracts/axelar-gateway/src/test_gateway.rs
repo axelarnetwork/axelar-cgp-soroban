@@ -555,3 +555,56 @@ fn transfer_ownership_unauthorized() {
         }])
         .transfer_ownership(&new_owner);
 }
+
+#[test]
+fn version() {
+    let (env, _, client) = setup_env();
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
+
+    initialize(&env, &client, owner.clone(), operator, 1, randint(1, 10));
+
+    assert_eq!(
+        client.version(),
+        String::from_str(&env, env!("CARGO_PKG_VERSION"))
+    );
+}
+
+#[test]
+#[should_panic(expected = "HostError: Error(Storage, MissingValue)")]
+fn upgrade() {
+    let (env, _, client) = setup_env();
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
+    let new_wasm_hash = BytesN::<32>::from_array(&env, &[0; 32]);
+
+    initialize(&env, &client, owner.clone(), operator, 1, randint(1, 10));
+
+    // Should panic with invalid wasm hash
+    client.upgrade(&new_wasm_hash);
+}
+
+#[test]
+#[should_panic(expected = "HostError: Error(Auth, InvalidAction)")] // Unauthorized
+fn upgrade_unauthorized() {
+    let (env, contract_id, client) = setup_env();
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
+    let user = Address::generate(&env);
+    let new_wasm_hash = BytesN::<32>::from_array(&env, &[0; 32]);
+
+    initialize(&env, &client, owner.clone(), operator, 1, randint(1, 10));
+
+    assert_eq!(client.owner(), owner);
+    client
+        .mock_auths(&[MockAuth {
+            address: &user,
+            invoke: &MockAuthInvoke {
+                contract: &contract_id,
+                fn_name: "upgrade",
+                args: (new_wasm_hash.clone(),).into_val(&env),
+                sub_invokes: &[],
+            },
+        }])
+        .upgrade(&new_wasm_hash);
+}
