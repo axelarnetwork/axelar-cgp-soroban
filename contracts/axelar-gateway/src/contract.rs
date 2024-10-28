@@ -1,12 +1,11 @@
-use axelar_soroban_interfaces::types::{CommandType, Message, Proof};
+use crate::error::ContractError;
+use crate::types::{CommandType, Message, Proof, WeightedSigners};
 use axelar_soroban_std::ensure;
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
 
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::{auth, event};
-use axelar_soroban_interfaces::axelar_gateway::GatewayError;
-use axelar_soroban_interfaces::{axelar_gateway::AxelarGatewayInterface, types::WeightedSigners};
 
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -14,8 +13,9 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub struct AxelarGateway;
 
 #[contractimpl]
-impl AxelarGatewayInterface for AxelarGateway {
-    fn initialize(
+impl AxelarGateway {
+    /// Initialize the gateway
+    pub fn initialize(
         env: Env,
         owner: Address,
         operator: Address,
@@ -23,13 +23,13 @@ impl AxelarGatewayInterface for AxelarGateway {
         minimum_rotation_delay: u64,
         previous_signers_retention: u64,
         initial_signers: Vec<WeightedSigners>,
-    ) -> Result<(), GatewayError> {
+    ) -> Result<(), ContractError> {
         ensure!(
             env.storage()
                 .instance()
                 .get::<DataKey, bool>(&DataKey::Initialized)
                 .is_none(),
-            GatewayError::AlreadyInitialized
+            ContractError::AlreadyInitialized
         );
 
         env.storage().instance().set(&DataKey::Initialized, &true);
@@ -48,7 +48,12 @@ impl AxelarGatewayInterface for AxelarGateway {
         Ok(())
     }
 
-    fn call_contract(
+    /// Sends a message to the specified destination chain and contarct address with a given payload.
+    ///
+    /// This function is the entry point for general message passing between chains.
+    ///
+    /// A registered chain name on Axelar must be used for `destination_chain`.
+    pub fn call_contract(
         env: Env,
         caller: Address,
         destination_chain: String,
@@ -69,7 +74,12 @@ impl AxelarGatewayInterface for AxelarGateway {
         );
     }
 
-    fn is_message_approved(
+    /// Checks if a message is approved
+    ///
+    /// Determines whether a given message, identified by its `source_chain` and `message_id`, is approved.
+    ///
+    /// Returns true if a message with the given `payload_hash`  is approved.
+    pub fn is_message_approved(
         env: Env,
         source_chain: String,
         message_id: String,
@@ -93,13 +103,20 @@ impl AxelarGatewayInterface for AxelarGateway {
             )
     }
 
-    fn is_message_executed(env: Env, source_chain: String, message_id: String) -> bool {
+    /// Checks if a message is executed.
+    ///
+    /// Returns true if the message is executed, false otherwise.
+    pub fn is_message_executed(env: Env, source_chain: String, message_id: String) -> bool {
         let message_approval = Self::message_approval(&env, source_chain, message_id);
 
         message_approval == MessageApprovalValue::Executed
     }
 
-    fn validate_message(
+    /// Validates if a message is approved. If message was in approved status, status is updated to executed to avoid
+    /// replay.
+    ///
+    /// `caller` must be the intended `destination_address` of the contract call for validation to succeed.
+    pub fn validate_message(
         env: Env,
         caller: Address,
         source_chain: String,
@@ -136,11 +153,12 @@ impl AxelarGatewayInterface for AxelarGateway {
         false
     }
 
-    fn approve_messages(
+    /// Approves a collection of messages.
+    pub fn approve_messages(
         env: Env,
         messages: Vec<Message>,
         proof: Proof,
-    ) -> Result<(), GatewayError> {
+    ) -> Result<(), ContractError> {
         let data_hash: BytesN<32> = env
             .crypto()
             .keccak256(&(CommandType::ApproveMessages, messages.clone()).to_xdr(&env))
@@ -148,7 +166,7 @@ impl AxelarGatewayInterface for AxelarGateway {
 
         auth::validate_proof(&env, &data_hash, proof.clone())?;
 
-        ensure!(!messages.is_empty(), GatewayError::EmptyMessages);
+        ensure!(!messages.is_empty(), ContractError::EmptyMessages);
 
         for message in messages.into_iter() {
             let key = MessageApprovalKey {
@@ -174,12 +192,12 @@ impl AxelarGatewayInterface for AxelarGateway {
     }
 
     // TODO: add docstring about how bypass_rotation_delay supposed to be used.
-    fn rotate_signers(
+    pub fn rotate_signers(
         env: Env,
         signers: WeightedSigners,
         proof: Proof,
         bypass_rotation_delay: bool,
-    ) -> Result<(), GatewayError> {
+    ) -> Result<(), ContractError> {
         if bypass_rotation_delay {
             Self::operator(&env)?.require_auth();
         }
@@ -189,7 +207,7 @@ impl AxelarGatewayInterface for AxelarGateway {
         let is_latest_signers = auth::validate_proof(&env, &data_hash, proof)?;
         ensure!(
             bypass_rotation_delay || is_latest_signers,
-            GatewayError::NotLatestSigners
+            ContractError::NotLatestSigners
         );
 
         auth::rotate_signers(&env, &signers, !bypass_rotation_delay)?;
@@ -197,7 +215,7 @@ impl AxelarGatewayInterface for AxelarGateway {
         Ok(())
     }
 
-    fn transfer_operatorship(env: Env, new_operator: Address) -> Result<(), GatewayError> {
+    pub fn transfer_operatorship(env: Env, new_operator: Address) -> Result<(), ContractError> {
         let operator: Address = Self::operator(&env)?;
         operator.require_auth();
 
@@ -210,22 +228,22 @@ impl AxelarGatewayInterface for AxelarGateway {
         Ok(())
     }
 
-    fn operator(env: &Env) -> Result<Address, GatewayError> {
+    pub fn operator(env: &Env) -> Result<Address, ContractError> {
         env.storage()
             .instance()
             .get(&DataKey::Operator)
-            .ok_or(GatewayError::NotInitialized)
+            .ok_or(ContractError::NotInitialized)
     }
 
-    fn epoch(env: &Env) -> Result<u64, GatewayError> {
+    pub fn epoch(env: &Env) -> Result<u64, ContractError> {
         auth::epoch(env)
     }
 
-    fn version(env: Env) -> String {
+    pub fn version(env: Env) -> String {
         String::from_str(&env, CONTRACT_VERSION)
     }
 
-    fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), GatewayError> {
+    pub fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), ContractError> {
         Self::owner(&env)?.require_auth();
 
         env.deployer().update_current_contract_wasm(new_wasm_hash);
@@ -233,7 +251,7 @@ impl AxelarGatewayInterface for AxelarGateway {
         Ok(())
     }
 
-    fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), GatewayError> {
+    pub fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), ContractError> {
         let owner: Address = Self::owner(&env)?;
         owner.require_auth();
 
@@ -244,16 +262,16 @@ impl AxelarGatewayInterface for AxelarGateway {
         Ok(())
     }
 
-    fn owner(env: &Env) -> Result<Address, GatewayError> {
+    pub fn owner(env: &Env) -> Result<Address, ContractError> {
         env.storage()
             .instance()
             .get(&DataKey::Owner)
-            .ok_or(GatewayError::NotInitialized)
+            .ok_or(ContractError::NotInitialized)
     }
 }
 
 impl AxelarGateway {
-    /// Get the message approval value by source_chain and message_id, defaulting to `MessageNotApproved`
+    /// Get the message approval value by `source_chain` and `message_id`, defaulting to `MessageNotApproved`
     fn message_approval(
         env: &Env,
         source_chain: String,
