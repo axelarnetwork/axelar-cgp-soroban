@@ -48,8 +48,10 @@ pub fn validate_proof(
 
     let signers_hash = signers_set.hash(env);
 
-    let signers_epoch: u64 =
-        signers_epoch(env, &signers_hash).ok_or(ContractError::InvalidSigners)?;
+    let signers_epoch: u64 = match epoch_by_signers_hash(env, signers_hash.clone()) {
+        Ok(epoch) => epoch,
+        Err(e) => return Err(e),
+    };
 
     let current_epoch: u64 = epoch(env)?;
 
@@ -93,16 +95,16 @@ pub fn rotate_signers(
 
     env.storage()
         .persistent()
-        .set(&DataKey::SignerHashByEpoch(new_epoch), &new_signers_hash);
+        .set(&DataKey::SignersHashByEpoch(new_epoch), &new_signers_hash);
 
     // signers must be distinct, since nonce should guarantee uniqueness even if signers are repeated
     ensure!(
-        signers_epoch(env, &new_signers_hash).is_none(),
+        epoch_by_signers_hash(env, new_signers_hash.clone()).is_err(),
         ContractError::DuplicateSigners
     );
 
     env.storage().persistent().set(
-        &DataKey::EpochBySignerHash(new_signers_hash.clone()),
+        &DataKey::EpochBySignersHash(new_signers_hash.clone()),
         &new_epoch,
     );
 
@@ -116,6 +118,20 @@ pub fn epoch(env: &Env) -> Result<u64, ContractError> {
         .instance()
         .get(&DataKey::Epoch)
         .ok_or(ContractError::NotInitialized)
+}
+
+pub fn epoch_by_signers_hash(env: &Env, signers_hash: BytesN<32>) -> Result<u64, ContractError> {
+    env.storage()
+        .persistent()
+        .get(&DataKey::EpochBySignersHash(signers_hash))
+        .ok_or(ContractError::InvalidSignersHash)
+}
+
+pub fn signers_hash_by_epoch(env: &Env, epoch: u64) -> Result<BytesN<32>, ContractError> {
+    env.storage()
+        .persistent()
+        .get(&DataKey::SignersHashByEpoch(epoch))
+        .ok_or(ContractError::InvalidEpoch)
 }
 
 fn message_hash_to_sign(env: &Env, signers_hash: BytesN<32>, data_hash: &BytesN<32>) -> Hash<32> {
@@ -221,10 +237,4 @@ fn validate_signers(env: &Env, weighted_signers: &WeightedSigners) -> Result<(),
     );
 
     Ok(())
-}
-
-fn signers_epoch(env: &Env, signers_hash: &BytesN<32>) -> Option<u64> {
-    env.storage()
-        .persistent()
-        .get(&DataKey::EpochBySignerHash(signers_hash.clone()))
 }

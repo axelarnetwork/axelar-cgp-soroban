@@ -114,7 +114,7 @@ fn fail_validate_proof_invalid_epoch() {
     env.as_contract(&contract_id, || {
         assert_err!(
             auth::validate_proof(&env, &msg_hash, proof),
-            ContractError::InvalidSigners
+            ContractError::InvalidSignersHash
         );
     })
 }
@@ -211,7 +211,7 @@ fn fail_validate_proof_invalid_signer_set() {
     env.as_contract(&contract_id, || {
         assert_err!(
             auth::validate_proof(&env, &msg_hash, proof),
-            ContractError::InvalidSigners
+            ContractError::InvalidSignersHash
         );
     })
 }
@@ -290,7 +290,7 @@ fn fail_validate_proof_threshold_overflow() {
     env.as_contract(&contract_id, || {
         assert_err!(
             auth::validate_proof(&env, &msg_hash, proof),
-            ContractError::InvalidSigners
+            ContractError::InvalidSignersHash
         );
     });
 }
@@ -643,6 +643,91 @@ fn rotate_signers_fail_duplicated_signers() {
         assert_err!(
             auth::rotate_signers(&env, &duplicated_signers.signers, false),
             ContractError::DuplicateSigners
+        );
+    });
+}
+
+#[test]
+fn epoch_by_signers_hash() {
+    let (env, contract_id, client) = setup_env();
+
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
+    let previous_signer_retention = 1;
+
+    let signers = initialize(
+        &env,
+        &client,
+        owner,
+        operator,
+        previous_signer_retention,
+        randint(1, 10),
+    );
+
+    let new_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator);
+
+    testutils::rotate_signers(&env, &contract_id, new_signers.clone());
+
+    env.as_contract(&contract_id, || {
+        assert_eq!(
+            auth::epoch_by_signers_hash(&env, new_signers.signers.hash(&env)),
+            auth::epoch(&env)
+        );
+    });
+}
+
+#[test]
+fn epoch_by_signers_hash_fail_invalid_signers() {
+    let (env, contract_id, _) = setup_env();
+    let signers_hash = BytesN::<32>::from_array(&env, &[1; 32]);
+
+    env.as_contract(&contract_id, || {
+        assert_err!(
+            auth::epoch_by_signers_hash(&env, signers_hash),
+            ContractError::InvalidSignersHash
+        );
+    });
+}
+
+#[test]
+fn signers_hash_by_epoch() {
+    let (env, contract_id, client) = setup_env();
+
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
+    let previous_signer_retention = 1;
+
+    let signers = initialize(
+        &env,
+        &client,
+        owner,
+        operator,
+        previous_signer_retention,
+        randint(1, 10),
+    );
+
+    let new_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator);
+
+    testutils::rotate_signers(&env, &contract_id, new_signers.clone());
+
+    env.as_contract(&contract_id, || {
+        let epoch = auth::epoch(&env).unwrap();
+        assert_eq!(
+            auth::signers_hash_by_epoch(&env, epoch).unwrap(),
+            new_signers.signers.hash(&env)
+        );
+    });
+}
+
+#[test]
+fn signers_hash_by_epoch_fail_invalid_epoch() {
+    let (env, contract_id, _) = setup_env();
+    let invalid_epoch = 43u64;
+
+    env.as_contract(&contract_id, || {
+        assert_err!(
+            auth::signers_hash_by_epoch(&env, invalid_epoch),
+            ContractError::InvalidEpoch
         );
     });
 }
