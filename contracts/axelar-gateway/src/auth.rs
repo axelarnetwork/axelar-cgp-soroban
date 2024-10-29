@@ -48,12 +48,9 @@ pub fn validate_proof(
 
     let signers_hash = signers_set.hash(env);
 
-    let signers_epoch: u64 = match epoch_by_signers_hash(env, signers_hash.clone()) {
-        Ok(epoch) => epoch,
-        Err(e) => return Err(e),
-    };
+    let signers_epoch = epoch_by_signers_hash(env, signers_hash.clone())?;
 
-    let current_epoch: u64 = epoch(env)?;
+    let current_epoch = epoch(env)?;
 
     let is_latest_signers: bool = signers_epoch == current_epoch;
 
