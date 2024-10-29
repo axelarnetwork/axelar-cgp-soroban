@@ -57,7 +57,6 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 name = "axelar-gas-service"
 version = "0.1.0"
 dependencies = [
- "axelar-soroban-interfaces",
  "axelar-soroban-std",
  "soroban-sdk",
 ]
@@ -66,7 +65,6 @@ dependencies = [
 name = "axelar-gateway"
 version = "0.1.0"
 dependencies = [
- "axelar-soroban-interfaces",
  "axelar-soroban-std",
  "ed25519-dalek",
  "goldie",
@@ -80,19 +78,7 @@ dependencies = [
 name = "axelar-operators"
 version = "0.1.0"
 dependencies = [
- "axelar-soroban-interfaces",
  "axelar-soroban-std",
- "soroban-sdk",
-]
-
-[[package]]
-name = "axelar-soroban-interfaces"
-version = "0.1.0"
-dependencies = [
- "axelar-soroban-std",
- "goldie",
- "hex",
- "hex-literal",
  "soroban-sdk",
 ]
 
@@ -638,7 +624,6 @@ name = "integration-tests"
 version = "0.1.0"
 dependencies = [
  "axelar-gateway",
- "axelar-soroban-interfaces",
  "axelar-soroban-std",
  "soroban-sdk",
 ]
@@ -647,7 +632,6 @@ dependencies = [
 name = "interchain-token-service"
 version = "0.1.0"
 dependencies = [
- "axelar-soroban-interfaces",
  "axelar-soroban-std",
  "soroban-sdk",
 ]
