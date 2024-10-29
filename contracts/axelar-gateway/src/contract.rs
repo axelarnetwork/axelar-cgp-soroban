@@ -133,7 +133,7 @@ impl AxelarGateway {
         let message_approval = Self::message_approval_by_key(&env, key.clone());
         let message = Message {
             source_chain,
-            message_id: message_id.clone(),
+            message_id,
             source_address,
             contract_address: caller,
             payload_hash,
@@ -164,7 +164,7 @@ impl AxelarGateway {
             .keccak256(&(CommandType::ApproveMessages, messages.clone()).to_xdr(&env))
             .into();
 
-        auth::validate_proof(&env, &data_hash, proof.clone())?;
+        auth::validate_proof(&env, &data_hash, proof)?;
 
         ensure!(!messages.is_empty(), ContractError::EmptyMessages);
 
