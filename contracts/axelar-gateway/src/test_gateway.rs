@@ -572,20 +572,20 @@ fn version() {
 
 #[test]
 #[should_panic(expected = "HostError: Error(Storage, MissingValue)")]
-fn upgrade() {
+fn upgrade_invalid_wasm_hash() {
     let (env, _, client) = setup_env();
     let owner = Address::generate(&env);
     let operator = Address::generate(&env);
     let new_wasm_hash = BytesN::<32>::from_array(&env, &[0; 32]);
 
-    initialize(&env, &client, owner.clone(), operator, 1, randint(1, 10));
+    initialize(&env, &client, owner, operator, 1, randint(1, 10));
 
     // Should panic with invalid wasm hash
     client.upgrade(&new_wasm_hash);
 }
 
 #[test]
-#[should_panic(expected = "HostError: Error(Auth, InvalidAction)")] // Unauthorized
+#[should_panic(expected = "HostError: Error(Auth, InvalidAction)")]
 fn upgrade_unauthorized() {
     let (env, contract_id, client) = setup_env();
     let owner = Address::generate(&env);
