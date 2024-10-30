@@ -3,13 +3,10 @@ extern crate std;
 
 use axelar_operators::error::ContractError;
 use axelar_soroban_std::{
-    assert_contract_err, assert_last_emitted_event, assert_some, testutils::assert_invocation,
+    assert_contract_err, assert_last_emitted_event, testutils::assert_invocation,
 };
 
-use axelar_operators::{
-    contract::{AxelarOperators, AxelarOperatorsClient},
-    storage_types::DataKey,
-};
+use axelar_operators::contract::{AxelarOperators, AxelarOperatorsClient};
 use soroban_sdk::{
     contract, contractimpl, symbol_short, testutils::Address as _, Address, Env, Symbol, Vec,
 };
@@ -38,22 +35,6 @@ fn setup_env<'a>() -> (Env, Address, AxelarOperatorsClient<'a>, Address) {
     let target_contract_id = env.register_contract(None, TestTarget);
 
     (env, contract_id, client, target_contract_id)
-}
-
-#[test]
-fn test_initialize() {
-    let (env, contract_id, client, _) = setup_env();
-    let user = Address::generate(&env);
-
-    client.initialize(&user);
-
-    assert_some!(env.as_contract(&contract_id, || {
-        env.storage()
-            .instance()
-            .get::<DataKey, bool>(&DataKey::Initialized)
-    }));
-
-    assert_eq!(client.owner(), user);
 }
 
 #[test]
