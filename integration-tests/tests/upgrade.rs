@@ -1,0 +1,50 @@
+#![cfg(test)]
+
+use axelar_gateway::testutils::initialize;
+
+use axelar_gateway::AxelarGatewayClient;
+use soroban_sdk::{testutils::Address as _, Address, Env, String};
+
+mod old_contract {
+    soroban_sdk::contractimport!(
+        file = "../integration-tests/tests/testdata/axelar_gateway_old.wasm"
+    );
+}
+
+mod new_contract {
+    soroban_sdk::contractimport!(
+        file = "../integration-tests/tests/testdata/axelar_gateway_new.wasm"
+    );
+}
+
+const OLD_CONTRACT_VERSION: &str = "0.1.0";
+const NEW_CONTRACT_VERSION: &str = "0.1.1";
+
+#[test]
+fn upgrade() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let gateway_id = env.register_contract_wasm(None, old_contract::WASM);
+    let gateway_client = AxelarGatewayClient::new(&env, &gateway_id);
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
+
+    initialize(&env, &gateway_client, owner, operator, 0, 5);
+
+    let client = old_contract::Client::new(&env, &gateway_id);
+
+    assert_eq!(
+        String::from_str(&env, OLD_CONTRACT_VERSION),
+        client.version()
+    );
+
+    let new_wasm_hash = env.deployer().upload_contract_wasm(new_contract::WASM);
+
+    client.upgrade(&new_wasm_hash);
+
+    assert_eq!(
+        String::from_str(&env, NEW_CONTRACT_VERSION),
+        client.version()
+    );
+}
