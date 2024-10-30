@@ -119,7 +119,7 @@ impl AxelarOperators {
     ) -> Result<Val, ContractError> {
         operator.require_auth();
 
-        let key = DataKey::Operators(operator.clone());
+        let key = DataKey::Operators(operator);
 
         ensure!(
             env.storage().persistent().has(&key),
