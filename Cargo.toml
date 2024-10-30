@@ -21,6 +21,10 @@ interchain-token-service = { version = "^0.1.0", path = "contracts/interchain-to
 [workspace.lints.clippy]
 nursery = "warn"
 
+[workspace.lints.rust]
+warnings = "deny"
+deprecated = "allow"
+
 [profile.release]
 opt-level = "z"
 overflow-checks = true
