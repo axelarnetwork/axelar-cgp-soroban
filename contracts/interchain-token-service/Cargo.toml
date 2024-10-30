@@ -19,4 +19,4 @@ axelar-soroban-std = { workspace = true, features = ["testutils"] }
 testutils = ["soroban-sdk/testutils", "axelar-soroban-std/testutils"]
 
 [lints]
-workspace=true
+workspace = true

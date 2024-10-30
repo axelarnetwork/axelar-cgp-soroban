@@ -13,4 +13,4 @@ soroban-sdk = { workspace = true }
 testutils = ["soroban-sdk/testutils"]
 
 [lints]
-workspace=true
+workspace = true

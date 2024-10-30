@@ -16,4 +16,4 @@ hex = "0.4"
 hex-literal = "0.4"
 
 [lints]
-workspace=true
+workspace = true

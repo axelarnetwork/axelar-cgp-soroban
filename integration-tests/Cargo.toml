@@ -16,4 +16,4 @@ axelar-soroban-interfaces = { workspace = true }
 axelar-gateway = { workspace = true, features = [ "testutils" ] }
 
 [lints]
-workspace=true
+workspace = true

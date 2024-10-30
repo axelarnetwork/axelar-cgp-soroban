@@ -26,4 +26,4 @@ hex-literal = "0.4"
 testutils = ["soroban-sdk/testutils", "axelar-soroban-std/testutils", "ed25519-dalek", "rand"]
 
 [lints]
-workspace=true
+workspace = true
