@@ -253,7 +253,7 @@ fn fail_execute_invalid_proof() {
 
     assert_contract_err!(
         client.try_approve_messages(&messages, &proof),
-        ContractError::InvalidSigners
+        ContractError::InvalidSignersHash
     );
 }
 
@@ -554,6 +554,69 @@ fn transfer_ownership_unauthorized() {
             },
         }])
         .transfer_ownership(&new_owner);
+}
+
+#[test]
+fn epoch_by_signers_hash() {
+    let (env, _contract_id, client) = setup_env();
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
+    let signers = initialize(&env, &client, owner, operator, 1, 5);
+    let bypass_rotation_delay = false;
+
+    let first_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
+    let data_hash = first_signers.signers.signers_rotation_hash(&env);
+    let proof = generate_proof(&env, data_hash.clone(), signers.clone());
+
+    client.rotate_signers(&first_signers.signers, &proof, &bypass_rotation_delay);
+
+    assert_eq!(
+        client.epoch_by_signers_hash(&first_signers.signers.hash(&env)),
+        client.epoch()
+    );
+}
+
+#[test]
+fn epoch_by_signers_hash_fail_invalid_signers() {
+    let (env, _, client) = setup_env();
+    let signers_hash = BytesN::<32>::from_array(&env, &[1; 32]);
+
+    assert_contract_err!(
+        client.try_epoch_by_signers_hash(&signers_hash),
+        ContractError::InvalidSignersHash
+    );
+}
+
+#[test]
+fn signers_hash_by_epoch() {
+    let (env, _contract_id, client) = setup_env();
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
+    let signers = initialize(&env, &client, owner, operator, 1, 5);
+    let bypass_rotation_delay = false;
+
+    let first_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
+    let data_hash = first_signers.signers.signers_rotation_hash(&env);
+    let proof = generate_proof(&env, data_hash.clone(), signers.clone());
+
+    client.rotate_signers(&first_signers.signers, &proof, &bypass_rotation_delay);
+    let epoch = client.epoch();
+
+    assert_eq!(
+        client.signers_hash_by_epoch(&epoch),
+        first_signers.signers.hash(&env)
+    );
+}
+
+#[test]
+fn signers_hash_by_epoch_fail_invalid_epoch() {
+    let (_, _, client) = setup_env();
+    let invalid_epoch = 43u64;
+
+    assert_contract_err!(
+        client.try_signers_hash_by_epoch(&invalid_epoch),
+        ContractError::InvalidEpoch
+    );
 }
 
 #[test]
