@@ -7,7 +7,6 @@ edition = { workspace = true }
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-axelar-soroban-interfaces = { workspace = true }
 axelar-soroban-std = { workspace = true }
 ed25519-dalek = { version = "^2.1", default-features = false, optional = true }
 rand = { version = "0.8.5", optional = true }
@@ -24,3 +23,6 @@ hex-literal = "0.4"
 
 [features]
 testutils = ["soroban-sdk/testutils", "axelar-soroban-std/testutils", "ed25519-dalek", "rand"]
+
+[lints]
+workspace = true
