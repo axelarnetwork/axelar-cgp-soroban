@@ -268,6 +268,17 @@ impl AxelarGateway {
             .get(&DataKey::Owner)
             .ok_or(ContractError::NotInitialized)
     }
+
+    pub fn epoch_by_signers_hash(
+        env: &Env,
+        signers_hash: BytesN<32>,
+    ) -> Result<u64, ContractError> {
+        auth::epoch_by_signers_hash(env, signers_hash)
+    }
+
+    pub fn signers_hash_by_epoch(env: &Env, epoch: u64) -> Result<BytesN<32>, ContractError> {
+        auth::signers_hash_by_epoch(env, epoch)
+    }
 }
 
 impl AxelarGateway {

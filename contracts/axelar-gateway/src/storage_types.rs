@@ -29,6 +29,6 @@ pub enum DataKey {
     MinimumRotationDelay,
     Epoch,
     LastRotationTimestamp,
-    SignerHashByEpoch(u64),
-    EpochBySignerHash(BytesN<32>),
+    SignersHashByEpoch(u64),
+    EpochBySignersHash(BytesN<32>),
 }
