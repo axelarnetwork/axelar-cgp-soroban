@@ -12,12 +12,18 @@ rust-version = "1.76.0"
 
 [workspace.dependencies]
 soroban-sdk = { version = "21.0.1-preview.3" }
-axelar-soroban-interfaces = { version = "^0.1.0", path = "contracts/axelar-soroban-interfaces" }
 axelar-soroban-std = { version = "^0.1.0", path = "packages/axelar-soroban-std" }
 axelar-gas-service = { version = "^0.1.0", path = "contracts/axelar-gas-service" }
 axelar-gateway = { version = "^0.1.0", path = "contracts/axelar-gateway" }
 axelar-operators = { version = "^0.1.0", path = "contracts/axelar-operators" }
 interchain-token-service = { version = "^0.1.0", path = "contracts/interchain-token-service" }
+
+[workspace.lints.clippy]
+nursery = "warn"
+
+[workspace.lints.rust]
+warnings = "deny"
+deprecated = "allow"
 
 [profile.release]
 opt-level = "z"
