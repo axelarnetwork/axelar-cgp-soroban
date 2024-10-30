@@ -17,6 +17,8 @@ pub enum ContractError {
     WeightOverflow = 9,
     NotLatestSigners = 10,
     DuplicateSigners = 11,
+    InvalidSignersHash = 12,
+    InvalidEpoch = 13,
     // Messages
-    EmptyMessages = 12,
+    EmptyMessages = 14,
 }
