@@ -114,7 +114,7 @@ fn fail_validate_proof_invalid_epoch() {
     env.as_contract(&contract_id, || {
         assert_err!(
             auth::validate_proof(&env, &msg_hash, proof),
-            ContractError::InvalidSigners
+            ContractError::InvalidSignersHash
         );
     })
 }
@@ -211,7 +211,7 @@ fn fail_validate_proof_invalid_signer_set() {
     env.as_contract(&contract_id, || {
         assert_err!(
             auth::validate_proof(&env, &msg_hash, proof),
-            ContractError::InvalidSigners
+            ContractError::InvalidSignersHash
         );
     })
 }
@@ -290,7 +290,7 @@ fn fail_validate_proof_threshold_overflow() {
     env.as_contract(&contract_id, || {
         assert_err!(
             auth::validate_proof(&env, &msg_hash, proof),
-            ContractError::InvalidSigners
+            ContractError::InvalidSignersHash
         );
     });
 }
