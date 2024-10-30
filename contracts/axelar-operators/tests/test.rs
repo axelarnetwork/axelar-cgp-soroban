@@ -1,12 +1,12 @@
 #![cfg(test)]
 extern crate std;
 
-use crate::error::ContractError;
+use axelar_operators::error::ContractError;
 use axelar_soroban_std::{
     assert_contract_err, assert_last_emitted_event, assert_some, testutils::assert_invocation,
 };
 
-use crate::{
+use axelar_operators::{
     contract::{AxelarOperators, AxelarOperatorsClient},
     storage_types::DataKey,
 };

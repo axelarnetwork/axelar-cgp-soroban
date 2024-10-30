@@ -3,8 +3,8 @@ extern crate std;
 
 use std::format;
 
-use crate::error::ContractError;
-use crate::{
+use axelar_gas_service::error::ContractError;
+use axelar_gas_service::{
     contract::{AxelarGasService, AxelarGasServiceClient},
     storage_types::DataKey,
 };

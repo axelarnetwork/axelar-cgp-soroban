@@ -1,13 +1,13 @@
-use crate::testutils::{
+use axelar_gateway::testutils::{
     generate_proof, generate_signers_set, generate_test_message, get_approve_hash, initialize,
     randint,
 };
-use crate::{AxelarGateway, AxelarGatewayClient};
+use axelar_gateway::{AxelarGateway, AxelarGatewayClient};
 use axelar_soroban_std::{assert_contract_err, assert_invocation, assert_last_emitted_event};
 use soroban_sdk::testutils::BytesN as _;
 
-use crate::error::ContractError;
-use crate::types::Message;
+use axelar_gateway::error::ContractError;
+use axelar_gateway::types::Message;
 use soroban_sdk::Symbol;
 use soroban_sdk::{
     bytes,

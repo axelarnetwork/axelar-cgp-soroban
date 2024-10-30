@@ -16,9 +16,6 @@ compile_error!("'testutils' feature is not supported on 'wasm' target");
 pub mod testutils;
 
 #[cfg(test)]
-mod test_gateway;
-
-#[cfg(test)]
 mod test_auth;
 
 // Allows using std (and its macros) in test modules
