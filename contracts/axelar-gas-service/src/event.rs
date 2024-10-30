@@ -1,7 +1,7 @@
 use axelar_soroban_std::types::Token;
 use soroban_sdk::{Address, Bytes, Env, String, Symbol};
 
-pub(crate) fn gas_paid_for_contract_call(
+pub fn gas_paid_for_contract_call(
     env: &Env,
     sender: Address,
     destination_chain: String,
@@ -22,7 +22,7 @@ pub(crate) fn gas_paid_for_contract_call(
     );
 }
 
-pub(crate) fn refunded(env: &Env, message_id: String, receiver: Address, token: Token) {
+pub fn refunded(env: &Env, message_id: String, receiver: Address, token: Token) {
     let topics = (
         Symbol::new(env, "gas_refunded"),
         message_id,
@@ -32,7 +32,7 @@ pub(crate) fn refunded(env: &Env, message_id: String, receiver: Address, token: 
     env.events().publish(topics, ());
 }
 
-pub(crate) fn fee_collected(env: &Env, receiver: Address, token: Token) {
+pub fn fee_collected(env: &Env, receiver: Address, token: Token) {
     let topics = (Symbol::new(env, "gas_collected"), receiver, token);
     env.events().publish(topics, ());
 }
