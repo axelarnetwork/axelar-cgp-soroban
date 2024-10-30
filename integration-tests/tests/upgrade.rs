@@ -5,6 +5,12 @@ use axelar_gateway::testutils::initialize;
 use axelar_gateway::AxelarGatewayClient;
 use soroban_sdk::{testutils::Address as _, Address, Env, String};
 
+// For reproducibility:
+// 1. Update the package version in Cargo.toml to reflect new changes.
+// 2. Execute `stellar contract build` to build the contract.
+// 3. Run `optimize.sh` to produce the optimized WASM file.
+// 4. Rename the generated file and move it under the `testdata` directory.
+
 mod old_contract {
     soroban_sdk::contractimport!(
         file = "../integration-tests/tests/testdata/axelar_gateway_old.wasm"
