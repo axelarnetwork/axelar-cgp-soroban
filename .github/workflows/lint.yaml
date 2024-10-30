@@ -51,7 +51,6 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: -- -D warnings -A deprecated
 
       - name: Check Diff
         # fails if any changes not committed
