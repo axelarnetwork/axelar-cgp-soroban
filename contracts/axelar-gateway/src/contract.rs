@@ -319,7 +319,7 @@ impl AxelarGateway {
         MessageApprovalValue::Approved(env.crypto().keccak256(&message.to_xdr(env)).into())
     }
 
-    pub fn extend_instance_ttl(env: &Env) {
+    fn extend_instance_ttl(env: &Env) {
         env.storage()
             .instance()
             .extend_ttl(INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
