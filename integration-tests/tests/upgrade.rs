@@ -12,15 +12,11 @@ use soroban_sdk::{testutils::Address as _, Address, Env, String};
 // 4. Rename the generated file and move it under the `testdata` directory.
 
 mod old_contract {
-    soroban_sdk::contractimport!(
-        file = "../integration-tests/_artefacts/axelar_gateway_old.wasm"
-    );
+    soroban_sdk::contractimport!(file = format!("_artefacts/axelar_gateway_old.wasm"));
 }
 
 mod new_contract {
-    soroban_sdk::contractimport!(
-        file = "../integration-tests/_artefacts/axelar_gateway_new.wasm"
-    );
+    soroban_sdk::contractimport!(file = "_artefacts/axelar_gateway_new.wasm");
 }
 
 // make sure these are in sync with the values in build.rs
