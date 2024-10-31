@@ -10,9 +10,9 @@ use crate::{auth, event};
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Parameters for extending the contract instance and its instance storage.
-/// 
+///
 /// If the instance's time to live falls below 7 days, it will be extended by 60 days.
-/// 
+///
 /// If at least one message is approved per week, the instance should never be archived.
 const LEDGERS_PER_DAY: u32 = (24 * 3600) / 5;
 const INSTANCE_TTL_THRESHOLD: u32 = 7 * LEDGERS_PER_DAY;
