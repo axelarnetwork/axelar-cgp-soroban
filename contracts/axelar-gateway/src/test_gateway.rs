@@ -1,6 +1,6 @@
 use crate::testutils::{
-    generate_proof, generate_signers_set, generate_test_message, get_approve_hash, initialize,
-    randint,
+    expect_auth_error, generate_proof, generate_signers_set, generate_test_message,
+    get_approve_hash, initialize, randint,
 };
 use crate::{AxelarGateway, AxelarGatewayClient};
 use axelar_soroban_std::{assert_contract_err, assert_invocation, assert_last_emitted_event};
@@ -402,7 +402,6 @@ fn rotate_signers_fail_not_latest_signers() {
 }
 
 #[test]
-#[should_panic(expected = "HostError: Error(Auth, InvalidAction)")] // Unauthorized
 fn rotate_signers_bypass_rotation_delay_fail_if_not_operator() {
     let (env, contract_id, client) = setup_env();
     let owner = Address::generate(&env);
@@ -414,22 +413,24 @@ fn rotate_signers_bypass_rotation_delay_fail_if_not_operator() {
     let proof = generate_proof(&env, data_hash.clone(), signers);
     let bypass_rotation_delay = true;
 
-    client
-        .mock_auths(&[MockAuth {
-            address: &user,
-            invoke: &MockAuthInvoke {
-                contract: &contract_id,
-                fn_name: "rotate_signers",
-                args: (
-                    new_signers.signers.clone(),
-                    proof.clone(),
-                    bypass_rotation_delay,
-                )
-                    .into_val(&env),
-                sub_invokes: &[],
-            },
-        }])
-        .rotate_signers(&new_signers.signers, &proof, &bypass_rotation_delay);
+    expect_auth_error(core::prelude::v1::Ok(
+        client
+            .mock_auths(&[MockAuth {
+                address: &user,
+                invoke: &MockAuthInvoke {
+                    contract: &contract_id,
+                    fn_name: "rotate_signers",
+                    args: (
+                        new_signers.signers.clone(),
+                        proof.clone(),
+                        bypass_rotation_delay,
+                    )
+                        .into_val(&env),
+                    sub_invokes: &[],
+                },
+            }])
+            .try_rotate_signers(&new_signers.signers, &proof, &bypass_rotation_delay),
+    ));
 }
 
 #[test]
@@ -470,7 +471,6 @@ fn transfer_operatorship() {
 }
 
 #[test]
-#[should_panic(expected = "HostError: Error(Auth, InvalidAction)")] // Unauthorized
 fn transfer_operatorship_unauthorized() {
     let (env, contract_id, client) = setup_env();
     let owner = Address::generate(&env);
@@ -481,17 +481,19 @@ fn transfer_operatorship_unauthorized() {
     initialize(&env, &client, owner, operator.clone(), 1, randint(1, 10));
 
     assert_eq!(client.operator(), operator);
-    client
-        .mock_auths(&[MockAuth {
-            address: &user,
-            invoke: &MockAuthInvoke {
-                contract: &contract_id,
-                fn_name: "transfer_operatorship",
-                args: (&new_operator,).into_val(&env),
-                sub_invokes: &[],
-            },
-        }])
-        .transfer_operatorship(&new_operator);
+    expect_auth_error(core::prelude::v1::Ok(
+        client
+            .mock_auths(&[MockAuth {
+                address: &user,
+                invoke: &MockAuthInvoke {
+                    contract: &contract_id,
+                    fn_name: "transfer_operatorship",
+                    args: (&new_operator,).into_val(&env),
+                    sub_invokes: &[],
+                },
+            }])
+            .try_transfer_operatorship(&new_operator),
+    ));
 }
 
 #[test]
@@ -532,7 +534,6 @@ fn transfer_ownership() {
 }
 
 #[test]
-#[should_panic(expected = "HostError: Error(Auth, InvalidAction)")] // Unauthorized
 fn transfer_ownership_unauthorized() {
     let (env, contract_id, client) = setup_env();
     let owner = Address::generate(&env);
@@ -543,17 +544,20 @@ fn transfer_ownership_unauthorized() {
     initialize(&env, &client, owner.clone(), operator, 1, randint(1, 10));
 
     assert_eq!(client.owner(), owner);
-    client
-        .mock_auths(&[MockAuth {
-            address: &user,
-            invoke: &MockAuthInvoke {
-                contract: &contract_id,
-                fn_name: "transfer_ownership",
-                args: (&new_owner,).into_val(&env),
-                sub_invokes: &[],
-            },
-        }])
-        .transfer_ownership(&new_owner);
+
+    expect_auth_error(core::prelude::v1::Ok(
+        client
+            .mock_auths(&[MockAuth {
+                address: &user,
+                invoke: &MockAuthInvoke {
+                    contract: &contract_id,
+                    fn_name: "transfer_ownership",
+                    args: (&new_owner,).into_val(&env),
+                    sub_invokes: &[],
+                },
+            }])
+            .try_transfer_ownership(&new_owner),
+    ));
 }
 
 #[test]
@@ -648,7 +652,6 @@ fn upgrade_invalid_wasm_hash() {
 }
 
 #[test]
-#[should_panic(expected = "HostError: Error(Auth, InvalidAction)")]
 fn upgrade_unauthorized() {
     let (env, contract_id, client) = setup_env();
     let owner = Address::generate(&env);
@@ -659,15 +662,18 @@ fn upgrade_unauthorized() {
     initialize(&env, &client, owner.clone(), operator, 1, randint(1, 10));
 
     assert_eq!(client.owner(), owner);
-    client
-        .mock_auths(&[MockAuth {
-            address: &user,
-            invoke: &MockAuthInvoke {
-                contract: &contract_id,
-                fn_name: "upgrade",
-                args: (new_wasm_hash.clone(),).into_val(&env),
-                sub_invokes: &[],
-            },
-        }])
-        .upgrade(&new_wasm_hash);
+
+    expect_auth_error(core::prelude::v1::Ok(
+        client
+            .mock_auths(&[MockAuth {
+                address: &user,
+                invoke: &MockAuthInvoke {
+                    contract: &contract_id,
+                    fn_name: "upgrade",
+                    args: (new_wasm_hash.clone(),).into_val(&env),
+                    sub_invokes: &[],
+                },
+            }])
+            .try_upgrade(&new_wasm_hash),
+    ));
 }

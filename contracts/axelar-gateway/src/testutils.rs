@@ -2,18 +2,19 @@
 extern crate std;
 
 use crate::auth::{self, epoch};
+use crate::error::ContractError;
 use crate::AxelarGatewayClient;
 use axelar_soroban_std::{assert_last_emitted_event, assert_ok};
 use ed25519_dalek::{Signature, Signer, SigningKey};
 use rand::Rng;
 
-use soroban_sdk::Symbol;
-use soroban_sdk::{testutils::Address as _, Address};
-use soroban_sdk::{testutils::BytesN as _, vec, xdr::ToXdr, Bytes, BytesN, Env, String, Vec};
-
 use crate::types::{
     CommandType, Message, Proof, ProofSignature, ProofSigner, WeightedSigner, WeightedSigners,
 };
+use soroban_sdk::xdr::{ScError, ScErrorCode, ScVal};
+use soroban_sdk::Symbol;
+use soroban_sdk::{testutils::Address as _, Address};
+use soroban_sdk::{testutils::BytesN as _, vec, xdr::ToXdr, Bytes, BytesN, Env, String, Vec};
 
 use axelar_soroban_std::traits::IntoVec;
 
@@ -191,4 +192,14 @@ pub fn rotate_signers(env: &Env, contract_id: &Address, new_signers: TestSignerS
         ),
         (),
     );
+}
+
+pub fn expect_auth_error<T>(call_result: Result<T, ContractError>) {
+    if let Some(_) = call_result.err() {
+        let val = ScVal::Error(ScError::Context(ScErrorCode::InvalidAction));
+        match ScError::try_from(val) {
+            Ok(ScError::Context(ScErrorCode::InvalidAction)) => {}
+            _ => panic!("Expected ScErrorCode::InvalidAction"),
+        }
+    }
 }
