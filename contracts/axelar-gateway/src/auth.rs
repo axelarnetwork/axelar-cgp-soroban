@@ -1,4 +1,3 @@
-use crate::contract::{INSTANCE_TTL_EXTEND_TO, INSTANCE_TTL_THRESHOLD};
 use crate::error::ContractError;
 use crate::types::{ProofSignature, ProofSigner, WeightedSigner};
 use axelar_soroban_std::ensure;
@@ -72,10 +71,6 @@ pub fn validate_proof(
         validate_signatures(env, msg_hash, proof),
         ContractError::InvalidSignatures
     );
-
-    env.storage()
-        .instance()
-        .extend_ttl(INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
 
     Ok(is_latest_signers)
 }
