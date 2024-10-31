@@ -8,6 +8,8 @@ use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::{auth, event};
 
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const INSTANCE_TTL_THRESHOLD: u32 = 120_960; // approx 7 days
+pub const INSTANCE_TTL_EXTEND_TO: u32 = 1_036_800; // approx 60 days
 
 #[contract]
 pub struct AxelarGateway;
