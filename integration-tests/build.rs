@@ -12,16 +12,19 @@ fn main() {
 
     let old_contract_path = out_dir.join("axelar_gateway_old.wasm");
     let new_contract_path = out_dir.join("axelar_gateway_new.wasm");
-    let axelar_gatway_path = out_dir.join("axelar_gateway.wasm");
+    let axelar_gatway_path = out_dir.join("wasm32-unknown-unknown/release/axelar_gateway.wasm");
 
-    let mut command_name = Command::new("stellar");
+    let mut command_name = Command::new("cargo");
+
+    // target-dir is needed to avoid deadlock from invoking `cargo` in a build script
+    // https://github.com/rust-lang/cargo/issues/6412
     let command = command_name.args([
-        "contract",
         "build",
+        "--release",
         "--package",
         "axelar-gateway",
-        "--no-cache",
-        "--out-dir",
+        "--target=wasm32-unknown-unknown",
+        "--target-dir",
         dir_name,
     ]);
 
