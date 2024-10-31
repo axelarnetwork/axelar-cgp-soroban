@@ -13,13 +13,13 @@ use soroban_sdk::{testutils::Address as _, Address, Env, String};
 
 mod old_contract {
     soroban_sdk::contractimport!(
-        file = "../integration-tests/tests/testdata/axelar_gateway_old.wasm"
+        file = "../integration-tests/_artefacts/axelar_gateway_old.wasm"
     );
 }
 
 mod new_contract {
     soroban_sdk::contractimport!(
-        file = "../integration-tests/tests/testdata/axelar_gateway_new.wasm"
+        file = "../integration-tests/_artefacts/axelar_gateway_new.wasm"
     );
 }
 
