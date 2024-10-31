@@ -24,6 +24,7 @@ jobs:
           profile: minimal
           toolchain: 1.76.0
           override: true
+          target: wasm32-unknown-unknown
 
       - name: Cache build artifacts
         uses: useblacksmith/rust-cache@v3

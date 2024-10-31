@@ -24,6 +24,7 @@ jobs:
           toolchain: 1.76.0
           override: true
           components: rustfmt, clippy
+          target: wasm32-unknown-unknown
 
       - name: Cache build artifacts
         uses: useblacksmith/rust-cache@v3

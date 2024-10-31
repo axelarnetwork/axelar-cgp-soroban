@@ -26,6 +26,7 @@ jobs:
           profile: minimal
           toolchain: 1.76.0
           override: true
+          target: wasm32-unknown-unknown
 
       - name: Install libclang-dev
         run: sudo apt-get install libclang-dev
