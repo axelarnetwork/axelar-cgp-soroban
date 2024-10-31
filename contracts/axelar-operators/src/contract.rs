@@ -146,6 +146,7 @@ mod tests {
         let contract_id = env.register_contract(None, AxelarOperators);
         let client = AxelarOperatorsClient::new(&env, &contract_id);
         let user = Address::generate(&env);
+
         client.initialize(&user);
 
         assert_some!(env.as_contract(&contract_id, || {

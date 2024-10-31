@@ -138,6 +138,7 @@ mod tests {
         let contract_id = env.register_contract(None, AxelarGasService);
         let client = AxelarGasServiceClient::new(&env, &contract_id);
         let gas_collector = Address::generate(&env);
+
         client.initialize(&gas_collector);
 
         assert!(assert_some!(env.as_contract(&contract_id, || {
