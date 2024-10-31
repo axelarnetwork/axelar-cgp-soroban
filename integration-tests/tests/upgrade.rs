@@ -23,6 +23,7 @@ mod new_contract {
     );
 }
 
+// make sure these are in sync with the values in build.rs
 const OLD_CONTRACT_VERSION: &str = "0.1.0";
 const NEW_CONTRACT_VERSION: &str = "0.1.1";
 
