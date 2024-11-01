@@ -479,6 +479,7 @@ fn transfer_operatorship_unauthorized() {
     initialize(&env, &client, owner, operator.clone(), 1, randint(1, 10));
 
     assert_eq!(client.operator(), operator);
+
     expect_invalid_action_error(Ok(client
         .mock_auths(&[MockAuth {
             address: &user,
