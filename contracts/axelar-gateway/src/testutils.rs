@@ -193,13 +193,3 @@ pub fn rotate_signers(env: &Env, contract_id: &Address, new_signers: TestSignerS
         (),
     );
 }
-
-pub fn expect_invalid_action_error<T>(call_result: Result<T, ContractError>) {
-    if let Some(_) = call_result.err() {
-        let val = ScVal::Error(ScError::Context(ScErrorCode::InvalidAction));
-        match ScError::try_from(val) {
-            Ok(ScError::Context(ScErrorCode::InvalidAction)) => {}
-            _ => panic!("Expected ScErrorCode::InvalidAction"),
-        }
-    }
-}
