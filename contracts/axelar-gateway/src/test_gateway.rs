@@ -1,9 +1,11 @@
 use crate::testutils::{
-    expect_invalid_action_error, generate_proof, generate_signers_set, generate_test_message,
-    get_approve_hash, initialize, randint,
+    generate_proof, generate_signers_set, generate_test_message, get_approve_hash, initialize,
+    randint,
 };
 use crate::{AxelarGateway, AxelarGatewayClient};
-use axelar_soroban_std::{assert_contract_err, assert_invocation, assert_last_emitted_event};
+use axelar_soroban_std::{
+    assert_contract_err, assert_invocation, assert_invoke_auth, assert_last_emitted_event,
+};
 use soroban_sdk::testutils::BytesN as _;
 
 use crate::error::ContractError;
@@ -413,22 +415,17 @@ fn rotate_signers_bypass_rotation_delay_fail_if_not_operator() {
     let proof = generate_proof(&env, data_hash.clone(), signers);
     let bypass_rotation_delay = true;
 
-    expect_invalid_action_error(Ok(client
-        .mock_auths(&[MockAuth {
-            address: &user,
-            invoke: &MockAuthInvoke {
-                contract: &contract_id,
-                fn_name: "rotate_signers",
-                args: (
-                    new_signers.signers.clone(),
-                    proof.clone(),
-                    bypass_rotation_delay,
-                )
-                    .into_val(&env),
-                sub_invokes: &[],
-            },
-        }])
-        .try_rotate_signers(&new_signers.signers, &proof, &bypass_rotation_delay)));
+    assert_invoke_auth!(
+        client,
+        user,
+        contract_id,
+        &env,
+        "rotate_signers",
+        try_rotate_signers,
+        &new_signers.signers,
+        &proof,
+        &bypass_rotation_delay
+    );
 }
 
 #[test]
@@ -480,17 +477,15 @@ fn transfer_operatorship_unauthorized() {
 
     assert_eq!(client.operator(), operator);
 
-    expect_invalid_action_error(Ok(client
-        .mock_auths(&[MockAuth {
-            address: &user,
-            invoke: &MockAuthInvoke {
-                contract: &contract_id,
-                fn_name: "transfer_operatorship",
-                args: (&new_operator,).into_val(&env),
-                sub_invokes: &[],
-            },
-        }])
-        .try_transfer_operatorship(&new_operator)));
+    assert_invoke_auth!(
+        client,
+        user,
+        contract_id,
+        &env,
+        "transfer_operatorship",
+        try_transfer_operatorship,
+        &new_operator
+    );
 }
 
 #[test]
@@ -542,17 +537,15 @@ fn transfer_ownership_unauthorized() {
 
     assert_eq!(client.owner(), owner);
 
-    expect_invalid_action_error(Ok(client
-        .mock_auths(&[MockAuth {
-            address: &user,
-            invoke: &MockAuthInvoke {
-                contract: &contract_id,
-                fn_name: "transfer_ownership",
-                args: (&new_owner,).into_val(&env),
-                sub_invokes: &[],
-            },
-        }])
-        .try_transfer_ownership(&new_owner)));
+    assert_invoke_auth!(
+        client,
+        user,
+        contract_id,
+        &env,
+        "transfer_ownership",
+        try_transfer_ownership,
+        &new_owner
+    );
 }
 
 #[test]
@@ -658,15 +651,13 @@ fn upgrade_unauthorized() {
 
     assert_eq!(client.owner(), owner);
 
-    expect_invalid_action_error(Ok(client
-        .mock_auths(&[MockAuth {
-            address: &user,
-            invoke: &MockAuthInvoke {
-                contract: &contract_id,
-                fn_name: "upgrade",
-                args: (new_wasm_hash.clone(),).into_val(&env),
-                sub_invokes: &[],
-            },
-        }])
-        .try_upgrade(&new_wasm_hash)));
+    assert_invoke_auth!(
+        client,
+        user,
+        contract_id,
+        &env,
+        "upgrade",
+        try_upgrade,
+        &new_wasm_hash
+    );
 }

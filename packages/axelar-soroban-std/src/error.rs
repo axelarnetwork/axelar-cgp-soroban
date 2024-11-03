@@ -104,3 +104,32 @@ macro_rules! assert_some {
         }
     };
 }
+
+#[macro_export]
+macro_rules! assert_invoke_auth {
+    ($client:expr, $address:expr, $contract:expr, $env:expr, $fn_name:expr, $method:ident, $($arg:expr),* $(,)?) => {
+        use soroban_sdk::xdr::{ScError, ScErrorCode, ScVal};
+
+        let call_result = $client
+            .mock_auths(&[MockAuth {
+                address: &$address,
+                invoke: &MockAuthInvoke {
+                    contract: &$contract,
+                    fn_name: $fn_name,
+                    args: ($($arg.clone(),)*).into_val($env),
+                    sub_invokes: &[],
+                },
+            }])
+            .$method($($arg),*);
+
+        if let Some(_) = call_result.err() {
+            let val = ScVal::Error(ScError::Context(ScErrorCode::InvalidAction));
+            match ScError::try_from(val) {
+                Ok(ScError::Context(ScErrorCode::InvalidAction)) => {}
+                _ => panic!("Expected ScErrorCode::InvalidAction"),
+            }
+        } else {
+            panic!("Expected error, but got Ok result.");
+        }
+    };
+}
