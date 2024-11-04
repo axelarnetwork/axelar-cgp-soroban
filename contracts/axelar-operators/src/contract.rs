@@ -149,11 +149,12 @@ mod tests {
 
         client.initialize(&user);
 
-        assert_some!(env.as_contract(&contract_id, || {
-            env.storage()
+        env.as_contract(&contract_id, || {
+            assert_some!(env
+                .storage()
                 .instance()
-                .get::<DataKey, bool>(&DataKey::Initialized)
-        }));
+                .get::<DataKey, bool>(&DataKey::Initialized))
+        });
 
         assert_eq!(client.owner(), user);
     }

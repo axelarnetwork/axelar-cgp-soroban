@@ -141,17 +141,19 @@ mod tests {
 
         client.initialize(&gas_collector);
 
-        assert!(assert_some!(env.as_contract(&contract_id, || {
-            env.storage()
+        assert!(env.as_contract(&contract_id, || {
+            assert_some!(env
+                .storage()
                 .instance()
-                .get::<DataKey, bool>(&DataKey::Initialized)
-        })));
-
-        let stored_collector_address = assert_some!(env.as_contract(&contract_id, || {
-            env.storage()
-                .instance()
-                .get::<DataKey, Address>(&DataKey::GasCollector)
+                .get::<DataKey, bool>(&DataKey::Initialized))
         }));
+
+        let stored_collector_address = env.as_contract(&contract_id, || {
+            assert_some!(env
+                .storage()
+                .instance()
+                .get::<DataKey, Address>(&DataKey::GasCollector))
+        });
         assert_eq!(stored_collector_address, gas_collector);
     }
 }
