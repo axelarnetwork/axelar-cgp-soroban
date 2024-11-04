@@ -141,7 +141,7 @@ mod tests {
     use super::{AxelarOperators, AxelarOperatorsClient, DataKey};
 
     #[test]
-    fn test_initialize() {
+    fn initialize_operators() {
         let env = Env::default();
         let contract_id = env.register_contract(None, AxelarOperators);
         let client = AxelarOperatorsClient::new(&env, &contract_id);

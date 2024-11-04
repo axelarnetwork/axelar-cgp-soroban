@@ -86,7 +86,7 @@ fn transfer_owner() {
 }
 
 #[test]
-fn test_add_operator() {
+fn add_operator() {
     let (env, _, client, _) = setup_env();
 
     let owner = Address::generate(&env);
@@ -142,7 +142,7 @@ fn fail_add_operator_duplicate() {
 }
 
 #[test]
-fn test_remove_operator() {
+fn remove_operator() {
     let (env, _, client, _) = setup_env();
 
     let owner = Address::generate(&env);
@@ -198,7 +198,7 @@ fn fail_remove_operator_non_existant() {
 }
 
 #[test]
-fn test_execute() {
+fn execute() {
     let (env, _, client, target) = setup_env();
 
     let owner = Address::generate(&env);

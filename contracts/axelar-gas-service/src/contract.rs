@@ -133,7 +133,7 @@ mod tests {
     use super::{AxelarGasService, AxelarGasServiceClient, DataKey};
 
     #[test]
-    fn test_initialize() {
+    fn initialize_gas_service() {
         let env = Env::default();
         let contract_id = env.register_contract(None, AxelarGasService);
         let client = AxelarGasServiceClient::new(&env, &contract_id);
