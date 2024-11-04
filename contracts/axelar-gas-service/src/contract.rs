@@ -123,3 +123,37 @@ impl AxelarGasService {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use axelar_soroban_std::assert_some;
+    use soroban_sdk::testutils::Address as _;
+    use soroban_sdk::{Address, Env};
+
+    use super::{AxelarGasService, AxelarGasServiceClient, DataKey};
+
+    #[test]
+    fn initialize_gas_service() {
+        let env = Env::default();
+        let contract_id = env.register_contract(None, AxelarGasService);
+        let client = AxelarGasServiceClient::new(&env, &contract_id);
+        let gas_collector = Address::generate(&env);
+
+        client.initialize(&gas_collector);
+
+        assert!(env.as_contract(&contract_id, || {
+            assert_some!(env
+                .storage()
+                .instance()
+                .get::<DataKey, bool>(&DataKey::Initialized))
+        }));
+
+        let stored_collector_address = env.as_contract(&contract_id, || {
+            assert_some!(env
+                .storage()
+                .instance()
+                .get::<DataKey, Address>(&DataKey::GasCollector))
+        });
+        assert_eq!(stored_collector_address, gas_collector);
+    }
+}
