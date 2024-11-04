@@ -104,3 +104,55 @@ macro_rules! assert_some {
         }
     };
 }
+
+#[macro_export]
+macro_rules! assert_invoke_auth_ok {
+    ($caller:expr, $client:ident . $method:ident ( $($arg:expr),* $(,)? )) => {{
+        let call_result = $client
+            .mock_auths(&[MockAuth {
+                address: &$caller,
+                invoke: &MockAuthInvoke {
+                    contract: &$client.address,
+                    fn_name: &stringify!($method).replace("try_", ""),
+                    args: ($($arg.clone(),)*).into_val(&$client.env),
+                    sub_invokes: &[],
+                },
+            }])
+            .$method($($arg),*);
+
+        match call_result {
+            Ok(_) => {}
+            Err(_) => panic!("Expected Ok result, but got an error."),
+        }
+    }};
+}
+
+#[macro_export]
+macro_rules! assert_invoke_auth_err {
+    ($caller:expr, $client:ident . $method:ident ( $($arg:expr),* $(,)? )) => {{
+        use soroban_sdk::{IntoVal, xdr::{ScError, ScErrorCode, ScVal}};
+
+        let call_result = $client
+            .mock_auths(&[MockAuth {
+                address: &$caller,
+                invoke: &MockAuthInvoke {
+                    contract: &$client.address,
+                    fn_name: &stringify!($method).replace("try_", ""),
+                    args: ($($arg.clone(),)*).into_val(&$client.env),
+                    sub_invokes: &[],
+                },
+            }])
+            .$method($($arg),*);
+
+        match call_result {
+            Err(_) => {
+                let val = ScVal::Error(ScError::Context(ScErrorCode::InvalidAction));
+                match ScError::try_from(val) {
+                    Ok(ScError::Context(ScErrorCode::InvalidAction)) => {}
+                    _ => panic!("Expected ScErrorCode::InvalidAction"),
+                }
+            }
+            Ok(_) => panic!("Expected error, but got Ok result."),
+        }
+    }};
+}

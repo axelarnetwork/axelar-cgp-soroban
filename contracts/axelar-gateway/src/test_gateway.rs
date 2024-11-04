@@ -3,7 +3,10 @@ use crate::testutils::{
     randint,
 };
 use crate::{AxelarGateway, AxelarGatewayClient};
-use axelar_soroban_std::{assert_contract_err, assert_invocation, assert_last_emitted_event};
+use axelar_soroban_std::{
+    assert_contract_err, assert_invocation, assert_invoke_auth_err, assert_invoke_auth_ok,
+    assert_last_emitted_event,
+};
 use soroban_sdk::testutils::BytesN as _;
 
 use crate::error::ContractError;
@@ -349,22 +352,10 @@ fn rotate_signers_bypass_rotation_delay() {
     let bypass_rotation_delay = true;
     let new_epoch: u64 = client.epoch() + 1;
 
-    client
-        .mock_auths(&[MockAuth {
-            address: &operator,
-            invoke: &MockAuthInvoke {
-                contract: &contract_id,
-                fn_name: "rotate_signers",
-                args: (
-                    new_signers.signers.clone(),
-                    proof.clone(),
-                    bypass_rotation_delay,
-                )
-                    .into_val(&env),
-                sub_invokes: &[],
-            },
-        }])
-        .rotate_signers(&new_signers.signers, &proof, &bypass_rotation_delay);
+    assert_invoke_auth_ok!(
+        operator,
+        client.try_rotate_signers(&new_signers.signers, &proof, &bypass_rotation_delay)
+    );
 
     assert_last_emitted_event(
         &env,
@@ -375,6 +366,28 @@ fn rotate_signers_bypass_rotation_delay() {
             new_signers.signers.hash(&env),
         ),
         (),
+    );
+}
+
+#[test]
+fn rotate_signers_bypass_rotation_delay_unauthorized() {
+    let (env, _, client) = setup_env();
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
+    let not_operator = Address::generate(&env);
+    let signers = initialize(&env, &client, owner.clone(), operator.clone(), 1, 5);
+    let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
+    let data_hash = new_signers.signers.signers_rotation_hash(&env);
+    let proof = generate_proof(&env, data_hash.clone(), signers);
+    let bypass_rotation_delay = true;
+
+    assert_invoke_auth_err!(
+        owner,
+        client.try_rotate_signers(&new_signers.signers, &proof, &bypass_rotation_delay)
+    );
+    assert_invoke_auth_err!(
+        not_operator,
+        client.try_rotate_signers(&new_signers.signers, &proof, &bypass_rotation_delay)
     );
 }
 
@@ -402,58 +415,24 @@ fn rotate_signers_fail_not_latest_signers() {
 }
 
 #[test]
-#[should_panic(expected = "HostError: Error(Auth, InvalidAction)")] // Unauthorized
-fn rotate_signers_bypass_rotation_delay_fail_if_not_operator() {
-    let (env, contract_id, client) = setup_env();
-    let owner = Address::generate(&env);
-    let operator = Address::generate(&env);
-    let user = Address::generate(&env);
-    let signers = initialize(&env, &client, owner, operator.clone(), 1, 5);
-    let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
-    let data_hash = new_signers.signers.signers_rotation_hash(&env);
-    let proof = generate_proof(&env, data_hash.clone(), signers);
-    let bypass_rotation_delay = true;
-
-    client
-        .mock_auths(&[MockAuth {
-            address: &user,
-            invoke: &MockAuthInvoke {
-                contract: &contract_id,
-                fn_name: "rotate_signers",
-                args: (
-                    new_signers.signers.clone(),
-                    proof.clone(),
-                    bypass_rotation_delay,
-                )
-                    .into_val(&env),
-                sub_invokes: &[],
-            },
-        }])
-        .rotate_signers(&new_signers.signers, &proof, &bypass_rotation_delay);
-}
-
-#[test]
 fn transfer_operatorship() {
     let (env, contract_id, client) = setup_env();
     let owner = Address::generate(&env);
     let operator = Address::generate(&env);
     let new_operator = Address::generate(&env);
 
-    initialize(&env, &client, owner, operator.clone(), 1, randint(1, 10));
+    initialize(
+        &env,
+        &client,
+        owner.clone(),
+        operator.clone(),
+        1,
+        randint(1, 10),
+    );
 
     assert_eq!(client.operator(), operator);
 
-    client
-        .mock_auths(&[MockAuth {
-            address: &operator,
-            invoke: &MockAuthInvoke {
-                contract: &contract_id,
-                fn_name: "transfer_operatorship",
-                args: (&new_operator,).into_val(&env),
-                sub_invokes: &[],
-            },
-        }])
-        .transfer_operatorship(&new_operator);
+    assert_invoke_auth_ok!(operator, client.try_transfer_operatorship(&new_operator));
 
     assert_last_emitted_event(
         &env,
@@ -470,28 +449,28 @@ fn transfer_operatorship() {
 }
 
 #[test]
-#[should_panic(expected = "HostError: Error(Auth, InvalidAction)")] // Unauthorized
 fn transfer_operatorship_unauthorized() {
-    let (env, contract_id, client) = setup_env();
+    let (env, _, client) = setup_env();
     let owner = Address::generate(&env);
     let operator = Address::generate(&env);
-    let new_operator = Address::generate(&env);
-    let user = Address::generate(&env);
+    let not_operator = Address::generate(&env);
 
-    initialize(&env, &client, owner, operator.clone(), 1, randint(1, 10));
+    initialize(
+        &env,
+        &client,
+        owner.clone(),
+        operator.clone(),
+        1,
+        randint(1, 10),
+    );
 
     assert_eq!(client.operator(), operator);
-    client
-        .mock_auths(&[MockAuth {
-            address: &user,
-            invoke: &MockAuthInvoke {
-                contract: &contract_id,
-                fn_name: "transfer_operatorship",
-                args: (&new_operator,).into_val(&env),
-                sub_invokes: &[],
-            },
-        }])
-        .transfer_operatorship(&new_operator);
+
+    assert_invoke_auth_err!(owner, client.try_transfer_operatorship(&owner));
+    assert_invoke_auth_err!(
+        not_operator,
+        client.try_transfer_operatorship(&not_operator)
+    );
 }
 
 #[test]
@@ -501,21 +480,18 @@ fn transfer_ownership() {
     let operator = Address::generate(&env);
     let new_owner = Address::generate(&env);
 
-    initialize(&env, &client, owner.clone(), operator, 1, randint(1, 10));
+    initialize(
+        &env,
+        &client,
+        owner.clone(),
+        operator.clone(),
+        1,
+        randint(1, 10),
+    );
 
     assert_eq!(client.owner(), owner);
 
-    client
-        .mock_auths(&[MockAuth {
-            address: &owner,
-            invoke: &MockAuthInvoke {
-                contract: &contract_id,
-                fn_name: "transfer_ownership",
-                args: (&new_owner,).into_val(&env),
-                sub_invokes: &[],
-            },
-        }])
-        .transfer_ownership(&new_owner);
+    assert_invoke_auth_ok!(owner, client.try_transfer_ownership(&new_owner));
 
     assert_last_emitted_event(
         &env,
@@ -532,28 +508,25 @@ fn transfer_ownership() {
 }
 
 #[test]
-#[should_panic(expected = "HostError: Error(Auth, InvalidAction)")] // Unauthorized
 fn transfer_ownership_unauthorized() {
-    let (env, contract_id, client) = setup_env();
+    let (env, _, client) = setup_env();
     let owner = Address::generate(&env);
-    let operator = Address::generate(&env);
     let new_owner = Address::generate(&env);
-    let user = Address::generate(&env);
+    let operator = Address::generate(&env);
 
-    initialize(&env, &client, owner.clone(), operator, 1, randint(1, 10));
+    initialize(
+        &env,
+        &client,
+        owner.clone(),
+        operator.clone(),
+        1,
+        randint(1, 10),
+    );
 
     assert_eq!(client.owner(), owner);
-    client
-        .mock_auths(&[MockAuth {
-            address: &user,
-            invoke: &MockAuthInvoke {
-                contract: &contract_id,
-                fn_name: "transfer_ownership",
-                args: (&new_owner,).into_val(&env),
-                sub_invokes: &[],
-            },
-        }])
-        .transfer_ownership(&new_owner);
+
+    assert_invoke_auth_err!(new_owner, client.try_transfer_ownership(&new_owner));
+    assert_invoke_auth_err!(operator, client.try_transfer_ownership(&operator));
 }
 
 #[test]
@@ -648,26 +621,24 @@ fn upgrade_invalid_wasm_hash() {
 }
 
 #[test]
-#[should_panic(expected = "HostError: Error(Auth, InvalidAction)")]
 fn upgrade_unauthorized() {
-    let (env, contract_id, client) = setup_env();
+    let (env, _, client) = setup_env();
     let owner = Address::generate(&env);
     let operator = Address::generate(&env);
-    let user = Address::generate(&env);
+    let not_owner = Address::generate(&env);
     let new_wasm_hash = BytesN::<32>::from_array(&env, &[0; 32]);
 
-    initialize(&env, &client, owner.clone(), operator, 1, randint(1, 10));
+    initialize(
+        &env,
+        &client,
+        owner.clone(),
+        operator.clone(),
+        1,
+        randint(1, 10),
+    );
 
     assert_eq!(client.owner(), owner);
-    client
-        .mock_auths(&[MockAuth {
-            address: &user,
-            invoke: &MockAuthInvoke {
-                contract: &contract_id,
-                fn_name: "upgrade",
-                args: (new_wasm_hash.clone(),).into_val(&env),
-                sub_invokes: &[],
-            },
-        }])
-        .upgrade(&new_wasm_hash);
+
+    assert_invoke_auth_err!(not_owner, client.try_upgrade(&new_wasm_hash));
+    assert_invoke_auth_err!(operator, client.try_upgrade(&new_wasm_hash));
 }

@@ -4,11 +4,10 @@ extern crate std;
 use crate::error::ContractError;
 use crate::{contract::InterchainTokenService, contract::InterchainTokenServiceClient};
 
-use axelar_soroban_std::{assert_contract_err, assert_last_emitted_event};
-use soroban_sdk::{
-    testutils::{Address as _, MockAuth, MockAuthInvoke},
-    Address, Env, IntoVal, String, Symbol,
-};
+use axelar_soroban_std::{assert_contract_err, assert_invoke_auth_err, assert_last_emitted_event};
+use soroban_sdk::testutils::{MockAuth, MockAuthInvoke};
+
+use soroban_sdk::{testutils::Address as _, Address, Env, String, Symbol};
 
 fn setup_env<'a>() -> (Env, Address, InterchainTokenServiceClient<'a>) {
     let env = Env::default();
@@ -75,9 +74,8 @@ fn set_trusted_address() {
 }
 
 #[test]
-#[should_panic(expected = "HostError: Error(Auth, InvalidAction)")]
 fn set_trusted_address_fails_if_not_owner() {
-    let (env, contract_id, client) = setup_env();
+    let (env, _, client) = setup_env();
     let owner = Address::generate(&env);
 
     initialize(&env, &client, owner);
@@ -86,17 +84,10 @@ fn set_trusted_address_fails_if_not_owner() {
     let chain = String::from_str(&env, "chain");
     let trusted_address = String::from_str(&env, "trusted_address");
 
-    client
-        .mock_auths(&[MockAuth {
-            address: &not_owner,
-            invoke: &MockAuthInvoke {
-                contract: &contract_id,
-                fn_name: "set_trusted_address",
-                args: (chain.clone(), trusted_address.clone()).into_val(&env),
-                sub_invokes: &[],
-            },
-        }])
-        .set_trusted_address(&chain, &trusted_address);
+    assert_invoke_auth_err!(
+        not_owner,
+        client.try_set_trusted_address(&chain, &trusted_address)
+    );
 }
 
 #[test]
