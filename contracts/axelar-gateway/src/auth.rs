@@ -537,7 +537,7 @@ mod tests {
     }
 
     #[test]
-    fn test_rotate_signers() {
+    fn rotate_signers() {
         let (env, contract_id, client) = setup_env();
 
         let owner = Address::generate(&env);
