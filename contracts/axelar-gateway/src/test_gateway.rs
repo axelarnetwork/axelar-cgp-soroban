@@ -405,10 +405,10 @@ fn rotate_signers_fail_not_latest_signers() {
 
 #[test]
 fn rotate_signers_bypass_rotation_delay_fail_if_not_operator() {
-    let (env, contract_id, client) = setup_env();
+    let (env, _, client) = setup_env();
     let owner = Address::generate(&env);
     let operator = Address::generate(&env);
-    let user = Address::generate(&env);
+    let not_owner = Address::generate(&env);
     let signers = initialize(&env, &client, owner, operator.clone(), 1, 5);
     let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
     let data_hash = new_signers.signers.signers_rotation_hash(&env);
@@ -416,15 +416,8 @@ fn rotate_signers_bypass_rotation_delay_fail_if_not_operator() {
     let bypass_rotation_delay = true;
 
     assert_invoke_auth!(
-        client,
-        user,
-        contract_id,
-        &env,
-        "rotate_signers",
-        try_rotate_signers,
-        &new_signers.signers,
-        &proof,
-        &bypass_rotation_delay
+        not_owner,
+        client.try_rotate_signers(&new_signers.signers, &proof, &bypass_rotation_delay)
     );
 }
 
@@ -467,25 +460,16 @@ fn transfer_operatorship() {
 
 #[test]
 fn transfer_operatorship_unauthorized() {
-    let (env, contract_id, client) = setup_env();
+    let (env, _, client) = setup_env();
     let owner = Address::generate(&env);
     let operator = Address::generate(&env);
-    let new_operator = Address::generate(&env);
-    let user = Address::generate(&env);
+    let not_owner = Address::generate(&env);
 
     initialize(&env, &client, owner, operator.clone(), 1, randint(1, 10));
 
     assert_eq!(client.operator(), operator);
 
-    assert_invoke_auth!(
-        client,
-        user,
-        contract_id,
-        &env,
-        "transfer_operatorship",
-        try_transfer_operatorship,
-        &new_operator
-    );
+    assert_invoke_auth!(not_owner, client.try_transfer_operatorship(&not_owner));
 }
 
 #[test]
@@ -527,25 +511,16 @@ fn transfer_ownership() {
 
 #[test]
 fn transfer_ownership_unauthorized() {
-    let (env, contract_id, client) = setup_env();
+    let (env, _, client) = setup_env();
     let owner = Address::generate(&env);
     let operator = Address::generate(&env);
-    let new_owner = Address::generate(&env);
-    let user = Address::generate(&env);
+    let not_owner = Address::generate(&env);
 
     initialize(&env, &client, owner.clone(), operator, 1, randint(1, 10));
 
     assert_eq!(client.owner(), owner);
 
-    assert_invoke_auth!(
-        client,
-        user,
-        contract_id,
-        &env,
-        "transfer_ownership",
-        try_transfer_ownership,
-        &new_owner
-    );
+    assert_invoke_auth!(not_owner, client.try_transfer_ownership(&not_owner));
 }
 
 #[test]
@@ -641,23 +616,15 @@ fn upgrade_invalid_wasm_hash() {
 
 #[test]
 fn upgrade_unauthorized() {
-    let (env, contract_id, client) = setup_env();
+    let (env, _, client) = setup_env();
     let owner = Address::generate(&env);
     let operator = Address::generate(&env);
-    let user = Address::generate(&env);
+    let not_owner = Address::generate(&env);
     let new_wasm_hash = BytesN::<32>::from_array(&env, &[0; 32]);
 
     initialize(&env, &client, owner.clone(), operator, 1, randint(1, 10));
 
     assert_eq!(client.owner(), owner);
 
-    assert_invoke_auth!(
-        client,
-        user,
-        contract_id,
-        &env,
-        "upgrade",
-        try_upgrade,
-        &new_wasm_hash
-    );
+    assert_invoke_auth!(not_owner, client.try_upgrade(&new_wasm_hash));
 }

@@ -76,7 +76,7 @@ fn set_trusted_address() {
 
 #[test]
 fn set_trusted_address_fails_if_not_owner() {
-    let (env, contract_id, client) = setup_env();
+    let (env, _, client) = setup_env();
     let owner = Address::generate(&env);
 
     initialize(&env, &client, owner);
@@ -86,14 +86,8 @@ fn set_trusted_address_fails_if_not_owner() {
     let trusted_address = String::from_str(&env, "trusted_address");
 
     assert_invoke_auth!(
-        client,
         not_owner,
-        contract_id,
-        &env,
-        "set_trusted_address",
-        try_set_trusted_address,
-        &chain,
-        &trusted_address,
+        client.try_set_trusted_address(&chain, &trusted_address)
     );
 }
 
