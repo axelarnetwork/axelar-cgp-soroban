@@ -1,0 +1,189 @@
+name: "Publish specific rust package"
+
+on:
+  workflow_call:
+    inputs:
+      # Package related variables
+      package-name:
+        description: "The package name to use (ex: gz-srv)"
+        type: string
+        required: true
+        default: ""
+
+      package-version:
+        description: "The package version to use (ex: 0.1.2)"
+        type: string
+        required: true
+        default: ""
+
+      package-git-tag:
+        description: "the release tag name (ex: gz-srv-v0.1.2)"
+        type: string
+        required: true
+        default: ""
+
+      # CF Bucket related variables
+      cf-bucket-name:
+        description: "The CF bucket name to use"
+        required: true
+        type: string
+
+      cf-config-bucket-root-key:
+        description: "The root key to be used for accessing the configs. (ex: `test-root-key` puts releases in `test-root-key/*`)"
+        required: true
+        type: string
+
+    secrets:
+      github-token:
+        description: "The github token to use to do the tag updates"
+        required: true        
+      cf-endpoint-url:
+        description: "The endpoint URL of the CF bucket"
+        required: true
+      cf-bucket-access-key-id:
+        description: "The CF bucket access key id"
+        required: true
+      cf-bucket-secret-access-key:
+        description: "The CF bucket secret access key"
+        required: true
+
+jobs:
+  build-and-upload:
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.github-token }}
+          
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.76.0
+          targets: wasm32-unknown-unknown
+
+      - name: Build artifacts for ${{ inputs.package-name }}-v${{ inputs.package-version }}
+        run: |
+          echo "Building wasm for '${{ inputs.package-name }}-v${{ inputs.package-version }}'";
+          # 21.1.1 is the latest rust 1.76.0 compatible version, the version after is 21.2.0 which is compatible with 1.79.0 (different than the workspace's version)
+          cargo install --locked soroban-cli --version 21.1.1 --features opt
+          cargo wasm -p ${{ inputs.package-name }}
+          ./optimize.sh
+
+        # Prepare the variables that will be used across the different next steps
+      - name: Prepare cross-steps variables
+        run: |
+          export PACKAGE_NAME='${{ inputs.package-name }}'
+          export PACKAGE_VERSION='v${{ inputs.package-version }}'
+
+          export BASE_ARTIFACTS_DIR="./target/wasm32-unknown-unknown/release"
+          export ARTIFACT_NAME="axelar-cgp-soroban-wasm-${PACKAGE_NAME}-${PACKAGE_VERSION}"
+          export BASE_ARTIFACTS_VERSIONED_DIR="$(dirname ${BASE_ARTIFACTS_DIR})/${ARTIFACT_NAME}" # Regardless of the dir type, relative or absolute
+
+          export ARCHIVES_OUTPUT_DIR="${{ github.workspace }}/build/archives"
+          export ZIP_ARCHIVE_FILE="${ARCHIVES_OUTPUT_DIR}/${ARTIFACT_NAME}.zip"
+          export TAR_ARCHIVE_FILE="${ARCHIVES_OUTPUT_DIR}/${ARTIFACT_NAME}.tar.gz"
+
+          # Ensures that this dir is created
+          mkdir -p ${ARCHIVES_OUTPUT_DIR}
+
+          # ex: axelar-gas-service
+          echo "PACKAGE_NAME=${PACKAGE_NAME}" >> $GITHUB_ENV
+
+          # ex: v0.1.0
+          echo "PACKAGE_VERSION=${PACKAGE_VERSION}" >> $GITHUB_ENV
+
+          # ex: ./target/wasm32-unknown-unknown/release
+          echo "BASE_ARTIFACTS_DIR=${BASE_ARTIFACTS_DIR}" >> $GITHUB_ENV
+
+          # ex: axelar-cgp-soroban-wasm-axelar-gas-service-v0.1.0
+          echo "ARTIFACT_NAME=${ARTIFACT_NAME}" >> $GITHUB_ENV
+
+          # ex: ./axelar-cgp-soroban-wasm-axelar-gas-service-v0.1.0
+          echo "BASE_ARTIFACTS_VERSIONED_DIR=${BASE_ARTIFACTS_VERSIONED_DIR}" >> $GITHUB_ENV
+
+          echo "ZIP_ARCHIVE_FILE=${ZIP_ARCHIVE_FILE}" >> $GITHUB_ENV
+          echo "TAR_ARCHIVE_FILE=${TAR_ARCHIVE_FILE}" >> $GITHUB_ENV
+
+        # Create `zip` and `tar` archive files for wasm
+      - name: Create `zip` and `tar` archive files for wasm
+        run: |
+          # Renaming to keep the dir structure in the archive matching the release version defined in `BASE_ARTIFACTS_VERSIONED_DIR`
+          mv ${{ env.BASE_ARTIFACTS_DIR }} ${{ env.BASE_ARTIFACTS_VERSIONED_DIR }}
+
+          # This cd to keep the dir structure of the artifacts archive
+          cd ${{ env.BASE_ARTIFACTS_VERSIONED_DIR }}
+
+          # Remove "unoptimized" built wasm files
+          find "." -type f -name "*.wasm" ! -name "*.optimized.wasm" -maxdepth 1 -delete
+
+          # Rename the optimized ones and remove the ".optimized" suffix
+          find . -name "*.optimized.wasm" -maxdepth 1 -exec sh -c 'mv "$0" "${0%.optimized.wasm}.wasm"' {} \;
+
+          # Archive the wasm
+          find "." -type f -name "*.wasm" -maxdepth 1 -print | zip "${{ env.ZIP_ARCHIVE_FILE }}" -@
+          find "." -type f -name "*.wasm" -maxdepth 1 -print | tar -czvf "${{ env.TAR_ARCHIVE_FILE }}" -T -
+
+          # Generate SHA-256 Checksums
+          for file in "${{ env.TAR_ARCHIVE_FILE }}" "${{ env.ZIP_ARCHIVE_FILE }}"; do
+            sha256sum "$file" > "$file.sha256"
+          done
+
+      # Publishing wasm files to `R2`
+      - name: Configure CF credentials
+        run: |
+          cd $HOME; mkdir ~/.aws; touch ~/.aws/credentials; touch ~/.aws/config
+          echo "[default]
+          aws_access_key_id = ${{ secrets.cf-bucket-access-key-id }}
+          aws_secret_access_key = ${{ secrets.cf-bucket-secret-access-key }}" > ~/.aws/credentials
+          echo "[default]
+          region=auto
+          output=json" > ~/.aws/config
+
+      - name: Publish files to CF R2
+        id: publish-to-r2
+        env:
+          S3_BUCKET_NAME: ${{ vars.CF_BUCKET_NAME }}
+          ENDPOINT_URL: ${{ secrets.cf-endpoint-url }}
+          CF_BUCKET_ROOT_KEY: ${{ vars.CF_BUCKET_ROOT_KEY }}
+        run: |
+          export CF_WASM_BUCKET_ROOT_KEY="${CF_BUCKET_ROOT_KEY}/${{ env.PACKAGE_NAME }}/${{ env.PACKAGE_VERSION }}/wasm"
+          export WASM_FILES=$(find "${{ env.BASE_ARTIFACTS_VERSIONED_DIR }}" -maxdepth 1 -type f -name "*.wasm")
+
+          printf '%s\n' "$WASM_FILES" | while IFS= read -r wasm_file; do
+            echo "Uploading wasm file: ${wasm_file}"
+            if [[ -f "$wasm_file" ]]; then
+              FILE_KEY=$(echo $wasm_file | sed "s|^${{ env.BASE_ARTIFACTS_VERSIONED_DIR }}/||")
+              echo "Uploading wasm file key: $CF_WASM_BUCKET_ROOT_KEY/$FILE_KEY"
+              aws s3api put-object --bucket $S3_BUCKET_NAME --key "$CF_WASM_BUCKET_ROOT_KEY/$FILE_KEY" --body "$wasm_file" --acl public-read --endpoint-url $ENDPOINT_URL
+            fi
+          done
+
+          # Upload the previously created archives to R2
+          export CF_ARCHIVES_BUCKET_ROOT_KEY="${CF_BUCKET_ROOT_KEY}/${{ env.PACKAGE_NAME }}/${{ env.PACKAGE_VERSION }}/archives"
+
+          for file in "${{ env.TAR_ARCHIVE_FILE }}" "${{ env.ZIP_ARCHIVE_FILE }}"; do
+            FILE_NAME=$(basename "${file}")
+            aws s3api put-object --bucket $S3_BUCKET_NAME --key "$CF_ARCHIVES_BUCKET_ROOT_KEY/$FILE_NAME" --body "$file" --acl public-read --endpoint-url $ENDPOINT_URL
+            aws s3api put-object --bucket $S3_BUCKET_NAME --key "$CF_ARCHIVES_BUCKET_ROOT_KEY/$FILE_NAME.sha256" --body "$file.sha256" --acl public-read --endpoint-url $ENDPOINT_URL
+          done
+
+          # Convert list to a compacted JSON array output
+          echo wasm_files=$(echo "${WASM_FILES}" | jq -R . | jq -s . | jq -c .) >> "$GITHUB_OUTPUT"
+
+      # Update the existing release and upload the wasm files, zip and tar archives to the specific tag
+      # https://github.com/orgs/community/discussions/26263#discussioncomment-3251069
+      - name: Update the GitHub Release
+        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 # v2.0.8
+        with:
+          tag_name: ${{ inputs.package-git-tag }} # This uses the tag from the push
+          files: |
+            ${{ env.TAR_ARCHIVE_FILE }}
+            ${{ env.TAR_ARCHIVE_FILE }}.sha256
+            ${{ env.ZIP_ARCHIVE_FILE }}
+            ${{ env.ZIP_ARCHIVE_FILE }}.sha256
+            ${{ join(fromJson(steps.publish-to-r2.outputs.wasm_files), '
+            ') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.github-token }}
