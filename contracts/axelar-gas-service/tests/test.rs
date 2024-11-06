@@ -3,14 +3,9 @@ extern crate std;
 
 use std::format;
 
-use crate::error::ContractError;
-use crate::{
-    contract::{AxelarGasService, AxelarGasServiceClient},
-    storage_types::DataKey,
-};
-use axelar_soroban_std::{
-    assert_contract_err, assert_last_emitted_event, assert_some, types::Token,
-};
+use axelar_gas_service::contract::{AxelarGasService, AxelarGasServiceClient};
+use axelar_gas_service::error::ContractError;
+use axelar_soroban_std::{assert_contract_err, assert_last_emitted_event, types::Token};
 use soroban_sdk::{
     bytes,
     testutils::Address as _,
@@ -78,24 +73,6 @@ fn fail_not_initialized() {
         client.try_refund(&message_id, &receiver, &token),
         ContractError::NotInitialized
     );
-}
-
-#[test]
-fn test_initialize() {
-    let (env, contract_id, gas_collector, _client) = setup_env();
-
-    assert!(assert_some!(env.as_contract(&contract_id, || {
-        env.storage()
-            .instance()
-            .get::<DataKey, bool>(&DataKey::Initialized)
-    })));
-
-    let stored_collector_address = assert_some!(env.as_contract(&contract_id, || {
-        env.storage()
-            .instance()
-            .get::<DataKey, Address>(&DataKey::GasCollector)
-    }));
-    assert_eq!(stored_collector_address, gas_collector);
 }
 
 #[test]
