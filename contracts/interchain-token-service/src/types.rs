@@ -12,13 +12,14 @@ pub enum MessageType {
 }
 
 #[contracttype]
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u32)]
 pub enum TokenManagerType {
-    NativeInterchainToken,
-    MintBurnFrom,
-    LockUnlock,
-    LockUnlockFee,
-    MintBurn,
+    NativeInterchainToken = 0,
+    MintBurnFrom = 1,
+    LockUnlock = 2,
+    LockUnlockFee = 3,
+    MintBurn = 4,
 }
 
 #[contracttype]
