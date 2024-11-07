@@ -1,0 +1,47 @@
+name: Setup Stellar CLI
+description: 'Setup Stellar CLI'
+
+inputs:
+  stellar-version:
+    description: 'The version of Stellar CLI to install'
+    required: true
+
+runs:
+  using: 'composite'
+
+  steps:
+    - name: Cache Stellar CLI
+      id: cache-stellar
+      uses: actions/cache@v4
+      with:
+        path: stellar-cli/
+        key: stellar-${{ inputs.stellar-version }}
+
+    - name: Install Dependencies
+      shell: bash
+      if: steps.cache-stellar.outputs.cache-hit != 'true'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libsodium
+
+    - name: Download and Install Stellar
+      shell: bash
+      if: steps.cache-stellar.outputs.cache-hit != 'true'
+      run: |
+        curl -L -o stellar-cli-${{ inputs.stellar-version }}-x86_64-unknown-linux-gnu.tar.gz https://github.com/stellar/stellar-cli/releases/download/v${{ inputs.stellar-version }}/stellar-cli-${{ inputs.stellar-version }}-x86_64-unknown-linux-gnu.tar.gz
+        mkdir -p stellar-cli
+        tar -xvf stellar-cli-${{ inputs.stellar-version }}-x86_64-unknown-linux-gnu.tar.gz -C stellar-cli
+        rm -rf stellar-cli-${{ inputs.stellar-version }}-x86_64-unknown-linux-gnu.tar.gz
+
+    - name: Save Stellar CLI
+      if: steps.cache-stellar.outputs.cache-hit != 'true'
+      id: cache-stellar-save
+      uses: actions/cache@v4
+      with:
+        path: stellar-cli/
+        key: stellar-${{ inputs.stellar-version }}
+
+    - name: Add Stellar CLI to PATH
+      shell: bash
+      run: |
+        sudo cp ./stellar-cli/stellar /usr/local/bin/stellar
