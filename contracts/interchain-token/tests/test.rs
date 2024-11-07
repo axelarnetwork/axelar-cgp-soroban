@@ -1,12 +1,12 @@
 #![cfg(test)]
 extern crate std;
 
-use crate::error::ContractError;
-use crate::{contract::InterchainToken, contract::InterchainTokenClient};
-
 use axelar_soroban_std::{
     assert_contract_err, assert_invoke_auth_err, assert_invoke_auth_ok, assert_last_emitted_event,
 };
+use interchain_token::contract::InterchainToken;
+use interchain_token::error::ContractError;
+use interchain_token::InterchainTokenClient;
 use soroban_sdk::testutils::{Address as _, MockAuth, MockAuthInvoke};
 use soroban_sdk::{Address, Env, IntoVal, Symbol};
 
