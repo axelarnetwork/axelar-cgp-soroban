@@ -26,16 +26,21 @@ impl InterchainToken {
         Ok(())
     }
 
-    pub fn owner(env: &Env) -> Address {
-        env.storage().instance().get(&DataKey::Owner).unwrap()
+    pub fn owner(env: &Env) -> Result<Address, ContractError> {
+        env.storage()
+            .instance()
+            .get(&DataKey::Owner)
+            .ok_or(ContractError::NotInitialized)
     }
 
-    pub fn transfer_ownership(env: Env, new_owner: Address) {
-        let owner = Self::owner(&env);
+    pub fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), ContractError> {
+        let owner: Address = Self::owner(&env)?;
         owner.require_auth();
 
         env.storage().instance().set(&DataKey::Owner, &new_owner);
 
         event::transfer_ownership(&env, owner, new_owner);
+
+        Ok(())
     }
 }
