@@ -22,6 +22,16 @@ pub fn gas_paid_for_contract_call(
     );
 }
 
+pub fn gas_added(env: &Env, message_id: String, refund_address: Address, token: Token) {
+    let topics = (
+        Symbol::new(env, "gas_added"),
+        message_id,
+        refund_address,
+        token,
+    );
+    env.events().publish(topics, ());
+}
+
 pub fn refunded(env: &Env, message_id: String, receiver: Address, token: Token) {
     let topics = (
         Symbol::new(env, "gas_refunded"),

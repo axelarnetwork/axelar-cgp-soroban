@@ -66,6 +66,30 @@ impl AxelarGasService {
         Ok(())
     }
 
+    /// Add additional gas payment after initiating a cross-chain call.
+    pub fn add_gas(
+        env: Env,
+        sender: Address,
+        message_id: String,
+        refund_address: Address,
+        token: Token,
+    ) -> Result<(), ContractError> {
+        sender.require_auth();
+
+        ensure!(token.amount > 0, ContractError::InvalidAmount);
+
+        token::Client::new(&env, &token.address).transfer_from(
+            &env.current_contract_address(),
+            &sender,
+            &env.current_contract_address(),
+            &token.amount,
+        );
+
+        event::gas_added(&env, message_id, refund_address, token);
+
+        Ok(())
+    }
+
     /// Allows the `gas_collector` to collect accumulated fees from the contract.
     ///
     /// Only callable by the `gas_collector`.
