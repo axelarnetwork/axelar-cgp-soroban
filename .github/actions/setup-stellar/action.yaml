@@ -22,7 +22,7 @@ runs:
       if: steps.cache-stellar.outputs.cache-hit != 'true'
       run: |
         sudo apt-get update
-        sudo apt-get install -y libsodium
+        sudo apt-get install -y libsodium23
 
     - name: Download and Install Stellar
       shell: bash
