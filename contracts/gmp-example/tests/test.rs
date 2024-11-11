@@ -31,7 +31,7 @@ fn setup_gas_service<'a>(env: &Env) -> (AxelarGasServiceClient<'a>, Address, Add
     let gas_service_client = AxelarGasServiceClient::new(env, &gas_service_id);
     let gas_collector: Address = Address::generate(&env);
 
-    gas_service_client.initialize(&gas_collector);
+    gas_service_client.initialize_gas_service(&gas_collector);
 
     (gas_service_client, gas_collector, gas_service_id)
 }
