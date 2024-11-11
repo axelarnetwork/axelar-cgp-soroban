@@ -127,6 +127,39 @@ fn fail_pay_gas_zero_gas_amount() {
 }
 
 #[test]
+fn fail_pay_gas_no_approved_allowance() {
+    let (env, _, _gas_collector, client) = setup_env();
+
+    let asset = env.register_stellar_asset_contract_v2(Address::generate(&env));
+
+    let sender: Address = Address::generate(&env);
+    let gas_amount: i128 = 0;
+    let token = Token {
+        address: asset.address(),
+        amount: gas_amount,
+    };
+    let refund_address: Address = Address::generate(&env);
+    let payload = bytes!(&env, 0x1234);
+    let destination_chain: String = String::from_str(&env, "ethereum");
+    let destination_address: String =
+        String::from_str(&env, "0x4EFE356BEDeCC817cb89B4E9b796dB8bC188DC59");
+
+    StellarAssetClient::new(&env, &asset.address()).mint(&sender, &gas_amount);
+
+    assert_contract_err!(
+        client.try_pay_gas_for_contract_call(
+            &sender,
+            &destination_chain,
+            &destination_address,
+            &payload,
+            &refund_address,
+            &token,
+        ),
+        ContractError::InvalidAmount
+    );
+}
+
+#[test]
 fn pay_gas_for_contract_call() {
     let (env, contract_id, _gas_collector, client) = setup_env();
 
@@ -207,6 +240,34 @@ fn fail_add_gas_zero_gas_amount() {
     let expiration_ledger = &env.ledger().sequence() + 200;
 
     token_client.approve(&sender, &contract_id, &gas_amount, &expiration_ledger);
+
+    assert_contract_err!(
+        client.try_add_gas(&sender, &message_id, &token, &refund_address,),
+        ContractError::InvalidAmount
+    );
+}
+
+#[test]
+fn fail_add_gas_no_approved_allowance() {
+    let (env, _, _gas_collector, client) = setup_env();
+
+    let asset = env.register_stellar_asset_contract_v2(Address::generate(&env));
+    let sender: Address = Address::generate(&env);
+    let message_id = String::from_str(
+        &env,
+        &format!(
+            "{}-{}",
+            "0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d", 0
+        ),
+    );
+    let refund_address: Address = Address::generate(&env);
+    let gas_amount: i128 = 0;
+    let token = Token {
+        address: asset.address(),
+        amount: gas_amount,
+    };
+
+    StellarAssetClient::new(&env, &asset.address()).mint(&sender, &gas_amount);
 
     assert_contract_err!(
         client.try_add_gas(&sender, &message_id, &token, &refund_address,),
