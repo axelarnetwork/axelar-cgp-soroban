@@ -38,7 +38,7 @@ impl AxelarExecutableInterface for GmpExample {
 
 #[contractimpl]
 impl GmpExample {
-    pub fn initialize(
+    pub fn initialize_gmp_example(
         env: Env,
         gateway: Address,
         gas_service: Address,

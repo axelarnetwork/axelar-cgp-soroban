@@ -44,7 +44,7 @@ fn setup_app<'a>(
     let contract_id = env.register_contract(None, GmpExample);
     let client = GmpExampleClient::new(env, &contract_id);
 
-    client.initialize(gateway, gas_service);
+    client.initialize_gmp_example(gateway, gas_service);
 
     (client, contract_id)
 }
