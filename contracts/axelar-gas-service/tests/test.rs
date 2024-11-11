@@ -206,13 +206,10 @@ fn fail_add_gas_zero_gas_amount() {
 
     let expiration_ledger = &env.ledger().sequence() + 200;
 
-    // approve token spend before invoking `add_gas`
     token_client.approve(&sender, &contract_id, &gas_amount, &expiration_ledger);
 
-    assert_eq!(token_client.allowance(&sender, &contract_id), gas_amount);
-
     assert_contract_err!(
-        client.try_add_gas(&sender, &message_id, &refund_address, &token,),
+        client.try_add_gas(&sender, &message_id, &token, &refund_address,),
         ContractError::InvalidAmount
     );
 }
@@ -242,12 +239,9 @@ fn add_gas() {
 
     let expiration_ledger = &env.ledger().sequence() + 200;
 
-    // approve token spend before invoking `add_gas`
     token_client.approve(&sender, &contract_id, &gas_amount, &expiration_ledger);
 
-    assert_eq!(token_client.allowance(&sender, &contract_id), gas_amount);
-
-    client.add_gas(&sender, &message_id, &refund_address, &token);
+    client.add_gas(&sender, &message_id, &token, &refund_address);
 
     assert_eq!(0, token_client.balance(&sender));
     assert_eq!(gas_amount, token_client.balance(&contract_id));
@@ -259,8 +253,8 @@ fn add_gas() {
         (
             Symbol::new(&env, "gas_added"),
             message_id,
-            refund_address,
             token,
+            refund_address,
         ),
         (),
     );

@@ -71,8 +71,8 @@ impl AxelarGasService {
         env: Env,
         sender: Address,
         message_id: String,
-        refund_address: Address,
         token: Token,
+        refund_address: Address,
     ) -> Result<(), ContractError> {
         sender.require_auth();
 
@@ -85,7 +85,7 @@ impl AxelarGasService {
             &token.amount,
         );
 
-        event::gas_added(&env, message_id, refund_address, token);
+        event::gas_added(&env, message_id, token, refund_address);
 
         Ok(())
     }
