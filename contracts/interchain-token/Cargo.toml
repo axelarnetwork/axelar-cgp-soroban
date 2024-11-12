@@ -1,5 +1,5 @@
 [package]
-name = "axelar-operators"
+name = "interchain-token"
 version = "0.1.0"
 edition = { workspace = true }
 
@@ -10,9 +10,12 @@ crate-type = ["cdylib", "rlib"]
 axelar-soroban-std = { workspace = true }
 soroban-sdk = { workspace = true }
 
-[dev-dependencies]
-axelar-soroban-std = { workspace = true, features = ["testutils"] }
+[dev_dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
+axelar-soroban-std = { workspace = true, features = ["testutils"] }
+
+[features]
+testutils = ["soroban-sdk/testutils", "axelar-soroban-std/testutils"]
 
 [lints]
 workspace = true

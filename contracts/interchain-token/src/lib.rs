@@ -1,9 +1,9 @@
 #![no_std]
 
+pub mod error;
 mod event;
 mod storage_types;
 
 pub mod contract;
-pub mod error;
 
-pub use contract::AxelarGasServiceClient;
+pub use contract::InterchainTokenClient;
