@@ -11,7 +11,7 @@ edition = "2021"
 rust-version = "1.76.0"
 
 [workspace.dependencies]
-soroban-sdk = { version = "21.7.6" }
+soroban-sdk = { version = "22.0.0-rc.3" }
 axelar-soroban-std = { version = "^0.1.0", path = "packages/axelar-soroban-std" }
 axelar-gas-service = { version = "^0.1.0", path = "contracts/axelar-gas-service" }
 axelar-gateway = { version = "^0.1.0", path = "contracts/axelar-gateway" }
