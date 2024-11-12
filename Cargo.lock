@@ -605,6 +605,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gmp-example"
+version = "0.1.0"
+dependencies = [
+ "axelar-gas-service",
+ "axelar-gateway",
+ "axelar-soroban-std",
+ "soroban-sdk",
+]
+
+[[package]]
 name = "goldie"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
