@@ -13,13 +13,13 @@ rand = { version = "0.8.5", optional = true }
 soroban-sdk = { workspace = true }
 
 [dev-dependencies]
-soroban-sdk = { workspace = true, features = ["testutils"] }
 axelar-soroban-std = { workspace = true, features = ["testutils"] }
 ed25519-dalek = { version = "^2.1" }
-rand = { version = "0.8.5" }
 goldie = { version = "0.5" }
 hex = "0.4"
 hex-literal = "0.4"
+rand = { version = "0.8.5" }
+soroban-sdk = { workspace = true, features = ["testutils"] }
 
 [features]
 testutils = ["soroban-sdk/testutils", "axelar-soroban-std/testutils", "ed25519-dalek", "rand"]
