@@ -24,12 +24,28 @@ pub enum TokenManagerType {
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Message {
+    InterchainTransfer(InterchainTransfer),
+    DeployInterchainToken(DeployInterchainToken),
+    DeployTokenManager(DeployTokenManager),
+}
+
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum HubMessage {
+    SendToHub(SendToHub),
+    ReceiveFromHub(ReceiveFromHub),
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InterchainTransfer {
     pub token_id: BytesN<32>,
     pub source_address: Bytes,
     pub destination_address: Bytes,
-    pub amount: u128,
-    pub data: Bytes,
+    pub amount: i128,
+    pub data: Option<Bytes>,
 }
 
 #[contracttype]
@@ -48,4 +64,18 @@ pub struct DeployTokenManager {
     pub token_id: BytesN<32>,
     pub token_manager_type: TokenManagerType,
     pub params: Bytes,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SendToHub {
+    pub destination_chain: String,
+    pub message: Message,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ReceiveFromHub {
+    pub source_chain: String,
+    pub message: Message,
 }
