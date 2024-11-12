@@ -12,7 +12,7 @@ axelar-gateway = { workspace = true }
 axelar-soroban-std = { workspace = true }
 soroban-sdk = { workspace = true }
 
-[dev_dependencies]
+[dev-dependencies]
 axelar-gateway = { workspace = true, features = ["testutils"] }
 axelar-soroban-std = { workspace = true, features = ["testutils"] }
 soroban-sdk = { workspace = true, features = ["testutils"] }
