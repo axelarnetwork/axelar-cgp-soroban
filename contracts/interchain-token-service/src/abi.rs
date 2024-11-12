@@ -385,11 +385,6 @@ mod tests {
         let env = Env::default();
         let remote_chain = String::from_str(&env, &"chain");
 
-        // Create bytes from a hex string
-        // let hex_string = "00";
-        // let bytes_vec: Vec<u8> = hex::decode(hex_string).unwrap();
-        // let bytes_from_hex = Bytes::from_slice(&env, &bytes_vec);
-
         let cases = vec![
             types::HubMessage::SendToHub(types::SendToHub { 
                 destination_chain: remote_chain.clone(), 
@@ -402,7 +397,6 @@ mod tests {
                 })
                 .into()
             }),
-
             types::HubMessage::SendToHub(types::SendToHub {
                 destination_chain: remote_chain.clone(),
                 message: types::Message::InterchainTransfer(types::InterchainTransfer {
@@ -414,7 +408,6 @@ mod tests {
                 })
                 .into(),
             }),
-
             types::HubMessage::ReceiveFromHub(types::ReceiveFromHub {
                 source_chain: remote_chain.clone(),
                 message: types::Message::InterchainTransfer(types::InterchainTransfer {
@@ -426,7 +419,6 @@ mod tests {
                 })
                 .into(),
             }),
-
             types::HubMessage::ReceiveFromHub(types::ReceiveFromHub {
                 source_chain: remote_chain.clone(),
                 message: types::Message::InterchainTransfer(types::InterchainTransfer {
@@ -435,6 +427,166 @@ mod tests {
                     destination_address: bytes_from_hex(&env, "4F4495243837681061C4743b74B3eEdf548D56A5"),
                     amount: MAX_I128,
                     data: Some(bytes_from_hex(&env, "abcd")),
+                })
+                .into(),
+            }),
+        ];
+
+        let encoded: Vec<_> = cases
+            .iter()
+            .map(|original|
+                hex::encode(
+                    original.clone()
+                        .abi_encode(&env)
+                        .to_buffer::<1024>()
+                        .as_slice()
+                )
+            )
+            .collect();
+
+        goldie::assert_json!(encoded);
+
+        for original in cases {
+            let encoded = original.clone().abi_encode(&env);
+            let decoded = HubMessage::abi_decode(&env, &encoded);
+            assert_eq!(original, decoded.unwrap());
+        }
+    }
+
+    #[test]
+    fn deploy_interchain_token_encode_decode() {
+        let env = Env::default();
+        let remote_chain = String::from_str(&env, &"chain");
+
+        let cases = vec![
+            types::HubMessage::SendToHub(types::SendToHub {
+                destination_chain: remote_chain.clone(),
+                message: types::Message::DeployInterchainToken(types::DeployInterchainToken {
+                    token_id: BytesN::from_array(&env, &[0u8; 32]),
+                    name: String::from_str(&env, &"t"),
+                    symbol: String::from_str(&env, &"T"),
+                    decimals: 0,
+                    minter: None,
+                })
+                .into(),
+            }),
+            types::HubMessage::SendToHub(types::SendToHub {
+                destination_chain: remote_chain.clone(),
+                message: types::Message::DeployInterchainToken(types::DeployInterchainToken {
+                    token_id: BytesN::from_array(&env, &[1u8; 32]),
+                    name: String::from_str(&env, &"Test Token"),
+                    symbol: String::from_str(&env, &"TST"),
+                    decimals: 18,
+                    minter: Some(bytes_from_hex(&env, "1234")),
+                })
+                .into(),
+            }),
+            types::HubMessage::SendToHub(types::SendToHub {
+                destination_chain: remote_chain.clone(),
+                message: types::Message::DeployInterchainToken(types::DeployInterchainToken {
+                    token_id: BytesN::from_array(&env, &[0u8; 32]),
+                    name: String::from_str(&env, &"Unicode Token 🪙"),
+                    symbol: String::from_str(&env, &"UNI🔣"),
+                    decimals: 255,
+                    minter: Some(bytes_from_hex(&env, "abcd")),
+                })
+                .into(),
+            }),
+            types::HubMessage::ReceiveFromHub(types::ReceiveFromHub {
+                source_chain: remote_chain.clone(),
+                message: types::Message::DeployInterchainToken(types::DeployInterchainToken {
+                    token_id: BytesN::from_array(&env, &[0u8; 32]),
+                    name: String::from_str(&env, &"t"),
+                    symbol: String::from_str(&env, &"T"),
+                    decimals: 0,
+                    minter: None,
+                })
+                .into(),
+            }),
+            types::HubMessage::ReceiveFromHub(types::ReceiveFromHub {
+                source_chain: remote_chain.clone(),
+                message: types::Message::DeployInterchainToken(types::DeployInterchainToken {
+                    token_id: BytesN::from_array(&env, &[1u8; 32]),
+                    name: String::from_str(&env, &"Test Token"),
+                    symbol: String::from_str(&env, &"TST"),
+                    decimals: 18,
+                    minter: Some(bytes_from_hex(&env, "1234")),
+                })
+                .into(),
+            }),
+            types::HubMessage::ReceiveFromHub(types::ReceiveFromHub {
+                source_chain: remote_chain.clone(),
+                message: types::Message::DeployInterchainToken(types::DeployInterchainToken {
+                    token_id: BytesN::from_array(&env, &[0u8; 32]),
+                    name: String::from_str(&env, &"Unicode Token 🪙"),
+                    symbol: String::from_str(&env, &"UNI🔣"),
+                    decimals: 255,
+                    minter: Some(bytes_from_hex(&env, "abcd")),
+                })
+                .into(),
+            }),
+        ];
+
+        let encoded: Vec<_> = cases
+            .iter()
+            .map(|original|
+                hex::encode(
+                    original.clone()
+                        .abi_encode(&env)
+                        .to_buffer::<1024>()
+                        .as_slice()
+                )
+            )
+            .collect();
+
+        goldie::assert_json!(encoded);
+
+        for original in cases {
+            let encoded = original.clone().abi_encode(&env);
+            let decoded = HubMessage::abi_decode(&env, &encoded);
+            assert_eq!(original, decoded.unwrap());
+        }
+    }
+
+    #[test]
+    fn deploy_token_manager_encode_decode() {
+        let env = Env::default();
+        let remote_chain = String::from_str(&env, &"chain");
+
+        let cases = vec![
+            types::HubMessage::SendToHub(types::SendToHub {
+                destination_chain: remote_chain.clone(),
+                message: types::Message::DeployTokenManager(types::DeployTokenManager {
+                    token_id: BytesN::from_array(&env, &[0u8; 32]),
+                    token_manager_type: types::TokenManagerType::NativeInterchainToken,
+                    params: bytes_from_hex(&env, "00"),
+                })
+                .into(),
+            }),
+            types::HubMessage::SendToHub(types::SendToHub {
+                destination_chain: remote_chain.clone(),
+                message: types::Message::DeployTokenManager(types::DeployTokenManager {
+                    token_id: BytesN::from_array(&env, &[1u8; 32]),
+                    token_manager_type: types::TokenManagerType::MintBurn,
+                    params: bytes_from_hex(&env, "1234"),
+                })
+                .into(),
+            }),
+            types::HubMessage::ReceiveFromHub(types::ReceiveFromHub {
+                source_chain: remote_chain.clone(),
+                message: types::Message::DeployTokenManager(types::DeployTokenManager {
+                    token_id: BytesN::from_array(&env, &[0u8; 32]),
+                    token_manager_type: types::TokenManagerType::NativeInterchainToken,
+                    params: bytes_from_hex(&env, "00"),
+                })
+                .into(),
+            }),
+            types::HubMessage::ReceiveFromHub(types::ReceiveFromHub {
+                source_chain: remote_chain.clone(),
+                message: types::Message::DeployTokenManager(types::DeployTokenManager {
+                    token_id: BytesN::from_array(&env, &[1u8; 32]),
+                    token_manager_type: types::TokenManagerType::MintBurn,
+                    params: bytes_from_hex(&env, "1234"),
                 })
                 .into(),
             }),
