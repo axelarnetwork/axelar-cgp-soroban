@@ -22,7 +22,7 @@ fn setup_env<'a>() -> (Env, Address, Address, AxelarGasServiceClient<'a>) {
 
     let client = AxelarGasServiceClient::new(&env, &contract_id);
     let gas_collector: Address = Address::generate(&env);
-    client.initialize(&gas_collector);
+    client.initialize_gas_service(&gas_collector);
 
     (env, contract_id, gas_collector, client)
 }
@@ -80,7 +80,7 @@ fn fail_already_initialized() {
     let (_env, _contract_id, gas_collector, client) = setup_env();
 
     assert_contract_err!(
-        client.try_initialize(&gas_collector),
+        client.try_initialize_gas_service(&gas_collector),
         ContractError::AlreadyInitialized
     );
 }
