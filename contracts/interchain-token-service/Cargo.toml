@@ -13,9 +13,9 @@ crate-type = ["cdylib", "rlib"]
 axelar-soroban-std = { workspace = true }
 soroban-sdk = { workspace = true }
 
-[dev_dependencies]
-soroban-sdk = { workspace = true, features = ["testutils"] }
+[dev-dependencies]
 axelar-soroban-std = { workspace = true, features = ["testutils"] }
+soroban-sdk = { workspace = true, features = ["testutils"] }
 
 [features]
 testutils = ["soroban-sdk/testutils", "axelar-soroban-std/testutils"]

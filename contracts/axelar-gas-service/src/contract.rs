@@ -12,7 +12,7 @@ pub struct AxelarGasService;
 #[contractimpl]
 impl AxelarGasService {
     /// Initialize the gas service contract with a gas_collector address.
-    pub fn initialize(env: Env, gas_collector: Address) -> Result<(), ContractError> {
+    pub fn initialize_gas_service(env: Env, gas_collector: Address) -> Result<(), ContractError> {
         ensure!(
             env.storage()
                 .instance()
@@ -62,6 +62,30 @@ impl AxelarGasService {
             refund_address,
             token,
         );
+
+        Ok(())
+    }
+
+    /// Add additional gas payment after initiating a cross-chain call.
+    pub fn add_gas(
+        env: Env,
+        sender: Address,
+        message_id: String,
+        token: Token,
+        refund_address: Address,
+    ) -> Result<(), ContractError> {
+        sender.require_auth();
+
+        ensure!(token.amount > 0, ContractError::InvalidAmount);
+
+        token::Client::new(&env, &token.address).transfer_from(
+            &env.current_contract_address(),
+            &sender,
+            &env.current_contract_address(),
+            &token.amount,
+        );
+
+        event::gas_added(&env, message_id, token, refund_address);
 
         Ok(())
     }
@@ -139,7 +163,7 @@ mod tests {
         let client = AxelarGasServiceClient::new(&env, &contract_id);
         let gas_collector = Address::generate(&env);
 
-        client.initialize(&gas_collector);
+        client.initialize_gas_service(&gas_collector);
 
         assert!(env.as_contract(&contract_id, || {
             assert_some!(env
