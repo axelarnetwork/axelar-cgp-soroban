@@ -20,7 +20,6 @@ soroban-sdk = { workspace = true, features = ["testutils", "alloc"] }
 axelar-soroban-std = { workspace = true, features = ["testutils"] }
 goldie = { version = "0.5" }
 hex = "0.4"
-hex-literal = "0.4"
 
 [features]
 testutils = ["soroban-sdk/testutils", "axelar-soroban-std/testutils"]

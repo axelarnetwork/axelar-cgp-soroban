@@ -10,6 +10,7 @@ pub mod contract;
 
 #[cfg(test)]
 #[macro_use]
+mod test;
 extern crate std;
 
 pub use contract::InterchainTokenServiceClient;

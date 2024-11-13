@@ -1069,7 +1069,6 @@ dependencies = [
  "axelar-soroban-std",
  "goldie",
  "hex",
- "hex-literal",
  "soroban-sdk",
 ]
 

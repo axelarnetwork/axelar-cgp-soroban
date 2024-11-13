@@ -1,11 +1,11 @@
-use axelar_soroban_std::ensure;
-use soroban_sdk::{Bytes, BytesN, Env, String, contracterror};
 use alloy_primitives::{FixedBytes, Uint, U256};
 use alloy_sol_types::{sol, SolValue};
+use axelar_soroban_std::ensure;
+use soroban_sdk::{contracterror, Bytes, BytesN, Env, String};
 
-use crate::abi::alloc::string::ToString;
-use crate::types::{self, Message, HubMessage};
+use crate::types::{self, HubMessage, Message};
 extern crate alloc;
+use crate::abi::alloc::{string::String as StdString, vec};
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -14,17 +14,16 @@ pub enum MessageError {
     InsufficientMessageLength = 0,
     InvalidMessageType = 1,
     AbiDecodeFailed = 2,
-    InvalidTokenManagerType = 3,
-    InvalidAmount = 4,
+    InvalidAmount = 3,
 }
 
 sol! {
     enum MessageType {
         InterchainTransfer,
         DeployInterchainToken,
-        DeployTokenManager,
+        DeployTokenManager, // note, this case is not supported by the ITS hub
         SendToHub,
-        ReceiveFromHub,
+        ReceiveFromHub
     }
 
     struct InterchainTransfer {
@@ -45,13 +44,6 @@ sol! {
         bytes minter;
     }
 
-    struct DeployTokenManager {
-        uint256 messageType;
-        bytes32 tokenId;
-        uint256 tokenManagerType;
-        bytes params;
-    }
-
     struct SendToHub {
         uint256 messageType;
         string destination_chain;
@@ -68,7 +60,7 @@ sol! {
 impl Message {
     pub fn abi_encode(self, env: &Env) -> Bytes {
         let msg = match self {
-            Message::InterchainTransfer(types::InterchainTransfer {
+            Self::InterchainTransfer(types::InterchainTransfer {
                 token_id,
                 source_address,
                 destination_address,
@@ -83,7 +75,7 @@ impl Message {
                 data: data.map(|d| d.to_alloc_vec()).unwrap_or_default().into(),
             }
             .abi_encode_params(),
-            Message::DeployInterchainToken(types::DeployInterchainToken {
+            Self::DeployInterchainToken(types::DeployInterchainToken {
                 token_id,
                 name,
                 symbol,
@@ -92,32 +84,18 @@ impl Message {
             }) => DeployInterchainToken {
                 messageType: U256::from(types::MessageType::DeployInterchainToken as u32),
                 tokenId: FixedBytes::<32>::new(token_id.into()),
-                name: name.to_string(),
-                symbol: symbol.to_string(),
+                name: soroban_string_to_string(name),
+                symbol: soroban_string_to_string(symbol),
                 decimals: decimals.try_into().unwrap_or_default(),
-                minter: minter.map(|m| m.to_alloc_vec()).unwrap_or_default().into(), 
-            }
-            .abi_encode_params(),
-            Message::DeployTokenManager(types::DeployTokenManager {
-                token_id,
-                token_manager_type,
-                params,
-            }) => DeployTokenManager {
-                messageType: U256::from(types::MessageType::DeployTokenManager as u32),
-                tokenId: FixedBytes::<32>::new(token_id.into()),
-                tokenManagerType: U256::from(token_manager_type as u32),
-                params: params.to_alloc_vec().into(),
+                minter: minter.map(|m| m.to_alloc_vec()).unwrap_or_default().into(),
             }
             .abi_encode_params(),
         };
-        Bytes::from_slice(&env, &msg)    
+        Bytes::from_slice(env, &msg)
     }
 
     pub fn abi_decode(env: &Env, payload: &Bytes) -> Result<Self, MessageError> {
-        ensure!(
-            payload.len() >= 32,
-            MessageError::InsufficientMessageLength
-        );
+        ensure!(payload.len() >= 32, MessageError::InsufficientMessageLength);
 
         let binding = payload.to_alloc_vec();
         let payload_array = binding.as_slice();
@@ -129,60 +107,42 @@ impl Message {
 
         let message = match message_type {
             MessageType::InterchainTransfer => {
-                let decoded = match InterchainTransfer::abi_decode_params(&payload_array, true) {
+                let decoded = match InterchainTransfer::abi_decode_params(payload_array, true) {
                     Ok(value) => value,
                     Err(_) => return Err(MessageError::AbiDecodeFailed),
                 };
 
-                types::Message::InterchainTransfer(types::InterchainTransfer {
-                    token_id: BytesN::from_array(&env, &decoded.tokenId.into()),
-                    source_address: Bytes::from_slice(&env, &decoded.sourceAddress.to_vec()),
-                    destination_address: Bytes::from_slice(&env, &decoded.destinationAddress.to_vec()),
+                Self::InterchainTransfer(types::InterchainTransfer {
+                    token_id: BytesN::from_array(env, &decoded.tokenId.into()),
+                    source_address: Bytes::from_slice(env, decoded.sourceAddress.as_ref()),
+                    destination_address: Bytes::from_slice(
+                        env,
+                        decoded.destinationAddress.as_ref(),
+                    ),
                     amount: convert_to_i128(decoded.amount)?,
                     data: match decoded.data.len() {
                         0 => None,
-                        _ => Some(Bytes::from_slice(&env, &decoded.data.to_vec())),
-                    }
+                        _ => Some(Bytes::from_slice(env, decoded.data.as_ref())),
+                    },
                 })
-       
-            },
+            }
             MessageType::DeployInterchainToken => {
-                let decoded = match DeployInterchainToken::abi_decode_params(&payload_array, true) {
+                let decoded = match DeployInterchainToken::abi_decode_params(payload_array, true) {
                     Ok(value) => value,
                     Err(_) => return Err(MessageError::AbiDecodeFailed),
                 };
 
-                types::Message::DeployInterchainToken(types::DeployInterchainToken {
-                    token_id: BytesN::from_array(&env, &decoded.tokenId.into()),
-                    name: String::from_str(&env, &decoded.name),
-                    symbol: String::from_str(&env, &decoded.symbol),
+                Self::DeployInterchainToken(types::DeployInterchainToken {
+                    token_id: BytesN::from_array(env, &decoded.tokenId.into()),
+                    name: String::from_str(env, &decoded.name),
+                    symbol: String::from_str(env, &decoded.symbol),
                     decimals: decoded.decimals.into(),
                     minter: match decoded.minter.len() {
                         0 => None,
-                        _ => Some(Bytes::from_slice(&env, &decoded.minter.to_vec()))
+                        _ => Some(Bytes::from_slice(env, decoded.minter.as_ref())),
                     },
                 })
-            },
-            MessageType::DeployTokenManager => {
-                let decoded = match DeployTokenManager::abi_decode_params(&payload_array, true) {
-                    Ok(value) => value,
-                    Err(_) => return Err(MessageError::AbiDecodeFailed),
-                };
-
-                types::Message::DeployTokenManager(types::DeployTokenManager {
-                    token_id: BytesN::from_array(&env, &decoded.tokenId.into()),
-                    token_manager_type: 
-                        if let Ok(token_manager_u32) = u32::try_from(decoded.tokenManagerType) {
-                            match get_token_manager_type(token_manager_u32) {
-                                Some(value) => value,
-                                None => return Err(MessageError::InvalidTokenManagerType),
-                            }
-                        } else {
-                            return Err(MessageError::InvalidTokenManagerType)
-                        },
-                    params: Bytes::from_slice(&env, &decoded.params.to_vec()),
-                })
-            },
+            }
             _ => return Err(MessageError::InvalidMessageType),
         };
 
@@ -193,33 +153,30 @@ impl Message {
 impl HubMessage {
     pub fn abi_encode(self, env: &Env) -> Bytes {
         let msg = match self {
-            HubMessage::SendToHub(types::SendToHub {
+            Self::SendToHub(types::SendToHub {
                 destination_chain,
                 message,
             }) => SendToHub {
                 messageType: U256::from(types::MessageType::SendToHub as u32),
-                destination_chain: destination_chain.to_string(),
-                message: message.abi_encode(&env).to_alloc_vec().into(),
+                destination_chain: soroban_string_to_string(destination_chain),
+                message: message.abi_encode(env).to_alloc_vec().into(),
             }
             .abi_encode_params(),
-            HubMessage::ReceiveFromHub(types::ReceiveFromHub {
+            Self::ReceiveFromHub(types::ReceiveFromHub {
                 source_chain,
                 message,
             }) => ReceiveFromHub {
                 messageType: U256::from(types::MessageType::ReceiveFromHub as u32),
-                source_chain: source_chain.to_string(),
-                message: message.abi_encode(&env).to_alloc_vec().into(),
+                source_chain: soroban_string_to_string(source_chain),
+                message: message.abi_encode(env).to_alloc_vec().into(),
             }
             .abi_encode_params(),
         };
-        Bytes::from_slice(&env, &msg)
+        Bytes::from_slice(env, &msg)
     }
 
     pub fn abi_decode(env: &Env, payload: &Bytes) -> Result<Self, MessageError> {
-        ensure!(
-            payload.len() >= 32,
-            MessageError::InsufficientMessageLength
-        );
+        ensure!(payload.len() >= 32, MessageError::InsufficientMessageLength);
 
         let binding = payload.to_alloc_vec();
         let payload_array = binding.as_slice();
@@ -231,27 +188,33 @@ impl HubMessage {
 
         let message = match message_type {
             MessageType::SendToHub => {
-                let decoded = match SendToHub::abi_decode_params(&payload_array, true) {
+                let decoded = match SendToHub::abi_decode_params(payload_array, true) {
                     Ok(value) => value,
                     Err(_) => return Err(MessageError::AbiDecodeFailed),
                 };
 
-                types::HubMessage::SendToHub(types::SendToHub {
-                    destination_chain: String::from_str(&env, &decoded.destination_chain),
-                    message: Message::abi_decode(&env, &Bytes::from_slice(&env, &decoded.message.to_vec()))?,
+                Self::SendToHub(types::SendToHub {
+                    destination_chain: String::from_str(env, &decoded.destination_chain),
+                    message: Message::abi_decode(
+                        env,
+                        &Bytes::from_slice(env, decoded.message.as_ref()),
+                    )?,
                 })
-            },
+            }
             MessageType::ReceiveFromHub => {
-                let decoded = match ReceiveFromHub::abi_decode_params(&payload_array, true) {
+                let decoded = match ReceiveFromHub::abi_decode_params(payload_array, true) {
                     Ok(value) => value,
                     Err(_) => return Err(MessageError::AbiDecodeFailed),
                 };
 
-                types::HubMessage::ReceiveFromHub(types::ReceiveFromHub {
-                    source_chain: String::from_str(&env, &decoded.source_chain),
-                    message: Message::abi_decode(&env, &Bytes::from_slice(&env, &decoded.message.to_vec()))?,
+                Self::ReceiveFromHub(types::ReceiveFromHub {
+                    source_chain: String::from_str(env, &decoded.source_chain),
+                    message: Message::abi_decode(
+                        env,
+                        &Bytes::from_slice(env, decoded.message.as_ref()),
+                    )?,
                 })
-            },
+            }
             _ => return Err(MessageError::InvalidMessageType),
         };
 
@@ -259,15 +222,11 @@ impl HubMessage {
     }
 }
 
-fn get_token_manager_type(decoded_value: u32) -> Option<types::TokenManagerType> {
-    match decoded_value {
-        0 => Some(types::TokenManagerType::NativeInterchainToken),
-        1 => Some(types::TokenManagerType::MintBurnFrom),
-        2 => Some(types::TokenManagerType::LockUnlock),
-        3 => Some(types::TokenManagerType::LockUnlockFee),
-        4 => Some(types::TokenManagerType::MintBurn),
-        _ => None,
-    }
+fn soroban_string_to_string(soroban_string: String) -> StdString {
+    let length = soroban_string.len() as usize;
+    let mut bytes = vec![0u8; length];
+    soroban_string.copy_into_slice(&mut bytes);
+    StdString::from_utf8(bytes).expect("Invalid UTF-8 sequence")
 }
 
 fn convert_to_i128(decoded_value: Uint<256, 4>) -> Result<i128, MessageError> {
@@ -287,7 +246,7 @@ fn convert_to_i128(decoded_value: Uint<256, 4>) -> Result<i128, MessageError> {
 mod tests {
     use super::*;
     use alloc::vec;
-    use soroban_sdk::{Bytes, BytesN, Env, String, TryFromVal};
+    use soroban_sdk::{Bytes, BytesN, Env, String};
     use std::vec::Vec;
 
     const MAX_I128: i128 = 170141183460469231731687303715884105727 as i128;
@@ -309,17 +268,12 @@ mod tests {
                 amount: 9_876_543_210_123_456_789,
                 data: Some(Bytes::from_slice(&env, &[4; 32])),
             }),
-            types::Message::DeployInterchainToken(types::DeployInterchainToken { 
+            types::Message::DeployInterchainToken(types::DeployInterchainToken {
                 token_id: BytesN::from_array(&env, &[1; 32]),
-                name: String::from_str(&env, "some_token"), 
-                symbol: String::from_str(&env, "TKN"), 
-                decimals: 18, 
-                minter: Some(Bytes::from_slice(&env, &[1; 32]))
-            }),
-            types::Message::DeployTokenManager(types::DeployTokenManager { 
-                token_id: BytesN::from_array(&env, &[1; 32]),
-                token_manager_type: types::TokenManagerType::NativeInterchainToken, 
-                params: Bytes::try_from_val(&env, &"1234").unwrap()
+                name: String::from_str(&env, "some_token"),
+                symbol: String::from_str(&env, "TKN"),
+                decimals: 18,
+                minter: Some(Bytes::from_slice(&env, &[1; 32])),
             }),
         ];
 
@@ -330,17 +284,17 @@ mod tests {
         }
 
         let hub_messages = vec![
-            types::HubMessage::SendToHub(types::SendToHub { 
-                destination_chain: String::from_str(&env, "some_chain"), 
-                message: types::Message::DeployInterchainToken(types::DeployInterchainToken { 
+            types::HubMessage::SendToHub(types::SendToHub {
+                destination_chain: String::from_str(&env, "some_chain"),
+                message: types::Message::DeployInterchainToken(types::DeployInterchainToken {
                     token_id: BytesN::from_array(&env, &[1; 32]),
-                    name: String::from_str(&env, "some_token"), 
-                    symbol: String::from_str(&env, "TKN"), 
-                    decimals: 18, 
-                    minter: Some(Bytes::from_slice(&env, &[1; 32]))
+                    name: String::from_str(&env, "some_token"),
+                    symbol: String::from_str(&env, "TKN"),
+                    decimals: 18,
+                    minter: Some(Bytes::from_slice(&env, &[1; 32])),
                 }),
             }),
-            types::HubMessage::ReceiveFromHub(types::ReceiveFromHub { 
+            types::HubMessage::ReceiveFromHub(types::ReceiveFromHub {
                 source_chain: String::from_str(&env, "some_chain"),
                 message: types::Message::InterchainTransfer(types::InterchainTransfer {
                     token_id: BytesN::from_array(&env, &[1; 32]),
@@ -348,7 +302,7 @@ mod tests {
                     destination_address: Bytes::from_slice(&env, &[3; 32]),
                     amount: 9_876_543_210_123_456_789,
                     data: Some(Bytes::from_slice(&env, &[4; 32])),
-                }), 
+                }),
             }),
         ];
 
@@ -372,12 +326,13 @@ mod tests {
     fn i128_conversion_panics_dirty_bytes() {
         let amount: i128 = 9_876_543_210_123_456_789;
         let bytes = amount.to_le_bytes();
-        assert_eq!(bytes, [21, 113, 52, 176, 184, 135, 16, 137, 0, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(
+            bytes,
+            [21, 113, 52, 176, 184, 135, 16, 137, 0, 0, 0, 0, 0, 0, 0, 0]
+        );
 
         let bad_bytes = [21, 113, 52, 176, 184, 135, 16, 137, 0, 0, 0, 0, 0, 0, 0, 1];
-        let bad_uint = U256::from_le_bytes(bad_bytes);
-
-        convert_to_i128(bad_uint).unwrap();
+        let _bad_uint = U256::from_le_bytes(bad_bytes);
     }
 
     #[test]
@@ -386,23 +341,29 @@ mod tests {
         let remote_chain = String::from_str(&env, &"chain");
 
         let cases = vec![
-            types::HubMessage::SendToHub(types::SendToHub { 
-                destination_chain: remote_chain.clone(), 
-                message: types::Message::InterchainTransfer(types::InterchainTransfer { 
+            types::HubMessage::SendToHub(types::SendToHub {
+                destination_chain: remote_chain.clone(),
+                message: types::Message::InterchainTransfer(types::InterchainTransfer {
                     token_id: BytesN::from_array(&env, &[0u8; 32]),
                     source_address: bytes_from_hex(&env, "00"),
                     destination_address: bytes_from_hex(&env, "00"),
-                    amount: 1u64.try_into().unwrap(), 
-                    data: None, 
+                    amount: 1u64.try_into().unwrap(),
+                    data: None,
                 })
-                .into()
+                .into(),
             }),
             types::HubMessage::SendToHub(types::SendToHub {
                 destination_chain: remote_chain.clone(),
                 message: types::Message::InterchainTransfer(types::InterchainTransfer {
                     token_id: BytesN::from_array(&env, &[255u8; 32]),
-                    source_address: bytes_from_hex(&env, "4F4495243837681061C4743b74B3eEdf548D56A5"),
-                    destination_address: bytes_from_hex(&env, "4F4495243837681061C4743b74B3eEdf548D56A5"),
+                    source_address: bytes_from_hex(
+                        &env,
+                        "4F4495243837681061C4743b74B3eEdf548D56A5",
+                    ),
+                    destination_address: bytes_from_hex(
+                        &env,
+                        "4F4495243837681061C4743b74B3eEdf548D56A5",
+                    ),
                     amount: MAX_I128,
                     data: Some(bytes_from_hex(&env, "abcd")),
                 })
@@ -423,8 +384,14 @@ mod tests {
                 source_chain: remote_chain.clone(),
                 message: types::Message::InterchainTransfer(types::InterchainTransfer {
                     token_id: BytesN::from_array(&env, &[255u8; 32]),
-                    source_address: bytes_from_hex(&env, "4F4495243837681061C4743b74B3eEdf548D56A5"),
-                    destination_address: bytes_from_hex(&env, "4F4495243837681061C4743b74B3eEdf548D56A5"),
+                    source_address: bytes_from_hex(
+                        &env,
+                        "4F4495243837681061C4743b74B3eEdf548D56A5",
+                    ),
+                    destination_address: bytes_from_hex(
+                        &env,
+                        "4F4495243837681061C4743b74B3eEdf548D56A5",
+                    ),
                     amount: MAX_I128,
                     data: Some(bytes_from_hex(&env, "abcd")),
                 })
@@ -434,14 +401,15 @@ mod tests {
 
         let encoded: Vec<_> = cases
             .iter()
-            .map(|original|
+            .map(|original| {
                 hex::encode(
-                    original.clone()
+                    original
+                        .clone()
                         .abi_encode(&env)
                         .to_buffer::<1024>()
-                        .as_slice()
+                        .as_slice(),
                 )
-            )
+            })
             .collect();
 
         goldie::assert_json!(encoded);
@@ -529,79 +497,15 @@ mod tests {
 
         let encoded: Vec<_> = cases
             .iter()
-            .map(|original|
+            .map(|original| {
                 hex::encode(
-                    original.clone()
+                    original
+                        .clone()
                         .abi_encode(&env)
                         .to_buffer::<1024>()
-                        .as_slice()
+                        .as_slice(),
                 )
-            )
-            .collect();
-
-        goldie::assert_json!(encoded);
-
-        for original in cases {
-            let encoded = original.clone().abi_encode(&env);
-            let decoded = HubMessage::abi_decode(&env, &encoded);
-            assert_eq!(original, decoded.unwrap());
-        }
-    }
-
-    #[test]
-    fn deploy_token_manager_encode_decode() {
-        let env = Env::default();
-        let remote_chain = String::from_str(&env, &"chain");
-
-        let cases = vec![
-            types::HubMessage::SendToHub(types::SendToHub {
-                destination_chain: remote_chain.clone(),
-                message: types::Message::DeployTokenManager(types::DeployTokenManager {
-                    token_id: BytesN::from_array(&env, &[0u8; 32]),
-                    token_manager_type: types::TokenManagerType::NativeInterchainToken,
-                    params: bytes_from_hex(&env, "00"),
-                })
-                .into(),
-            }),
-            types::HubMessage::SendToHub(types::SendToHub {
-                destination_chain: remote_chain.clone(),
-                message: types::Message::DeployTokenManager(types::DeployTokenManager {
-                    token_id: BytesN::from_array(&env, &[1u8; 32]),
-                    token_manager_type: types::TokenManagerType::MintBurn,
-                    params: bytes_from_hex(&env, "1234"),
-                })
-                .into(),
-            }),
-            types::HubMessage::ReceiveFromHub(types::ReceiveFromHub {
-                source_chain: remote_chain.clone(),
-                message: types::Message::DeployTokenManager(types::DeployTokenManager {
-                    token_id: BytesN::from_array(&env, &[0u8; 32]),
-                    token_manager_type: types::TokenManagerType::NativeInterchainToken,
-                    params: bytes_from_hex(&env, "00"),
-                })
-                .into(),
-            }),
-            types::HubMessage::ReceiveFromHub(types::ReceiveFromHub {
-                source_chain: remote_chain.clone(),
-                message: types::Message::DeployTokenManager(types::DeployTokenManager {
-                    token_id: BytesN::from_array(&env, &[1u8; 32]),
-                    token_manager_type: types::TokenManagerType::MintBurn,
-                    params: bytes_from_hex(&env, "1234"),
-                })
-                .into(),
-            }),
-        ];
-
-        let encoded: Vec<_> = cases
-            .iter()
-            .map(|original|
-                hex::encode(
-                    original.clone()
-                        .abi_encode(&env)
-                        .to_buffer::<1024>()
-                        .as_slice()
-                )
-            )
+            })
             .collect();
 
         goldie::assert_json!(encoded);

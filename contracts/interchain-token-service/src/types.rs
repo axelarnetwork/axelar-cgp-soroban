@@ -6,20 +6,9 @@ use soroban_sdk::{contracttype, Bytes, BytesN, String};
 pub enum MessageType {
     InterchainTransfer = 0,
     DeployInterchainToken = 1,
-    DeployTokenManager = 2,
+    DeployTokenManager = 2, // note, this case is not supported by the ITS hub
     SendToHub = 3,
     ReceiveFromHub = 4,
-}
-
-#[contracttype]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[repr(u32)]
-pub enum TokenManagerType {
-    NativeInterchainToken = 0,
-    MintBurnFrom = 1,
-    LockUnlock = 2,
-    LockUnlockFee = 3,
-    MintBurn = 4,
 }
 
 #[contracttype]
@@ -27,9 +16,7 @@ pub enum TokenManagerType {
 pub enum Message {
     InterchainTransfer(InterchainTransfer),
     DeployInterchainToken(DeployInterchainToken),
-    DeployTokenManager(DeployTokenManager),
 }
-
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -56,14 +43,6 @@ pub struct DeployInterchainToken {
     pub symbol: String,
     pub decimals: u32,
     pub minter: Option<Bytes>,
-}
-
-#[contracttype]
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct DeployTokenManager {
-    pub token_id: BytesN<32>,
-    pub token_manager_type: TokenManagerType,
-    pub params: Bytes,
 }
 
 #[contracttype]
