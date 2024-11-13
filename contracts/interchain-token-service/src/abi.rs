@@ -100,17 +100,13 @@ impl Message {
         let binding = payload.to_alloc_vec();
         let payload_array = binding.as_slice();
 
-        let message_type = match MessageType::abi_decode(&payload_array[0..32], true) {
-            Ok(value) => value,
-            Err(_) => return Err(MessageError::InvalidMessageType),
-        };
+        let message_type = MessageType::abi_decode(&payload_array[0..32], true)
+            .map_err(|_| MessageError::InvalidMessageType)?;
 
         let message = match message_type {
             MessageType::InterchainTransfer => {
-                let decoded = match InterchainTransfer::abi_decode_params(payload_array, true) {
-                    Ok(value) => value,
-                    Err(_) => return Err(MessageError::AbiDecodeFailed),
-                };
+                let decoded = InterchainTransfer::abi_decode_params(payload_array, true)
+                    .map_err(|_| MessageError::AbiDecodeFailed)?;
 
                 Self::InterchainTransfer(types::InterchainTransfer {
                     token_id: BytesN::from_array(env, &decoded.tokenId.into()),
@@ -120,27 +116,21 @@ impl Message {
                         decoded.destinationAddress.as_ref(),
                     ),
                     amount: convert_to_i128(decoded.amount)?,
-                    data: match decoded.data.len() {
-                        0 => None,
-                        _ => Some(Bytes::from_slice(env, decoded.data.as_ref())),
-                    },
+                    data: (!decoded.data.is_empty())
+                        .then(|| Bytes::from_slice(env, decoded.data.as_ref())),
                 })
             }
             MessageType::DeployInterchainToken => {
-                let decoded = match DeployInterchainToken::abi_decode_params(payload_array, true) {
-                    Ok(value) => value,
-                    Err(_) => return Err(MessageError::AbiDecodeFailed),
-                };
+                let decoded = DeployInterchainToken::abi_decode_params(payload_array, true)
+                    .map_err(|_| MessageError::AbiDecodeFailed)?;
 
                 Self::DeployInterchainToken(types::DeployInterchainToken {
                     token_id: BytesN::from_array(env, &decoded.tokenId.into()),
                     name: String::from_str(env, &decoded.name),
                     symbol: String::from_str(env, &decoded.symbol),
                     decimals: decoded.decimals.into(),
-                    minter: match decoded.minter.len() {
-                        0 => None,
-                        _ => Some(Bytes::from_slice(env, decoded.minter.as_ref())),
-                    },
+                    minter: (!decoded.minter.is_empty())
+                        .then(|| Bytes::from_slice(env, decoded.minter.as_ref())),
                 })
             }
             _ => return Err(MessageError::InvalidMessageType),
@@ -181,17 +171,13 @@ impl HubMessage {
         let binding = payload.to_alloc_vec();
         let payload_array = binding.as_slice();
 
-        let message_type = match MessageType::abi_decode(&payload_array[0..32], true) {
-            Ok(value) => value,
-            Err(_) => return Err(MessageError::InvalidMessageType),
-        };
+        let message_type = MessageType::abi_decode(&payload_array[0..32], true)
+            .map_err(|_| MessageError::InvalidMessageType)?;
 
         let message = match message_type {
             MessageType::SendToHub => {
-                let decoded = match SendToHub::abi_decode_params(payload_array, true) {
-                    Ok(value) => value,
-                    Err(_) => return Err(MessageError::AbiDecodeFailed),
-                };
+                let decoded = SendToHub::abi_decode_params(payload_array, true)
+                    .map_err(|_| MessageError::AbiDecodeFailed)?;
 
                 Self::SendToHub(types::SendToHub {
                     destination_chain: String::from_str(env, &decoded.destination_chain),
@@ -202,10 +188,8 @@ impl HubMessage {
                 })
             }
             MessageType::ReceiveFromHub => {
-                let decoded = match ReceiveFromHub::abi_decode_params(payload_array, true) {
-                    Ok(value) => value,
-                    Err(_) => return Err(MessageError::AbiDecodeFailed),
-                };
+                let decoded = ReceiveFromHub::abi_decode_params(payload_array, true)
+                    .map_err(|_| MessageError::AbiDecodeFailed)?;
 
                 Self::ReceiveFromHub(types::ReceiveFromHub {
                     source_chain: String::from_str(env, &decoded.source_chain),
