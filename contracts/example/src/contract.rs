@@ -24,7 +24,7 @@ impl AxelarExecutableInterface for GmpExample {
         source_address: String,
         payload: Bytes,
     ) {
-        Self::validate(&env, &source_chain, &message_id, &source_address, &payload);
+        let _ = Self::validate(&env, &source_chain, &message_id, &source_address, &payload);
 
         event::executed(&env, source_chain, message_id, source_address, payload);
     }

@@ -27,8 +27,8 @@ pub enum ProofSignature {
 
 /// `ProofSigner` represents a signer in a proof.
 ///
-/// If the signer submitted a signature, and if sit is being included in the proof to meet the threshold,
-/// then a `ProofSignature` is attached. Otherwise, the `ProofSignature` is `Unsigned`.
+/// If the signer submitted a signature, and if it is being included in the proof to meet the threshold,
+/// then a signature is attached. Otherwise, the `ProofSignature` is `Unsigned`.
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProofSigner {

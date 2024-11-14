@@ -36,17 +36,13 @@ fn setup_gas_service<'a>(env: &Env) -> (AxelarGasServiceClient<'a>, Address, Add
     (gas_service_client, gas_collector, gas_service_id)
 }
 
-fn setup_app<'a>(
-    env: &Env,
-    gateway: &Address,
-    gas_service: &Address,
-) -> (GmpExampleClient<'a>, Address) {
+fn setup_app<'a>(env: &Env, gateway: &Address, gas_service: &Address) -> GmpExampleClient<'a> {
     let contract_id = env.register_contract(None, GmpExample);
     let client = GmpExampleClient::new(env, &contract_id);
 
     client.initialize_gmp_example(gateway, gas_service);
 
-    (client, contract_id)
+    client
 }
 
 #[test]
@@ -61,24 +57,23 @@ fn test_gmp_example() {
     let (source_gateway_client, source_gateway_id, _) = setup_gateway(&env);
     let (_source_gas_service_client, _source_gas_collector, source_gas_service_id) =
         setup_gas_service(&env);
-    let (source_app, _source_app_id) = setup_app(&env, &source_gateway_id, &source_gas_service_id);
+    let source_app = setup_app(&env, &source_gateway_id, &source_gas_service_id);
 
     // Setup destination Axelar gateway
     let destination_chain = String::from_str(&env, "destination");
     let (destination_gateway_client, destination_gateway_id, signers) = setup_gateway(&env);
     let (_destination_gas_service_client, _destination_gas_collector, destination_gas_service_id) =
         setup_gas_service(&env);
-    let (destination_app, destination_app_id) =
-        setup_app(&env, &destination_gateway_id, &destination_gas_service_id);
+    let destination_app = setup_app(&env, &destination_gateway_id, &destination_gas_service_id);
 
     // Set cross-chain message params
     let source_address = source_app.address.to_string();
-    let destination_address = destination_app_id.to_string();
+    let destination_address = destination_app.address.to_string();
     let payload: Bytes = BytesN::<20>::random(&env).into();
     let payload_hash: BytesN<32> = env.crypto().keccak256(&payload).into();
 
     // Initiate cross-chain contract call, sending message from source to destination
-    let asset = &env.register_stellar_asset_contract_v2(Address::generate(&env));
+    let asset = &env.register_stellar_asset_contract_v2(user.clone());
     let gas_amount: i128 = 100;
     let gas_token = Token {
         address: asset.address(),
@@ -135,7 +130,7 @@ fn test_gmp_example() {
             source_chain: source_chain.clone(),
             message_id: message_id.clone(),
             source_address: source_address.clone(),
-            contract_address: destination_app_id.clone(),
+            contract_address: destination_app.address.clone(),
             payload_hash,
         },
     ];
@@ -150,7 +145,7 @@ fn test_gmp_example() {
 
     assert_last_emitted_event(
         &env,
-        &destination_app_id,
+        &destination_app.address,
         (
             Symbol::new(&env, "executed"),
             source_chain,
