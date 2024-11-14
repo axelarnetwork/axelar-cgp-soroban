@@ -1,3 +1,4 @@
+use axelar_soroban_std::assert_some;
 use soroban_sdk::{contract, contractimpl, token, Address, Bytes, Env, String};
 
 use axelar_soroban_std::{ensure, types::Token};
@@ -13,14 +14,6 @@ pub struct AxelarGasService;
 impl AxelarGasService {
     /// Initialize the gas service contract with a gas_collector address.
     pub fn __constructor(env: Env, gas_collector: Address) -> Result<(), ContractError> {
-        ensure!(
-            env.storage()
-                .instance()
-                .get::<DataKey, bool>(&DataKey::Initialized)
-                .is_none(),
-            ContractError::AlreadyInitialized
-        );
-
         env.storage().instance().set(&DataKey::Initialized, &true);
 
         env.storage()
@@ -94,11 +87,8 @@ impl AxelarGasService {
     ///
     /// Only callable by the `gas_collector`.
     pub fn collect_fees(env: Env, receiver: Address, token: Token) -> Result<(), ContractError> {
-        let gas_collector: Address = env
-            .storage()
-            .instance()
-            .get(&DataKey::GasCollector)
-            .ok_or(ContractError::NotInitialized)?;
+        let gas_collector: Address =
+            assert_some!(env.storage().instance().get(&DataKey::GasCollector));
 
         gas_collector.require_auth();
 
@@ -128,11 +118,8 @@ impl AxelarGasService {
         receiver: Address,
         token: Token,
     ) -> Result<(), ContractError> {
-        let gas_collector: Address = env
-            .storage()
-            .instance()
-            .get(&DataKey::GasCollector)
-            .ok_or(ContractError::NotInitialized)?;
+        let gas_collector: Address =
+            assert_some!(env.storage().instance().get(&DataKey::GasCollector));
 
         gas_collector.require_auth();
 
