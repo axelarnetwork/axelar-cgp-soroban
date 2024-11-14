@@ -24,13 +24,7 @@ impl AxelarExecutableInterface for GmpExample {
         source_address: String,
         payload: Bytes,
     ) {
-        Self::validate(
-            env.clone(),
-            source_chain.clone(),
-            message_id.clone(),
-            source_address.clone(),
-            payload.clone(),
-        );
+        Self::validate(&env, &source_chain, &message_id, &source_address, &payload);
 
         event::executed(&env, source_chain, message_id, source_address, payload);
     }
@@ -60,27 +54,30 @@ impl GmpExample {
         Ok(())
     }
 
-    fn gas_service(env: &Env) -> Address {
+    pub fn gas_service(env: &Env) -> Address {
         env.storage().instance().get(&DataKey::GasService).unwrap()
     }
 
     pub fn send(
         env: Env,
+        caller: Address,
         destination_chain: String,
         destination_address: String,
         message: Bytes,
-        token: Token,
+        gas_token: Token,
     ) {
         let gateway = AxelarGatewayClient::new(&env, &Self::gateway(&env));
         let gas_service = AxelarGasServiceClient::new(&env, &Self::gas_service(&env));
 
+        caller.require_auth();
+
         gas_service.pay_gas_for_contract_call(
-            &env.current_contract_address(),
+            &caller,
             &destination_chain,
             &destination_address,
             &message,
-            &env.current_contract_address(),
-            &token,
+            &caller,
+            &gas_token,
         );
 
         gateway.call_contract(
