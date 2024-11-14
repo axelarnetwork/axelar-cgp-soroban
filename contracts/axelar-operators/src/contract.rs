@@ -11,10 +11,7 @@ pub struct AxelarOperators;
 #[contractimpl]
 impl AxelarOperators {
     pub fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), ContractError> {
-        let owner: Address = assert_some!(env
-            .storage()
-            .instance()
-            .get(&DataKey::Owner));
+        let owner: Address = assert_some!(env.storage().instance().get(&DataKey::Owner));
 
         owner.require_auth();
 
@@ -26,9 +23,7 @@ impl AxelarOperators {
     }
 
     pub fn owner(env: &Env) -> Address {
-        assert_some!(env.storage()
-            .instance()
-            .get(&DataKey::Owner))
+        assert_some!(env.storage().instance().get(&DataKey::Owner))
     }
 }
 
