@@ -51,5 +51,5 @@ runs:
       run: |
         sudo cp ./stellar-binaries/stellar /usr/local/bin/stellar
         sudo cp ./stellar-binaries/soroban /usr/local/bin/soroban
-        chmod +x /usr/local/bin/soroban
+        chmod +x /usr/local/bin/stellar
         chmod +x /usr/local/bin/soroban
