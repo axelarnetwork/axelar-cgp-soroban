@@ -24,7 +24,7 @@ pub struct AxelarGateway;
 #[contractimpl]
 impl AxelarGateway {
     /// Initialize the gateway
-    pub fn initialize(
+    pub fn __constructor(
         env: Env,
         owner: Address,
         operator: Address,
@@ -33,14 +33,6 @@ impl AxelarGateway {
         previous_signers_retention: u64,
         initial_signers: Vec<WeightedSigners>,
     ) -> Result<(), ContractError> {
-        ensure!(
-            env.storage()
-                .instance()
-                .get::<DataKey, bool>(&DataKey::Initialized)
-                .is_none(),
-            ContractError::AlreadyInitialized
-        );
-
         env.storage().instance().set(&DataKey::Initialized, &true);
 
         env.storage().instance().set(&DataKey::Owner, &owner);

@@ -1,6 +1,6 @@
 use axelar_gateway::testutils::{generate_proof, get_approve_hash, initialize, TestSignerSet};
 use axelar_gateway::types::Message;
-use axelar_gateway::{AxelarGateway, AxelarGatewayClient};
+use axelar_gateway::{AxelarGatewayClient};
 use axelar_soroban_std::assert_last_emitted_event;
 use soroban_sdk::{contract, contractimpl, log, Bytes, Symbol};
 use soroban_sdk::{
@@ -53,12 +53,8 @@ impl AxelarApp {
 }
 
 fn setup_gateway<'a>(env: &Env) -> (AxelarGatewayClient<'a>, TestSignerSet) {
-    let gateway_id = env.register_contract(None, AxelarGateway);
+    let (signers, gateway_id) = initialize(env, 0, 5);
     let gateway_client = AxelarGatewayClient::new(env, &gateway_id);
-    let owner = Address::generate(env);
-    let operator = Address::generate(env);
-    let signers = initialize(env, &gateway_client, owner, operator, 0, 5);
-
     (gateway_client, signers)
 }
 

@@ -2,7 +2,7 @@
 extern crate std;
 
 use crate::auth::{self, epoch};
-use crate::AxelarGatewayClient;
+use crate::AxelarGateway;
 use axelar_soroban_std::{assert_last_emitted_event, assert_ok};
 use ed25519_dalek::{Signature, Signer, SigningKey};
 use rand::Rng;
@@ -29,26 +29,28 @@ pub struct TestSignerSet {
 
 pub fn initialize(
     env: &Env,
-    client: &AxelarGatewayClient,
-    owner: Address,
-    operator: Address,
     previous_signers_retention: u32,
     num_signers: u32,
-) -> TestSignerSet {
+) -> (TestSignerSet, Address) {
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
     let signer_set = generate_signers_set(env, num_signers, BytesN::random(env));
     let initial_signers = vec![&env, signer_set.signers.clone()];
     let minimum_rotation_delay = 0;
 
-    client.initialize(
-        &owner,
-        &operator,
-        &signer_set.domain_separator,
-        &minimum_rotation_delay,
-        &(previous_signers_retention as u64),
-        &initial_signers,
+    let contract_id = env.register(
+        AxelarGateway,
+        (
+            &owner,
+            &operator,
+            &signer_set.domain_separator,
+            minimum_rotation_delay,
+            (previous_signers_retention as u64),
+            initial_signers,
+        ),
     );
 
-    signer_set
+    (signer_set, contract_id)
 }
 
 pub fn get_approve_hash(env: &Env, messages: Vec<Message>) -> BytesN<32> {

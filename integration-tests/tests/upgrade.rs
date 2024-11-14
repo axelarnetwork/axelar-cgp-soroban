@@ -31,13 +31,7 @@ fn upgrade() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let gateway_id = env.register_contract_wasm(None, old_contract::WASM);
-    let gateway_client = AxelarGatewayClient::new(&env, &gateway_id);
-    let owner = Address::generate(&env);
-    let operator = Address::generate(&env);
-
-    initialize(&env, &gateway_client, owner, operator, 0, 5);
-
+    let (_signers, gateway_id) = initialize(&env, 0, 5);
     let client = old_contract::Client::new(&env, &gateway_id);
 
     assert_eq!(
