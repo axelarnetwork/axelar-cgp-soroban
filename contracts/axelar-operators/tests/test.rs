@@ -25,7 +25,7 @@ impl TestTarget {
     }
 }
 
-fn setup_env<'a>() -> (Env, Address, AxelarOperatorsClient<'a>) {
+fn setup_env<'a>() -> (Env, AxelarOperatorsClient<'a>, Address) {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -33,13 +33,16 @@ fn setup_env<'a>() -> (Env, Address, AxelarOperatorsClient<'a>) {
     let contract_id = env.register(AxelarOperators, (&user,));
     let client = AxelarOperatorsClient::new(&env, &contract_id);
 
-    (env, contract_id, client)
+    let target_id = env.register(TestTarget, ());
+
+    (env, client, target_id)
 }
 
 #[test]
 fn transfer_owner() {
-    let (env, _, client) = setup_env();
+    let (env, client, _) = setup_env();
 
+    let initial_owner = client.owner();
     let new_owner = Address::generate(&env);
 
     // transfer ownership to the new owner
@@ -47,7 +50,7 @@ fn transfer_owner() {
 
     assert_invocation(
         &env,
-        &client.owner(),
+        &initial_owner,
         &client.address,
         "transfer_ownership",
         (new_owner.clone(),),
@@ -58,7 +61,7 @@ fn transfer_owner() {
         &client.address,
         (
             Symbol::new(&env, "ownership_transferred"),
-            client.owner(),
+            initial_owner,
             new_owner.clone(),
         ),
         (),
@@ -70,8 +73,9 @@ fn transfer_owner() {
 
 #[test]
 fn add_operator() {
-    let (env, _, client) = setup_env();
+    let (env, client, _) = setup_env();
 
+    let owner = client.owner();
     let operator = Address::generate(&env);
 
     let is_operator_initial = client.is_operator(&operator);
@@ -82,7 +86,7 @@ fn add_operator() {
 
     assert_invocation(
         &env,
-        &client.owner(),
+        &owner,
         &client.address,
         "add_operator",
         (operator.clone(),),
@@ -101,7 +105,7 @@ fn add_operator() {
 
 #[test]
 fn fail_add_operator_duplicate() {
-    let (env, _, client) = setup_env();
+    let (env, client, _) = setup_env();
 
     let operator = Address::generate(&env);
 
@@ -120,8 +124,9 @@ fn fail_add_operator_duplicate() {
 
 #[test]
 fn remove_operator() {
-    let (env, _, client) = setup_env();
+    let (env, client, _) = setup_env();
 
+    let owner = client.owner();
     let operator = Address::generate(&env);
 
     // set operator as an operator
@@ -135,7 +140,7 @@ fn remove_operator() {
 
     assert_invocation(
         &env,
-        &client.owner(),
+        &owner,
         &client.address,
         "remove_operator",
         (operator.clone(),),
@@ -154,7 +159,7 @@ fn remove_operator() {
 
 #[test]
 fn fail_remove_operator_non_existant() {
-    let (env, _, client) = setup_env();
+    let (env, client, _) = setup_env();
 
     let operator = Address::generate(&env);
     let is_operator_initial = client.is_operator(&operator);
@@ -169,7 +174,7 @@ fn fail_remove_operator_non_existant() {
 
 #[test]
 fn execute() {
-    let (env, _, client) = setup_env();
+    let (env, client, target) = setup_env();
 
     let operator = Address::generate(&env);
 
@@ -179,17 +184,17 @@ fn execute() {
     // call execute as an operator
     client.execute(
         &operator,
-        &client.address,
+        &target,
         &symbol_short!("method"),
         &Vec::new(&env),
     );
 
-    assert_last_emitted_event(&env, &client.address, (symbol_short!("executed"),), ());
+    assert_last_emitted_event(&env, &target, (symbol_short!("executed"),), ());
 }
 
 #[test]
 fn fail_execute_not_operator() {
-    let (env, _, client) = setup_env();
+    let (env, client, _) = setup_env();
 
     let operator = Address::generate(&env);
 
@@ -198,7 +203,12 @@ fn fail_execute_not_operator() {
 
     // call execute with a non-operator, should panic
     assert_contract_err!(
-        client.try_execute(&client.owner(), &client.address, &symbol_short!("method"), &Vec::new(&env)),
+        client.try_execute(
+            &client.owner(),
+            &client.address,
+            &symbol_short!("method"),
+            &Vec::new(&env)
+        ),
         ContractError::NotAnOperator
     );
 }
@@ -206,7 +216,7 @@ fn fail_execute_not_operator() {
 #[test]
 #[should_panic(expected = "This method should fail")]
 fn fail_execute_when_target_panics() {
-    let (env, _, client) = setup_env();
+    let (env, client, target) = setup_env();
 
     let operator = Address::generate(&env);
 
@@ -216,7 +226,7 @@ fn fail_execute_when_target_panics() {
     // call execute as an operator
     client.execute(
         &operator,
-        &client.address,
+        &target,
         &symbol_short!("failing"),
         &Vec::new(&env),
     );
