@@ -31,7 +31,7 @@ runs:
       working-directory: ./stellar-cli
       run: cargo install "stellar-cli@${{ inputs.stellar-version }}"
 
-    - name: Move binaries
+    - name: Copy binaries
       if: steps.cache-stellar.outputs.cache-hit != 'true'
       run: |
         mkdir -p ./stellar-binaries
