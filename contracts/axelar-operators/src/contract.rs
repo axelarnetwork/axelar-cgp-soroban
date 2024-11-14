@@ -35,11 +35,9 @@ impl AxelarOperators {
 #[contractimpl]
 impl AxelarOperators {
     /// Initialize the operators contract with an owner.
-    pub fn __constructor(env: Env, owner: Address) -> Result<(), ContractError> {
+    pub fn __constructor(env: Env, owner: Address) {
         env.storage().instance().set(&DataKey::Initialized, &true);
-
         env.storage().instance().set(&DataKey::Owner, &owner);
-        Ok(())
     }
 
     /// Return true if the account is an operator.
