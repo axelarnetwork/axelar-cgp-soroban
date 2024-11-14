@@ -12,7 +12,7 @@ pub struct AxelarGasService;
 #[contractimpl]
 impl AxelarGasService {
     /// Initialize the gas service contract with a gas_collector address.
-    pub fn initialize_gas_service(env: Env, gas_collector: Address) -> Result<(), ContractError> {
+    pub fn __constructor(env: Env, gas_collector: Address) -> Result<(), ContractError> {
         ensure!(
             env.storage()
                 .instance()
@@ -159,11 +159,10 @@ mod tests {
     #[test]
     fn initialize_gas_service() {
         let env = Env::default();
-        let contract_id = env.register_contract(None, AxelarGasService);
-        let client = AxelarGasServiceClient::new(&env, &contract_id);
-        let gas_collector = Address::generate(&env);
 
-        client.initialize_gas_service(&gas_collector);
+        let gas_collector = Address::generate(&env);
+        let contract_id = env.register(AxelarGasService, (&gas_collector,));
+        let _client = AxelarGasServiceClient::new(&env, &contract_id);
 
         assert!(env.as_contract(&contract_id, || {
             assert_some!(env
