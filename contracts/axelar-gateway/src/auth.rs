@@ -236,7 +236,7 @@ fn validate_signers(env: &Env, weighted_signers: &WeightedSigners) -> Result<(),
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "testutils"))]
 mod tests {
     use crate::error::ContractError;
     use crate::types::{ProofSignature, ProofSigner, WeightedSigner, WeightedSigners};
