@@ -13,14 +13,12 @@ pub struct AxelarGasService;
 #[contractimpl]
 impl AxelarGasService {
     /// Initialize the gas service contract with a gas_collector address.
-    pub fn __constructor(env: Env, gas_collector: Address) -> Result<(), ContractError> {
+    pub fn __constructor(env: Env, gas_collector: Address) {
         env.storage().instance().set(&DataKey::Initialized, &true);
 
         env.storage()
             .instance()
             .set(&DataKey::GasCollector, &gas_collector);
-
-        Ok(())
     }
 
     /// Pay for gas using a token for a contract call on a destination chain.
