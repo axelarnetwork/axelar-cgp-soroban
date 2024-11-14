@@ -1,14 +1,12 @@
 use axelar_gateway::testutils::{
     generate_proof, generate_signers_set, generate_test_message, get_approve_hash, initialize,
-    randint,
+    randint, TestSignerSet,
 };
-use axelar_gateway::{AxelarGateway, AxelarGatewayClient};
+use axelar_gateway::AxelarGatewayClient;
 use axelar_soroban_std::{
     assert_contract_err, assert_invocation, assert_invoke_auth_err, assert_invoke_auth_ok,
     assert_last_emitted_event,
 };
-use soroban_sdk::testutils::BytesN as _;
-
 use axelar_gateway::error::ContractError;
 use axelar_gateway::types::Message;
 use soroban_sdk::Symbol;
@@ -21,83 +19,22 @@ use soroban_sdk::{
 const DESTINATION_CHAIN: &str = "ethereum";
 const DESTINATION_ADDRESS: &str = "0x4EFE356BEDeCC817cb89B4E9b796dB8bC188DC59";
 
-fn setup_env<'a>() -> (Env, Address, AxelarGatewayClient<'a>) {
+fn setup_env<'a>(
+    previous_signers_retention: u32,
+    num_signers: u32,
+) -> (Env, TestSignerSet, AxelarGatewayClient<'a>) {
     let env = Env::default();
     env.mock_all_auths();
 
-    let contract_id = env.register_contract(None, AxelarGateway);
+    let (signers, contract_id) = initialize(&env, previous_signers_retention, num_signers);
     let client = AxelarGatewayClient::new(&env, &contract_id);
 
-    (env, contract_id, client)
-}
-
-#[test]
-fn fails_if_already_initialized() {
-    let (env, _contract_id, client) = setup_env();
-    let owner = Address::generate(&env);
-    let operator = Address::generate(&env);
-
-    // doing the process from testutils::initialize() manually so we can
-    // use try_initialize for the second call
-    let num_signers = randint(1, 10);
-    let previous_signers_retention = 1;
-
-    let signer_set = generate_signers_set(&env, num_signers, BytesN::random(&env));
-    let initial_signers = vec![&env, signer_set.signers.clone()];
-    let minimum_rotation_delay = 0;
-
-    client.initialize(
-        &owner,
-        &operator,
-        &signer_set.domain_separator,
-        &minimum_rotation_delay,
-        &(previous_signers_retention as u64),
-        &initial_signers,
-    );
-
-    assert_contract_err!(
-        client.try_initialize(
-            &owner,
-            &operator,
-            &signer_set.domain_separator,
-            &minimum_rotation_delay,
-            &(previous_signers_retention as u64),
-            &initial_signers,
-        ),
-        ContractError::AlreadyInitialized
-    );
-}
-
-#[test]
-/// Two functions in the gateway contract require initialization:
-/// rotate_signers when bypass_rotation_delay = true
-/// transfer_operatorship
-fn fail_if_not_initialized() {
-    let (env, _contract_id, client) = setup_env();
-    let new_operator = Address::generate(&env);
-
-    assert_contract_err!(
-        client.try_transfer_operatorship(&new_operator),
-        ContractError::NotInitialized
-    );
-
-    let num_signers = randint(1, 10);
-    let signers = generate_signers_set(&env, num_signers, BytesN::random(&env));
-
-    let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
-    let data_hash = new_signers.signers.hash(&env);
-    let proof = generate_proof(&env, data_hash.clone(), signers);
-
-    let bypass_rotation_delay = true;
-    assert_contract_err!(
-        client.try_rotate_signers(&new_signers.signers, &proof, &bypass_rotation_delay),
-        ContractError::NotInitialized
-    );
+    (env, signers, client)
 }
 
 #[test]
 fn call_contract() {
-    let (env, contract_id, client) = setup_env();
+    let (env, _signers, client) = setup_env(1, 5);
 
     let user: Address = Address::generate(&env);
     let destination_chain = String::from_str(&env, DESTINATION_CHAIN);
@@ -109,7 +46,7 @@ fn call_contract() {
     assert_invocation(
         &env,
         &user,
-        &contract_id,
+        &client.address,
         "call_contract",
         (
             &user,
@@ -121,7 +58,7 @@ fn call_contract() {
 
     assert_last_emitted_event(
         &env,
-        &contract_id,
+        &client.address,
         (
             Symbol::new(&env, "contract_called"),
             user,
@@ -135,7 +72,7 @@ fn call_contract() {
 
 #[test]
 fn validate_message() {
-    let (env, contract_id, client) = setup_env();
+    let (env, _signers, client) = setup_env(1, 5);
 
     let (
         Message {
@@ -160,7 +97,7 @@ fn validate_message() {
     assert_invocation(
         &env,
         &contract_address,
-        &contract_id,
+        &client.address,
         "validate_message",
         (
             &contract_address,
@@ -176,7 +113,7 @@ fn validate_message() {
 
 #[test]
 fn approve_message() {
-    let (env, contract_id, client) = setup_env();
+    let (env, signers, client) = setup_env(1, randint(1, 10));
     let (message, _) = generate_test_message(&env);
     let Message {
         source_chain,
@@ -186,10 +123,6 @@ fn approve_message() {
         payload_hash,
     } = message.clone();
 
-    let owner = Address::generate(&env);
-    let operator = Address::generate(&env);
-    let signers = initialize(&env, &client, owner, operator, 1, randint(1, 10));
-
     let messages = vec![&env, message.clone()];
     let data_hash = get_approve_hash(&env, messages.clone());
     let proof = generate_proof(&env, data_hash, signers);
@@ -197,7 +130,7 @@ fn approve_message() {
 
     assert_last_emitted_event(
         &env,
-        &contract_id,
+        &client.address,
         (Symbol::new(&env, "message_approved"), message.clone()),
         (),
     );
@@ -222,7 +155,7 @@ fn approve_message() {
 
     assert_last_emitted_event(
         &env,
-        &contract_id,
+        &client.address,
         (Symbol::new(&env, "message_executed"), message.clone()),
         (),
     );
@@ -242,11 +175,8 @@ fn approve_message() {
 
 #[test]
 fn fail_execute_invalid_proof() {
-    let (env, _contract_id, client) = setup_env();
+    let (env, signers, client) = setup_env(1, randint(1, 10));
     let (message, _) = generate_test_message(&env);
-    let owner = Address::generate(&env);
-    let operator = Address::generate(&env);
-    let signers = initialize(&env, &client, owner, operator, 1, randint(1, 10));
 
     let invalid_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator);
 
@@ -262,11 +192,7 @@ fn fail_execute_invalid_proof() {
 
 #[test]
 fn approve_messages_fail_empty_messages() {
-    let (env, _, client) = setup_env();
-    let owner = Address::generate(&env);
-    let operator = Address::generate(&env);
-
-    let signers = initialize(&env, &client, owner, operator, 1, randint(1, 10));
+    let (env, signers, client) = setup_env(1, randint(1, 10));
 
     let messages = soroban_sdk::Vec::new(&env);
     let data_hash = get_approve_hash(&env, messages.clone());
@@ -280,12 +206,8 @@ fn approve_messages_fail_empty_messages() {
 
 #[test]
 fn approve_messages_skip_duplicate_message() {
-    let (env, _, client) = setup_env();
+    let (env, signers, client) = setup_env(1, randint(1, 10));
     let (message, _) = generate_test_message(&env);
-    let owner = Address::generate(&env);
-    let operator = Address::generate(&env);
-
-    let signers = initialize(&env, &client, owner, operator, 1, randint(1, 10));
 
     let messages = vec![&env, message.clone()];
     let data_hash = get_approve_hash(&env, messages.clone());
@@ -302,10 +224,8 @@ fn approve_messages_skip_duplicate_message() {
 
 #[test]
 fn rotate_signers() {
-    let (env, contract_id, client) = setup_env();
-    let owner = Address::generate(&env);
-    let operator = Address::generate(&env);
-    let signers = initialize(&env, &client, owner, operator, 1, 5);
+    let (env, signers, client) = setup_env(1, 5);
+
     let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
     let data_hash = new_signers.signers.signers_rotation_hash(&env);
     let proof = generate_proof(&env, data_hash.clone(), signers);
@@ -316,7 +236,7 @@ fn rotate_signers() {
 
     assert_last_emitted_event(
         &env,
-        &contract_id,
+        &client.address,
         (
             Symbol::new(&env, "signers_rotated"),
             new_epoch,
@@ -334,7 +254,7 @@ fn rotate_signers() {
 
     assert_last_emitted_event(
         &env,
-        &contract_id,
+        &client.address,
         (Symbol::new(&env, "message_approved"), message),
         (),
     );
@@ -342,10 +262,7 @@ fn rotate_signers() {
 
 #[test]
 fn rotate_signers_bypass_rotation_delay() {
-    let (env, contract_id, client) = setup_env();
-    let owner = Address::generate(&env);
-    let operator = Address::generate(&env);
-    let signers = initialize(&env, &client, owner, operator.clone(), 1, 5);
+    let (env, signers, client) = setup_env(1, 5);
     let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
     let data_hash = new_signers.signers.signers_rotation_hash(&env);
     let proof = generate_proof(&env, data_hash.clone(), signers.clone());
@@ -353,13 +270,13 @@ fn rotate_signers_bypass_rotation_delay() {
     let new_epoch: u64 = client.epoch() + 1;
 
     assert_invoke_auth_ok!(
-        operator,
+        client.operator(),
         client.try_rotate_signers(&new_signers.signers, &proof, &bypass_rotation_delay)
     );
 
     assert_last_emitted_event(
         &env,
-        &contract_id,
+        &client.address,
         (
             Symbol::new(&env, "signers_rotated"),
             new_epoch,
@@ -371,20 +288,20 @@ fn rotate_signers_bypass_rotation_delay() {
 
 #[test]
 fn rotate_signers_bypass_rotation_delay_unauthorized() {
-    let (env, _, client) = setup_env();
-    let owner = Address::generate(&env);
-    let operator = Address::generate(&env);
-    let not_operator = Address::generate(&env);
-    let signers = initialize(&env, &client, owner.clone(), operator.clone(), 1, 5);
+    let (env, signers, client) = setup_env(1, 5);
+
     let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
+
     let data_hash = new_signers.signers.signers_rotation_hash(&env);
     let proof = generate_proof(&env, data_hash.clone(), signers);
     let bypass_rotation_delay = true;
 
     assert_invoke_auth_err!(
-        owner,
+        client.owner(),
         client.try_rotate_signers(&new_signers.signers, &proof, &bypass_rotation_delay)
     );
+
+    let not_operator = Address::generate(&env);
     assert_invoke_auth_err!(
         not_operator,
         client.try_rotate_signers(&new_signers.signers, &proof, &bypass_rotation_delay)
@@ -393,10 +310,8 @@ fn rotate_signers_bypass_rotation_delay_unauthorized() {
 
 #[test]
 fn rotate_signers_fail_not_latest_signers() {
-    let (env, _contract_id, client) = setup_env();
-    let owner = Address::generate(&env);
-    let operator = Address::generate(&env);
-    let signers = initialize(&env, &client, owner, operator, 1, 5);
+    let (env, signers, client) = setup_env(1, 5);
+
     let bypass_rotation_delay = false;
 
     let first_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
@@ -416,27 +331,16 @@ fn rotate_signers_fail_not_latest_signers() {
 
 #[test]
 fn transfer_operatorship() {
-    let (env, contract_id, client) = setup_env();
-    let owner = Address::generate(&env);
-    let operator = Address::generate(&env);
+    let (env, _signers, client) = setup_env(1, randint(1, 10));
+
+    let operator = client.operator();
     let new_operator = Address::generate(&env);
-
-    initialize(
-        &env,
-        &client,
-        owner.clone(),
-        operator.clone(),
-        1,
-        randint(1, 10),
-    );
-
-    assert_eq!(client.operator(), operator);
 
     assert_invoke_auth_ok!(operator, client.try_transfer_operatorship(&new_operator));
 
     assert_last_emitted_event(
         &env,
-        &contract_id,
+        &client.address,
         (
             Symbol::new(&env, "operatorship_transferred"),
             operator.clone(),
@@ -450,23 +354,13 @@ fn transfer_operatorship() {
 
 #[test]
 fn transfer_operatorship_unauthorized() {
-    let (env, _, client) = setup_env();
-    let owner = Address::generate(&env);
-    let operator = Address::generate(&env);
+    let (env, _, client) = setup_env(1, randint(1, 10));
     let not_operator = Address::generate(&env);
 
-    initialize(
-        &env,
-        &client,
-        owner.clone(),
-        operator.clone(),
-        1,
-        randint(1, 10),
+    assert_invoke_auth_err!(
+        client.owner(),
+        client.try_transfer_operatorship(&client.owner())
     );
-
-    assert_eq!(client.operator(), operator);
-
-    assert_invoke_auth_err!(owner, client.try_transfer_operatorship(&owner));
     assert_invoke_auth_err!(
         not_operator,
         client.try_transfer_operatorship(&not_operator)
@@ -475,27 +369,15 @@ fn transfer_operatorship_unauthorized() {
 
 #[test]
 fn transfer_ownership() {
-    let (env, contract_id, client) = setup_env();
-    let owner = Address::generate(&env);
-    let operator = Address::generate(&env);
+    let (env, _signers, client) = setup_env(1, randint(1, 10));
+
+    let owner = client.owner();
     let new_owner = Address::generate(&env);
 
-    initialize(
-        &env,
-        &client,
-        owner.clone(),
-        operator.clone(),
-        1,
-        randint(1, 10),
-    );
-
-    assert_eq!(client.owner(), owner);
-
     assert_invoke_auth_ok!(owner, client.try_transfer_ownership(&new_owner));
-
     assert_last_emitted_event(
         &env,
-        &contract_id,
+        &client.address,
         (
             Symbol::new(&env, "ownership_transferred"),
             owner,
@@ -509,32 +391,21 @@ fn transfer_ownership() {
 
 #[test]
 fn transfer_ownership_unauthorized() {
-    let (env, _, client) = setup_env();
-    let owner = Address::generate(&env);
+    let (env, _, client) = setup_env(1, randint(1, 10));
+
     let new_owner = Address::generate(&env);
-    let operator = Address::generate(&env);
-
-    initialize(
-        &env,
-        &client,
-        owner.clone(),
-        operator.clone(),
-        1,
-        randint(1, 10),
-    );
-
-    assert_eq!(client.owner(), owner);
 
     assert_invoke_auth_err!(new_owner, client.try_transfer_ownership(&new_owner));
-    assert_invoke_auth_err!(operator, client.try_transfer_ownership(&operator));
+    assert_invoke_auth_err!(
+        client.operator(),
+        client.try_transfer_ownership(&client.operator())
+    );
 }
 
 #[test]
 fn epoch_by_signers_hash() {
-    let (env, _contract_id, client) = setup_env();
-    let owner = Address::generate(&env);
-    let operator = Address::generate(&env);
-    let signers = initialize(&env, &client, owner, operator, 1, 5);
+    let (env, signers, client) = setup_env(1, 5);
+
     let bypass_rotation_delay = false;
 
     let first_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
@@ -551,7 +422,7 @@ fn epoch_by_signers_hash() {
 
 #[test]
 fn epoch_by_signers_hash_fail_invalid_signers() {
-    let (env, _, client) = setup_env();
+    let (env, _, client) = setup_env(1, 5);
     let signers_hash = BytesN::<32>::from_array(&env, &[1; 32]);
 
     assert_contract_err!(
@@ -562,10 +433,8 @@ fn epoch_by_signers_hash_fail_invalid_signers() {
 
 #[test]
 fn signers_hash_by_epoch() {
-    let (env, _contract_id, client) = setup_env();
-    let owner = Address::generate(&env);
-    let operator = Address::generate(&env);
-    let signers = initialize(&env, &client, owner, operator, 1, 5);
+    let (env, signers, client) = setup_env(1, 5);
+
     let bypass_rotation_delay = false;
 
     let first_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
@@ -583,7 +452,7 @@ fn signers_hash_by_epoch() {
 
 #[test]
 fn signers_hash_by_epoch_fail_invalid_epoch() {
-    let (_, _, client) = setup_env();
+    let (_, _, client) = setup_env(1, 5);
     let invalid_epoch = 43u64;
 
     assert_contract_err!(
@@ -594,11 +463,7 @@ fn signers_hash_by_epoch_fail_invalid_epoch() {
 
 #[test]
 fn version() {
-    let (env, _, client) = setup_env();
-    let owner = Address::generate(&env);
-    let operator = Address::generate(&env);
-
-    initialize(&env, &client, owner.clone(), operator, 1, randint(1, 10));
+    let (env, _signers, client) = setup_env(1, randint(1, 10));
 
     assert_eq!(
         client.version(),
@@ -609,36 +474,20 @@ fn version() {
 #[test]
 #[should_panic(expected = "HostError: Error(Storage, MissingValue)")]
 fn upgrade_invalid_wasm_hash() {
-    let (env, _, client) = setup_env();
-    let owner = Address::generate(&env);
-    let operator = Address::generate(&env);
+    let (env, _, client) = setup_env(1, randint(1, 10));
+
     let new_wasm_hash = BytesN::<32>::from_array(&env, &[0; 32]);
-
-    initialize(&env, &client, owner, operator, 1, randint(1, 10));
-
     // Should panic with invalid wasm hash
     client.upgrade(&new_wasm_hash);
 }
 
 #[test]
 fn upgrade_unauthorized() {
-    let (env, _, client) = setup_env();
-    let owner = Address::generate(&env);
-    let operator = Address::generate(&env);
+    let (env, _signers, client) = setup_env(1, randint(1, 10));
+
     let not_owner = Address::generate(&env);
     let new_wasm_hash = BytesN::<32>::from_array(&env, &[0; 32]);
 
-    initialize(
-        &env,
-        &client,
-        owner.clone(),
-        operator.clone(),
-        1,
-        randint(1, 10),
-    );
-
-    assert_eq!(client.owner(), owner);
-
     assert_invoke_auth_err!(not_owner, client.try_upgrade(&new_wasm_hash));
-    assert_invoke_auth_err!(operator, client.try_upgrade(&new_wasm_hash));
+    assert_invoke_auth_err!(client.operator(), client.try_upgrade(&new_wasm_hash));
 }

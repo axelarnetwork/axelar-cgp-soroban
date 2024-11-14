@@ -242,16 +242,13 @@ mod tests {
     use crate::testutils::TestSignerSet;
     use crate::types::{ProofSignature, ProofSigner, WeightedSigner, WeightedSigners};
 
-    use soroban_sdk::{
-        testutils::{Address as _, BytesN as _},
-        Address, BytesN, Env, Vec,
-    };
+    use soroban_sdk::{testutils::BytesN as _, BytesN, Env, Vec};
 
     use axelar_soroban_std::{assert_err, assert_ok};
 
     use crate::{
         auth::{self, initialize_auth},
-        contract::{AxelarGateway, AxelarGatewayClient},
+        contract::AxelarGatewayClient,
         testutils::{self, generate_proof, generate_signers_set, initialize, randint},
     };
 
@@ -275,7 +272,7 @@ mod tests {
 
     #[test]
     fn fails_with_empty_signer_set() {
-        let (env, signers, client) = setup_env(1, randint(1, 10));
+        let (env, _signers, client) = setup_env(1, randint(1, 10));
 
         // create an empty WeightedSigners vector
         let empty_signer_set = Vec::<WeightedSigners>::new(&env);
@@ -431,7 +428,7 @@ mod tests {
     }
     #[test]
     fn fail_validate_proof_threshold_overflow() {
-        let (env, signers, client) = setup_env(randint(0, 10), randint(1, 10));
+        let (env, mut signers, client) = setup_env(randint(0, 10), randint(1, 10));
 
         let last_index = signers.signers.signers.len() - 1;
 
@@ -488,7 +485,7 @@ mod tests {
 
     #[test]
     fn rotate_signers_fail_zero_weight() {
-        let (env, _, client) = setup_env(1, randint(1, 10));
+        let (env, _, _client) = setup_env(1, randint(1, 10));
 
         let mut new_signers = generate_signers_set(&env, randint(1, 10), BytesN::random(&env));
 
@@ -509,7 +506,7 @@ mod tests {
 
     #[test]
     fn rotate_signers_fail_weight_overflow() {
-        let (env, _, client) = setup_env(1, randint(1, 10));
+        let (env, _, _client) = setup_env(1, randint(1, 10));
 
         let mut new_signers = generate_signers_set(&env, randint(3, 10), BytesN::random(&env));
 
@@ -530,7 +527,7 @@ mod tests {
 
     #[test]
     fn rotate_signers_fail_zero_threshold() {
-        let (env, _, client) = setup_env(1, randint(1, 10));
+        let (env, _, _client) = setup_env(1, randint(1, 10));
         let mut new_signers = generate_signers_set(&env, randint(1, 10), BytesN::random(&env));
 
         // set the threshold to zero
@@ -545,7 +542,7 @@ mod tests {
 
     #[test]
     fn rotate_signers_fail_low_total_weight() {
-        let (env, _, client) = setup_env(1, randint(1, 10));
+        let (env, _, _client) = setup_env(1, randint(1, 10));
         let mut new_signers = generate_signers_set(&env, randint(1, 10), BytesN::random(&env));
 
         let total_weight = new_signers
@@ -570,7 +567,7 @@ mod tests {
 
     #[test]
     fn rotate_signers_fail_wrong_signer_order() {
-        let (env, _, client) = setup_env(1, randint(1, 10));
+        let (env, _, _client) = setup_env(1, randint(1, 10));
 
         let min_signers = 2; // need at least 2 signers to test incorrect ordering
         let mut new_signers =
@@ -630,7 +627,7 @@ mod tests {
 
         // Proof from the first signer set should still be valid
         let proof = generate_proof(&env, msg_hash.clone(), original_signers.clone());
-        env.as_contract(&contract_id, || {
+        env.as_contract(&client.address, || {
             assert!(!assert_ok!(auth::validate_proof(&env, &msg_hash, proof)));
         })
     }
@@ -648,7 +645,7 @@ mod tests {
                 randint(1, 10),
                 original_signers.domain_separator.clone(),
             );
-            testutils::rotate_signers(&env, &client.address(), new_signers.clone());
+            testutils::rotate_signers(&env, &client.address, new_signers.clone());
         }
 
         // Proof from the first signer set should fail
@@ -664,7 +661,7 @@ mod tests {
 
     #[test]
     fn rotate_signers_fail_duplicated_signers() {
-        let (env, contract_id, client) = setup_env(1, randint(1, 10));
+        let (env, signers, client) = setup_env(1, randint(1, 10));
 
         let msg_hash = BytesN::random(&env);
         let new_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator);

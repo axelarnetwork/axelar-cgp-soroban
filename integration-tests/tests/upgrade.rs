@@ -2,8 +2,7 @@
 
 use axelar_gateway::testutils::initialize;
 
-use axelar_gateway::AxelarGatewayClient;
-use soroban_sdk::{testutils::Address as _, Address, Env, String};
+use soroban_sdk::{Env, String};
 
 // For reproducibility:
 // 1. Update the package version in Cargo.toml to reflect new changes.
