@@ -1,8 +1,7 @@
-use core::panic;
-
+use axelar_soroban_std::ensure;
 use soroban_sdk::{contractclient, Address, Bytes, Env, String};
 
-use crate::AxelarGatewayClient;
+use crate::{error::ContractError, AxelarGatewayClient};
 
 /// Interface for an Axelar Executable app.
 #[contractclient(name = "AxelarExecutableClient")]
@@ -23,23 +22,26 @@ pub trait AxelarExecutableInterface {
     /// This should be called from an implementation of `execute` before executing custom app logic.
     /// This method doesn't get exposed from the contract, as Soroban SDK's contractimpl macro ignores default trait methods.
     fn validate(
-        env: Env,
-        source_chain: String,
-        message_id: String,
-        source_address: String,
-        payload: Bytes,
-    ) {
-        let gateway = AxelarGatewayClient::new(&env, &Self::gateway(&env));
+        env: &Env,
+        source_chain: &String,
+        message_id: &String,
+        source_address: &String,
+        payload: &Bytes,
+    ) -> Result<(), ContractError> {
+        let gateway = AxelarGatewayClient::new(env, &Self::gateway(env));
 
         // Validate the contract call was approved by the gateway
-        if !gateway.validate_message(
-            &env.current_contract_address(),
-            &source_chain,
-            &message_id,
-            &source_address,
-            &env.crypto().keccak256(&payload).into(),
-        ) {
-            panic!("not approved");
-        };
+        ensure!(
+            gateway.validate_message(
+                &env.current_contract_address(),
+                source_chain,
+                message_id,
+                source_address,
+                &env.crypto().keccak256(payload).into(),
+            ),
+            ContractError::NotApproved
+        );
+
+        Ok(())
     }
 }
