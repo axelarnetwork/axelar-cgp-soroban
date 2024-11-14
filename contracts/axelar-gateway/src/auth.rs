@@ -239,6 +239,7 @@ fn validate_signers(env: &Env, weighted_signers: &WeightedSigners) -> Result<(),
 #[cfg(test)]
 mod tests {
     use crate::error::ContractError;
+    use crate::testutils::TestSignerSet;
     use crate::types::{ProofSignature, ProofSigner, WeightedSigner, WeightedSigners};
 
     use soroban_sdk::{
@@ -254,35 +255,27 @@ mod tests {
         testutils::{self, generate_proof, generate_signers_set, initialize, randint},
     };
 
-    fn setup_env<'a>() -> (Env, Address, AxelarGatewayClient<'a>) {
+    fn setup_env<'a>(
+        previous_signers_retention: u32,
+        num_signers: u32,
+    ) -> (Env, TestSignerSet, AxelarGatewayClient<'a>) {
         let env = Env::default();
         env.mock_all_auths();
 
-        let contract_id = env.register_contract(None, AxelarGateway);
+        let (signers, contract_id) = initialize(&env, previous_signers_retention, num_signers);
         let client = AxelarGatewayClient::new(&env, &contract_id);
 
-        (env, contract_id, client)
+        (env, signers, client)
     }
 
     #[test]
     fn test_initialize() {
-        let (env, _, client) = setup_env();
-        let owner = Address::generate(&env);
-        let operator = Address::generate(&env);
-
-        initialize(
-            &env,
-            &client,
-            owner,
-            operator,
-            randint(0, 10),
-            randint(1, 10),
-        );
+        setup_env(randint(0, 10), randint(1, 10));
     }
 
     #[test]
     fn fails_with_empty_signer_set() {
-        let (env, contract_id, _client) = setup_env();
+        let (env, signers, client) = setup_env(1, randint(1, 10));
 
         // create an empty WeightedSigners vector
         let empty_signer_set = Vec::<WeightedSigners>::new(&env);
@@ -292,7 +285,7 @@ mod tests {
         let initial_signers = empty_signer_set;
 
         // call should panic because signer set is empty
-        env.as_contract(&contract_id, || {
+        env.as_contract(&client.address, || {
             assert_err!(
                 initialize_auth(
                     env.clone(),
@@ -308,42 +301,20 @@ mod tests {
 
     #[test]
     fn validate_proof() {
-        let (env, contract_id, client) = setup_env();
-        let owner = Address::generate(&env);
-        let operator = Address::generate(&env);
-
-        let signers = initialize(
-            &env,
-            &client,
-            owner,
-            operator,
-            randint(0, 10),
-            randint(1, 10),
-        );
+        let (env, signers, client) = setup_env(1, 5);
 
         let msg_hash: BytesN<32> = BytesN::random(&env);
         let proof = generate_proof(&env, msg_hash.clone(), signers);
 
         // validate_proof shouldn't panic
-        env.as_contract(&contract_id, || {
+        env.as_contract(&client.address, || {
             assert!(assert_ok!(auth::validate_proof(&env, &msg_hash, proof)));
         });
     }
 
     #[test]
     fn fail_validate_proof_invalid_epoch() {
-        let (env, contract_id, client) = setup_env();
-        let owner = Address::generate(&env);
-        let operator = Address::generate(&env);
-
-        initialize(
-            &env,
-            &client,
-            owner,
-            operator,
-            randint(0, 10),
-            randint(1, 10),
-        );
+        let (env, _signers, client) = setup_env(randint(0, 10), randint(1, 10));
 
         let different_signers = generate_signers_set(&env, randint(1, 10), BytesN::random(&env));
 
@@ -351,7 +322,7 @@ mod tests {
         let proof = generate_proof(&env, msg_hash.clone(), different_signers);
 
         // should panic, epoch should return zero for unknown signer set
-        env.as_contract(&contract_id, || {
+        env.as_contract(&client.address, || {
             assert_err!(
                 auth::validate_proof(&env, &msg_hash, proof),
                 ContractError::InvalidSignersHash
@@ -362,18 +333,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "failed ED25519 verification")]
     fn fail_validate_proof_invalid_signatures() {
-        let (env, contract_id, client) = setup_env();
-        let owner = Address::generate(&env);
-        let operator = Address::generate(&env);
-
-        let signers = initialize(
-            &env,
-            &client,
-            owner,
-            operator,
-            randint(0, 10),
-            randint(1, 10),
-        );
+        let (env, signers, client) = setup_env(randint(0, 10), randint(1, 10));
 
         let msg_hash: BytesN<32> = BytesN::random(&env);
         let proof = generate_proof(&env, msg_hash.clone(), signers);
@@ -382,25 +342,14 @@ mod tests {
 
         // should panic, proof is for different message hash
         // NOTE: panic occurs in std function cannot handle explicitly
-        env.as_contract(&contract_id, || {
+        env.as_contract(&client.address, || {
             assert_ok!(auth::validate_proof(&env, &different_msg_hash, proof));
         })
     }
 
     #[test]
     fn fail_validate_proof_empty_signatures() {
-        let (env, contract_id, client) = setup_env();
-        let owner = Address::generate(&env);
-        let operator = Address::generate(&env);
-
-        let signers = initialize(
-            &env,
-            &client,
-            owner,
-            operator,
-            randint(0, 10),
-            randint(1, 10),
-        );
+        let (env, signers, client) = setup_env(randint(0, 10), randint(1, 10));
 
         let msg_hash: BytesN<32> = BytesN::random(&env);
         let mut proof = generate_proof(&env, msg_hash.clone(), signers);
@@ -416,7 +365,7 @@ mod tests {
         proof.signers = new_signers;
 
         // validate_proof should panic, empty signatures
-        env.as_contract(&contract_id, || {
+        env.as_contract(&client.address, || {
             assert_err!(
                 auth::validate_proof(&env, &msg_hash, proof),
                 ContractError::InvalidSignatures
@@ -426,18 +375,8 @@ mod tests {
 
     #[test]
     fn fail_validate_proof_invalid_signer_set() {
-        let (env, contract_id, client) = setup_env();
-        let owner = Address::generate(&env);
-        let operator = Address::generate(&env);
+        let (env, signers, client) = setup_env(randint(0, 10), randint(1, 10));
 
-        let signers = initialize(
-            &env,
-            &client,
-            owner,
-            operator,
-            randint(0, 10),
-            randint(1, 10),
-        );
         let new_signers =
             generate_signers_set(&env, randint(1, 10), signers.domain_separator.clone());
 
@@ -449,7 +388,7 @@ mod tests {
         proof.signers = new_proof.signers;
 
         // validate_proof should panic, signatures do not match signers
-        env.as_contract(&contract_id, || {
+        env.as_contract(&client.address, || {
             assert_err!(
                 auth::validate_proof(&env, &msg_hash, proof),
                 ContractError::InvalidSignersHash
@@ -459,18 +398,7 @@ mod tests {
 
     #[test]
     fn fail_validate_proof_threshold_not_met() {
-        let (env, contract_id, client) = setup_env();
-        let owner = Address::generate(&env);
-        let operator = Address::generate(&env);
-
-        let signers = initialize(
-            &env,
-            &client,
-            owner,
-            operator,
-            randint(0, 10),
-            randint(1, 10),
-        );
+        let (env, signers, client) = setup_env(randint(0, 10), randint(1, 10));
 
         let mut total_weight = 0u128;
 
@@ -494,7 +422,7 @@ mod tests {
         proof.signers = new_signers;
 
         // should panic, all signatures are valid but total weight is below threshold
-        env.as_contract(&contract_id, || {
+        env.as_contract(&client.address, || {
             assert_err!(
                 auth::validate_proof(&env, &msg_hash, proof),
                 ContractError::InvalidSignatures
@@ -503,18 +431,7 @@ mod tests {
     }
     #[test]
     fn fail_validate_proof_threshold_overflow() {
-        let (env, contract_id, client) = setup_env();
-        let owner = Address::generate(&env);
-        let operator = Address::generate(&env);
-
-        let mut signers = initialize(
-            &env,
-            &client,
-            owner,
-            operator,
-            randint(0, 10),
-            randint(1, 10),
-        );
+        let (env, signers, client) = setup_env(randint(0, 10), randint(1, 10));
 
         let last_index = signers.signers.signers.len() - 1;
 
@@ -528,7 +445,7 @@ mod tests {
         let proof = generate_proof(&env, msg_hash.clone(), signers);
 
         // should panic, as modified signer wouldn't match the epoch
-        env.as_contract(&contract_id, || {
+        env.as_contract(&client.address, || {
             assert_err!(
                 auth::validate_proof(&env, &msg_hash, proof),
                 ContractError::InvalidSignersHash
@@ -538,36 +455,23 @@ mod tests {
 
     #[test]
     fn rotate_signers() {
-        let (env, contract_id, client) = setup_env();
-
-        let owner = Address::generate(&env);
-        let operator = Address::generate(&env);
-        let previous_signer_retention = 1;
-
-        let signers = initialize(
-            &env,
-            &client,
-            owner,
-            operator,
-            previous_signer_retention,
-            randint(1, 10),
-        );
+        let (env, signers, client) = setup_env(1, randint(1, 10));
 
         let msg_hash: BytesN<32> = BytesN::random(&env);
         let new_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator);
 
-        testutils::rotate_signers(&env, &contract_id, new_signers.clone());
+        testutils::rotate_signers(&env, &client.address, new_signers.clone());
 
         let proof = generate_proof(&env, msg_hash.clone(), new_signers);
 
-        env.as_contract(&contract_id, || {
+        env.as_contract(&client.address, || {
             assert!(assert_ok!(auth::validate_proof(&env, &msg_hash, proof)));
         });
     }
 
     #[test]
     fn rotate_signers_fail_empty_signers() {
-        let (env, _, _client) = setup_env();
+        let (env, _, _client) = setup_env(randint(0, 10), randint(1, 10));
 
         let empty_signers = WeightedSigners {
             signers: Vec::<WeightedSigner>::new(&env),
@@ -584,20 +488,7 @@ mod tests {
 
     #[test]
     fn rotate_signers_fail_zero_weight() {
-        let (env, _, client) = setup_env();
-
-        let owner = Address::generate(&env);
-        let operator = Address::generate(&env);
-        let previous_signer_retention = 1;
-
-        initialize(
-            &env,
-            &client,
-            owner,
-            operator,
-            previous_signer_retention,
-            randint(1, 10),
-        );
+        let (env, _, client) = setup_env(1, randint(1, 10));
 
         let mut new_signers = generate_signers_set(&env, randint(1, 10), BytesN::random(&env));
 
@@ -618,20 +509,7 @@ mod tests {
 
     #[test]
     fn rotate_signers_fail_weight_overflow() {
-        let (env, _, client) = setup_env();
-
-        let owner = Address::generate(&env);
-        let operator = Address::generate(&env);
-        let previous_signer_retention = 1;
-
-        initialize(
-            &env,
-            &client,
-            owner,
-            operator,
-            previous_signer_retention,
-            randint(1, 10),
-        );
+        let (env, _, client) = setup_env(1, randint(1, 10));
 
         let mut new_signers = generate_signers_set(&env, randint(3, 10), BytesN::random(&env));
 
@@ -652,21 +530,7 @@ mod tests {
 
     #[test]
     fn rotate_signers_fail_zero_threshold() {
-        let (env, _, client) = setup_env();
-
-        let owner = Address::generate(&env);
-        let operator = Address::generate(&env);
-        let previous_signer_retention = 1;
-
-        initialize(
-            &env,
-            &client,
-            owner,
-            operator,
-            previous_signer_retention,
-            randint(1, 10),
-        );
-
+        let (env, _, client) = setup_env(1, randint(1, 10));
         let mut new_signers = generate_signers_set(&env, randint(1, 10), BytesN::random(&env));
 
         // set the threshold to zero
@@ -681,21 +545,7 @@ mod tests {
 
     #[test]
     fn rotate_signers_fail_low_total_weight() {
-        let (env, _, client) = setup_env();
-
-        let owner = Address::generate(&env);
-        let operator = Address::generate(&env);
-        let previous_signer_retention = 1;
-
-        initialize(
-            &env,
-            &client,
-            owner,
-            operator,
-            previous_signer_retention,
-            randint(1, 10),
-        );
-
+        let (env, _, client) = setup_env(1, randint(1, 10));
         let mut new_signers = generate_signers_set(&env, randint(1, 10), BytesN::random(&env));
 
         let total_weight = new_signers
@@ -720,20 +570,7 @@ mod tests {
 
     #[test]
     fn rotate_signers_fail_wrong_signer_order() {
-        let (env, _, client) = setup_env();
-
-        let owner = Address::generate(&env);
-        let operator = Address::generate(&env);
-        let previous_signer_retention = 1;
-
-        initialize(
-            &env,
-            &client,
-            owner,
-            operator,
-            previous_signer_retention,
-            randint(1, 10),
-        );
+        let (env, _, client) = setup_env(1, randint(1, 10));
 
         let min_signers = 2; // need at least 2 signers to test incorrect ordering
         let mut new_signers =
@@ -760,20 +597,8 @@ mod tests {
 
     #[test]
     fn multi_rotate_signers() {
-        let (env, contract_id, client) = setup_env();
-
-        let owner = Address::generate(&env);
-        let operator = Address::generate(&env);
         let previous_signer_retention = randint(1, 5);
-
-        let original_signers = initialize(
-            &env,
-            &client,
-            owner,
-            operator,
-            previous_signer_retention,
-            randint(1, 10),
-        );
+        let (env, original_signers, client) = setup_env(previous_signer_retention, randint(1, 10));
 
         let msg_hash: BytesN<32> = BytesN::random(&env);
 
@@ -786,17 +611,17 @@ mod tests {
                 original_signers.domain_separator.clone(),
             );
 
-            testutils::rotate_signers(&env, &contract_id, new_signers.clone());
+            testutils::rotate_signers(&env, &client.address, new_signers.clone());
 
             let proof = generate_proof(&env, msg_hash.clone(), new_signers.clone());
 
-            env.as_contract(&contract_id, || {
+            env.as_contract(&client.address, || {
                 assert!(assert_ok!(auth::validate_proof(&env, &msg_hash, proof)));
             });
 
             let proof = generate_proof(&env, msg_hash.clone(), previous_signers.clone());
 
-            env.as_contract(&contract_id, || {
+            env.as_contract(&client.address, || {
                 assert!(!assert_ok!(auth::validate_proof(&env, &msg_hash, proof)));
             });
 
@@ -812,20 +637,8 @@ mod tests {
 
     #[test]
     fn rotate_signers_panics_on_outdated_signer_set() {
-        let (env, contract_id, client) = setup_env();
-
-        let owner = Address::generate(&env);
-        let operator = Address::generate(&env);
         let previous_signer_retention = randint(0, 5);
-
-        let original_signers = initialize(
-            &env,
-            &client,
-            owner,
-            operator,
-            previous_signer_retention,
-            randint(1, 10),
-        );
+        let (env, original_signers, client) = setup_env(previous_signer_retention, randint(1, 10));
 
         let msg_hash: BytesN<32> = BytesN::random(&env);
 
@@ -835,13 +648,13 @@ mod tests {
                 randint(1, 10),
                 original_signers.domain_separator.clone(),
             );
-            testutils::rotate_signers(&env, &contract_id, new_signers.clone());
+            testutils::rotate_signers(&env, &client.address(), new_signers.clone());
         }
 
         // Proof from the first signer set should fail
         let proof = generate_proof(&env, msg_hash.clone(), original_signers.clone());
 
-        env.as_contract(&contract_id, || {
+        env.as_contract(&client.address, || {
             assert_err!(
                 auth::validate_proof(&env, &msg_hash, proof),
                 ContractError::InvalidSigners
@@ -851,36 +664,23 @@ mod tests {
 
     #[test]
     fn rotate_signers_fail_duplicated_signers() {
-        let (env, contract_id, client) = setup_env();
-
-        let owner = Address::generate(&env);
-        let operator = Address::generate(&env);
-        let previous_signer_retention = 1;
-
-        let signers = initialize(
-            &env,
-            &client,
-            owner,
-            operator,
-            previous_signer_retention,
-            randint(1, 10),
-        );
+        let (env, contract_id, client) = setup_env(1, randint(1, 10));
 
         let msg_hash = BytesN::random(&env);
         let new_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator);
         let duplicated_signers = new_signers.clone();
 
-        testutils::rotate_signers(&env, &contract_id, new_signers.clone());
+        testutils::rotate_signers(&env, &client.address, new_signers.clone());
 
         let proof = generate_proof(&env, msg_hash.clone(), new_signers);
 
-        env.as_contract(&contract_id, || {
+        env.as_contract(&client.address, || {
             assert!(assert_ok!(auth::validate_proof(&env, &msg_hash, proof)));
         });
 
         // should panic, duplicated signers
 
-        env.as_contract(&contract_id, || {
+        env.as_contract(&client.address, || {
             assert_err!(
                 auth::rotate_signers(&env, &duplicated_signers.signers, false),
                 ContractError::DuplicateSigners
