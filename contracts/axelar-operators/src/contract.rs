@@ -1,4 +1,4 @@
-use axelar_soroban_std::ensure;
+use axelar_soroban_std::{assert_some, ensure};
 use soroban_sdk::{contract, contractimpl, Address, Env, Symbol, Val, Vec};
 
 use crate::error::ContractError;
@@ -11,11 +11,10 @@ pub struct AxelarOperators;
 #[contractimpl]
 impl AxelarOperators {
     pub fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), ContractError> {
-        let owner: Address = env
+        let owner: Address = assert_some!(env
             .storage()
             .instance()
-            .get(&DataKey::Owner)
-            .ok_or(ContractError::NotInitialized)?;
+            .get(&DataKey::Owner));
 
         owner.require_auth();
 
@@ -26,26 +25,17 @@ impl AxelarOperators {
         Ok(())
     }
 
-    pub fn owner(env: &Env) -> Result<Address, ContractError> {
-        env.storage()
+    pub fn owner(env: &Env) -> Address {
+        assert_some!(env.storage()
             .instance()
-            .get(&DataKey::Owner)
-            .ok_or(ContractError::NotInitialized)
+            .get(&DataKey::Owner))
     }
 }
 
 #[contractimpl]
 impl AxelarOperators {
     /// Initialize the operators contract with an owner.
-    pub fn initialize(env: Env, owner: Address) -> Result<(), ContractError> {
-        ensure!(
-            env.storage()
-                .instance()
-                .get::<DataKey, bool>(&DataKey::Initialized)
-                .is_none(),
-            ContractError::AlreadyInitialized
-        );
-
+    pub fn __constructor(env: Env, owner: Address) -> Result<(), ContractError> {
         env.storage().instance().set(&DataKey::Initialized, &true);
 
         env.storage().instance().set(&DataKey::Owner, &owner);
@@ -63,11 +53,7 @@ impl AxelarOperators {
     ///
     /// Only callable by the contract owner.
     pub fn add_operator(env: Env, account: Address) -> Result<(), ContractError> {
-        let owner: Address = env
-            .storage()
-            .instance()
-            .get(&DataKey::Owner)
-            .ok_or(ContractError::NotInitialized)?;
+        let owner: Address = assert_some!(env.storage().instance().get(&DataKey::Owner));
 
         owner.require_auth();
 
@@ -88,11 +74,7 @@ impl AxelarOperators {
     ///
     /// Only callable by the contract owner.
     pub fn remove_operator(env: Env, account: Address) -> Result<(), ContractError> {
-        let owner: Address = env
-            .storage()
-            .instance()
-            .get(&DataKey::Owner)
-            .ok_or(ContractError::NotInitialized)?;
+        let owner: Address = assert_some!(env.storage().instance().get(&DataKey::Owner));
 
         owner.require_auth();
 
@@ -143,11 +125,9 @@ mod tests {
     #[test]
     fn initialize_operators() {
         let env = Env::default();
-        let contract_id = env.register_contract(None, AxelarOperators);
-        let client = AxelarOperatorsClient::new(&env, &contract_id);
         let user = Address::generate(&env);
-
-        client.initialize(&user);
+        let contract_id = env.register(AxelarOperators, (&user,));
+        let client = AxelarOperatorsClient::new(&env, &contract_id);
 
         env.as_contract(&contract_id, || {
             assert_some!(env
