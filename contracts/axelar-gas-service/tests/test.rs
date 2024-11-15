@@ -26,15 +26,14 @@ fn setup_env<'a>() -> (Env, Address, Address, AxelarGasServiceClient<'a>) {
 }
 
 #[test]
-fn initialize_gas_service() {
+fn register_gas_service() {
     let env = Env::default();
 
     let gas_collector = Address::generate(&env);
     let contract_id = env.register(AxelarGasService, (&gas_collector,));
     let client = AxelarGasServiceClient::new(&env, &contract_id);
 
-    let stored_collector_address = client.gas_collector();
-    assert_eq!(stored_collector_address, gas_collector);
+    assert_eq!(client.gas_collector(), gas_collector);
 }
 
 #[test]
