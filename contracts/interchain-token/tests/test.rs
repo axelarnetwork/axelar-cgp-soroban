@@ -19,7 +19,7 @@ fn setup_env<'a>() -> (Env, InterchainTokenClient<'a>) {
 }
 
 #[test]
-fn initialize_succeeds() {
+fn register_interchain_token() {
     let env = Env::default();
     let owner = Address::generate(&env);
     let contract_id = env.register(InterchainToken, (&owner,));
