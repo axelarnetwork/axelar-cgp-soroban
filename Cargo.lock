@@ -759,6 +759,7 @@ version = "0.1.0"
 dependencies = [
  "axelar-soroban-std",
  "soroban-sdk",
+ "soroban-token-sdk",
 ]
 
 [[package]]
@@ -1317,6 +1318,15 @@ dependencies = [
  "stellar-xdr",
  "syn 2.0.39",
  "thiserror",
+]
+
+[[package]]
+name = "soroban-token-sdk"
+version = "22.0.0-rc.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "17bb933a3dcf41d234f6d669b077eb755663773630c6899a1c8a30dddf950f52"
+dependencies = [
+ "soroban-sdk",
 ]
 
 [[package]]
