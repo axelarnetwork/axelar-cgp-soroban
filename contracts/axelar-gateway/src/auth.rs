@@ -113,7 +113,8 @@ pub fn rotate_signers(
 pub fn epoch(env: &Env) -> u64 {
     env.storage()
         .instance()
-        .get(&DataKey::Epoch).expect("epoch not found")
+        .get(&DataKey::Epoch)
+        .expect("epoch not found")
 }
 
 pub fn epoch_by_signers_hash(env: &Env, signers_hash: BytesN<32>) -> Result<u64, ContractError> {
