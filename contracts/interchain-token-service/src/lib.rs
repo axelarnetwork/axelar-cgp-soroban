@@ -9,8 +9,9 @@ mod types;
 pub mod contract;
 
 #[cfg(test)]
-#[macro_use]
 mod test;
+
+#[cfg(test)]
 extern crate std;
 
 pub use contract::InterchainTokenServiceClient;

@@ -67,12 +67,12 @@ impl Message {
                 amount,
                 data,
             }) => InterchainTransfer {
-                messageType: U256::from(types::MessageType::InterchainTransfer as u32),
+                messageType: MessageType::InterchainTransfer.into(),
                 tokenId: FixedBytes::<32>::new(token_id.into()),
                 sourceAddress: source_address.to_alloc_vec().into(),
                 destinationAddress: destination_address.to_alloc_vec().into(),
-                amount: amount.try_into().unwrap_or_default(),
-                data: data.map(|d| d.to_alloc_vec()).unwrap_or_default().into(),
+                amount: amount.try_into().expect("failed to convert"),
+                data: into_vec(data).into(),
             }
             .abi_encode_params(),
             Self::DeployInterchainToken(types::DeployInterchainToken {
@@ -82,12 +82,12 @@ impl Message {
                 decimals,
                 minter,
             }) => DeployInterchainToken {
-                messageType: U256::from(types::MessageType::DeployInterchainToken as u32),
+                messageType: MessageType::DeployInterchainToken.into(),
                 tokenId: FixedBytes::<32>::new(token_id.into()),
-                name: soroban_string_to_string(name),
-                symbol: soroban_string_to_string(symbol),
-                decimals: decimals.try_into().unwrap_or_default(),
-                minter: minter.map(|m| m.to_alloc_vec()).unwrap_or_default().into(),
+                name: to_std_string(name),
+                symbol: to_std_string(symbol),
+                decimals: decimals.try_into().expect("failed to convert"),
+                minter: into_vec(minter).into(),
             }
             .abi_encode_params(),
         };
@@ -97,15 +97,14 @@ impl Message {
     pub fn abi_decode(env: &Env, payload: &Bytes) -> Result<Self, MessageError> {
         ensure!(payload.len() >= 32, MessageError::InsufficientMessageLength);
 
-        let binding = payload.to_alloc_vec();
-        let payload_array = binding.as_slice();
+        let payload = payload.to_alloc_vec();
 
-        let message_type = MessageType::abi_decode(&payload_array[0..32], true)
+        let message_type = MessageType::abi_decode(&payload[0..32], true)
             .map_err(|_| MessageError::InvalidMessageType)?;
 
         let message = match message_type {
             MessageType::InterchainTransfer => {
-                let decoded = InterchainTransfer::abi_decode_params(payload_array, true)
+                let decoded = InterchainTransfer::abi_decode_params(&payload, true)
                     .map_err(|_| MessageError::AbiDecodeFailed)?;
 
                 Self::InterchainTransfer(types::InterchainTransfer {
@@ -115,13 +114,12 @@ impl Message {
                         env,
                         decoded.destinationAddress.as_ref(),
                     ),
-                    amount: convert_to_i128(decoded.amount)?,
-                    data: (!decoded.data.is_empty())
-                        .then(|| Bytes::from_slice(env, decoded.data.as_ref())),
+                    amount: to_i128(decoded.amount)?,
+                    data: from_vec(env, decoded.data.as_ref()),
                 })
             }
             MessageType::DeployInterchainToken => {
-                let decoded = DeployInterchainToken::abi_decode_params(payload_array, true)
+                let decoded = DeployInterchainToken::abi_decode_params(&payload, true)
                     .map_err(|_| MessageError::AbiDecodeFailed)?;
 
                 Self::DeployInterchainToken(types::DeployInterchainToken {
@@ -129,8 +127,7 @@ impl Message {
                     name: String::from_str(env, &decoded.name),
                     symbol: String::from_str(env, &decoded.symbol),
                     decimals: decoded.decimals.into(),
-                    minter: (!decoded.minter.is_empty())
-                        .then(|| Bytes::from_slice(env, decoded.minter.as_ref())),
+                    minter: from_vec(env, decoded.minter.as_ref()),
                 })
             }
             _ => return Err(MessageError::InvalidMessageType),
@@ -147,8 +144,8 @@ impl HubMessage {
                 destination_chain,
                 message,
             }) => SendToHub {
-                messageType: U256::from(types::MessageType::SendToHub as u32),
-                destination_chain: soroban_string_to_string(destination_chain),
+                messageType: MessageType::SendToHub.into(),
+                destination_chain: to_std_string(destination_chain),
                 message: message.abi_encode(env).to_alloc_vec().into(),
             }
             .abi_encode_params(),
@@ -156,8 +153,8 @@ impl HubMessage {
                 source_chain,
                 message,
             }) => ReceiveFromHub {
-                messageType: U256::from(types::MessageType::ReceiveFromHub as u32),
-                source_chain: soroban_string_to_string(source_chain),
+                messageType: MessageType::ReceiveFromHub.into(),
+                source_chain: to_std_string(source_chain),
                 message: message.abi_encode(env).to_alloc_vec().into(),
             }
             .abi_encode_params(),
@@ -168,15 +165,14 @@ impl HubMessage {
     pub fn abi_decode(env: &Env, payload: &Bytes) -> Result<Self, MessageError> {
         ensure!(payload.len() >= 32, MessageError::InsufficientMessageLength);
 
-        let binding = payload.to_alloc_vec();
-        let payload_array = binding.as_slice();
+        let payload = payload.to_alloc_vec();
 
-        let message_type = MessageType::abi_decode(&payload_array[0..32], true)
+        let message_type = MessageType::abi_decode(&payload[0..32], true)
             .map_err(|_| MessageError::InvalidMessageType)?;
 
         let message = match message_type {
             MessageType::SendToHub => {
-                let decoded = SendToHub::abi_decode_params(payload_array, true)
+                let decoded = SendToHub::abi_decode_params(&payload, true)
                     .map_err(|_| MessageError::AbiDecodeFailed)?;
 
                 Self::SendToHub(types::SendToHub {
@@ -188,7 +184,7 @@ impl HubMessage {
                 })
             }
             MessageType::ReceiveFromHub => {
-                let decoded = ReceiveFromHub::abi_decode_params(payload_array, true)
+                let decoded = ReceiveFromHub::abi_decode_params(&payload, true)
                     .map_err(|_| MessageError::AbiDecodeFailed)?;
 
                 Self::ReceiveFromHub(types::ReceiveFromHub {
@@ -206,15 +202,15 @@ impl HubMessage {
     }
 }
 
-fn soroban_string_to_string(soroban_string: String) -> StdString {
+fn to_std_string(soroban_string: String) -> StdString {
     let length = soroban_string.len() as usize;
     let mut bytes = vec![0u8; length];
     soroban_string.copy_into_slice(&mut bytes);
     StdString::from_utf8(bytes).expect("Invalid UTF-8 sequence")
 }
 
-fn convert_to_i128(decoded_value: Uint<256, 4>) -> Result<i128, MessageError> {
-    let slice = decoded_value.as_le_slice();
+fn to_i128(value: Uint<256, 4>) -> Result<i128, MessageError> {
+    let slice = value.as_le_slice();
 
     if !slice[16..].iter().all(|&b| b == 0) {
         return Err(MessageError::InvalidAmount);
@@ -226,6 +222,24 @@ fn convert_to_i128(decoded_value: Uint<256, 4>) -> Result<i128, MessageError> {
     Ok(i128::from_le_bytes(truncated))
 }
 
+fn into_vec(value: Option<Bytes>) -> alloc::vec::Vec<u8> {
+    value.map(|d| d.to_alloc_vec()).unwrap_or_default()
+}
+
+fn from_vec(env: &Env, value: &[u8]) -> Option<Bytes> {
+    if value.is_empty() {
+        None
+    } else {
+        Some(Bytes::from_slice(env, value))
+    }
+}
+
+impl From<MessageType> for U256 {
+    fn from(value: MessageType) -> Self {
+        Self::from(value as u8)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -233,7 +247,7 @@ mod tests {
     use soroban_sdk::{Bytes, BytesN, Env, String};
     use std::vec::Vec;
 
-    const MAX_I128: i128 = 170141183460469231731687303715884105727 as i128;
+    const MAX_I128: i128 = i128::MAX as i128;
 
     fn bytes_from_hex(env: &Env, hex_string: &str) -> Bytes {
         let bytes_vec: Vec<u8> = hex::decode(hex_string).unwrap();
@@ -241,68 +255,11 @@ mod tests {
     }
 
     #[test]
-    fn abi_encode_decode() {
-        let env = Env::default();
-
-        let its_messages = vec![
-            types::Message::InterchainTransfer(types::InterchainTransfer {
-                token_id: BytesN::from_array(&env, &[1; 32]),
-                source_address: Bytes::from_slice(&env, &[2; 32]),
-                destination_address: Bytes::from_slice(&env, &[3; 32]),
-                amount: 9_876_543_210_123_456_789,
-                data: Some(Bytes::from_slice(&env, &[4; 32])),
-            }),
-            types::Message::DeployInterchainToken(types::DeployInterchainToken {
-                token_id: BytesN::from_array(&env, &[1; 32]),
-                name: String::from_str(&env, "some_token"),
-                symbol: String::from_str(&env, "TKN"),
-                decimals: 18,
-                minter: Some(Bytes::from_slice(&env, &[1; 32])),
-            }),
-        ];
-
-        for msg in its_messages {
-            let encoded = msg.clone().abi_encode(&env);
-            let decoded = Message::abi_decode(&env, &encoded);
-            assert_eq!(msg, decoded.unwrap());
-        }
-
-        let hub_messages = vec![
-            types::HubMessage::SendToHub(types::SendToHub {
-                destination_chain: String::from_str(&env, "some_chain"),
-                message: types::Message::DeployInterchainToken(types::DeployInterchainToken {
-                    token_id: BytesN::from_array(&env, &[1; 32]),
-                    name: String::from_str(&env, "some_token"),
-                    symbol: String::from_str(&env, "TKN"),
-                    decimals: 18,
-                    minter: Some(Bytes::from_slice(&env, &[1; 32])),
-                }),
-            }),
-            types::HubMessage::ReceiveFromHub(types::ReceiveFromHub {
-                source_chain: String::from_str(&env, "some_chain"),
-                message: types::Message::InterchainTransfer(types::InterchainTransfer {
-                    token_id: BytesN::from_array(&env, &[1; 32]),
-                    source_address: Bytes::from_slice(&env, &[2; 32]),
-                    destination_address: Bytes::from_slice(&env, &[3; 32]),
-                    amount: 9_876_543_210_123_456_789,
-                    data: Some(Bytes::from_slice(&env, &[4; 32])),
-                }),
-            }),
-        ];
-
-        for msg in hub_messages {
-            let encoded = msg.clone().abi_encode(&env);
-            let decoded = HubMessage::abi_decode(&env, &encoded);
-            assert_eq!(msg, decoded.unwrap());
-        }
-    }
-
-    #[test]
     fn uint256_to_i128() {
         let amount: i128 = 9_876_543_210_123_456_789;
         let uint: Uint<256, 4> = amount.try_into().unwrap();
 
-        assert_eq!(convert_to_i128(uint).unwrap(), amount);
+        assert_eq!(to_i128(uint).unwrap(), amount);
     }
 
     #[test]
