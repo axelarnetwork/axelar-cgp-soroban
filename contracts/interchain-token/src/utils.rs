@@ -1,4 +1,4 @@
-use soroban_sdk::{log, Address, Env, String};
+use soroban_sdk::{Address, Env, String};
 
 use crate::storage_types::{
     AllowanceDataKey, AllowanceValue, DataKey, BALANCE_BUMP_AMOUNT, BALANCE_LIFETIME_THRESHOLD,
