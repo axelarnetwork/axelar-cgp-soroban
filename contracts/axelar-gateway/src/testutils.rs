@@ -179,7 +179,7 @@ pub fn generate_proof(env: &Env, data_hash: BytesN<32>, signer_set: TestSignerSe
 pub fn rotate_signers(env: &Env, contract_id: &Address, new_signers: TestSignerSet) {
     let mut epoch_val: u64 = 0;
     env.as_contract(contract_id, || {
-        epoch_val = assert_ok!(epoch(env)) + 1;
+        epoch_val = epoch(env) + 1;
         assert_ok!(auth::rotate_signers(env, &new_signers.signers, false));
     });
 

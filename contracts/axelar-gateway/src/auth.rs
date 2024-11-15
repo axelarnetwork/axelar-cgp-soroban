@@ -50,7 +50,7 @@ pub fn validate_proof(
 
     let signers_epoch = epoch_by_signers_hash(env, signers_hash.clone())?;
 
-    let current_epoch = epoch(env)?;
+    let current_epoch = epoch(env);
 
     let is_latest_signers: bool = signers_epoch == current_epoch;
 
@@ -58,7 +58,7 @@ pub fn validate_proof(
         .storage()
         .instance()
         .get(&DataKey::PreviousSignerRetention)
-        .ok_or(ContractError::NotInitialized)?;
+        .expect("previous_signers_retention not found");
 
     ensure!(
         current_epoch - signers_epoch <= previous_signers_retention,
@@ -86,7 +86,7 @@ pub fn rotate_signers(
 
     let new_signers_hash = new_signers.hash(env);
 
-    let new_epoch: u64 = epoch(env)? + 1;
+    let new_epoch: u64 = epoch(env) + 1;
 
     env.storage().instance().set(&DataKey::Epoch, &new_epoch);
 
@@ -110,11 +110,10 @@ pub fn rotate_signers(
     Ok(())
 }
 
-pub fn epoch(env: &Env) -> Result<u64, ContractError> {
+pub fn epoch(env: &Env) -> u64 {
     env.storage()
         .instance()
-        .get(&DataKey::Epoch)
-        .ok_or(ContractError::NotInitialized)
+        .get(&DataKey::Epoch).expect("epoch not found")
 }
 
 pub fn epoch_by_signers_hash(env: &Env, signers_hash: BytesN<32>) -> Result<u64, ContractError> {
@@ -151,7 +150,7 @@ fn update_rotation_timestamp(env: &Env, enforce_rotation_delay: bool) -> Result<
         .storage()
         .instance()
         .get(&DataKey::MinimumRotationDelay)
-        .unwrap();
+        .expect("minimum_rotation_delay not found");
 
     let last_rotation_timestamp: u64 = env
         .storage()
