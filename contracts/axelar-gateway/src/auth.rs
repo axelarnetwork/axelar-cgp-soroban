@@ -298,7 +298,7 @@ mod tests {
 
     #[test]
     fn validate_proof() {
-        let (env, signers, client) = setup_env(1, 5);
+        let (env, signers, client) = setup_env(randint(0, 10), randint(1, 10));
 
         let msg_hash: BytesN<32> = BytesN::random(&env);
         let proof = generate_proof(&env, msg_hash.clone(), signers);
