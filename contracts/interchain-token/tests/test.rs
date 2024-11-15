@@ -8,7 +8,6 @@ use soroban_sdk::{
     testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, BytesN as _},
     Address, Bytes, BytesN, Env, IntoVal as _, Symbol,
 };
-
 use soroban_token_sdk::metadata::TokenMetadata;
 
 fn create_token<'a>(env: &Env, admin: &Address, minter: &Address) -> InterchainTokenClient<'a> {
@@ -389,16 +388,18 @@ fn create_token<'a>(env: &Env, admin: &Address, minter: &Address) -> InterchainT
     let token = InterchainTokenClient::new(env, &env.register_contract(None, InterchainToken {}));
     let interchain_token_service = Address::generate(&env);
     let token_id: Bytes = BytesN::<20>::random(&env).into();
-    let decimal = 6;
+    let token_meta_data = TokenMetadata {
+        decimal: 6,
+        name: "name".into_val(env),
+        symbol: "symbol".into_val(env),
+    };
 
     token.initialize_interchain_token(
         &interchain_token_service,
         admin,
         &minter,
         &token_id,
-        &decimal,
-        &"name".into_val(env),
-        &"symbol".into_val(env),
+        &token_meta_data,
     );
     token
 }
@@ -647,9 +648,13 @@ fn initialize_already_initialized() {
 
     let interchain_token_service = Address::generate(&env);
     let token_id: Bytes = BytesN::<20>::random(&env).into();
-    let decimal = 6;
 
     let token = create_token(&env, &admin, &minter);
+    let token_meta_data = TokenMetadata {
+        decimal: 6,
+        name: "name".into_val(&env),
+        symbol: "symbol".into_val(&env),
+    };
 
     assert_contract_err!(
         token.try_initialize_interchain_token(
@@ -657,9 +662,7 @@ fn initialize_already_initialized() {
             &admin,
             &minter,
             &token_id,
-            &decimal,
-            &"name".into_val(&env),
-            &"symbol".into_val(&env),
+            &token_meta_data,
         ),
         ContractError::AlreadyInitialized
     )
@@ -674,7 +677,11 @@ fn decimal_is_over_eighteen() {
 
     let interchain_token_service = Address::generate(&env);
     let token_id: Bytes = BytesN::<20>::random(&env).into();
-    let decimal = 19;
+    let token_meta_data = TokenMetadata {
+        decimal: 19,
+        name: "name".into_val(&env),
+        symbol: "symbol".into_val(&env),
+    };
 
     assert_contract_err!(
         token.try_initialize_interchain_token(
@@ -682,9 +689,7 @@ fn decimal_is_over_eighteen() {
             &admin,
             &minter,
             &token_id,
-            &decimal,
-            &"name".into_val(&env),
-            &"symbol".into_val(&env),
+            &token_meta_data,
         ),
         ContractError::InvalidDecimal
     );

@@ -14,7 +14,25 @@ pub struct InterchainToken;
 
 #[contractimpl]
 impl InterchainToken {
-    pub fn initialize(env: Env, owner: Address) -> Result<(), ContractError> {
+    pub fn initialize_interchain_token(
+        env: Env,
+        interchain_token_service: Address,
+        admin: Address,
+        minter: Address,
+        token_id: Bytes,
+        token_meta_data: TokenMetadata,
+    ) -> Result<(), ContractError> {
+        ensure!(!token_id.is_empty(), ContractError::TokenIdZero);
+        ensure!(token_meta_data.decimal <= 18, ContractError::InvalidDecimal);
+        ensure!(
+            !token_meta_data.name.is_empty(),
+            ContractError::TokenNameEmpty
+        );
+        ensure!(
+            !token_meta_data.symbol.is_empty(),
+            ContractError::TokenSymbolEmpty
+        );
+
         ensure!(
             env.storage()
                 .instance()
@@ -24,6 +42,8 @@ impl InterchainToken {
         );
 
         env.storage().instance().set(&DataKey::Initialized, &true);
+        env.storage().instance().set(&DataKey::TokenId, &token_id);
+        write_metadata(&env, token_meta_data);
 
         env.storage().instance().set(&DataKey::Owner, &owner);
 
