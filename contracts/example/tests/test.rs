@@ -8,8 +8,8 @@ use axelar_gateway::types::Message;
 use axelar_gateway::{AxelarGateway, AxelarGatewayClient};
 use axelar_soroban_std::assert_last_emitted_event;
 use axelar_soroban_std::types::Token;
-use example::contract::GmpExample;
-use example::GmpExampleClient;
+use example::contract::Example;
+use example::ExampleClient;
 use soroban_sdk::token::{StellarAssetClient, TokenClient};
 use soroban_sdk::{
     testutils::Address as _, testutils::BytesN as _, vec, Address, BytesN, Env, String,
@@ -36,11 +36,9 @@ fn setup_gas_service<'a>(env: &Env) -> (AxelarGasServiceClient<'a>, Address, Add
     (gas_service_client, gas_collector, gas_service_id)
 }
 
-fn setup_app<'a>(env: &Env, gateway: &Address, gas_service: &Address) -> GmpExampleClient<'a> {
-    let contract_id = env.register_contract(None, GmpExample);
-    let client = GmpExampleClient::new(env, &contract_id);
-
-    client.initialize_gmp_example(gateway, gas_service);
+fn setup_app<'a>(env: &Env, gateway: &Address, gas_service: &Address) -> ExampleClient<'a> {
+    let id = env.register(Example, (gateway, gas_service));
+    let client = ExampleClient::new(env, &id);
 
     client
 }

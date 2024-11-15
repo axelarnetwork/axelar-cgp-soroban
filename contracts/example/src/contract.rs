@@ -1,7 +1,7 @@
-use crate::{error::ContractError, event};
+use crate::event;
 use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::AxelarGatewayClient;
-use axelar_soroban_std::{ensure, types::Token};
+use axelar_soroban_std::types::Token;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, Env, String};
 
 use crate::storage_types::DataKey;
@@ -9,10 +9,10 @@ use crate::storage_types::DataKey;
 use axelar_gateway::executable::AxelarExecutableInterface;
 
 #[contract]
-pub struct GmpExample;
+pub struct Example;
 
 #[contractimpl]
-impl AxelarExecutableInterface for GmpExample {
+impl AxelarExecutableInterface for Example {
     fn gateway(env: &Env) -> Address {
         env.storage().instance().get(&DataKey::Gateway).unwrap()
     }
@@ -31,27 +31,12 @@ impl AxelarExecutableInterface for GmpExample {
 }
 
 #[contractimpl]
-impl GmpExample {
-    pub fn initialize_gmp_example(
-        env: Env,
-        gateway: Address,
-        gas_service: Address,
-    ) -> Result<(), ContractError> {
-        ensure!(
-            env.storage()
-                .instance()
-                .get::<DataKey, bool>(&DataKey::Initialized)
-                .is_none(),
-            ContractError::AlreadyInitialized
-        );
-
-        env.storage().instance().set(&DataKey::Initialized, &true);
+impl Example {
+    pub fn __constructor(env: Env, gateway: Address, gas_service: Address) {
         env.storage().instance().set(&DataKey::Gateway, &gateway);
         env.storage()
             .instance()
             .set(&DataKey::GasService, &gas_service);
-
-        Ok(())
     }
 
     pub fn gas_service(env: &Env) -> Address {
