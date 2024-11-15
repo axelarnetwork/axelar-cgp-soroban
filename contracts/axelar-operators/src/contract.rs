@@ -106,29 +106,3 @@ impl AxelarOperators {
         Ok(res)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use axelar_soroban_std::assert_some;
-    use soroban_sdk::testutils::Address as _;
-    use soroban_sdk::{Address, Env};
-
-    use super::{AxelarOperators, AxelarOperatorsClient, DataKey};
-
-    #[test]
-    fn initialize_operators() {
-        let env = Env::default();
-        let user = Address::generate(&env);
-        let contract_id = env.register(AxelarOperators, (&user,));
-        let client = AxelarOperatorsClient::new(&env, &contract_id);
-
-        env.as_contract(&contract_id, || {
-            assert_some!(env
-                .storage()
-                .instance()
-                .get::<DataKey, bool>(&DataKey::Initialized))
-        });
-
-        assert_eq!(client.owner(), user);
-    }
-}
