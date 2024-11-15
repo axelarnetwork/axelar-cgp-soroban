@@ -1,14 +1,14 @@
+use axelar_gateway::error::ContractError;
 use axelar_gateway::testutils::{
     generate_proof, generate_signers_set, generate_test_message, get_approve_hash, initialize,
     randint, TestSignerSet,
 };
+use axelar_gateway::types::Message;
 use axelar_gateway::AxelarGatewayClient;
 use axelar_soroban_std::{
     assert_contract_err, assert_invocation, assert_invoke_auth_err, assert_invoke_auth_ok,
     assert_last_emitted_event,
 };
-use axelar_gateway::error::ContractError;
-use axelar_gateway::types::Message;
 use soroban_sdk::Symbol;
 use soroban_sdk::{
     bytes,
