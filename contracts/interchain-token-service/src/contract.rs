@@ -15,7 +15,10 @@ impl InterchainTokenService {
     }
 
     pub fn owner(env: &Env) -> Address {
-        env.storage().instance().get(&DataKey::Owner).expect("owner not found")
+        env.storage()
+            .instance()
+            .get(&DataKey::Owner)
+            .expect("owner not found")
     }
 
     pub fn transfer_ownership(env: Env, new_owner: Address) {
