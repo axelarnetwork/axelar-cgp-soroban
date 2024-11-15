@@ -26,6 +26,18 @@ fn setup_env<'a>() -> (Env, Address, Address, AxelarGasServiceClient<'a>) {
 }
 
 #[test]
+fn initialize_gas_service() {
+    let env = Env::default();
+
+    let gas_collector = Address::generate(&env);
+    let contract_id = env.register(AxelarGasService, (&gas_collector,));
+    let client = AxelarGasServiceClient::new(&env, &contract_id);
+
+    let stored_collector_address = client.gas_collector();
+    assert_eq!(stored_collector_address, gas_collector);
+}
+
+#[test]
 fn fail_pay_gas_zero_gas_amount() {
     let (env, contract_id, _gas_collector, client) = setup_env();
 

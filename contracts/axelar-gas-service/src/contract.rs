@@ -82,12 +82,7 @@ impl AxelarGasService {
     ///
     /// Only callable by the `gas_collector`.
     pub fn collect_fees(env: Env, receiver: Address, token: Token) -> Result<(), ContractError> {
-        let gas_collector: Address = env
-            .storage()
-            .instance()
-            .get(&DataKey::GasCollector)
-            .expect("gas collector not found");
-
+        let gas_collector = Self::gas_collector(&env);
         gas_collector.require_auth();
 
         ensure!(token.amount > 0, ContractError::InvalidAmount);
@@ -111,13 +106,7 @@ impl AxelarGasService {
     ///
     /// Only callable by the `gas_collector`.
     pub fn refund(env: Env, message_id: String, receiver: Address, token: Token) {
-        let gas_collector: Address = env
-            .storage()
-            .instance()
-            .get(&DataKey::GasCollector)
-            .expect("gas collector not found");
-
-        gas_collector.require_auth();
+        Self::gas_collector(&env).require_auth();
 
         token::Client::new(&env, &token.address).transfer(
             &env.current_contract_address(),
@@ -127,30 +116,11 @@ impl AxelarGasService {
 
         event::refunded(&env, message_id, receiver, token);
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use axelar_soroban_std::assert_some;
-    use soroban_sdk::testutils::Address as _;
-    use soroban_sdk::{Address, Env};
-
-    use super::{AxelarGasService, AxelarGasServiceClient, DataKey};
-
-    #[test]
-    fn initialize_gas_service() {
-        let env = Env::default();
-
-        let gas_collector = Address::generate(&env);
-        let contract_id = env.register(AxelarGasService, (&gas_collector,));
-        let _client = AxelarGasServiceClient::new(&env, &contract_id);
-
-        let stored_collector_address = env.as_contract(&contract_id, || {
-            assert_some!(env
-                .storage()
-                .instance()
-                .get::<DataKey, Address>(&DataKey::GasCollector))
-        });
-        assert_eq!(stored_collector_address, gas_collector);
+    pub fn gas_collector(env: &Env) -> Address {
+        env.storage()
+            .instance()
+            .get(&DataKey::GasCollector)
+            .expect("gas collector not found")
     }
 }
