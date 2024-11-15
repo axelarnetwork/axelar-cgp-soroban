@@ -1,4 +1,4 @@
-use axelar_soroban_std::{assert_some, ensure};
+use axelar_soroban_std::ensure;
 use soroban_sdk::{contract, contractimpl, Address, Env, Symbol, Val, Vec};
 
 use crate::error::ContractError;
@@ -23,7 +23,10 @@ impl AxelarOperators {
     }
 
     pub fn owner(env: &Env) -> Address {
-        assert_some!(env.storage().instance().get(&DataKey::Owner))
+        env.storage()
+            .instance()
+            .get(&DataKey::Owner)
+            .expect("Owner not found")
     }
 }
 
