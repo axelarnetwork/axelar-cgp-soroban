@@ -42,7 +42,7 @@ fn setup_env<'a>() -> (Env, AxelarOperatorsClient<'a>, Address) {
 }
 
 #[test]
-fn initialize_operators() {
+fn register_operators() {
     let env = Env::default();
     let user = Address::generate(&env);
     let contract_id = env.register(AxelarOperators, (&user,));
