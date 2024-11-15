@@ -37,10 +37,8 @@ fn setup_gas_service<'a>(env: &Env) -> (AxelarGasServiceClient<'a>, Address, Add
 }
 
 fn setup_app<'a>(env: &Env, gateway: &Address, gas_service: &Address) -> GmpExampleClient<'a> {
-    let contract_id = env.register_contract(None, GmpExample);
-    let client = GmpExampleClient::new(env, &contract_id);
-
-    client.initialize_gmp_example(gateway, gas_service);
+    let id = env.register(GmpExample, (gateway, gas_service));
+    let client = GmpExampleClient::new(env, &id);
 
     client
 }
