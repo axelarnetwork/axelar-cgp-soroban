@@ -101,15 +101,15 @@ impl AxelarGateway {
 
         message_approval
             == Self::message_approval_hash(
-            &env,
-            Message {
-                source_chain,
-                message_id,
-                source_address,
-                contract_address,
-                payload_hash,
-            },
-        )
+                &env,
+                Message {
+                    source_chain,
+                    message_id,
+                    source_address,
+                    contract_address,
+                    payload_hash,
+                },
+            )
     }
 
     /// Checks if a message is executed.
@@ -269,14 +269,17 @@ impl AxelarGateway {
 
         // Add migration logic here as needed
 
-
         // DO NOT REMOVE THIS LINE, IT PREVENTS THE CONTRACT FROM BEING MIGRATED MULTIPLE TIMES
         Self::complete_migration(&env);
         Ok(())
     }
 
     fn assert_is_migrating(env: &Env) -> Result<(), ContractError> {
-        let is_migrating = env.storage().instance().get::<DataKey, bool>(&DataKey::Migrating).unwrap_or(false);
+        let is_migrating = env
+            .storage()
+            .instance()
+            .get::<DataKey, bool>(&DataKey::Migrating)
+            .unwrap_or(false);
 
         if !is_migrating {
             Err(ContractError::MigrationAlreadyCompleted)

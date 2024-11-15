@@ -93,7 +93,6 @@ impl Proof {
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use crate::types::{CommandType, Message, WeightedSigner, WeightedSigners};
@@ -167,7 +166,7 @@ mod test {
             hex!("90e3761c0794fbbd8b563a0d05d83395e7f88f64f30eebb7c5533329f6653e84"),
             hex!("60e146cb9c548ba6e614a87910d8172c9d21279a3f8f4da256ff36e15b80ea30"),
         ]
-            .map(|hash| BytesN::<32>::from_array(&env, &hash));
+        .map(|hash| BytesN::<32>::from_array(&env, &hash));
 
         let mut messages = soroban_sdk::Vec::new(&env);
 
