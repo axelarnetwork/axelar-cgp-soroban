@@ -5,4 +5,4 @@ mod storage_types;
 
 pub mod contract;
 
-pub use contract::GmpExampleClient;
+pub use contract::ExampleClient;

@@ -9,10 +9,10 @@ use crate::storage_types::DataKey;
 use axelar_gateway::executable::AxelarExecutableInterface;
 
 #[contract]
-pub struct GmpExample;
+pub struct Example;
 
 #[contractimpl]
-impl AxelarExecutableInterface for GmpExample {
+impl AxelarExecutableInterface for Example {
     fn gateway(env: &Env) -> Address {
         env.storage().instance().get(&DataKey::Gateway).unwrap()
     }
@@ -31,7 +31,7 @@ impl AxelarExecutableInterface for GmpExample {
 }
 
 #[contractimpl]
-impl GmpExample {
+impl Example {
     pub fn __constructor(env: Env, gateway: Address, gas_service: Address) {
         env.storage().instance().set(&DataKey::Gateway, &gateway);
         env.storage()
