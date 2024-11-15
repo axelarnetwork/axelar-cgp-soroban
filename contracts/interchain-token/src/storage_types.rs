@@ -25,6 +25,7 @@ pub struct AllowanceValue {
 pub enum DataKey {
     Allowance(AllowanceDataKey),
     Balance(Address),
+    State(Address),
     Admin,
     Minter(Address),
     TokenId,

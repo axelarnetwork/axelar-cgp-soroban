@@ -1,92 +1,85 @@
+use axelar_soroban_std::ensure;
 use soroban_sdk::{contract, contractimpl, Address, Env};
 
 use crate::event;
 use crate::storage_types::DataKey;
+use crate::utils::{
+    admin, check_nonnegative_amount, extend_instance_ttl, read_allowance, read_balance,
+    read_decimal, read_name, read_symbol, receive_balance, spend_allowance, spend_balance,
+    write_allowance, write_metadata,
+};
 
 #[contract]
 pub struct InterchainToken;
 
 #[contractimpl]
 impl InterchainToken {
-    pub fn __constructor(env: Env,
-        owner: Address,
-        interchain_token_service: Address,
-        minter: Address,
-        token_id: Bytes,
-        token_meta_data: TokenMetadata,) {
-        shared_interfaces::set_owner(&env, &owner);
+    pub fn initialize(env: Env, owner: Address) -> Result<(), ContractError> {
+        ensure!(
+            env.storage()
+                .instance()
+                .get::<DataKey, bool>(&DataKey::Initialized)
+                .is_none(),
+            ContractError::AlreadyInitialized
+        );
 
-        ensure!(!token_id.is_empty(), ContractError::TokenIdZero);
+        env.storage().instance().set(&DataKey::Initialized, &true);
 
-        Self::validate_token_metadata(token_meta_data.clone())?;
-
-        env.storage().instance().set(&DataKey::TokenId, &token_id);
-
-        write_metadata(&env, token_meta_data);
-
-        env.storage()
-            .persistent()
-            .set(&DataKey::Minter(minter), &true);
-        env.storage()
-            .persistent()
-            .set(&DataKey::Minter(interchain_token_service.clone()), &true);
-
-        env.storage()
-            .instance()
-            .set(&DataKey::InterchainTokenService, &interchain_token_service);
+        env.storage().instance().set(&DataKey::Owner, &owner);
 
         Ok(())
     }
 
-    pub fn owner(env: &Env) -> Address {
+    pub fn owner(env: &Env) -> Result<Address, ContractError> {
         env.storage()
             .instance()
             .get(&DataKey::Owner)
-            .expect("owner not found")
+            .ok_or(ContractError::NotInitialized)
     }
 
-    pub fn transfer_ownership(env: Env, new_owner: Address) {
-        let owner: Address = Self::owner(&env);
+    pub fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), ContractError> {
+        let owner: Address = Self::owner(&env)?;
         owner.require_auth();
 
-        shared_interfaces::set_owner(&env, &new_owner);
+        env.storage().instance().set(&DataKey::Owner, &new_owner);
 
         event::transfer_ownership(&env, owner, new_owner);
-    }
-}
 
-impl InterchainToken {
-    // Modify this function to add migration logic
-    const fn run_migration(_env: &Env, _migration_data: ()) {}
+        Ok(())
+    }
+
+    pub fn set_admin(env: Env, new_admin: Address) {
+        let admin = admin(&env);
+        admin.require_auth();
+
+        extend_instance_ttl(&env);
+
+        env.storage().instance().set(&DataKey::Admin, &admin);
+
+        TokenUtils::new(&env)
+            .events()
+            .set_admin(admin.clone(), new_admin.clone());
+
+        event::set_admin(&env, admin, new_admin);
+    }
+
+    pub fn add_minter(env: &Env, minter: Address) {
+        admin(env).require_auth();
+
+        env.storage()
+            .persistent()
+            .set(&DataKey::Minter(minter.clone()), &true);
+
+        event::add_minter(env, minter);
+    }
 }
 
 #[contractimpl]
-impl MigratableInterface for InterchainToken {
-    type MigrationData = ();
-    type Error = ContractError;
-
-    fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
-        migrate::<Self>(env, || Self::run_migration(env, migration_data))
-            .map_err(|_| ContractError::MigrationNotAllowed)
+impl token::Interface for InterchainToken {
+    fn allowance(env: Env, from: Address, spender: Address) -> i128 {
+        extend_instance_ttl(&env);
+        read_allowance(&env, from, spender).amount
     }
-}
-
-#[contractimpl]
-impl UpgradableInterface for InterchainToken {
-    fn version(env: &Env) -> String {
-        String::from_str(env, env!("CARGO_PKG_VERSION"))
-    }
-
-    fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
-        shared_interfaces::upgrade::<Self>(env, new_wasm_hash);
-    }
-}
-
-#[contractimpl]
-impl OwnableInterface for InterchainToken {
-    // boilerplate necessary for the contractimpl macro to include function in the generated client
-    fn owner(env: &Env) -> Address {
-        shared_interfaces::owner(env)
 
     fn approve(env: Env, from: Address, spender: Address, amount: i128, expiration_ledger: u32) {
         from.require_auth();
