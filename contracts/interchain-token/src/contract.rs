@@ -24,14 +24,18 @@ impl InterchainToken {
         admin: Address,
         minter: Address,
         token_id: Bytes,
-        decimal: u32,
-        name: String,
-        symbol: String,
+        token_meta_data: TokenMetadata,
     ) -> Result<(), ContractError> {
-        ensure!(decimal <= 18, ContractError::InvalidDecimal);
-        ensure!(token_id.len() > 0, ContractError::TokenIdZero);
-        ensure!(name.len() > 0, ContractError::TokenNameEmpty);
-        ensure!(symbol.len() > 0, ContractError::TokenSymbolEmpty);
+        ensure!(!token_id.is_empty(), ContractError::TokenIdZero);
+        ensure!(token_meta_data.decimal <= 18, ContractError::InvalidDecimal);
+        ensure!(
+            !token_meta_data.name.is_empty(),
+            ContractError::TokenNameEmpty
+        );
+        ensure!(
+            !token_meta_data.symbol.is_empty(),
+            ContractError::TokenSymbolEmpty
+        );
 
         ensure!(
             env.storage()
@@ -43,14 +47,7 @@ impl InterchainToken {
 
         env.storage().instance().set(&DataKey::Initialized, &true);
         env.storage().instance().set(&DataKey::TokenId, &token_id);
-        write_metadata(
-            &env,
-            TokenMetadata {
-                decimal,
-                name,
-                symbol,
-            },
-        );
+        write_metadata(&env, token_meta_data);
 
         env.storage().instance().set(&DataKey::Admin, &admin);
         env.storage()
@@ -126,7 +123,7 @@ impl InterchainToken {
             .persistent()
             .set(&DataKey::Minter(minter.clone()), &true);
 
-        event::add_minter(&env, minter);
+        event::add_minter(env, minter);
     }
 }
 
