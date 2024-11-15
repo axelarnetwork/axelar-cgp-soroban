@@ -36,16 +36,16 @@ pub fn initialize(
     let operator = Address::generate(&env);
     let signer_set = generate_signers_set(env, num_signers, BytesN::random(env));
     let initial_signers = vec![&env, signer_set.signers.clone()];
-    let minimum_rotation_delay = 0;
+    let minimum_rotation_delay: u64 = 0;
 
     let contract_id = env.register(
         AxelarGateway,
         (
-            &owner,
-            &operator,
+            owner,
+            operator,
             &signer_set.domain_separator,
             minimum_rotation_delay,
-            (previous_signers_retention as u64),
+            previous_signers_retention as u64,
             initial_signers,
         ),
     );
