@@ -2,6 +2,9 @@
 name = "axelar-gas-service"
 version = "0.1.0"
 edition = { workspace = true }
+description = "Contract related to Axelar Gas Service."
+license = "MIT"
+publish = true
 
 [lib]
 crate-type = ["cdylib", "rlib"]
