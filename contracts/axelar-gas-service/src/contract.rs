@@ -1,4 +1,3 @@
-use axelar_soroban_std::assert_some;
 use soroban_sdk::{contract, contractimpl, token, Address, Bytes, Env, String};
 
 use axelar_soroban_std::{ensure, types::Token};
@@ -83,8 +82,11 @@ impl AxelarGasService {
     ///
     /// Only callable by the `gas_collector`.
     pub fn collect_fees(env: Env, receiver: Address, token: Token) -> Result<(), ContractError> {
-        let gas_collector: Address =
-            assert_some!(env.storage().instance().get(&DataKey::GasCollector));
+        let gas_collector: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::GasCollector)
+            .expect("gas collector not found");
 
         gas_collector.require_auth();
 
