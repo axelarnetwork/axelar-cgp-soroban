@@ -1,9 +1,7 @@
-use crate::error::ContractError;
+use soroban_sdk::{contract, contractimpl, Address, Env};
+
 use crate::event;
-use axelar_soroban_std::shared_interfaces;
-use axelar_soroban_std::shared_interfaces::{migrate, UpgradableInterface};
-use axelar_soroban_std::shared_interfaces::{MigratableInterface, OwnableInterface};
-use soroban_sdk::{contract, contractimpl, Address, BytesN, Env, String};
+use crate::storage_types::DataKey;
 
 #[contract]
 pub struct InterchainToken;
@@ -12,6 +10,13 @@ pub struct InterchainToken;
 impl InterchainToken {
     pub fn __constructor(env: Env, owner: Address) {
         shared_interfaces::set_owner(&env, &owner);
+    }
+
+    pub fn owner(env: &Env) -> Address {
+        env.storage()
+            .instance()
+            .get(&DataKey::Owner)
+            .expect("owner not found")
     }
 
     pub fn transfer_ownership(env: Env, new_owner: Address) {

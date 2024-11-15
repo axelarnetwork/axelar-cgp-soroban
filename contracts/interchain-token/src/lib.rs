@@ -1,8 +1,12 @@
-#![no_std]
-
-mod event;
-
 pub mod contract;
-mod error;
+pub mod error;
+mod event;
+mod storage_types;
+mod utils;
 
-pub use contract::InterchainTokenClient;
+// Allows using std (and its macros) in test modules
+#[cfg(test)]
+#[macro_use]
+extern crate std;
+
+pub use crate::contract::InterchainTokenClient;
