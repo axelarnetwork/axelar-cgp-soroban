@@ -108,7 +108,8 @@ fn validate_message() {
         ),
     );
 
-    assert_eq!(env.events().all().len(), 0);
+    // there is an event emitted when initializing, ensure that no more are emitted
+    assert_eq!(env.events().all().len(), 1);
 }
 
 #[test]
