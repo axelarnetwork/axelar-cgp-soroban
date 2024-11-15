@@ -14,8 +14,6 @@ pub struct AxelarGasService;
 impl AxelarGasService {
     /// Initialize the gas service contract with a gas_collector address.
     pub fn __constructor(env: Env, gas_collector: Address) {
-        env.storage().instance().set(&DataKey::Initialized, &true);
-
         env.storage()
             .instance()
             .set(&DataKey::GasCollector, &gas_collector);
@@ -110,14 +108,12 @@ impl AxelarGasService {
     /// Refunds gas payment to the receiver in relation to a specific cross-chain transaction.
     ///
     /// Only callable by the `gas_collector`.
-    pub fn refund(
-        env: Env,
-        message_id: String,
-        receiver: Address,
-        token: Token,
-    ) -> Result<(), ContractError> {
-        let gas_collector: Address =
-            assert_some!(env.storage().instance().get(&DataKey::GasCollector));
+    pub fn refund(env: Env, message_id: String, receiver: Address, token: Token) {
+        let gas_collector: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::GasCollector)
+            .expect("gas collector not found");
 
         gas_collector.require_auth();
 
@@ -128,8 +124,6 @@ impl AxelarGasService {
         );
 
         event::refunded(&env, message_id, receiver, token);
-
-        Ok(())
     }
 }
 
@@ -148,13 +142,6 @@ mod tests {
         let gas_collector = Address::generate(&env);
         let contract_id = env.register(AxelarGasService, (&gas_collector,));
         let _client = AxelarGasServiceClient::new(&env, &contract_id);
-
-        assert!(env.as_contract(&contract_id, || {
-            assert_some!(env
-                .storage()
-                .instance()
-                .get::<DataKey, bool>(&DataKey::Initialized))
-        }));
 
         let stored_collector_address = env.as_contract(&contract_id, || {
             assert_some!(env
