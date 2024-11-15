@@ -3,12 +3,15 @@ extern crate std;
 
 use axelar_operators::error::ContractError;
 use axelar_soroban_std::{
-    assert_contract_err, assert_last_emitted_event, testutils::assert_invocation,
+    assert_contract_err, assert_invoke_auth_err, assert_last_emitted_event,
+    testutils::assert_invocation,
 };
 
 use axelar_operators::contract::{AxelarOperators, AxelarOperatorsClient};
 use soroban_sdk::{
-    contract, contractimpl, symbol_short, testutils::Address as _, Address, Env, Symbol, Vec,
+    contract, contractimpl, symbol_short,
+    testutils::{Address as _, MockAuth, MockAuthInvoke},
+    Address, Env, Symbol, Val, Vec,
 };
 
 #[contract]
@@ -224,7 +227,6 @@ fn fail_execute_not_operator() {
 }
 
 #[test]
-#[should_panic(expected = "This method should fail")]
 fn fail_execute_when_target_panics() {
     let (env, client, target) = setup_env();
 
@@ -234,10 +236,13 @@ fn fail_execute_when_target_panics() {
     client.add_operator(&operator);
 
     // call execute as an operator
-    client.execute(
-        &operator,
-        &target,
-        &symbol_short!("failing"),
-        &Vec::new(&env),
+    assert_invoke_auth_err!(
+        operator,
+        client.try_execute(
+            &operator,
+            &target,
+            &symbol_short!("failing"),
+            &Vec::<Val>::new(&env),
+        )
     );
 }
