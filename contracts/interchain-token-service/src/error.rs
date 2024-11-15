@@ -4,9 +4,7 @@ use soroban_sdk::contracterror;
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[repr(u32)]
 pub enum ContractError {
-    NotInitialized = 1,
-    AlreadyInitialized = 2,
-    NotOwner = 3,
-    TrustedAddressAlreadySet = 4,
-    NoTrustedAddressSet = 5,
+    NotOwner = 1,
+    TrustedAddressAlreadySet = 2,
+    NoTrustedAddressSet = 3,
 }
