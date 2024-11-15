@@ -33,8 +33,6 @@ impl AxelarGateway {
         previous_signers_retention: u64,
         initial_signers: Vec<WeightedSigners>,
     ) -> Result<(), ContractError> {
-        env.storage().instance().set(&DataKey::Initialized, &true);
-
         env.storage().instance().set(&DataKey::Owner, &owner);
         env.storage().instance().set(&DataKey::Operator, &operator);
 
