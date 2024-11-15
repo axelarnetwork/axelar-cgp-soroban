@@ -266,7 +266,7 @@ mod tests {
     }
 
     #[test]
-    fn test_initialize() {
+    fn register_auth() {
         setup_env(randint(0, 10), randint(1, 10));
     }
 
