@@ -1,0 +1,19 @@
+[package]
+name = "upgrader"
+version = "0.1.0"
+edition = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+soroban-sdk = { workspace = true }
+axelar-gateway = { workspace = true }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+
+[features]
+
+[lints]
+workspace = true

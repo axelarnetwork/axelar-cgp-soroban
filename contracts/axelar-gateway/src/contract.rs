@@ -101,15 +101,15 @@ impl AxelarGateway {
 
         message_approval
             == Self::message_approval_hash(
-                &env,
-                Message {
-                    source_chain,
-                    message_id,
-                    source_address,
-                    contract_address,
-                    payload_hash,
-                },
-            )
+            &env,
+            Message {
+                source_chain,
+                message_id,
+                source_address,
+                contract_address,
+                payload_hash,
+            },
+        )
     }
 
     /// Checks if a message is executed.
@@ -258,8 +258,31 @@ impl AxelarGateway {
         Self::owner(&env)?.require_auth();
 
         env.deployer().update_current_contract_wasm(new_wasm_hash);
+        Self::start_migrating(&env);
 
         Ok(())
+    }
+
+    pub fn migrate(env: Env, _migration_data: ()) -> Result<(), ContractError> {
+        // DO NOT REMOVE THIS LINE, IT PREVENTS THE CONTRACT FROM BEING MIGRATED MULTIPLE TIMES
+        Self::assert_is_migrating(&env)?;
+
+        // Add migration logic here as needed
+
+
+        // DO NOT REMOVE THIS LINE, IT PREVENTS THE CONTRACT FROM BEING MIGRATED MULTIPLE TIMES
+        Self::complete_migration(&env);
+        Ok(())
+    }
+
+    fn assert_is_migrating(env: &Env) -> Result<(), ContractError> {
+        let is_migrating = env.storage().instance().get::<DataKey, bool>(&DataKey::Migrating).unwrap_or(false);
+
+        if !is_migrating {
+            Err(ContractError::MigrationAlreadyCompleted)
+        } else {
+            Ok(())
+        }
     }
 
     pub fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), ContractError> {
@@ -290,9 +313,7 @@ impl AxelarGateway {
     pub fn signers_hash_by_epoch(env: &Env, epoch: u64) -> Result<BytesN<32>, ContractError> {
         auth::signers_hash_by_epoch(env, epoch)
     }
-}
 
-impl AxelarGateway {
     /// Get the message approval value by `source_chain` and `message_id`, defaulting to `MessageNotApproved`
     fn message_approval(
         env: &Env,
@@ -323,5 +344,13 @@ impl AxelarGateway {
         env.storage()
             .instance()
             .extend_ttl(INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
+    }
+
+    fn start_migrating(env: &Env) {
+        env.storage().instance().set(&DataKey::Migrating, &true);
+    }
+
+    fn complete_migration(env: &Env) {
+        env.storage().instance().set(&DataKey::Migrating, &false);
     }
 }
