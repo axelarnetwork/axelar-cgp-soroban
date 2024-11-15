@@ -1,0 +1,54 @@
+# This workflow creates the PR that will trigger the new release and update the versions of the packages.
+# It's triggered manually once the team is ready to push a new release.
+name: Create Release PR
+
+on:
+  workflow_dispatch:
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  create-release-pr:
+    name: Create Release PR
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+
+    steps:
+      - name: Check if a branch is whitelisted and maintained
+        id: branch-check
+        run: |
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          WHITELISTED_BRANCHES=("main" "releases/*")
+
+          IS_WHITELISTED=false
+          # Check the branch against the whitelist using wildcard matching
+          for BRANCH in "${WHITELISTED_BRANCHES[@]}"; do
+            if [[ "$BRANCH_NAME" == $BRANCH ]]; then
+              IS_WHITELISTED=true;
+              break;
+            fi
+          done
+
+          if [ "$IS_WHITELISTED" == true ]; then
+            echo "Branch is whitelisted: $BRANCH_NAME"
+          else
+            echo "Branch $BRANCH_NAME is not whitelisted."
+            exit 1
+          fi
+
+          echo "branch_name=${BRANCH_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.branch-check.outputs.branch_name }}
+
+      - name: Run release-plz
+        uses: MarcoIeni/release-plz-action@v0.5.82
+        with:
+          # Run `release-plz release-pr` command.
+          command: release-pr
+          version: "0.3.105"
+        env:
+         GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+         CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

@@ -1,0 +1,90 @@
+# This workflow creates a github release using release-plz, and publishes it as a rust crates and also create the necessary artifacts (wasm).
+# It's triggered once a release PR (created by the create-release-pr workflow) gets merged to other release branches.
+name: Release
+on:
+  # Once the PR gets merged to `main` or other `releases` branches
+  pull_request:
+    branches:
+      - main
+      - 'releases/**'
+    types: [closed]
+
+  workflow_dispatch:
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+
+  # Publishes a release in case the release isn't published
+  publish-release:
+    name: Publish releases
+
+    # Add checks to see if the merged PR is a release.
+    if: |
+      ((github.event.pull_request.merged == true) &&
+      contains(github.event.pull_request.labels.*.name, 'release'))
+
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+
+    outputs:
+      releases: ${{ steps.prepare-matrix.outputs.releases }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+  
+      # Creates git tags and publishes the crates of the new releases
+      - name: Publish release
+        id: publish-release
+        uses: MarcoIeni/release-plz-action@fff938ea2923fdfa35797fff63537b00f30fe6f9 # v0.5.82
+        with:
+          command: release
+          version: "0.3.105"
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Prepare JSON output to be a matrix GHA format
+        id: prepare-matrix
+        run: |
+          echo "releases=$(echo '${{ steps.publish-release.outputs.releases }}' | jq -c '.')" >> $GITHUB_OUTPUT
+
+  # Creates other artifacts needed (`wasm` files)
+  build-and-upload:
+    name: Build artifacts for ${{ matrix.releases.package_name }}-v${{ matrix.releases.version }}
+    needs: publish-release
+
+    # Once a release is done for a package, we iterate on each of these packages and build its corresponding artifacts and upload them
+    strategy:
+      matrix:
+        releases: ${{ fromJson(needs.publish-release.outputs.releases) }}
+
+    uses: ./.github/workflows/reusable-build-upload.yaml
+
+    permissions:
+      id-token: write
+      contents: read
+
+    with:
+      package-name: "${{ matrix.releases.package_name }}"
+      package-version: "${{ matrix.releases.version }}"
+      package-git-tag: "${{ matrix.releases.tag }}"
+
+      # CF Bucket related variables
+      cf-bucket-name: "${{ vars.CF_BUCKET_NAME }}"
+
+      # The root key to be used for accessing the configs. (ex: `test-root-key` puts releases in `test-root-key/*`)
+      cf-config-bucket-root-key: "${{ vars.CF_BUCKET_ROOT_KEY }}"
+
+    secrets:
+      github-token: "${{ secrets.PAT_TOKEN }}"
+      cf-endpoint-url: "${{ secrets.CF_ENDPOINT_URL }}"
+      cf-bucket-access-key-id: ${{ secrets.CF_BUCKET_ACCESS_KEY_ID }}
+      cf-bucket-secret-access-key: ${{ secrets.CF_BUCKET_SECRET_ACCESS_KEY }}
