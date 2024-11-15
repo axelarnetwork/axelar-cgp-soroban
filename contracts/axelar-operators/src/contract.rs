@@ -11,7 +11,7 @@ pub struct AxelarOperators;
 #[contractimpl]
 impl AxelarOperators {
     pub fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), ContractError> {
-        let owner: Address = assert_some!(env.storage().instance().get(&DataKey::Owner));
+        let owner: Address = Self::owner(&env);
 
         owner.require_auth();
 
@@ -31,7 +31,6 @@ impl AxelarOperators {
 impl AxelarOperators {
     /// Initialize the operators contract with an owner.
     pub fn __constructor(env: Env, owner: Address) {
-        env.storage().instance().set(&DataKey::Initialized, &true);
         env.storage().instance().set(&DataKey::Owner, &owner);
     }
 
@@ -46,9 +45,7 @@ impl AxelarOperators {
     ///
     /// Only callable by the contract owner.
     pub fn add_operator(env: Env, account: Address) -> Result<(), ContractError> {
-        let owner: Address = assert_some!(env.storage().instance().get(&DataKey::Owner));
-
-        owner.require_auth();
+        Self::owner(&env).require_auth();
 
         let key = DataKey::Operators(account.clone());
 
@@ -67,9 +64,7 @@ impl AxelarOperators {
     ///
     /// Only callable by the contract owner.
     pub fn remove_operator(env: Env, account: Address) -> Result<(), ContractError> {
-        let owner: Address = assert_some!(env.storage().instance().get(&DataKey::Owner));
-
-        owner.require_auth();
+        Self::owner(&env).require_auth();
 
         let key = DataKey::Operators(account.clone());
 
