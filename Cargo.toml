@@ -18,7 +18,7 @@ axelar-gateway = { version = "^0.1.0", path = "contracts/axelar-gateway" }
 axelar-operators = { version = "^0.1.0", path = "contracts/axelar-operators" }
 interchain-token-service = { version = "^0.1.0", path = "contracts/interchain-token-service" }
 interchain-token = { version = "^0.1.0", path = "contracts/interchain-token" }
-gmp-example = { version = "^0.1.0", path = "contracts/gmp-example" }
+example = { version = "^0.1.0", path = "contracts/example" }
 
 [workspace.lints.clippy]
 nursery = "warn"

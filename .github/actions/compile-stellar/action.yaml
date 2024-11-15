@@ -29,14 +29,17 @@ runs:
       shell: bash
       if: steps.cache-stellar.outputs.cache-hit != 'true'
       working-directory: ./stellar-cli
-      run: cargo install "stellar-cli@${{ inputs.stellar-version }}"
+      run: cargo install "stellar-cli@${{ inputs.stellar-version }}" --features opt
 
     - name: Copy binaries
+      shell: bash
       if: steps.cache-stellar.outputs.cache-hit != 'true'
       run: |
         mkdir -p ./stellar-binaries
         cp "$HOME/.cargo/bin/stellar" ./stellar-binaries/stellar
         cp "$HOME/.cargo/bin/soroban" ./stellar-binaries/soroban
+        chmod +x ./stellar-binaries/stellar
+        chmod +x ./stellar-binaries/soroban
 
     - name: Save Stellar binaries
       if: steps.cache-stellar.outputs.cache-hit != 'true'
@@ -51,5 +54,3 @@ runs:
       run: |
         sudo cp ./stellar-binaries/stellar /usr/local/bin/stellar
         sudo cp ./stellar-binaries/soroban /usr/local/bin/soroban
-        chmod +x /usr/local/bin/stellar
-        chmod +x /usr/local/bin/soroban
