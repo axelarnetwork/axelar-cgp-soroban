@@ -18,71 +18,22 @@ fn setup_env<'a>() -> (Env, Address, Address, AxelarGasServiceClient<'a>) {
 
     env.mock_all_auths();
 
-    let contract_id = env.register_contract(None, AxelarGasService);
-
-    let client = AxelarGasServiceClient::new(&env, &contract_id);
     let gas_collector: Address = Address::generate(&env);
-    client.initialize_gas_service(&gas_collector);
+    let contract_id = env.register(AxelarGasService, (&gas_collector,));
+    let client = AxelarGasServiceClient::new(&env, &contract_id);
 
     (env, contract_id, gas_collector, client)
 }
 
 #[test]
-fn fail_not_initialized() {
-    // only collect_fees() and refund() require initialization, so setup and call those.
-
-    // do setup_env without initializing at the end
+fn register_gas_service() {
     let env = Env::default();
 
-    env.mock_all_auths();
-
-    let contract_id = env.register_contract(None, AxelarGasService);
-
+    let gas_collector = Address::generate(&env);
+    let contract_id = env.register(AxelarGasService, (&gas_collector,));
     let client = AxelarGasServiceClient::new(&env, &contract_id);
-    let gas_collector: Address = Address::generate(&env);
 
-    // collect_fees() setup
-
-    let asset = env.register_stellar_asset_contract_v2(Address::generate(&env));
-
-    let supply: i128 = 1000;
-    let refund_amount = 1;
-    let token = Token {
-        address: asset.address(),
-        amount: refund_amount,
-    };
-    StellarAssetClient::new(&env, &token.address).mint(&contract_id, &supply);
-
-    assert_contract_err!(
-        client.try_collect_fees(&gas_collector, &token),
-        ContractError::NotInitialized
-    );
-
-    // refund() setup
-
-    let receiver: Address = Address::generate(&env);
-    let message_id = String::from_str(
-        &env,
-        &format!(
-            "{}-{}",
-            "0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d", 0
-        ),
-    );
-
-    assert_contract_err!(
-        client.try_refund(&message_id, &receiver, &token),
-        ContractError::NotInitialized
-    );
-}
-
-#[test]
-fn fail_already_initialized() {
-    let (_env, _contract_id, gas_collector, client) = setup_env();
-
-    assert_contract_err!(
-        client.try_initialize_gas_service(&gas_collector),
-        ContractError::AlreadyInitialized
-    );
+    assert_eq!(client.gas_collector(), gas_collector);
 }
 
 #[test]
