@@ -1,9 +1,8 @@
 #![cfg(test)]
 
-use axelar_gateway::testutils::initialize;
+use axelar_gateway::testutils::setup_gateway;
 
-use axelar_gateway::AxelarGatewayClient;
-use soroban_sdk::{testutils::Address as _, Address, Env, String};
+use soroban_sdk::{Env, String};
 
 // For reproducibility:
 // 1. Update the package version in Cargo.toml to reflect new changes.
@@ -31,14 +30,7 @@ fn upgrade() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let gateway_id = env.register_contract_wasm(None, old_contract::WASM);
-    let gateway_client = AxelarGatewayClient::new(&env, &gateway_id);
-    let owner = Address::generate(&env);
-    let operator = Address::generate(&env);
-
-    initialize(&env, &gateway_client, owner, operator, 0, 5);
-
-    let client = old_contract::Client::new(&env, &gateway_id);
+    let (_signers, client) = setup_gateway(&env, 0, 5);
 
     assert_eq!(
         String::from_str(&env, OLD_CONTRACT_VERSION),
