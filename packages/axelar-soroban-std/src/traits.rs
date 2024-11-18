@@ -7,6 +7,7 @@ pub trait IntoVec<T> {
     fn into_vec(self, env: &Env) -> Vec<T>;
 }
 
+#[cfg(any(test, feature = "testutils"))]
 impl<T: Clone + IntoVal<Env, Val> + TryFromVal<Env, Val>> IntoVec<T> for std::vec::Vec<T> {
     fn into_vec(self, env: &Env) -> Vec<T> {
         Vec::from_slice(env, self.as_slice())
