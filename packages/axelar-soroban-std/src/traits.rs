@@ -5,7 +5,7 @@ pub trait ThenOk<T, E> {
     fn then_ok(self, ok: T, err: E) -> Result<T, E>;
 }
 
-impl<T, E, F: FnOnce(T) -> Result<T, E>> ThenOk<T, E> for bool {
+impl<T, E> ThenOk<T, E> for bool {
     fn then_ok(self, ok: T, err: E) -> Result<T, E> {
         self.then_some(ok).ok_or(err)
     }
