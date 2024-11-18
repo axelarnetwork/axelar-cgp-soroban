@@ -1,11 +1,11 @@
 use crate::error::ContractError;
+use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::types::{CommandType, Message, Proof, WeightedSigners};
+use crate::{auth, event};
 use axelar_soroban_std::ensure;
+use axelar_soroban_std::traits::ThenOk;
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
-
-use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
-use crate::{auth, event};
 
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -101,15 +101,15 @@ impl AxelarGateway {
 
         message_approval
             == Self::message_approval_hash(
-                &env,
-                Message {
-                    source_chain,
-                    message_id,
-                    source_address,
-                    contract_address,
-                    payload_hash,
-                },
-            )
+            &env,
+            Message {
+                source_chain,
+                message_id,
+                source_address,
+                contract_address,
+                payload_hash,
+            },
+        )
     }
 
     /// Checks if a message is executed.
@@ -281,11 +281,7 @@ impl AxelarGateway {
             .get::<DataKey, bool>(&DataKey::Migrating)
             .unwrap_or(false);
 
-        if !is_migrating {
-            Err(ContractError::MigrationAlreadyCompleted)
-        } else {
-            Ok(())
-        }
+        is_migrating.then_ok((), ContractError::MigrationAlreadyCompleted)
     }
 
     pub fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), ContractError> {

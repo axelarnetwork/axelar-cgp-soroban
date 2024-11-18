@@ -44,17 +44,8 @@ fn assert_new_version_is_different(
     contract_address: &Address,
     new_version: &String,
 ) -> Result<(), ContractError> {
-    let cur_version: String = env.invoke_contract(
-        &contract_address,
-        &version_fn(&env),
-        soroban_sdk::vec![&env],
-    );
-
-    if cur_version != *new_version {
-        Ok(())
-    } else {
-        Err(ContractError::SameVersion)
-    }
+    let no_match = current_version(&env, &contract_address) != *new_version;
+    no_match.then_ok((), ContractError::SameVersion)
 }
 
 fn assert_new_version_matches_expected(
@@ -62,17 +53,16 @@ fn assert_new_version_matches_expected(
     contract_address: &Address,
     new_version: &String,
 ) -> Result<(), ContractError> {
-    let cur_version: String = env.invoke_contract(
-        &contract_address,
-        &version_fn(&env),
-        soroban_sdk::vec![&env],
-    );
+    let versions_match = current_version(&env, &contract_address) == *new_version;
+    versions_match.then_ok((), ContractError::VersionMismatch)
+}
 
-    if cur_version == *new_version {
-        Ok(())
-    } else {
-        Err(ContractError::VersionMismatch)
-    }
+fn current_version(env: &Env, contract_address: &Address) -> String {
+    env.invoke_contract(
+        contract_address,
+        &version_fn(env),
+        soroban_sdk::vec![env],
+    )
 }
 
 #[cfg(test)]
