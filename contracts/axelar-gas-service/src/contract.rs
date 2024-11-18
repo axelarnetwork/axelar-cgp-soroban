@@ -12,22 +12,10 @@ pub struct AxelarGasService;
 #[contractimpl]
 impl AxelarGasService {
     /// Initialize the gas service contract with a gas_collector address.
-    pub fn initialize_gas_service(env: Env, gas_collector: Address) -> Result<(), ContractError> {
-        ensure!(
-            env.storage()
-                .instance()
-                .get::<DataKey, bool>(&DataKey::Initialized)
-                .is_none(),
-            ContractError::AlreadyInitialized
-        );
-
-        env.storage().instance().set(&DataKey::Initialized, &true);
-
+    pub fn __constructor(env: Env, gas_collector: Address) {
         env.storage()
             .instance()
             .set(&DataKey::GasCollector, &gas_collector);
-
-        Ok(())
     }
 
     /// Pay for gas using a token for a contract call on a destination chain.
@@ -94,12 +82,7 @@ impl AxelarGasService {
     ///
     /// Only callable by the `gas_collector`.
     pub fn collect_fees(env: Env, receiver: Address, token: Token) -> Result<(), ContractError> {
-        let gas_collector: Address = env
-            .storage()
-            .instance()
-            .get(&DataKey::GasCollector)
-            .ok_or(ContractError::NotInitialized)?;
-
+        let gas_collector = Self::gas_collector(&env);
         gas_collector.require_auth();
 
         ensure!(token.amount > 0, ContractError::InvalidAmount);
@@ -122,19 +105,8 @@ impl AxelarGasService {
     /// Refunds gas payment to the receiver in relation to a specific cross-chain transaction.
     ///
     /// Only callable by the `gas_collector`.
-    pub fn refund(
-        env: Env,
-        message_id: String,
-        receiver: Address,
-        token: Token,
-    ) -> Result<(), ContractError> {
-        let gas_collector: Address = env
-            .storage()
-            .instance()
-            .get(&DataKey::GasCollector)
-            .ok_or(ContractError::NotInitialized)?;
-
-        gas_collector.require_auth();
+    pub fn refund(env: Env, message_id: String, receiver: Address, token: Token) {
+        Self::gas_collector(&env).require_auth();
 
         token::Client::new(&env, &token.address).transfer(
             &env.current_contract_address(),
@@ -143,41 +115,12 @@ impl AxelarGasService {
         );
 
         event::refunded(&env, message_id, receiver, token);
-
-        Ok(())
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use axelar_soroban_std::assert_some;
-    use soroban_sdk::testutils::Address as _;
-    use soroban_sdk::{Address, Env};
-
-    use super::{AxelarGasService, AxelarGasServiceClient, DataKey};
-
-    #[test]
-    fn initialize_gas_service() {
-        let env = Env::default();
-        let contract_id = env.register_contract(None, AxelarGasService);
-        let client = AxelarGasServiceClient::new(&env, &contract_id);
-        let gas_collector = Address::generate(&env);
-
-        client.initialize_gas_service(&gas_collector);
-
-        assert!(env.as_contract(&contract_id, || {
-            assert_some!(env
-                .storage()
-                .instance()
-                .get::<DataKey, bool>(&DataKey::Initialized))
-        }));
-
-        let stored_collector_address = env.as_contract(&contract_id, || {
-            assert_some!(env
-                .storage()
-                .instance()
-                .get::<DataKey, Address>(&DataKey::GasCollector))
-        });
-        assert_eq!(stored_collector_address, gas_collector);
+    pub fn gas_collector(env: &Env) -> Address {
+        env.storage()
+            .instance()
+            .get(&DataKey::GasCollector)
+            .expect("gas collector not found")
     }
 }

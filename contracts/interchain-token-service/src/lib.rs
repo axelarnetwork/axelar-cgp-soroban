@@ -7,7 +7,4 @@ mod types;
 
 pub mod contract;
 
-#[cfg(test)]
-mod test;
-
 pub use contract::InterchainTokenServiceClient;
