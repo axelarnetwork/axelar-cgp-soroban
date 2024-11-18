@@ -1,12 +1,26 @@
 use crate::event;
-use axelar_gas_service::AxelarGasServiceClient;
-use axelar_gateway::AxelarGatewayClient;
 use axelar_soroban_std::types::Token;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, Env, String};
 
 use crate::storage_types::DataKey;
 
-use axelar_gateway::executable::AxelarExecutableInterface;
+mod axelar_gateway {
+    soroban_sdk::contractimport!(
+        file =
+            "../../../axelar-cgp-soroban/target/wasm32-unknown-unknown/release/axelar_gateway.wasm"
+    );
+}
+
+mod axelar_gas_service {
+    soroban_sdk::contractimport!(
+        file =
+            "../../../axelar-cgp-soroban/target/wasm32-unknown-unknown/release/axelar_gas_service.wasm"
+    );
+}
+
+use ::axelar_gas_service::AxelarGasServiceClient;
+use ::axelar_gateway::executable::AxelarExecutableInterface;
+use ::axelar_gateway::AxelarGatewayClient;
 
 #[contract]
 pub struct Example;
