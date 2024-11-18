@@ -2,6 +2,7 @@ extern crate std;
 
 use soroban_sdk::{Env, IntoVal, TryFromVal, Val, Vec};
 
+#[cfg(any(test, feature = "testutils"))]
 pub trait IntoVec<T> {
     fn into_vec(self, env: &Env) -> Vec<T>;
 }

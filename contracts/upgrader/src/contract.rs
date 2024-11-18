@@ -1,6 +1,10 @@
 use crate::error::ContractError;
 use soroban_sdk::{contract, contractimpl, Address, BytesN, Env, String, Symbol, Val};
 
+const MIGRATE: &'static str = "migrate";
+const UPGRADE: &'static str = "upgrade";
+const VERSION: &'static str = "version";
+
 #[contract]
 pub struct Upgrader;
 
@@ -18,25 +22,13 @@ impl Upgrader {
 
         env.invoke_contract::<()>(
             &contract_address,
-            &upgrade_fn(&env),
+            &Symbol::new(&env, UPGRADE),
             soroban_sdk::vec![&env, new_wasm_hash.into()],
         );
-        env.invoke_contract::<()>(&contract_address, &migrate_fn(&env), migration_data);
+        env.invoke_contract::<()>(&contract_address, &Symbol::new(&env, MIGRATE), migration_data);
 
         assert_new_version_matches_expected(&env, &contract_address, &new_version)
     }
-}
-
-fn migrate_fn(env: &Env) -> Symbol {
-    Symbol::new(&env, "migrate")
-}
-
-fn upgrade_fn(env: &Env) -> Symbol {
-    Symbol::new(&env, "upgrade")
-}
-
-fn version_fn(env: &Env) -> Symbol {
-    Symbol::new(&env, "version")
 }
 
 fn assert_new_version_is_different(
@@ -60,7 +52,7 @@ fn assert_new_version_matches_expected(
 fn current_version(env: &Env, contract_address: &Address) -> String {
     env.invoke_contract(
         contract_address,
-        &version_fn(env),
+        &Symbol::new(&env, VERSION),
         soroban_sdk::vec![env],
     )
 }
