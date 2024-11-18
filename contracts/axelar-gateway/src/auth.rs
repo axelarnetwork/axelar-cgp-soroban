@@ -241,6 +241,7 @@ mod tests {
     use crate::error::ContractError;
     use crate::testutils::TestSignerSet;
     use crate::types::{ProofSignature, ProofSigner, WeightedSigner, WeightedSigners};
+    use crate::AxelarGatewayClient;
 
     use soroban_sdk::{testutils::BytesN as _, BytesN, Env, Vec};
 
@@ -248,8 +249,7 @@ mod tests {
 
     use crate::{
         auth::{self, initialize_auth},
-        contract::AxelarGatewayClient,
-        testutils::{self, generate_proof, generate_signers_set, initialize, randint},
+        testutils::{self, generate_proof, generate_signers_set, randint, setup_gateway},
     };
 
     fn setup_env<'a>(
@@ -258,9 +258,7 @@ mod tests {
     ) -> (Env, TestSignerSet, AxelarGatewayClient<'a>) {
         let env = Env::default();
         env.mock_all_auths();
-
-        let (signers, contract_id) = initialize(&env, previous_signers_retention, num_signers);
-        let client = AxelarGatewayClient::new(&env, &contract_id);
+        let (signers, client) = setup_gateway(&env, previous_signers_retention, num_signers);
 
         (env, signers, client)
     }

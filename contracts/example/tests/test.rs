@@ -3,7 +3,7 @@ extern crate std;
 
 use axelar_gas_service::contract::AxelarGasService;
 use axelar_gas_service::AxelarGasServiceClient;
-use axelar_gateway::testutils::{generate_proof, get_approve_hash, initialize, TestSignerSet};
+use axelar_gateway::testutils::{self, generate_proof, get_approve_hash, TestSignerSet};
 use axelar_gateway::types::Message;
 use axelar_gateway::AxelarGatewayClient;
 use axelar_soroban_std::assert_last_emitted_event;
@@ -17,10 +17,8 @@ use soroban_sdk::{
 use soroban_sdk::{Bytes, Symbol};
 
 fn setup_gateway<'a>(env: &Env) -> (TestSignerSet, AxelarGatewayClient<'a>) {
-    let (signers, gateway_id) = initialize(env, 0, 5);
-    let gateway_client = AxelarGatewayClient::new(env, &gateway_id);
-
-    (signers, gateway_client)
+    let (signers, client) = testutils::setup_gateway(env, 0, 5);
+    (signers, client)
 }
 
 fn setup_gas_service<'a>(env: &Env) -> (AxelarGasServiceClient<'a>, Address, Address) {

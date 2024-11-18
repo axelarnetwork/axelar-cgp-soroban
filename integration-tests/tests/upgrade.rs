@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use axelar_gateway::testutils::initialize;
+use axelar_gateway::testutils::setup_gateway;
 
 use soroban_sdk::{Env, String};
 
@@ -30,8 +30,7 @@ fn upgrade() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (_signers, gateway_id) = initialize(&env, 0, 5);
-    let client = old_contract::Client::new(&env, &gateway_id);
+    let (_signers, client) = setup_gateway(&env, 0, 5);
 
     assert_eq!(
         String::from_str(&env, OLD_CONTRACT_VERSION),

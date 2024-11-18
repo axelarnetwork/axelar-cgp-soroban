@@ -1,7 +1,7 @@
 use axelar_gateway::error::ContractError;
 use axelar_gateway::testutils::{
-    generate_proof, generate_signers_set, generate_test_message, get_approve_hash, initialize,
-    randint, TestSignerSet,
+    generate_proof, generate_signers_set, generate_test_message, get_approve_hash, randint,
+    setup_gateway, TestSignerSet,
 };
 use axelar_gateway::types::Message;
 use axelar_gateway::AxelarGatewayClient;
@@ -25,9 +25,7 @@ fn setup_env<'a>(
 ) -> (Env, TestSignerSet, AxelarGatewayClient<'a>) {
     let env = Env::default();
     env.mock_all_auths();
-
-    let (signers, contract_id) = initialize(&env, previous_signers_retention, num_signers);
-    let client = AxelarGatewayClient::new(&env, &contract_id);
+    let (signers, client) = setup_gateway(&env, previous_signers_retention, num_signers);
 
     (env, signers, client)
 }
