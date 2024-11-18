@@ -20,13 +20,6 @@ pub enum Message {
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum HubMessage {
-    SendToHub(SendToHub),
-    ReceiveFromHub(ReceiveFromHub),
-}
-
-#[contracttype]
-#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InterchainTransfer {
     pub token_id: BytesN<32>,
     pub source_address: Bytes,
@@ -45,16 +38,14 @@ pub struct DeployInterchainToken {
     pub minter: Option<Bytes>,
 }
 
-#[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SendToHub {
-    pub destination_chain: String,
-    pub message: Message,
-}
-
-#[contracttype]
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ReceiveFromHub {
-    pub source_chain: String,
-    pub message: Message,
+pub enum HubMessage {
+    SendToHub {
+        destination_chain: String,
+        message: Message,
+    },
+    ReceiveFromHub {
+        source_chain: String,
+        message: Message,
+    },
 }

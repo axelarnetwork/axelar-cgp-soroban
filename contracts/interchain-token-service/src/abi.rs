@@ -137,22 +137,23 @@ impl Message {
     }
 }
 
+#[allow(dead_code)]
 impl HubMessage {
     pub fn abi_encode(self, env: &Env) -> Bytes {
         let msg = match self {
-            Self::SendToHub(types::SendToHub {
+            Self::SendToHub {
                 destination_chain,
                 message,
-            }) => SendToHub {
+            } => SendToHub {
                 messageType: MessageType::SendToHub.into(),
                 destination_chain: to_std_string(destination_chain),
                 message: message.abi_encode(env).to_alloc_vec().into(),
             }
             .abi_encode_params(),
-            Self::ReceiveFromHub(types::ReceiveFromHub {
+            Self::ReceiveFromHub {
                 source_chain,
                 message,
-            }) => ReceiveFromHub {
+            } => ReceiveFromHub {
                 messageType: MessageType::ReceiveFromHub.into(),
                 source_chain: to_std_string(source_chain),
                 message: message.abi_encode(env).to_alloc_vec().into(),
@@ -175,25 +176,25 @@ impl HubMessage {
                 let decoded = SendToHub::abi_decode_params(&payload, true)
                     .map_err(|_| MessageError::AbiDecodeFailed)?;
 
-                Self::SendToHub(types::SendToHub {
+                Self::SendToHub {
                     destination_chain: String::from_str(env, &decoded.destination_chain),
                     message: Message::abi_decode(
                         env,
                         &Bytes::from_slice(env, decoded.message.as_ref()),
                     )?,
-                })
+                }
             }
             MessageType::ReceiveFromHub => {
                 let decoded = ReceiveFromHub::abi_decode_params(&payload, true)
                     .map_err(|_| MessageError::AbiDecodeFailed)?;
 
-                Self::ReceiveFromHub(types::ReceiveFromHub {
+                Self::ReceiveFromHub {
                     source_chain: String::from_str(env, &decoded.source_chain),
                     message: Message::abi_decode(
                         env,
                         &Bytes::from_slice(env, decoded.message.as_ref()),
                     )?,
-                })
+                }
             }
             _ => return Err(MessageError::InvalidMessageType),
         };
@@ -212,14 +213,17 @@ fn to_std_string(soroban_string: String) -> StdString {
 fn to_i128(value: Uint<256, 4>) -> Result<i128, MessageError> {
     let slice = value.as_le_slice();
 
-    if !slice[16..].iter().all(|&b| b == 0) {
-        return Err(MessageError::InvalidAmount);
-    }
+    let mut bytes_to_remove = [0; 16];
+    let mut bytes_to_convert = [0; 16];
+    bytes_to_remove.copy_from_slice(&slice[16..]);
+    bytes_to_convert.copy_from_slice(&slice[..16]);
 
-    let mut truncated = [0u8; 16];
-    truncated.copy_from_slice(&slice[..16]);
+    ensure!(
+        i128::from_le_bytes(bytes_to_remove) == 0,
+        MessageError::InvalidAmount
+    );
 
-    Ok(i128::from_le_bytes(truncated))
+    Ok(i128::from_le_bytes(bytes_to_convert))
 }
 
 fn into_vec(value: Option<Bytes>) -> alloc::vec::Vec<u8> {
@@ -282,7 +286,7 @@ mod tests {
         let remote_chain = String::from_str(&env, &"chain");
 
         let cases = vec![
-            types::HubMessage::SendToHub(types::SendToHub {
+            types::HubMessage::SendToHub {
                 destination_chain: remote_chain.clone(),
                 message: types::Message::InterchainTransfer(types::InterchainTransfer {
                     token_id: BytesN::from_array(&env, &[0u8; 32]),
@@ -292,8 +296,8 @@ mod tests {
                     data: None,
                 })
                 .into(),
-            }),
-            types::HubMessage::SendToHub(types::SendToHub {
+            },
+            types::HubMessage::SendToHub {
                 destination_chain: remote_chain.clone(),
                 message: types::Message::InterchainTransfer(types::InterchainTransfer {
                     token_id: BytesN::from_array(&env, &[255u8; 32]),
@@ -309,8 +313,8 @@ mod tests {
                     data: Some(bytes_from_hex(&env, "abcd")),
                 })
                 .into(),
-            }),
-            types::HubMessage::ReceiveFromHub(types::ReceiveFromHub {
+            },
+            types::HubMessage::ReceiveFromHub {
                 source_chain: remote_chain.clone(),
                 message: types::Message::InterchainTransfer(types::InterchainTransfer {
                     token_id: BytesN::from_array(&env, &[0u8; 32]),
@@ -320,8 +324,8 @@ mod tests {
                     data: None,
                 })
                 .into(),
-            }),
-            types::HubMessage::ReceiveFromHub(types::ReceiveFromHub {
+            },
+            types::HubMessage::ReceiveFromHub {
                 source_chain: remote_chain.clone(),
                 message: types::Message::InterchainTransfer(types::InterchainTransfer {
                     token_id: BytesN::from_array(&env, &[255u8; 32]),
@@ -337,7 +341,7 @@ mod tests {
                     data: Some(bytes_from_hex(&env, "abcd")),
                 })
                 .into(),
-            }),
+            },
         ];
 
         let encoded: Vec<_> = cases
@@ -368,7 +372,7 @@ mod tests {
         let remote_chain = String::from_str(&env, &"chain");
 
         let cases = vec![
-            types::HubMessage::SendToHub(types::SendToHub {
+            types::HubMessage::SendToHub {
                 destination_chain: remote_chain.clone(),
                 message: types::Message::DeployInterchainToken(types::DeployInterchainToken {
                     token_id: BytesN::from_array(&env, &[0u8; 32]),
@@ -378,8 +382,8 @@ mod tests {
                     minter: None,
                 })
                 .into(),
-            }),
-            types::HubMessage::SendToHub(types::SendToHub {
+            },
+            types::HubMessage::SendToHub {
                 destination_chain: remote_chain.clone(),
                 message: types::Message::DeployInterchainToken(types::DeployInterchainToken {
                     token_id: BytesN::from_array(&env, &[1u8; 32]),
@@ -389,8 +393,8 @@ mod tests {
                     minter: Some(bytes_from_hex(&env, "1234")),
                 })
                 .into(),
-            }),
-            types::HubMessage::SendToHub(types::SendToHub {
+            },
+            types::HubMessage::SendToHub {
                 destination_chain: remote_chain.clone(),
                 message: types::Message::DeployInterchainToken(types::DeployInterchainToken {
                     token_id: BytesN::from_array(&env, &[0u8; 32]),
@@ -400,8 +404,8 @@ mod tests {
                     minter: Some(bytes_from_hex(&env, "abcd")),
                 })
                 .into(),
-            }),
-            types::HubMessage::ReceiveFromHub(types::ReceiveFromHub {
+            },
+            types::HubMessage::ReceiveFromHub {
                 source_chain: remote_chain.clone(),
                 message: types::Message::DeployInterchainToken(types::DeployInterchainToken {
                     token_id: BytesN::from_array(&env, &[0u8; 32]),
@@ -411,8 +415,8 @@ mod tests {
                     minter: None,
                 })
                 .into(),
-            }),
-            types::HubMessage::ReceiveFromHub(types::ReceiveFromHub {
+            },
+            types::HubMessage::ReceiveFromHub {
                 source_chain: remote_chain.clone(),
                 message: types::Message::DeployInterchainToken(types::DeployInterchainToken {
                     token_id: BytesN::from_array(&env, &[1u8; 32]),
@@ -422,8 +426,8 @@ mod tests {
                     minter: Some(bytes_from_hex(&env, "1234")),
                 })
                 .into(),
-            }),
-            types::HubMessage::ReceiveFromHub(types::ReceiveFromHub {
+            },
+            types::HubMessage::ReceiveFromHub {
                 source_chain: remote_chain.clone(),
                 message: types::Message::DeployInterchainToken(types::DeployInterchainToken {
                     token_id: BytesN::from_array(&env, &[0u8; 32]),
@@ -433,7 +437,7 @@ mod tests {
                     minter: Some(bytes_from_hex(&env, "abcd")),
                 })
                 .into(),
-            }),
+            },
         ];
 
         let encoded: Vec<_> = cases
