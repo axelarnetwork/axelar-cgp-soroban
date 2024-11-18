@@ -1487,6 +1487,7 @@ name = "upgrader"
 version = "0.1.0"
 dependencies = [
  "axelar-gateway",
+ "axelar-soroban-std",
  "soroban-sdk",
 ]
 
