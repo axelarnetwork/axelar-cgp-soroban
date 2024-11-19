@@ -99,10 +99,10 @@ fn validate_message() {
         "validate_message",
         (
             &contract_address,
-            source_chain.clone(),
-            message_id.clone(),
-            source_address.clone(),
-            payload_hash.clone(),
+            source_chain,
+            message_id,
+            source_address,
+            payload_hash,
         ),
     );
 
@@ -155,7 +155,7 @@ fn approve_message() {
     assert_last_emitted_event(
         &env,
         &client.address,
-        (Symbol::new(&env, "message_executed"), message.clone()),
+        (Symbol::new(&env, "message_executed"), message),
         (),
     );
 
@@ -179,7 +179,7 @@ fn fail_execute_invalid_proof() {
 
     let invalid_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator);
 
-    let messages = vec![&env, message.clone()];
+    let messages = vec![&env, message];
     let data_hash = get_approve_hash(&env, messages.clone());
     let proof = generate_proof(&env, data_hash, invalid_signers);
 
@@ -208,7 +208,7 @@ fn approve_messages_skip_duplicate_message() {
     let (env, signers, client) = setup_env(1, randint(1, 10));
     let (message, _) = generate_test_message(&env);
 
-    let messages = vec![&env, message.clone()];
+    let messages = vec![&env, message];
     let data_hash = get_approve_hash(&env, messages.clone());
     let proof = generate_proof(&env, data_hash, signers);
     client.approve_messages(&messages, &proof);
@@ -227,7 +227,7 @@ fn rotate_signers() {
 
     let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
     let data_hash = new_signers.signers.signers_rotation_hash(&env);
-    let proof = generate_proof(&env, data_hash.clone(), signers);
+    let proof = generate_proof(&env, data_hash, signers);
     let bypass_rotation_delay = false;
     let new_epoch: u64 = client.epoch() + 1;
 
@@ -264,7 +264,7 @@ fn rotate_signers_bypass_rotation_delay() {
     let (env, signers, client) = setup_env(1, 5);
     let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
     let data_hash = new_signers.signers.signers_rotation_hash(&env);
-    let proof = generate_proof(&env, data_hash.clone(), signers.clone());
+    let proof = generate_proof(&env, data_hash, signers);
     let bypass_rotation_delay = true;
     let new_epoch: u64 = client.epoch() + 1;
 
@@ -292,7 +292,7 @@ fn rotate_signers_bypass_rotation_delay_unauthorized() {
     let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
 
     let data_hash = new_signers.signers.signers_rotation_hash(&env);
-    let proof = generate_proof(&env, data_hash.clone(), signers);
+    let proof = generate_proof(&env, data_hash, signers);
     let bypass_rotation_delay = true;
 
     assert_invoke_auth_err!(
@@ -315,12 +315,12 @@ fn rotate_signers_fail_not_latest_signers() {
 
     let first_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
     let data_hash = first_signers.signers.signers_rotation_hash(&env);
-    let proof = generate_proof(&env, data_hash.clone(), signers.clone());
+    let proof = generate_proof(&env, data_hash, signers.clone());
     client.rotate_signers(&first_signers.signers, &proof, &bypass_rotation_delay);
 
     let second_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
     let data_hash = second_signers.signers.signers_rotation_hash(&env);
-    let proof = generate_proof(&env, data_hash.clone(), signers.clone());
+    let proof = generate_proof(&env, data_hash, signers);
 
     assert_contract_err!(
         client.try_rotate_signers(&second_signers.signers, &proof, &bypass_rotation_delay),
@@ -342,7 +342,7 @@ fn transfer_operatorship() {
         &client.address,
         (
             Symbol::new(&env, "operatorship_transferred"),
-            operator.clone(),
+            operator,
             new_operator.clone(),
         ),
         (),
@@ -409,7 +409,7 @@ fn epoch_by_signers_hash() {
 
     let first_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
     let data_hash = first_signers.signers.signers_rotation_hash(&env);
-    let proof = generate_proof(&env, data_hash.clone(), signers.clone());
+    let proof = generate_proof(&env, data_hash, signers);
 
     client.rotate_signers(&first_signers.signers, &proof, &bypass_rotation_delay);
 
@@ -438,7 +438,7 @@ fn signers_hash_by_epoch() {
 
     let first_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
     let data_hash = first_signers.signers.signers_rotation_hash(&env);
-    let proof = generate_proof(&env, data_hash.clone(), signers.clone());
+    let proof = generate_proof(&env, data_hash, signers);
 
     client.rotate_signers(&first_signers.signers, &proof, &bypass_rotation_delay);
     let epoch = client.epoch();

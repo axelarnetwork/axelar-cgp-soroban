@@ -224,7 +224,7 @@ impl AxelarGatewayInterface for AxelarGateway {
     }
 
     fn version(env: &Env) -> String {
-        String::from_str(&env, CONTRACT_VERSION)
+        String::from_str(env, CONTRACT_VERSION)
     }
 
     fn upgrade(env: Env, new_wasm_hash: BytesN<32>) {
