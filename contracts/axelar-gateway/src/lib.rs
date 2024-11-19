@@ -6,6 +6,7 @@ mod storage_types;
 
 pub mod contract;
 pub mod error;
+pub mod executable;
 pub mod types;
 
 #[cfg(all(target_family = "wasm", feature = "testutils"))]
