@@ -112,12 +112,6 @@ pub fn read_balance(env: &Env, addr: Address) -> i128 {
         })
 }
 
-fn write_balance(env: &Env, addr: Address, amount: i128) {
-    let key = DataKey::Balance(addr);
-    env.storage().persistent().set(&key, &amount);
-    extend_balance_ttl(env, &key);
-}
-
 pub fn receive_balance(env: &Env, addr: Address, amount: i128) {
     let balance = read_balance(env, addr.clone());
     write_balance(env, addr, balance + amount);
@@ -145,4 +139,10 @@ pub fn read_symbol(env: &Env) -> String {
 
 pub fn write_metadata(env: &Env, metadata: TokenMetadata) {
     TokenUtils::new(env).metadata().set_metadata(&metadata);
+}
+
+fn write_balance(env: &Env, addr: Address, amount: i128) {
+    let key = DataKey::Balance(addr);
+    env.storage().persistent().set(&key, &amount);
+    extend_balance_ttl(env, &key);
 }

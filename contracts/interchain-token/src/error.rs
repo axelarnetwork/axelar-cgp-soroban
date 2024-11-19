@@ -9,5 +9,4 @@ pub enum ContractError {
     TokenNameEmpty = 3,
     TokenSymbolEmpty = 4,
     NotAuthorizedMinter = 5,
-    InsufficientAllowance = 6,
 }
