@@ -495,4 +495,14 @@ mod tests {
             assert_eq!(original, decoded.unwrap());
         }
     }
+
+    #[test]
+    fn abi_decode_fails_invalid_message_type() {
+        let env = Env::default();
+        let bytes = [0u8; 32];
+        let invalid_payload = Bytes::from_slice(&env, &bytes);
+
+        let result = HubMessage::abi_decode(&env, &invalid_payload);
+        assert!(matches!(result, Err(MessageError::InvalidMessageType)));
+    }
 }
