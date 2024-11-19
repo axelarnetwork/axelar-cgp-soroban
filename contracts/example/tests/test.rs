@@ -3,9 +3,9 @@ extern crate std;
 
 use axelar_gas_service::contract::AxelarGasService;
 use axelar_gas_service::AxelarGasServiceClient;
-use axelar_gateway::testutils::{generate_proof, get_approve_hash, initialize, TestSignerSet};
+use axelar_gateway::testutils::{self, generate_proof, get_approve_hash, TestSignerSet};
 use axelar_gateway::types::Message;
-use axelar_gateway::{AxelarGateway, AxelarGatewayClient};
+use axelar_gateway::AxelarGatewayClient;
 use axelar_soroban_std::assert_last_emitted_event;
 use axelar_soroban_std::types::Token;
 use example::contract::Example;
@@ -16,14 +16,9 @@ use soroban_sdk::{
 };
 use soroban_sdk::{Bytes, Symbol};
 
-fn setup_gateway<'a>(env: &Env) -> (AxelarGatewayClient<'a>, Address, TestSignerSet) {
-    let gateway_id = env.register_contract(None, AxelarGateway);
-    let gateway_client = AxelarGatewayClient::new(env, &gateway_id);
-    let owner = Address::generate(env);
-    let operator = Address::generate(env);
-    let signers = initialize(env, &gateway_client, owner, operator, 0, 5);
-
-    (gateway_client, gateway_id, signers)
+fn setup_gateway<'a>(env: &Env) -> (TestSignerSet, AxelarGatewayClient<'a>) {
+    let (signers, client) = testutils::setup_gateway(env, 0, 5);
+    (signers, client)
 }
 
 fn setup_gas_service<'a>(env: &Env) -> (AxelarGasServiceClient<'a>, Address, Address) {
@@ -50,14 +45,17 @@ fn test_gmp_example() {
 
     // Setup source Axelar gateway
     let source_chain = String::from_str(&env, "source");
-    let (source_gateway_client, source_gateway_id, _) = setup_gateway(&env);
+    let (_, source_gateway_client) = setup_gateway(&env);
+    let source_gateway_id = source_gateway_client.address;
     let (_source_gas_service_client, _source_gas_collector, source_gas_service_id) =
         setup_gas_service(&env);
     let source_app = setup_app(&env, &source_gateway_id, &source_gas_service_id);
 
     // Setup destination Axelar gateway
     let destination_chain = String::from_str(&env, "destination");
-    let (destination_gateway_client, destination_gateway_id, signers) = setup_gateway(&env);
+    let (signers, destination_gateway_client) = setup_gateway(&env);
+    let destination_gateway_id = destination_gateway_client.address.clone();
+
     let (_destination_gas_service_client, _destination_gas_collector, destination_gas_service_id) =
         setup_gas_service(&env);
     let destination_app = setup_app(&env, &destination_gateway_id, &destination_gas_service_id);
@@ -108,7 +106,7 @@ fn test_gmp_example() {
     // Confirming message from source Axelar gateway
     assert_last_emitted_event(
         &env,
-        &source_gateway_client.address,
+        &source_gateway_id,
         (
             Symbol::new(&env, "contract_called"),
             source_app.address.clone(),
