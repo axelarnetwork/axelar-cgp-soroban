@@ -26,7 +26,10 @@ pub fn extend_balance_ttl(env: &Env, key: &DataKey) {
 }
 
 pub fn admin(env: &Env) -> Address {
-    env.storage().instance().get(&DataKey::Admin).unwrap()
+    env.storage()
+        .instance()
+        .get(&DataKey::Admin)
+        .expect("admin not found")
 }
 
 pub fn read_allowance(env: &Env, from: Address, spender: Address) -> AllowanceValue {

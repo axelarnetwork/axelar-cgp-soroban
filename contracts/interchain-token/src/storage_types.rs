@@ -23,12 +23,11 @@ pub struct AllowanceValue {
 #[contracttype]
 #[derive(Clone)]
 pub enum DataKey {
-    Initialized,
     Allowance(AllowanceDataKey),
     Balance(Address),
     State(Address),
     Admin,
     Minter(Address),
     TokenId,
-    InterchainTokenServiceAddress,
+    InterchainTokenService,
 }
