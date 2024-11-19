@@ -255,8 +255,6 @@ mod tests {
     use soroban_sdk::{Bytes, BytesN, Env, String};
     use std::vec::Vec;
 
-    const MAX_I128: i128 = i128::MAX;
-
     fn bytes_from_hex(env: &Env, hex_string: &str) -> Bytes {
         let bytes_vec: Vec<u8> = hex::decode(hex_string).unwrap();
         Bytes::from_slice(env, &bytes_vec)
@@ -273,9 +271,9 @@ mod tests {
 
     #[test]
     fn uint256_to_i128() {
-        let uint_i128_max: Uint<256, 4> = MAX_I128.try_into().unwrap();
+        let uint_i128_max: Uint<256, 4> = i128::MAX.try_into().unwrap();
 
-        assert_eq!(to_i128(uint_i128_max).unwrap(), MAX_I128);
+        assert_eq!(to_i128(uint_i128_max).unwrap(), i128::MAX);
 
         let uint_min: Uint<256, 4> = Uint::MIN;
 
@@ -307,7 +305,7 @@ mod tests {
 
     #[test]
     fn to_i128_fails_overflow() {
-        let overflow: Uint<256, 4> = Uint::from(MAX_I128) + Uint::from(1);
+        let overflow: Uint<256, 4> = Uint::from(i128::MAX) + Uint::from(1);
 
         let result = to_i128(overflow);
 
@@ -343,7 +341,7 @@ mod tests {
                         &env,
                         "4F4495243837681061C4743b74B3eEdf548D56A5",
                     ),
-                    amount: MAX_I128,
+                    amount: i128::MAX,
                     data: Some(bytes_from_hex(&env, "abcd")),
                 })
                 .into(),
@@ -371,7 +369,7 @@ mod tests {
                         &env,
                         "4F4495243837681061C4743b74B3eEdf548D56A5",
                     ),
-                    amount: MAX_I128,
+                    amount: i128::MAX,
                     data: Some(bytes_from_hex(&env, "abcd")),
                 })
                 .into(),
