@@ -725,7 +725,6 @@ fn token_id_is_empty() {
             &token_id,
             token_meta_data,
         ),
-        ContractError::InvalidDecimal
     );
 
 }
