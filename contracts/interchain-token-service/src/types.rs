@@ -11,14 +11,12 @@ pub enum MessageType {
     ReceiveFromHub = 4,
 }
 
-#[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Message {
     InterchainTransfer(InterchainTransfer),
     DeployInterchainToken(DeployInterchainToken),
 }
 
-#[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InterchainTransfer {
     pub token_id: BytesN<32>,
@@ -28,13 +26,12 @@ pub struct InterchainTransfer {
     pub data: Option<Bytes>,
 }
 
-#[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DeployInterchainToken {
     pub token_id: BytesN<32>,
     pub name: String,
     pub symbol: String,
-    pub decimals: u32,
+    pub decimals: u8,
     pub minter: Option<Bytes>,
 }
 

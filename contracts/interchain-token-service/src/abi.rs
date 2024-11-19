@@ -86,7 +86,7 @@ impl Message {
                 tokenId: FixedBytes::<32>::new(token_id.into()),
                 name: to_std_string(name),
                 symbol: to_std_string(symbol),
-                decimals: decimals.try_into().expect("failed to convert"),
+                decimals,
                 minter: into_vec(minter).into(),
             }
             .abi_encode_params(),
@@ -126,7 +126,7 @@ impl Message {
                     token_id: BytesN::from_array(env, &decoded.tokenId.into()),
                     name: String::from_str(env, &decoded.name),
                     symbol: String::from_str(env, &decoded.symbol),
-                    decimals: decoded.decimals.into(),
+                    decimals: decoded.decimals,
                     minter: from_vec(env, decoded.minter.as_ref()),
                 })
             }
