@@ -181,7 +181,7 @@ impl token::Interface for InterchainToken {
         check_nonnegative_amount(amount);
         extend_instance_ttl(&env);
 
-        let _ = spend_allowance(&env, from.clone(), spender, amount);
+        spend_allowance(&env, from.clone(), spender, amount);
 
         spend_balance(&env, from.clone(), amount);
         receive_balance(&env, to.clone(), amount);
@@ -204,7 +204,7 @@ impl token::Interface for InterchainToken {
         check_nonnegative_amount(amount);
         extend_instance_ttl(&env);
 
-        let _ = spend_allowance(&env, from.clone(), spender, amount);
+        spend_allowance(&env, from.clone(), spender, amount);
 
         spend_balance(&env, from.clone(), amount);
         TokenUtils::new(&env).events().burn(from, amount)
