@@ -6,9 +6,6 @@ description = "Contract related to Axelar Gas Service."
 license = "MIT"
 publish = true
 
-[package.metadata.clippy]
-too_many_arguments = "allow"
-
 [lib]
 crate-type = ["cdylib", "rlib"]
 
