@@ -1,6 +1,6 @@
 use soroban_sdk::{contract, contractimpl, token, Address, Bytes, Env, String};
 
-use axelar_soroban_std::{ensure, types::Token};
+use axelar_soroban_std::ensure;
 
 use crate::error::ContractError;
 use crate::event;
@@ -28,17 +28,18 @@ impl AxelarGasService {
         destination_address: String,
         payload: Bytes,
         refund_address: Address,
-        token: Token,
+        token_address: Address,
+        token_amount: i128,
     ) -> Result<(), ContractError> {
         sender.require_auth();
 
-        ensure!(token.amount > 0, ContractError::InvalidAmount);
+        ensure!(token_amount > 0, ContractError::InvalidAmount);
 
-        token::Client::new(&env, &token.address).transfer_from(
+        token::Client::new(&env, &token_address).transfer_from(
             &env.current_contract_address(),
             &sender,
             &env.current_contract_address(),
-            &token.amount,
+            &token_amount,
         );
 
         event::gas_paid_for_contract_call(
@@ -48,7 +49,8 @@ impl AxelarGasService {
             destination_address,
             payload,
             refund_address,
-            token,
+            token_address,
+            token_amount,
         );
 
         Ok(())
@@ -59,21 +61,28 @@ impl AxelarGasService {
         env: Env,
         sender: Address,
         message_id: String,
-        token: Token,
+        token_address: Address,
+        token_amount: i128,
         refund_address: Address,
     ) -> Result<(), ContractError> {
         sender.require_auth();
 
-        ensure!(token.amount > 0, ContractError::InvalidAmount);
+        ensure!(token_amount > 0, ContractError::InvalidAmount);
 
-        token::Client::new(&env, &token.address).transfer_from(
+        token::Client::new(&env, &token_address).transfer_from(
             &env.current_contract_address(),
             &sender,
             &env.current_contract_address(),
-            &token.amount,
+            &token_amount,
         );
 
-        event::gas_added(&env, message_id, token, refund_address);
+        event::gas_added(
+            &env,
+            message_id,
+            token_address,
+            token_amount,
+            refund_address,
+        );
 
         Ok(())
     }
@@ -81,23 +90,28 @@ impl AxelarGasService {
     /// Allows the `gas_collector` to collect accumulated fees from the contract.
     ///
     /// Only callable by the `gas_collector`.
-    pub fn collect_fees(env: Env, receiver: Address, token: Token) -> Result<(), ContractError> {
+    pub fn collect_fees(
+        env: Env,
+        receiver: Address,
+        token_address: Address,
+        token_amount: i128,
+    ) -> Result<(), ContractError> {
         let gas_collector = Self::gas_collector(&env);
         gas_collector.require_auth();
 
-        ensure!(token.amount > 0, ContractError::InvalidAmount);
+        ensure!(token_amount > 0, ContractError::InvalidAmount);
 
-        let token_client = token::Client::new(&env, &token.address);
+        let token_client = token::Client::new(&env, &token_address);
 
         let contract_token_balance = token_client.balance(&env.current_contract_address());
 
         ensure!(
-            contract_token_balance >= token.amount,
+            contract_token_balance >= token_amount,
             ContractError::InsufficientBalance
         );
-        token_client.transfer(&env.current_contract_address(), &receiver, &token.amount);
+        token_client.transfer(&env.current_contract_address(), &receiver, &token_amount);
 
-        event::fee_collected(&env, gas_collector, token);
+        event::fee_collected(&env, gas_collector, token_address, token_amount);
 
         Ok(())
     }
@@ -105,16 +119,22 @@ impl AxelarGasService {
     /// Refunds gas payment to the receiver in relation to a specific cross-chain transaction.
     ///
     /// Only callable by the `gas_collector`.
-    pub fn refund(env: Env, message_id: String, receiver: Address, token: Token) {
+    pub fn refund(
+        env: Env,
+        message_id: String,
+        receiver: Address,
+        token_address: Address,
+        token_amount: i128,
+    ) {
         Self::gas_collector(&env).require_auth();
 
-        token::Client::new(&env, &token.address).transfer(
+        token::Client::new(&env, &token_address).transfer(
             &env.current_contract_address(),
             &receiver,
-            &token.amount,
+            &token_amount,
         );
 
-        event::refunded(&env, message_id, receiver, token);
+        event::refunded(&env, message_id, receiver, token_address, token_amount);
     }
 
     pub fn gas_collector(env: &Env) -> Address {

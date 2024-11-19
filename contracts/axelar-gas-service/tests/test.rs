@@ -5,7 +5,8 @@ use std::format;
 
 use axelar_gas_service::contract::{AxelarGasService, AxelarGasServiceClient};
 use axelar_gas_service::error::ContractError;
-use axelar_soroban_std::{assert_contract_err, assert_last_emitted_event, types::Token};
+
+use axelar_soroban_std::{assert_contract_err, assert_last_emitted_event};
 use soroban_sdk::{
     bytes,
     testutils::Address as _,
@@ -44,10 +45,8 @@ fn fail_pay_gas_zero_gas_amount() {
 
     let sender: Address = Address::generate(&env);
     let gas_amount: i128 = 0;
-    let token = Token {
-        address: asset.address(),
-        amount: gas_amount,
-    };
+    let token_address = asset.address();
+
     let refund_address: Address = Address::generate(&env);
     let payload = bytes!(&env, 0x1234);
     let destination_chain: String = String::from_str(&env, "ethereum");
@@ -71,7 +70,8 @@ fn fail_pay_gas_zero_gas_amount() {
             &destination_address,
             &payload,
             &refund_address,
-            &token,
+            &token_address,
+            &gas_amount,
         ),
         ContractError::InvalidAmount
     );
@@ -85,10 +85,7 @@ fn fail_pay_gas_no_approved_allowance() {
 
     let sender: Address = Address::generate(&env);
     let gas_amount: i128 = 0;
-    let token = Token {
-        address: asset.address(),
-        amount: gas_amount,
-    };
+    let token_address = asset.address();
     let refund_address: Address = Address::generate(&env);
     let payload = bytes!(&env, 0x1234);
     let destination_chain: String = String::from_str(&env, "ethereum");
@@ -104,7 +101,8 @@ fn fail_pay_gas_no_approved_allowance() {
             &destination_address,
             &payload,
             &refund_address,
-            &token,
+            &token_address,
+            &gas_amount,
         ),
         ContractError::InvalidAmount
     );
@@ -118,10 +116,7 @@ fn pay_gas_for_contract_call() {
 
     let sender: Address = Address::generate(&env);
     let gas_amount: i128 = 1;
-    let token = Token {
-        address: asset.address(),
-        amount: gas_amount,
-    };
+    let token_address = asset.address();
 
     let refund_address: Address = Address::generate(&env);
     let payload = bytes!(&env, 0x1234);
@@ -145,7 +140,8 @@ fn pay_gas_for_contract_call() {
         &destination_address,
         &payload,
         &refund_address,
-        &token,
+        &token_address,
+        &gas_amount,
     );
 
     assert_eq!(0, token_client.balance(&sender));
@@ -161,7 +157,13 @@ fn pay_gas_for_contract_call() {
             sender,
             destination_chain,
         ),
-        (destination_address, payload, refund_address, token),
+        (
+            destination_address,
+            payload,
+            refund_address,
+            token_address,
+            gas_amount,
+        ),
     );
 }
 
@@ -180,10 +182,7 @@ fn fail_add_gas_zero_gas_amount() {
     );
     let refund_address: Address = Address::generate(&env);
     let gas_amount: i128 = 0;
-    let token = Token {
-        address: asset.address(),
-        amount: gas_amount,
-    };
+    let token_address = asset.address();
 
     let token_client = TokenClient::new(&env, &asset.address());
     StellarAssetClient::new(&env, &asset.address()).mint(&sender, &gas_amount);
@@ -193,9 +192,18 @@ fn fail_add_gas_zero_gas_amount() {
     token_client.approve(&sender, &contract_id, &gas_amount, &expiration_ledger);
 
     assert_contract_err!(
-        client.try_add_gas(&sender, &message_id, &token, &refund_address,),
+        client.try_add_gas(
+            &sender,
+            &message_id,
+            &token_address,
+            &gas_amount,
+            &refund_address,
+        ),
         ContractError::InvalidAmount
     );
+
+    /*
+     */
 }
 
 #[test]
@@ -213,15 +221,18 @@ fn fail_add_gas_no_approved_allowance() {
     );
     let refund_address: Address = Address::generate(&env);
     let gas_amount: i128 = 0;
-    let token = Token {
-        address: asset.address(),
-        amount: gas_amount,
-    };
+    let token_address = asset.address();
 
     StellarAssetClient::new(&env, &asset.address()).mint(&sender, &gas_amount);
 
     assert_contract_err!(
-        client.try_add_gas(&sender, &message_id, &token, &refund_address,),
+        client.try_add_gas(
+            &sender,
+            &message_id,
+            &token_address,
+            &gas_amount,
+            &refund_address,
+        ),
         ContractError::InvalidAmount
     );
 }
@@ -241,10 +252,7 @@ fn add_gas() {
     );
     let refund_address: Address = Address::generate(&env);
     let gas_amount: i128 = 1;
-    let token = Token {
-        address: asset.address(),
-        amount: gas_amount,
-    };
+    let token_address = asset.address();
 
     let token_client = TokenClient::new(&env, &asset.address());
     StellarAssetClient::new(&env, &asset.address()).mint(&sender, &gas_amount);
@@ -253,7 +261,13 @@ fn add_gas() {
 
     token_client.approve(&sender, &contract_id, &gas_amount, &expiration_ledger);
 
-    client.add_gas(&sender, &message_id, &token, &refund_address);
+    client.add_gas(
+        &sender,
+        &message_id,
+        &token_address,
+        &gas_amount,
+        &refund_address,
+    );
 
     assert_eq!(0, token_client.balance(&sender));
     assert_eq!(gas_amount, token_client.balance(&contract_id));
@@ -265,7 +279,8 @@ fn add_gas() {
         (
             Symbol::new(&env, "gas_added"),
             message_id,
-            token,
+            token_address,
+            gas_amount,
             refund_address,
         ),
         (),
@@ -280,15 +295,11 @@ fn fail_collect_fees_zero_refund_amount() {
 
     let supply: i128 = 1000;
     let refund_amount = 0;
-
-    let token = Token {
-        address: asset.address(),
-        amount: refund_amount,
-    };
-    StellarAssetClient::new(&env, &token.address).mint(&contract_id, &supply);
+    let token_address = asset.address();
+    StellarAssetClient::new(&env, &token_address).mint(&contract_id, &supply);
 
     assert_contract_err!(
-        client.try_collect_fees(&gas_collector, &token),
+        client.try_collect_fees(&gas_collector, &token_address, &refund_amount),
         ContractError::InvalidAmount
     );
 }
@@ -301,15 +312,12 @@ fn fail_collect_fees_insufficient_balance() {
 
     let supply: i128 = 5;
     let refund_amount = 10;
+    let token_address = asset.address();
 
-    let token = Token {
-        address: asset.address(),
-        amount: refund_amount,
-    };
-    StellarAssetClient::new(&env, &token.address).mint(&contract_id, &supply);
+    StellarAssetClient::new(&env, &token_address).mint(&contract_id, &supply);
 
     assert_contract_err!(
-        client.try_collect_fees(&gas_collector, &token),
+        client.try_collect_fees(&gas_collector, &token_address, &refund_amount),
         ContractError::InsufficientBalance
     );
 }
@@ -323,13 +331,10 @@ fn collect_fees() {
     let token_client = TokenClient::new(&env, &asset.address());
     let supply: i128 = 1000;
     let refund_amount = 1;
-    let token = Token {
-        address: asset.address(),
-        amount: refund_amount,
-    };
-    StellarAssetClient::new(&env, &token.address).mint(&contract_id, &supply);
+    let token_address = asset.address();
+    StellarAssetClient::new(&env, &token_address).mint(&contract_id, &supply);
 
-    client.collect_fees(&gas_collector, &token);
+    client.collect_fees(&gas_collector, &token_address, &refund_amount);
 
     assert_eq!(refund_amount, token_client.balance(&gas_collector));
     assert_eq!(supply - refund_amount, token_client.balance(&contract_id));
@@ -337,7 +342,12 @@ fn collect_fees() {
     assert_last_emitted_event(
         &env,
         &contract_id,
-        (Symbol::new(&env, "gas_collected"), gas_collector, token),
+        (
+            Symbol::new(&env, "gas_collected"),
+            gas_collector,
+            token_address,
+            refund_amount,
+        ),
         (),
     );
 }
@@ -354,11 +364,7 @@ fn refund() {
 
     let receiver: Address = Address::generate(&env);
     let refund_amount: i128 = 1;
-    let token = Token {
-        address: asset.address(),
-        amount: refund_amount,
-    };
-
+    let token_address = asset.address();
     let message_id = String::from_str(
         &env,
         &format!(
@@ -367,7 +373,7 @@ fn refund() {
         ),
     );
 
-    client.refund(&message_id, &receiver, &token);
+    client.refund(&message_id, &receiver, &token_address, &refund_amount);
 
     assert_eq!(refund_amount, token_client.balance(&receiver));
     assert_eq!(supply - refund_amount, token_client.balance(&contract_id));
@@ -379,7 +385,8 @@ fn refund() {
             Symbol::new(&env, "gas_refunded"),
             message_id,
             receiver,
-            token,
+            token_address,
+            refund_amount,
         ),
         (),
     );

@@ -1,34 +1,25 @@
 use crate::event;
-use axelar_gas_service::AxelarGasServiceClient;
-use axelar_gateway::AxelarGatewayClient;
-use axelar_soroban_std::types::Token;
+
 use soroban_sdk::{contract, contractimpl, Address, Bytes, Env, String};
 
 use crate::storage_types::DataKey;
 
-use axelar_gateway::executable::AxelarExecutableInterface;
+mod axelar_gateway {
+    soroban_sdk::contractimport!(
+        file =
+            "../../../axelar-cgp-soroban/target/wasm32-unknown-unknown/release/axelar_gateway.wasm"
+    );
+}
+
+mod axelar_gas_service {
+    soroban_sdk::contractimport!(
+        file =
+            "../../../axelar-cgp-soroban/target/wasm32-unknown-unknown/release/axelar_gas_service.wasm"
+    );
+}
 
 #[contract]
 pub struct Example;
-
-#[contractimpl]
-impl AxelarExecutableInterface for Example {
-    fn gateway(env: &Env) -> Address {
-        env.storage().instance().get(&DataKey::Gateway).unwrap()
-    }
-
-    fn execute(
-        env: Env,
-        source_chain: String,
-        message_id: String,
-        source_address: String,
-        payload: Bytes,
-    ) {
-        let _ = Self::validate(&env, &source_chain, &message_id, &source_address, &payload);
-
-        event::executed(&env, source_chain, message_id, source_address, payload);
-    }
-}
 
 #[contractimpl]
 impl Example {
@@ -37,6 +28,10 @@ impl Example {
         env.storage()
             .instance()
             .set(&DataKey::GasService, &gas_service);
+    }
+
+    pub fn gateway(env: &Env) -> Address {
+        env.storage().instance().get(&DataKey::Gateway).unwrap()
     }
 
     pub fn gas_service(env: &Env) -> Address {
@@ -49,10 +44,11 @@ impl Example {
         destination_chain: String,
         destination_address: String,
         message: Bytes,
-        gas_token: Token,
+        gas_token: Address,
+        gas_amount: i128,
     ) {
-        let gateway = AxelarGatewayClient::new(&env, &Self::gateway(&env));
-        let gas_service = AxelarGasServiceClient::new(&env, &Self::gas_service(&env));
+        let gateway = axelar_gateway::Client::new(&env, &Self::gateway(&env));
+        let gas_service = axelar_gas_service::Client::new(&env, &Self::gas_service(&env));
 
         caller.require_auth();
 
@@ -63,6 +59,7 @@ impl Example {
             &message,
             &caller,
             &gas_token,
+            &gas_amount,
         );
 
         gateway.call_contract(
@@ -71,5 +68,26 @@ impl Example {
             &destination_address,
             &message,
         );
+    }
+
+    pub fn execute(
+        env: Env,
+        source_chain: String,
+        message_id: String,
+        source_address: String,
+        payload: Bytes,
+    ) {
+        let gateway = axelar_gateway::Client::new(&env, &Self::gateway(&env));
+
+        // Validate the contract call was approved by the gateway
+        gateway.validate_message(
+            &env.current_contract_address(),
+            &source_chain,
+            &message_id,
+            &source_address,
+            &env.crypto().keccak256(&payload).into(),
+        );
+
+        event::executed(&env, source_chain, message_id, source_address, payload);
     }
 }

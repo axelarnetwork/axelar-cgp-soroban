@@ -7,7 +7,7 @@ use axelar_gateway::testutils::{self, generate_proof, get_approve_hash, TestSign
 use axelar_gateway::types::Message;
 use axelar_gateway::AxelarGatewayClient;
 use axelar_soroban_std::assert_last_emitted_event;
-use axelar_soroban_std::types::Token;
+
 use example::contract::Example;
 use example::ExampleClient;
 use soroban_sdk::token::{StellarAssetClient, TokenClient};
@@ -69,10 +69,7 @@ fn test_gmp_example() {
     // Initiate cross-chain contract call, sending message from source to destination
     let asset = &env.register_stellar_asset_contract_v2(user.clone());
     let gas_amount: i128 = 100;
-    let gas_token = Token {
-        address: asset.address(),
-        amount: gas_amount,
-    };
+    let gas_token_address = asset.address();
 
     let token_client = TokenClient::new(&env, &asset.address());
     StellarAssetClient::new(&env, &asset.address()).mint(&user, &gas_amount);
@@ -97,7 +94,8 @@ fn test_gmp_example() {
         &destination_chain,
         &destination_address,
         &payload,
-        &gas_token,
+        &gas_token_address,
+        &gas_amount,
     );
 
     // Axelar hub confirms the contract call, i.e Axelar verifiers verify/vote on the emitted event
