@@ -18,21 +18,6 @@ pub struct InterchainToken;
 
 #[contractimpl]
 impl InterchainToken {
-    pub fn validate_token_metadata(token_meta_data: TokenMetadata) -> Result<(), ContractError> {
-        ensure!(
-            token_meta_data.decimal <= u8::MAX.into(),
-            ContractError::InvalidDecimal
-        );
-        ensure!(
-            !token_meta_data.name.is_empty(),
-            ContractError::TokenNameEmpty
-        );
-        ensure!(
-            !token_meta_data.symbol.is_empty(),
-            ContractError::TokenSymbolEmpty
-        );
-        Ok(())
-    }
     pub fn __constructor(
         env: Env,
         interchain_token_service: Address,
@@ -61,6 +46,22 @@ impl InterchainToken {
             .instance()
             .set(&DataKey::InterchainTokenService, &interchain_token_service);
 
+        Ok(())
+    }
+
+    pub fn validate_token_metadata(token_meta_data: TokenMetadata) -> Result<(), ContractError> {
+        ensure!(
+            token_meta_data.decimal <= u8::MAX.into(),
+            ContractError::InvalidDecimal
+        );
+        ensure!(
+            !token_meta_data.name.is_empty(),
+            ContractError::TokenNameEmpty
+        );
+        ensure!(
+            !token_meta_data.symbol.is_empty(),
+            ContractError::TokenSymbolEmpty
+        );
         Ok(())
     }
 
