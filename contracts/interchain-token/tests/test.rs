@@ -1,7 +1,8 @@
 #![cfg(test)]
 extern crate std;
 
-use interchain_token::{contract::InterchainToken, InterchainTokenClient};
+use axelar_soroban_std::assert_contract_err;
+use interchain_token::{contract::InterchainToken, error::ContractError, InterchainTokenClient};
 use soroban_sdk::{
     symbol_short,
     testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, BytesN as _},
@@ -27,7 +28,18 @@ fn create_token<'a>(env: &Env, admin: &Address, minter: &Address) -> InterchainT
             &token_id,
             token_meta_data,
         ),
+    let contract_id = env.register(
+        InterchainToken,
+        (
+            &interchain_token_service,
+            admin,
+            minter,
+            &token_id,
+            token_meta_data,
+        ),
     );
+    let token = InterchainTokenClient::new(env, &contract_id);
+
     let token = InterchainTokenClient::new(env, &contract_id);
 
     token
@@ -277,6 +289,34 @@ fn decimal_is_over_max() {
 #[test]
 #[should_panic(expected = "HostError: Error(Context, InvalidAction)")]
 fn token_name_is_empty() {
+#[should_panic(expected = "HostError: Error(Context, InvalidAction)")]
+fn token_name_is_empty() {
+    let env = Env::default();
+    let admin = Address::generate(&env);
+    let minter = Address::generate(&env);
+    let interchain_token_service = Address::generate(&env);
+    let token_id: Bytes = BytesN::<20>::random(&env).into();
+    let token_meta_data = TokenMetadata {
+        decimal: 1,
+        name: "".into_val(&env),
+        symbol: "symbol".into_val(&env),
+    };
+
+    env.register(
+        InterchainToken,
+        (
+            &interchain_token_service,
+            admin,
+            minter,
+            &token_id,
+            token_meta_data,
+        ),
+    );
+}
+
+#[test]
+#[should_panic(expected = "HostError: Error(Context, InvalidAction)")]
+fn token_symbol_is_empty() {
     let env = Env::default();
     let admin = Address::generate(&env);
     let minter = Address::generate(&env);
@@ -336,8 +376,9 @@ fn token_id_is_empty() {
     let token_id: Bytes = BytesN::from_array(&env, &[]).into();
     let token_meta_data = TokenMetadata {
         decimal: 1,
+        decimal: 1,
         name: "name".into_val(&env),
-        symbol: "symbol".into_val(&env),
+        symbol: "".into_val(&env),
     };
 
     env.register(
@@ -349,6 +390,39 @@ fn token_id_is_empty() {
             &token_id,
             token_meta_data,
         ),
+    );
+}
+
+#[test]
+#[should_panic(expected = "HostError: Error(Context, InvalidAction)")]
+fn token_id_is_empty() {
+    let env = Env::default();
+    let admin = Address::generate(&env);
+    let minter = Address::generate(&env);
+    let interchain_token_service = Address::generate(&env);
+    let token_id: Bytes = BytesN::from_array(&env, &[]).into();
+    let token_meta_data = TokenMetadata {
+        decimal: 1,
+        name: "name".into_val(&env),
+        symbol: "symbol".into_val(&env),
+    };
+
+    env.register(
+        InterchainToken,
+        (
+    env.register(
+        InterchainToken,
+        (
+            &interchain_token_service,
+            admin,
+            minter,
+            admin,
+            minter,
+            &token_id,
+            token_meta_data,
+            token_meta_data,
+        ),
+    );
     );
 }
 
