@@ -1,8 +1,8 @@
 #![cfg(test)]
 extern crate std;
 
-use axelar_soroban_std::assert_contract_err;
-use interchain_token::{contract::InterchainToken, error::ContractError, InterchainTokenClient};
+//use axelar_soroban_std::assert_contract_err;
+use interchain_token::{contract::InterchainToken, InterchainTokenClient};
 use soroban_sdk::{
     symbol_short,
     testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, BytesN as _},
@@ -394,13 +394,18 @@ fn create_token<'a>(env: &Env, admin: &Address, minter: &Address) -> InterchainT
         symbol: "symbol".into_val(env),
     };
 
-    token.initialize_interchain_token(
-        &interchain_token_service,
-        admin,
-        &minter,
-        &token_id,
-        &token_meta_data,
+    let contract_id = env.register(
+        InterchainToken,
+        (
+            &interchain_token_service,
+            admin,
+            minter,
+            &token_id,
+            token_meta_data,
+        ),
     );
+    let token = InterchainTokenClient::new(env, &contract_id);
+
     token
 }
 
@@ -418,12 +423,12 @@ fn test() {
 
     let token = create_token(&env, &admin1, &minter1);
 
-    token.mint(&admin1, &user1, &1000);
+    token.mint(&minter1, &user1, &1000);
 
     assert_eq!(
         env.auths(),
         std::vec![(
-            admin1.clone(),
+            minter1.clone(),
             AuthorizedInvocation {
                 function: AuthorizedFunction::Contract((
                     token.address.clone(),
@@ -542,25 +547,6 @@ fn minter_test() {
 
     let token = create_token(&env, &admin, &minter1);
 
-    // Admin can mint token to user
-    token.mint(&admin, &user, &amount);
-
-    assert_eq!(
-        env.auths(),
-        std::vec![(
-            admin.clone(),
-            AuthorizedInvocation {
-                function: AuthorizedFunction::Contract((
-                    token.address.clone(),
-                    symbol_short!("mint"),
-                    (&user, amount).into_val(&env),
-                )),
-                sub_invocations: std::vec![]
-            }
-        )]
-    );
-    assert_eq!(token.balance(&user), amount);
-
     // minter can mint token to user
     token.mint(&minter1, &user, &amount);
 
@@ -578,7 +564,7 @@ fn minter_test() {
             }
         )]
     );
-    assert_eq!(token.balance(&user), amount * 2);
+    assert_eq!(token.balance(&user), amount);
 }
 
 #[test]
@@ -639,60 +625,109 @@ fn test_burn() {
 }
 
 #[test]
-fn initialize_already_initialized() {
+#[should_panic(expected = "HostError: Error(Context, InvalidAction)")]
+fn decimal_is_over_max() {
     let env = Env::default();
-    env.mock_all_auths();
-
     let admin = Address::generate(&env);
     let minter = Address::generate(&env);
-
     let interchain_token_service = Address::generate(&env);
     let token_id: Bytes = BytesN::<20>::random(&env).into();
-
-    let token = create_token(&env, &admin, &minter);
     let token_meta_data = TokenMetadata {
-        decimal: 6,
+        decimal: (u32::from(u8::MAX) + 1),
         name: "name".into_val(&env),
         symbol: "symbol".into_val(&env),
     };
 
-    assert_contract_err!(
-        token.try_initialize_interchain_token(
+    env.register(
+        InterchainToken,
+        (
             &interchain_token_service,
-            &admin,
-            &minter,
+            admin,
+            minter,
             &token_id,
-            &token_meta_data,
+            token_meta_data,
         ),
-        ContractError::AlreadyInitialized
-    )
+    );
 }
 
 #[test]
-fn decimal_is_over_eighteen() {
+#[should_panic(expected = "HostError: Error(Context, InvalidAction)")]
+fn token_name_is_empty() {
     let env = Env::default();
     let admin = Address::generate(&env);
     let minter = Address::generate(&env);
-    let token = InterchainTokenClient::new(&env, &env.register_contract(None, InterchainToken {}));
-
     let interchain_token_service = Address::generate(&env);
     let token_id: Bytes = BytesN::<20>::random(&env).into();
     let token_meta_data = TokenMetadata {
-        decimal: 19,
+        decimal: 1,
+        name: "".into_val(&env),
+        symbol: "symbol".into_val(&env),
+    };
+
+    env.register(
+        InterchainToken,
+        (
+            &interchain_token_service,
+            admin,
+            minter,
+            &token_id,
+            token_meta_data,
+        ),
+    );
+}
+
+#[test]
+#[should_panic(expected = "HostError: Error(Context, InvalidAction)")]
+fn token_symbol_is_empty() {
+    let env = Env::default();
+    let admin = Address::generate(&env);
+    let minter = Address::generate(&env);
+    let interchain_token_service = Address::generate(&env);
+    let token_id: Bytes = BytesN::<20>::random(&env).into();
+    let token_meta_data = TokenMetadata {
+        decimal: 1,
+        name: "name".into_val(&env),
+        symbol: "".into_val(&env),
+    };
+
+    env.register(
+        InterchainToken,
+        (
+            &interchain_token_service,
+            admin,
+            minter,
+            &token_id,
+            token_meta_data,
+        ),
+    );
+}
+
+#[test]
+#[should_panic(expected = "HostError: Error(Context, InvalidAction)")]
+fn token_id_is_empty() {
+    let env = Env::default();
+    let admin = Address::generate(&env);
+    let minter = Address::generate(&env);
+    let interchain_token_service = Address::generate(&env);
+    let token_id: Bytes = BytesN::from_array(&env, &[]).into();
+    let token_meta_data = TokenMetadata {
+        decimal: 1,
         name: "name".into_val(&env),
         symbol: "symbol".into_val(&env),
     };
 
-    assert_contract_err!(
-        token.try_initialize_interchain_token(
+    env.register(
+        InterchainToken,
+        (
             &interchain_token_service,
-            &admin,
-            &minter,
+            admin,
+            minter,
             &token_id,
-            &token_meta_data,
+            token_meta_data,
         ),
         ContractError::InvalidDecimal
     );
+
 }
 
 #[test]

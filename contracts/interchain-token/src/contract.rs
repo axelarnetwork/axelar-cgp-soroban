@@ -14,16 +14,11 @@ pub struct InterchainToken;
 
 #[contractimpl]
 impl InterchainToken {
-    pub fn initialize_interchain_token(
-        env: Env,
-        interchain_token_service: Address,
-        admin: Address,
-        minter: Address,
-        token_id: Bytes,
-        token_meta_data: TokenMetadata,
-    ) -> Result<(), ContractError> {
-        ensure!(!token_id.is_empty(), ContractError::TokenIdZero);
-        ensure!(token_meta_data.decimal <= 18, ContractError::InvalidDecimal);
+    pub fn validate_token_metadata(token_meta_data: TokenMetadata) -> Result<(), ContractError> {
+        ensure!(
+            token_meta_data.decimal <= u8::MAX.into(),
+            ContractError::InvalidDecimal
+        );
         ensure!(
             !token_meta_data.name.is_empty(),
             ContractError::TokenNameEmpty
@@ -32,20 +27,35 @@ impl InterchainToken {
             !token_meta_data.symbol.is_empty(),
             ContractError::TokenSymbolEmpty
         );
+        Ok(())
+    }
+    pub fn __constructor(
+        env: Env,
+        interchain_token_service: Address,
+        admin: Address,
+        minter: Address,
+        token_id: Bytes,
+        token_meta_data: TokenMetadata,
+    ) -> Result<(), ContractError> {
+        ensure!(!token_id.is_empty(), ContractError::TokenIdZero);
 
-        ensure!(
-            env.storage()
-                .instance()
-                .get::<DataKey, bool>(&DataKey::Initialized)
-                .is_none(),
-            ContractError::AlreadyInitialized
-        );
+        Self::validate_token_metadata(token_meta_data.clone())?;
 
-        env.storage().instance().set(&DataKey::Initialized, &true);
         env.storage().instance().set(&DataKey::TokenId, &token_id);
+
         write_metadata(&env, token_meta_data);
 
         env.storage().instance().set(&DataKey::Owner, &owner);
+        env.storage()
+            .persistent()
+            .set(&DataKey::Minter(minter), &true);
+        env.storage()
+            .persistent()
+            .set(&DataKey::Minter(interchain_token_service.clone()), &true);
+
+        env.storage()
+            .instance()
+            .set(&DataKey::InterchainTokenService, &interchain_token_service);
 
         Ok(())
     }
@@ -56,6 +66,19 @@ impl InterchainToken {
             .get(&DataKey::Owner)
             .ok_or(ContractError::NotInitialized)
     }
+    pub fn token_id(env: &Env) -> Address {
+        env.storage()
+            .instance()
+            .get(&DataKey::TokenId)
+            .expect("token id not found")
+    }
+
+    pub fn interchain_token_service(env: &Env) -> Address {
+        env.storage()
+            .instance()
+            .get(&DataKey::InterchainTokenService)
+            .expect("interchain token service not found")
+    }
 
     pub fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), ContractError> {
         let owner: Address = Self::owner(&env)?;
@@ -64,6 +87,22 @@ impl InterchainToken {
         env.storage().instance().set(&DataKey::Owner, &new_owner);
 
         event::transfer_ownership(&env, owner, new_owner);
+
+        let is_authorized = env
+            .storage()
+            .persistent()
+            .get::<_, bool>(&DataKey::Minter(minter.clone()))
+            .unwrap_or(false);
+
+        if !is_authorized {
+            return Err(ContractError::NotAuthorizedMinter);
+        }
+
+        extend_instance_ttl(&env);
+
+        receive_balance(&env, to.clone(), amount);
+
+        TokenUtils::new(&env).events().mint(minter, to, amount);
 
         Ok(())
     }
@@ -142,7 +181,8 @@ impl token::Interface for InterchainToken {
         check_nonnegative_amount(amount);
         extend_instance_ttl(&env);
 
-        spend_allowance(&env, from.clone(), spender, amount);
+        let _ = spend_allowance(&env, from.clone(), spender, amount);
+
         spend_balance(&env, from.clone(), amount);
         receive_balance(&env, to.clone(), amount);
         TokenUtils::new(&env).events().transfer(from, to, amount)
@@ -164,7 +204,8 @@ impl token::Interface for InterchainToken {
         check_nonnegative_amount(amount);
         extend_instance_ttl(&env);
 
-        spend_allowance(&env, from.clone(), spender, amount);
+        let _ = spend_allowance(&env, from.clone(), spender, amount);
+
         spend_balance(&env, from.clone(), amount);
         TokenUtils::new(&env).events().burn(from, amount)
     }
