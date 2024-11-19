@@ -223,7 +223,11 @@ fn to_i128(value: Uint<256, 4>) -> Result<i128, MessageError> {
         MessageError::InvalidAmount
     );
 
-    Ok(i128::from_le_bytes(bytes_to_convert))
+    let i128_value = i128::from_le_bytes(bytes_to_convert);
+
+    ensure!(i128_value >= 0, MessageError::InvalidAmount);
+
+    Ok(i128_value)
 }
 
 fn into_vec(value: Option<Bytes>) -> alloc::vec::Vec<u8> {
@@ -251,7 +255,7 @@ mod tests {
     use soroban_sdk::{Bytes, BytesN, Env, String};
     use std::vec::Vec;
 
-    const MAX_I128: i128 = i128::MAX as i128;
+    const MAX_I128: i128 = i128::MAX;
 
     fn bytes_from_hex(env: &Env, hex_string: &str) -> Bytes {
         let bytes_vec: Vec<u8> = hex::decode(hex_string).unwrap();
@@ -259,25 +263,55 @@ mod tests {
     }
 
     #[test]
-    fn uint256_to_i128() {
-        let amount: i128 = 9_876_543_210_123_456_789;
-        let uint: Uint<256, 4> = amount.try_into().unwrap();
-
-        assert_eq!(to_i128(uint).unwrap(), amount);
+    #[should_panic(expected = "Invalid UTF-8 sequence")]
+    fn to_std_string_panics_invalid_utf8_bytes() {
+        let env = Env::default();
+        let invalid_sequence = vec![0x80, 0x81, 0x82, 0x83];
+        let invalid_string = String::from_bytes(&env, &invalid_sequence);
+        to_std_string(invalid_string);
     }
 
     #[test]
-    #[should_panic]
-    fn i128_conversion_panics_dirty_bytes() {
-        let amount: i128 = 9_876_543_210_123_456_789;
-        let bytes = amount.to_le_bytes();
+    fn uint256_to_i128() {
+        let uint_i128_max: Uint<256, 4> = MAX_I128.try_into().unwrap();
+
+        assert_eq!(to_i128(uint_i128_max).unwrap(), MAX_I128);
+
+        let uint_min: Uint<256, 4> = Uint::MIN;
+
+        assert_eq!(to_i128(uint_min).unwrap(), 0);
+    }
+
+    #[test]
+    fn to_i128_fails_dirty_bytes() {
+        let uint_min: Uint<256, 4> = Uint::from(1);
+        let bytes: [u8; 32] = uint_min.to_le_bytes();
         assert_eq!(
-            bytes,
-            [21, 113, 52, 176, 184, 135, 16, 137, 0, 0, 0, 0, 0, 0, 0, 0]
+            [
+                1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0
+            ],
+            bytes
         );
 
-        let bad_bytes = [21, 113, 52, 176, 184, 135, 16, 137, 0, 0, 0, 0, 0, 0, 0, 1];
-        let _bad_uint = U256::from_le_bytes(bad_bytes);
+        let bad_bytes = [
+            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 1,
+        ];
+        let bad_uint = U256::from_le_bytes(bad_bytes);
+
+        let result = to_i128(bad_uint);
+
+        assert!(matches!(result, Err(MessageError::InvalidAmount)));
+    }
+
+    #[test]
+    fn to_i128_fails_overflow() {
+        let overflow: Uint<256, 4> = Uint::from(MAX_I128) + Uint::from(1);
+
+        let result = to_i128(overflow);
+
+        assert!(matches!(result, Err(MessageError::InvalidAmount)));
     }
 
     #[test]
