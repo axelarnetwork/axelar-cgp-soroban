@@ -6,6 +6,4 @@ use soroban_sdk::contracterror;
 pub enum ContractError {
     OperatorAlreadyAdded = 1,
     NotAnOperator = 2,
-    AlreadyInitialized = 3,
-    NotInitialized = 4,
 }

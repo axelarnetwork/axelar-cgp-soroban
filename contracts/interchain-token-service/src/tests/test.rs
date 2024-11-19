@@ -1,6 +1,3 @@
-#![cfg(test)]
-extern crate std;
-
 use crate::error::ContractError;
 use crate::{contract::InterchainTokenService, contract::InterchainTokenServiceClient};
 
