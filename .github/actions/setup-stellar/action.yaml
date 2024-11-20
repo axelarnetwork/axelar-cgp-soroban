@@ -33,11 +33,6 @@ runs:
         tar -xvf stellar-cli-${{ inputs.stellar-version }}-x86_64-unknown-linux-gnu.tar.gz -C stellar-binaries
         rm -rf stellar-cli-${{ inputs.stellar-version }}-x86_64-unknown-linux-gnu.tar.gz
 
-        curl -L -o soroban-cli-${{ inputs.stellar-version }}-x86_64-unknown-linux-gnu.tar.gz https://github.com/stellar/stellar-cli/releases/download/v${{ inputs.stellar-version }}/soroban-cli-${{ inputs.stellar-version }}-x86_64-unknown-linux-gnu.tar.gz
-        if tar -xvf soroban-cli-${{ inputs.stellar-version }}-x86_64-unknown-linux-gnu.tar.gz -C stellar-binaries ; then
-          rm -rf soroban-cli-${{ inputs.stellar-version }}-x86_64-unknown-linux-gnu.tar.gz
-        fi
-
     - name: Save Stellar binaries
       if: steps.cache-stellar.outputs.cache-hit != 'true'
       id: cache-stellar-save
@@ -50,4 +45,3 @@ runs:
       shell: bash
       run: |
         sudo cp ./stellar-binaries/stellar /usr/local/bin/stellar
-        sudo cp ./stellar-binaries/soroban /usr/local/bin/soroban | true
