@@ -42,7 +42,7 @@ impl UpgradeableInterface for AxelarGateway {
 #[contractimpl]
 impl AxelarGateway {
     /// Initialize the gateway
-    pub fn initialize(
+    pub fn __constructor(
         env: Env,
         owner: Address,
         operator: Address,
@@ -51,16 +51,6 @@ impl AxelarGateway {
         previous_signers_retention: u64,
         initial_signers: Vec<WeightedSigners>,
     ) -> Result<(), ContractError> {
-        ensure!(
-            env.storage()
-                .instance()
-                .get::<DataKey, bool>(&DataKey::Initialized)
-                .is_none(),
-            ContractError::AlreadyInitialized
-        );
-
-        env.storage().instance().set(&DataKey::Initialized, &true);
-
         env.storage().instance().set(&DataKey::Owner, &owner);
         env.storage().instance().set(&DataKey::Operator, &operator);
 
@@ -240,7 +230,7 @@ impl AxelarGateway {
         bypass_rotation_delay: bool,
     ) -> Result<(), ContractError> {
         if bypass_rotation_delay {
-            Self::operator(&env)?.require_auth();
+            Self::operator(&env).require_auth();
         }
 
         let data_hash: BytesN<32> = signers.signers_rotation_hash(&env);
@@ -256,8 +246,8 @@ impl AxelarGateway {
         Ok(())
     }
 
-    pub fn transfer_operatorship(env: Env, new_operator: Address) -> Result<(), ContractError> {
-        let operator: Address = Self::operator(&env)?;
+    pub fn transfer_operatorship(env: Env, new_operator: Address) {
+        let operator: Address = Self::operator(&env);
         operator.require_auth();
 
         env.storage()
@@ -265,37 +255,33 @@ impl AxelarGateway {
             .set(&DataKey::Operator, &new_operator);
 
         event::transfer_operatorship(&env, operator, new_operator);
-
-        Ok(())
     }
 
-    pub fn operator(env: &Env) -> Result<Address, ContractError> {
+    pub fn operator(env: &Env) -> Address {
         env.storage()
             .instance()
             .get(&DataKey::Operator)
-            .ok_or(ContractError::NotInitialized)
+            .expect("operator not found")
     }
 
-    pub fn epoch(env: &Env) -> Result<u64, ContractError> {
+    pub fn epoch(env: &Env) -> u64 {
         auth::epoch(env)
     }
 
-    pub fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), ContractError> {
-        let owner: Address = Self::owner(&env)?;
+    pub fn transfer_ownership(env: Env, new_owner: Address) {
+        let owner: Address = Self::owner(&env);
         owner.require_auth();
 
         env.storage().instance().set(&DataKey::Owner, &new_owner);
 
         event::transfer_ownership(&env, owner, new_owner);
-
-        Ok(())
     }
 
-    pub fn owner(env: &Env) -> Result<Address, ContractError> {
+    pub fn owner(env: &Env) -> Address {
         env.storage()
             .instance()
             .get(&DataKey::Owner)
-            .ok_or(ContractError::NotInitialized)
+            .expect("owner not found")
     }
 
     pub fn epoch_by_signers_hash(

@@ -19,7 +19,6 @@ pub enum MessageApprovalValue {
 #[derive(Clone, Debug)]
 pub enum DataKey {
     /// Gateway
-    Initialized,
     Owner,
     Operator,
     MessageApproval(MessageApprovalKey),
