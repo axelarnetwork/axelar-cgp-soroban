@@ -121,15 +121,15 @@ impl AxelarGateway {
 
         message_approval
             == Self::message_approval_hash(
-                &env,
-                Message {
-                    source_chain,
-                    message_id,
-                    source_address,
-                    contract_address,
-                    payload_hash,
-                },
-            )
+            &env,
+            Message {
+                source_chain,
+                message_id,
+                source_address,
+                contract_address,
+                payload_hash,
+            },
+        )
     }
 
     /// Checks if a message is executed.
@@ -345,7 +345,7 @@ impl AxelarGateway {
     }
 
     // Modify this function to add migration logic
-    #[allow(clippy::missing_const_for_fn)] // clippy complains about this a no-op implementation otherwise
+    #[allow(clippy::missing_const_for_fn)] // exclude no-op implementations from this lint
     fn run_migration(_env: &Env, _migration_data: ()) {}
 
     fn complete_migration(env: &Env) {
