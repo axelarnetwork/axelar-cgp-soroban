@@ -10,24 +10,15 @@ pub struct InterchainTokenService;
 
 #[contractimpl]
 impl InterchainTokenService {
-    pub fn initialize_its(env: Env, owner: Address) -> Result<(), ContractError> {
-        ensure!(
-            env.storage()
-                .instance()
-                .get::<DataKey, bool>(&DataKey::Initialized)
-                .is_none(),
-            ContractError::AlreadyInitialized
-        );
-
-        env.storage().instance().set(&DataKey::Initialized, &true);
-
+    pub fn __constructor(env: Env, owner: Address) {
         env.storage().instance().set(&DataKey::Owner, &owner);
-
-        Ok(())
     }
 
     pub fn owner(env: &Env) -> Address {
-        env.storage().instance().get(&DataKey::Owner).unwrap()
+        env.storage()
+            .instance()
+            .get(&DataKey::Owner)
+            .expect("owner not found")
     }
 
     pub fn transfer_ownership(env: Env, new_owner: Address) {
