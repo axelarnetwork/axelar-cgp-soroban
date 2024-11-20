@@ -102,12 +102,12 @@ impl Message {
         let message_type = MessageType::abi_decode(&payload[0..32], true)
             .map_err(|_| MessageError::InvalidMessageType)?;
 
-        let message = match message_type {
+        match message_type {
             MessageType::InterchainTransfer => {
                 let decoded = InterchainTransfer::abi_decode_params(&payload, true)
                     .map_err(|_| MessageError::AbiDecodeFailed)?;
 
-                Self::InterchainTransfer(types::InterchainTransfer {
+                Ok(Self::InterchainTransfer(types::InterchainTransfer {
                     token_id: BytesN::from_array(env, &decoded.tokenId.into()),
                     source_address: Bytes::from_slice(env, decoded.sourceAddress.as_ref()),
                     destination_address: Bytes::from_slice(
@@ -116,24 +116,22 @@ impl Message {
                     ),
                     amount: to_i128(decoded.amount)?,
                     data: from_vec(env, decoded.data.as_ref()),
-                })
+                }))
             }
             MessageType::DeployInterchainToken => {
                 let decoded = DeployInterchainToken::abi_decode_params(&payload, true)
                     .map_err(|_| MessageError::AbiDecodeFailed)?;
 
-                Self::DeployInterchainToken(types::DeployInterchainToken {
+                Ok(Self::DeployInterchainToken(types::DeployInterchainToken {
                     token_id: BytesN::from_array(env, &decoded.tokenId.into()),
                     name: String::from_str(env, &decoded.name),
                     symbol: String::from_str(env, &decoded.symbol),
                     decimals: decoded.decimals,
                     minter: from_vec(env, decoded.minter.as_ref()),
-                })
+                }))
             }
-            _ => return Err(MessageError::InvalidMessageType),
-        };
-
-        Ok(message)
+            _ => Err(MessageError::InvalidMessageType),
+        }
     }
 }
 
@@ -171,35 +169,33 @@ impl HubMessage {
         let message_type = MessageType::abi_decode(&payload[0..32], true)
             .map_err(|_| MessageError::InvalidMessageType)?;
 
-        let message = match message_type {
+        match message_type {
             MessageType::SendToHub => {
                 let decoded = SendToHub::abi_decode_params(&payload, true)
                     .map_err(|_| MessageError::AbiDecodeFailed)?;
 
-                Self::SendToHub {
+                Ok(Self::SendToHub {
                     destination_chain: String::from_str(env, &decoded.destination_chain),
                     message: Message::abi_decode(
                         env,
                         &Bytes::from_slice(env, decoded.message.as_ref()),
                     )?,
-                }
+                })
             }
             MessageType::ReceiveFromHub => {
                 let decoded = ReceiveFromHub::abi_decode_params(&payload, true)
                     .map_err(|_| MessageError::AbiDecodeFailed)?;
 
-                Self::ReceiveFromHub {
+                Ok(Self::ReceiveFromHub {
                     source_chain: String::from_str(env, &decoded.source_chain),
                     message: Message::abi_decode(
                         env,
                         &Bytes::from_slice(env, decoded.message.as_ref()),
                     )?,
-                }
+                })
             }
-            _ => return Err(MessageError::InvalidMessageType),
-        };
-
-        Ok(message)
+            _ => Err(MessageError::InvalidMessageType),
+        }
     }
 }
 
@@ -215,8 +211,8 @@ fn to_i128(value: Uint<256, 4>) -> Result<i128, MessageError> {
 
     let mut bytes_to_remove = [0; 16];
     let mut bytes_to_convert = [0; 16];
-    bytes_to_remove.copy_from_slice(&slice[16..]);
     bytes_to_convert.copy_from_slice(&slice[..16]);
+    bytes_to_remove.copy_from_slice(&slice[16..]);
 
     ensure!(
         i128::from_le_bytes(bytes_to_remove) == 0,
@@ -252,6 +248,7 @@ impl From<MessageType> for U256 {
 mod tests {
     use super::*;
     use alloc::vec;
+    use core::u128;
     use soroban_sdk::{Bytes, BytesN, Env, String};
     use std::vec::Vec;
 
@@ -306,9 +303,11 @@ mod tests {
     #[test]
     fn to_i128_fails_overflow() {
         let overflow: Uint<256, 4> = Uint::from(i128::MAX) + Uint::from(1);
-
         let result = to_i128(overflow);
+        assert!(matches!(result, Err(MessageError::InvalidAmount)));
 
+        let overflow: Uint<256, 4> = Uint::from(u128::MAX);
+        let result = to_i128(overflow);
         assert!(matches!(result, Err(MessageError::InvalidAmount)));
     }
 
