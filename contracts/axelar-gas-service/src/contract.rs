@@ -4,6 +4,7 @@ use axelar_soroban_std::{ensure, types::Token};
 
 use crate::error::ContractError;
 use crate::event;
+use crate::interface::AxelarGasServiceInterface;
 use crate::storage_types::DataKey;
 
 #[contract]
@@ -17,11 +18,11 @@ impl AxelarGasService {
             .instance()
             .set(&DataKey::GasCollector, &gas_collector);
     }
+}
 
-    /// Pay for gas using a token for a contract call on a destination chain.
-    ///
-    /// This function is called on the source chain before calling the gateway to execute a remote contract.
-    pub fn pay_gas_for_contract_call(
+#[contractimpl]
+impl AxelarGasServiceInterface for AxelarGasService {
+    fn pay_gas_for_contract_call(
         env: Env,
         sender: Address,
         destination_chain: String,
@@ -54,8 +55,7 @@ impl AxelarGasService {
         Ok(())
     }
 
-    /// Add additional gas payment after initiating a cross-chain call.
-    pub fn add_gas(
+    fn add_gas(
         env: Env,
         sender: Address,
         message_id: String,
@@ -78,10 +78,7 @@ impl AxelarGasService {
         Ok(())
     }
 
-    /// Allows the `gas_collector` to collect accumulated fees from the contract.
-    ///
-    /// Only callable by the `gas_collector`.
-    pub fn collect_fees(env: Env, receiver: Address, token: Token) -> Result<(), ContractError> {
+    fn collect_fees(env: Env, receiver: Address, token: Token) -> Result<(), ContractError> {
         let gas_collector = Self::gas_collector(&env);
         gas_collector.require_auth();
 
@@ -102,10 +99,7 @@ impl AxelarGasService {
         Ok(())
     }
 
-    /// Refunds gas payment to the receiver in relation to a specific cross-chain transaction.
-    ///
-    /// Only callable by the `gas_collector`.
-    pub fn refund(env: Env, message_id: String, receiver: Address, token: Token) {
+    fn refund(env: Env, message_id: String, receiver: Address, token: Token) {
         Self::gas_collector(&env).require_auth();
 
         token::Client::new(&env, &token.address).transfer(
@@ -117,7 +111,7 @@ impl AxelarGasService {
         event::refunded(&env, message_id, receiver, token);
     }
 
-    pub fn gas_collector(env: &Env) -> Address {
+    fn gas_collector(env: &Env) -> Address {
         env.storage()
             .instance()
             .get(&DataKey::GasCollector)
