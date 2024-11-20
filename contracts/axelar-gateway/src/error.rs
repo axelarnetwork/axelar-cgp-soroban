@@ -23,5 +23,5 @@ pub enum ContractError {
     EmptyMessages = 14,
     // Executable
     NotApproved = 15,
-    MigrationAlreadyCompleted = 16,
+    MigrationNotAllowed = 16,
 }

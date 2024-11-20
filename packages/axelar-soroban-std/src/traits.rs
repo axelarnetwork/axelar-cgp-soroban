@@ -17,7 +17,6 @@ mod testutils {
 
     use soroban_sdk::{Env, IntoVal, TryFromVal, Val, Vec};
 
-
     pub trait IntoVec<T> {
         fn into_vec(self, env: &Env) -> Vec<T>;
     }

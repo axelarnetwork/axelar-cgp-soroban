@@ -11,3 +11,7 @@ pub mod traits;
 pub mod types;
 
 pub mod error;
+
+mod upgrade;
+
+pub use upgrade::UpgradeableInterface;
