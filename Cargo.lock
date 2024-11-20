@@ -173,6 +173,7 @@ name = "axelar-gas-service"
 version = "0.1.0"
 dependencies = [
  "axelar-soroban-std",
+ "cfg-if",
  "soroban-sdk",
 ]
 
@@ -181,6 +182,7 @@ name = "axelar-gateway"
 version = "0.1.0"
 dependencies = [
  "axelar-soroban-std",
+ "cfg-if",
  "ed25519-dalek",
  "goldie",
  "hex",

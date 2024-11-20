@@ -1,9 +1,20 @@
 #![no_std]
 
-mod event;
-mod storage_types;
-
-pub mod contract;
 pub mod error;
 
-pub use contract::AxelarGasServiceClient;
+mod interface;
+
+#[cfg(all(target_family = "wasm", feature = "testutils"))]
+compile_error!("'testutils' feature is not supported on 'wasm' target");
+
+cfg_if::cfg_if! {
+    if #[cfg(all(feature = "library", not(feature = "testutils")))] {
+        pub use interface::{AxelarGasServiceClient, AxelarGasServiceInterface};
+    } else {
+        mod event;
+        mod storage_types;
+
+        pub mod contract;
+        pub use contract::{AxelarGasService, AxelarGasServiceClient};
+    }
+}
