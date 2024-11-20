@@ -37,9 +37,9 @@ runs:
       run: |
         mkdir -p ./stellar-binaries
         cp "$HOME/.cargo/bin/stellar" ./stellar-binaries/stellar
-        cp "$HOME/.cargo/bin/soroban" ./stellar-binaries/soroban
+        cp "$HOME/.cargo/bin/soroban" ./stellar-binaries/soroban | true
         chmod +x ./stellar-binaries/stellar
-        chmod +x ./stellar-binaries/soroban
+        chmod +x ./stellar-binaries/soroban | true
 
     - name: Save Stellar binaries
       if: steps.cache-stellar.outputs.cache-hit != 'true'
@@ -53,4 +53,4 @@ runs:
       shell: bash
       run: |
         sudo cp ./stellar-binaries/stellar /usr/local/bin/stellar
-        sudo cp ./stellar-binaries/soroban /usr/local/bin/soroban
+        sudo cp ./stellar-binaries/soroban /usr/local/bin/soroban | true
