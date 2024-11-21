@@ -249,6 +249,7 @@ impl From<MessageType> for U256 {
 mod tests {
     use super::*;
     use alloc::vec;
+    use axelar_soroban_std::assert_ok;
     use core::u128;
     use soroban_sdk::{Bytes, BytesN, Env, String};
     use std::vec::Vec;
@@ -307,19 +308,6 @@ mod tests {
             let result = to_std_string(sequence);
             assert!(matches!(result, Err(MessageError::InvalidUtf8)));
         }
-    }
-
-    #[test]
-    #[should_panic]
-    fn soroban_string_copy_to_slice_panics_on_missized_array() {
-        let env = Env::default();
-        let soroban_string = String::from_str(&env, &"hello world");
-
-        let mut undersized = vec![0u8; (soroban_string.len() - 1) as usize];
-        soroban_string.copy_into_slice(&mut undersized);
-
-        let mut oversized = vec![0u8; (soroban_string.len() + 1) as usize];
-        soroban_string.copy_into_slice(&mut oversized);
     }
 
     #[test]
@@ -435,10 +423,7 @@ mod tests {
             .iter()
             .map(|original| {
                 hex::encode(
-                    original
-                        .clone()
-                        .abi_encode(&env)
-                        .unwrap()
+                    assert_ok!(original.clone().abi_encode(&env))
                         .to_buffer::<1024>()
                         .as_slice(),
                 )
@@ -448,7 +433,7 @@ mod tests {
         goldie::assert_json!(encoded);
 
         for original in cases {
-            let encoded = original.clone().abi_encode(&env).unwrap();
+            let encoded = assert_ok!(original.clone().abi_encode(&env));
             let decoded = HubMessage::abi_decode(&env, &encoded);
             assert_eq!(original, decoded.unwrap());
         }
@@ -532,10 +517,7 @@ mod tests {
             .iter()
             .map(|original| {
                 hex::encode(
-                    original
-                        .clone()
-                        .abi_encode(&env)
-                        .unwrap()
+                    assert_ok!(original.clone().abi_encode(&env))
                         .to_buffer::<1024>()
                         .as_slice(),
                 )
@@ -545,7 +527,7 @@ mod tests {
         goldie::assert_json!(encoded);
 
         for original in cases {
-            let encoded = original.clone().abi_encode(&env).unwrap();
+            let encoded = assert_ok!(original.clone().abi_encode(&env));
             let decoded = HubMessage::abi_decode(&env, &encoded);
             assert_eq!(original, decoded.unwrap());
         }
@@ -558,6 +540,20 @@ mod tests {
         let invalid_payload = Bytes::from_slice(&env, &bytes);
 
         let result = HubMessage::abi_decode(&env, &invalid_payload);
+        assert!(matches!(result, Err(MessageError::InvalidMessageType)));
+
+        let invalid_hub_message_type = assert_ok!(types::Message::InterchainTransfer(
+            types::InterchainTransfer {
+                token_id: BytesN::from_array(&env, &[0u8; 32]),
+                source_address: bytes_from_hex(&env, "00"),
+                destination_address: bytes_from_hex(&env, "00"),
+                amount: 1u64.try_into().unwrap(),
+                data: None,
+            }
+        )
+        .abi_encode(&env));
+
+        let result = HubMessage::abi_decode(&env, &invalid_hub_message_type);
         assert!(matches!(result, Err(MessageError::InvalidMessageType)));
     }
 }
