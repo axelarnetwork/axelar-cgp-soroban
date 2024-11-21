@@ -11,6 +11,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 axelar-soroban-std = { workspace = true }
+cfg-if = { workspace = true }
 soroban-sdk = { workspace = true }
 
 [dev-dependencies]
@@ -19,3 +20,7 @@ soroban-sdk = { workspace = true, features = ["testutils"] }
 
 [lints]
 workspace = true
+
+[features]
+library = [] # Only export the contract interface
+testutils = []

@@ -1,7 +1,5 @@
-use axelar_soroban_std::ensure;
 use soroban_sdk::{contract, contractimpl, Address, Env};
 
-use crate::error::ContractError;
 use crate::event;
 use crate::storage_types::DataKey;
 
@@ -10,37 +8,23 @@ pub struct InterchainToken;
 
 #[contractimpl]
 impl InterchainToken {
-    pub fn initialize(env: Env, owner: Address) -> Result<(), ContractError> {
-        ensure!(
-            env.storage()
-                .instance()
-                .get::<DataKey, bool>(&DataKey::Initialized)
-                .is_none(),
-            ContractError::AlreadyInitialized
-        );
-
-        env.storage().instance().set(&DataKey::Initialized, &true);
-
+    pub fn __constructor(env: Env, owner: Address) {
         env.storage().instance().set(&DataKey::Owner, &owner);
-
-        Ok(())
     }
 
-    pub fn owner(env: &Env) -> Result<Address, ContractError> {
+    pub fn owner(env: &Env) -> Address {
         env.storage()
             .instance()
             .get(&DataKey::Owner)
-            .ok_or(ContractError::NotInitialized)
+            .expect("owner not found")
     }
 
-    pub fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), ContractError> {
-        let owner: Address = Self::owner(&env)?;
+    pub fn transfer_ownership(env: Env, new_owner: Address) {
+        let owner: Address = Self::owner(&env);
         owner.require_auth();
 
         env.storage().instance().set(&DataKey::Owner, &new_owner);
 
         event::transfer_ownership(&env, owner, new_owner);
-
-        Ok(())
     }
 }
