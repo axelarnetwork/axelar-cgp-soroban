@@ -27,15 +27,15 @@ pub struct AxelarGateway;
 impl UpgradeableInterface for AxelarGateway {
     type Error = ContractError;
 
-    fn version(env: Env) -> String {
-        String::from_str(&env, CONTRACT_VERSION)
+    fn version(env: &Env) -> String {
+        String::from_str(env, CONTRACT_VERSION)
     }
 
-    fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), ContractError> {
-        Self::owner(&env).require_auth();
+    fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) -> Result<(), ContractError> {
+        Self::owner(env).require_auth();
 
         env.deployer().update_current_contract_wasm(new_wasm_hash);
-        Self::start_migration(&env);
+        Self::start_migration(env);
 
         Ok(())
     }
@@ -68,15 +68,15 @@ impl AxelarGateway {
     }
 
     /// Migrate the contract state after upgrading the contract code. the migration_data type can be adjusted as needed.
-    pub fn migrate(env: Env, migration_data: ()) -> Result<(), ContractError> {
+    pub fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
         // This function should not get modified.
         // Custom migration logic that changes from version to version should be added in the run_migration function
-        Self::ensure_is_migrating(&env)?;
+        Self::ensure_is_migrating(env)?;
 
-        Self::run_migration(&env, migration_data);
-        Self::complete_migration(&env);
+        Self::run_migration(env, migration_data);
+        Self::complete_migration(env);
 
-        event::upgrade_complete(&env, &Self::version(env.clone()));
+        event::upgrade_complete(env, &Self::version(env));
 
         Ok(())
     }
