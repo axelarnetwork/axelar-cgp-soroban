@@ -206,7 +206,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "HostError: Error(Auth, InvalidAction)")]
     fn upgrade_fails_if_caller_is_authenticated_but_not_owner() {
         let env = Env::default();
 
@@ -244,7 +244,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "HostError: Error(Auth, InvalidAction)")]
     fn upgrade_fails_if_correct_owner_is_not_authenticated_for_full_invocation_tree() {
         let env = Env::default();
 
