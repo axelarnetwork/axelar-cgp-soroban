@@ -1,4 +1,5 @@
 use crate::error::ContractError;
+use crate::interface::AxelarGatewayInterface;
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::types::{CommandType, Message, Proof, WeightedSigners};
 use crate::{auth, event};
@@ -30,7 +31,7 @@ impl UpgradeableInterface for AxelarGateway {
     }
 
     fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), ContractError> {
-        Self::owner(&env)?.require_auth();
+        Self::owner(&env).require_auth();
 
         env.deployer().update_current_contract_wasm(new_wasm_hash);
         Self::start_migration(&env);
@@ -114,15 +115,15 @@ impl AxelarGatewayInterface for AxelarGateway {
 
         message_approval
             == Self::message_approval_hash(
-            &env,
-            Message {
-                source_chain,
-                message_id,
-                source_address,
-                contract_address,
-                payload_hash,
-            },
-        )
+                &env,
+                Message {
+                    source_chain,
+                    message_id,
+                    source_address,
+                    contract_address,
+                    payload_hash,
+                },
+            )
     }
 
     fn is_message_executed(env: Env, source_chain: String, message_id: String) -> bool {

@@ -1,4 +1,4 @@
 #![no_std]
 
-mod contract;
-mod error;
+pub mod contract;
+pub mod error;
