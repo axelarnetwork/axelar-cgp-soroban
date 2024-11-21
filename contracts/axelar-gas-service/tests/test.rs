@@ -6,6 +6,7 @@ use std::format;
 use axelar_gas_service::contract::{AxelarGasService, AxelarGasServiceClient};
 use axelar_gas_service::error::ContractError;
 use axelar_soroban_std::{assert_contract_err, assert_last_emitted_event, types::Token};
+use soroban_sdk::Bytes;
 use soroban_sdk::{
     bytes,
     testutils::Address as _,
@@ -65,13 +66,14 @@ fn fail_pay_gas_zero_gas_amount() {
     assert_eq!(token_client.allowance(&sender, &contract_id), gas_amount);
 
     assert_contract_err!(
-        client.try_pay_gas_for_contract_call(
+        client.try_pay_gas(
             &sender,
             &destination_chain,
             &destination_address,
             &payload,
-            &refund_address,
             &token,
+            &refund_address,
+            &Bytes::new(&env),
         ),
         ContractError::InvalidAmount
     );
@@ -98,20 +100,21 @@ fn fail_pay_gas_no_approved_allowance() {
     StellarAssetClient::new(&env, &asset.address()).mint(&sender, &gas_amount);
 
     assert_contract_err!(
-        client.try_pay_gas_for_contract_call(
+        client.try_pay_gas(
             &sender,
             &destination_chain,
             &destination_address,
             &payload,
-            &refund_address,
             &token,
+            &refund_address,
+            &Bytes::new(&env),
         ),
         ContractError::InvalidAmount
     );
 }
 
 #[test]
-fn pay_gas_for_contract_call() {
+fn pay_gas() {
     let (env, contract_id, _gas_collector, client) = setup_env();
 
     let asset = &env.register_stellar_asset_contract_v2(Address::generate(&env));
@@ -132,36 +135,32 @@ fn pay_gas_for_contract_call() {
     let token_client = TokenClient::new(&env, &asset.address());
     StellarAssetClient::new(&env, &asset.address()).mint(&sender, &gas_amount);
 
-    let expiration_ledger = &env.ledger().sequence() + 200;
-
-    // approve token spend before invoking `pay_gas_for_contract_call`
-    token_client.approve(&sender, &contract_id, &gas_amount, &expiration_ledger);
-
-    assert_eq!(token_client.allowance(&sender, &contract_id), gas_amount);
-
-    client.pay_gas_for_contract_call(
+    client.pay_gas(
         &sender,
         &destination_chain,
         &destination_address,
         &payload,
-        &refund_address,
         &token,
+        &refund_address,
+        &Bytes::new(&env),
     );
 
     assert_eq!(0, token_client.balance(&sender));
     assert_eq!(gas_amount, token_client.balance(&contract_id));
-    assert_eq!(token_client.allowance(&sender, &contract_id), 0);
 
     assert_last_emitted_event(
         &env,
         &contract_id,
         (
             Symbol::new(&env, "gas_paid"),
-            env.crypto().keccak256(&payload),
             sender,
             destination_chain,
+            destination_address,
+            env.crypto().keccak256(&payload),
+            token,
+            refund_address,
         ),
-        (destination_address, payload, refund_address, token),
+        (Bytes::new(&env),),
     );
 }
 

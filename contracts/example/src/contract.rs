@@ -2,7 +2,7 @@ use crate::event;
 use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::AxelarGatewayMessagingClient;
 use axelar_soroban_std::types::Token;
-use soroban_sdk::{contract, contractimpl, Address, Bytes, Env, String};
+use soroban_sdk::{contract, contractimpl, token, Address, Bytes, Env, String};
 
 use crate::storage_types::DataKey;
 
@@ -56,13 +56,20 @@ impl Example {
 
         caller.require_auth();
 
-        gas_service.pay_gas_for_contract_call(
+        token::Client::new(&env, &gas_token.address).transfer(
             &caller,
+            &env.current_contract_address(),
+            &gas_token.amount,
+        );
+
+        gas_service.pay_gas(
+            &env.current_contract_address(),
             &destination_chain,
             &destination_address,
             &message,
-            &caller,
             &gas_token,
+            &caller,
+            &Bytes::new(&env),
         );
 
         gateway.call_contract(

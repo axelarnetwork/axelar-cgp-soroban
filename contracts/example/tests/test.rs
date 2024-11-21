@@ -6,13 +6,13 @@ use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::testutils::{self, generate_proof, get_approve_hash, TestSignerSet};
 use axelar_gateway::types::Message;
 use axelar_gateway::AxelarGatewayClient;
-use axelar_soroban_std::assert_last_emitted_event;
+use axelar_soroban_std::{assert_invoke_auth_ok, assert_last_emitted_event};
 use axelar_soroban_std::types::Token;
 use example::contract::Example;
 use example::ExampleClient;
-use soroban_sdk::token::{StellarAssetClient, TokenClient};
+use soroban_sdk::token::StellarAssetClient;
 use soroban_sdk::{
-    testutils::Address as _, testutils::BytesN as _, vec, Address, BytesN, Env, String,
+    testutils::Address as _, testutils::BytesN as _, vec, Address, BytesN, Env, String, IntoVal, testutils::{MockAuth, MockAuthInvoke},
 };
 use soroban_sdk::{Bytes, Symbol};
 
@@ -74,30 +74,17 @@ fn test_gmp_example() {
         amount: gas_amount,
     };
 
-    let token_client = TokenClient::new(&env, &asset.address());
     StellarAssetClient::new(&env, &asset.address()).mint(&user, &gas_amount);
 
-    let expiration_ledger = &env.ledger().sequence() + 200;
-
-    // approve token spend before invoking `pay_gas_for_contract_call` in `send` function
-    token_client.approve(
-        &user,
-        &source_gas_service_id,
-        &gas_amount,
-        &expiration_ledger,
-    );
-
-    assert_eq!(
-        token_client.allowance(&user, &source_gas_service_id),
-        gas_amount
-    );
-
-    source_app.send(
-        &user,
-        &destination_chain,
-        &destination_address,
-        &payload,
-        &gas_token,
+    assert_invoke_auth_ok!(
+        user,
+        source_app.try_send(
+            &user,
+            &destination_chain,
+            &destination_address,
+            &payload,
+            &gas_token,
+        )
     );
 
     // Axelar hub confirms the contract call, i.e Axelar verifiers verify/vote on the emitted event

@@ -5,20 +5,22 @@ use crate::error::ContractError;
 
 #[contractclient(name = "AxelarGasServiceClient")]
 pub trait AxelarGasServiceInterface {
-    /// Pay for gas using a token for a contract call on a destination chain.
+    #[allow(clippy::too_many_arguments)]
+    /// Pay for gas using a token for sending a message on a destination chain.
     ///
-    /// This function is called on the source chain before calling the gateway to execute a remote contract.
-    fn pay_gas_for_contract_call(
+    /// This function is called on the source chain before calling the gateway to send a message.
+    fn pay_gas(
         env: Env,
         sender: Address,
         destination_chain: String,
         destination_address: String,
         payload: Bytes,
-        refund_address: Address,
         token: Token,
+        refund_address: Address,
+        metadata: Bytes,
     ) -> Result<(), ContractError>;
 
-    /// Add additional gas payment after initiating a cross-chain call.
+    /// Add additional gas payment after initiating a cross-chain message.
     fn add_gas(
         env: Env,
         sender: Address,
@@ -32,7 +34,7 @@ pub trait AxelarGasServiceInterface {
     /// Only callable by the `gas_collector`.
     fn collect_fees(env: Env, receiver: Address, token: Token) -> Result<(), ContractError>;
 
-    /// Refunds gas payment to the receiver in relation to a specific cross-chain transaction.
+    /// Refunds gas payment to the receiver in relation to a specific cross-chain message.
     ///
     /// Only callable by the `gas_collector`.
     fn refund(env: Env, message_id: String, receiver: Address, token: Token);
