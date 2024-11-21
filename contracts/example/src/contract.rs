@@ -1,6 +1,6 @@
 use crate::event;
 use axelar_gas_service::AxelarGasServiceClient;
-use axelar_gateway::AxelarGatewayClient;
+use axelar_gateway::AxelarGatewayMessagingClient;
 use axelar_soroban_std::types::Token;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, Env, String};
 
@@ -24,7 +24,7 @@ impl AxelarExecutableInterface for Example {
         source_address: String,
         payload: Bytes,
     ) {
-        let _ = Self::validate(&env, &source_chain, &message_id, &source_address, &payload);
+        let _ = Self::validate_message(&env, &source_chain, &message_id, &source_address, &payload);
 
         event::executed(&env, source_chain, message_id, source_address, payload);
     }
@@ -51,7 +51,7 @@ impl Example {
         message: Bytes,
         gas_token: Token,
     ) {
-        let gateway = AxelarGatewayClient::new(&env, &Self::gateway(&env));
+        let gateway = AxelarGatewayMessagingClient::new(&env, &Self::gateway(&env));
         let gas_service = AxelarGasServiceClient::new(&env, &Self::gas_service(&env));
 
         caller.require_auth();

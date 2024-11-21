@@ -5,6 +5,7 @@ use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
 
 use crate::interface::AxelarGatewayInterface;
+use crate::messaging_interface::AxelarGatewayMessagingInterface;
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::{auth, event};
 
@@ -50,7 +51,7 @@ impl AxelarGateway {
 }
 
 #[contractimpl]
-impl AxelarGatewayInterface for AxelarGateway {
+impl AxelarGatewayMessagingInterface for AxelarGateway {
     fn call_contract(
         env: Env,
         caller: Address,
@@ -138,7 +139,9 @@ impl AxelarGatewayInterface for AxelarGateway {
 
         false
     }
-
+}
+#[contractimpl]
+impl AxelarGatewayInterface for AxelarGateway {
     fn approve_messages(
         env: Env,
         messages: Vec<Message>,
