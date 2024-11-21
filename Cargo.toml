@@ -8,6 +8,7 @@ rust-version = "1.81.0"
 
 [workspace.dependencies]
 soroban-sdk = { version = "22.0.0-rc.3" }
+cfg-if = { version = "1.0" }
 axelar-soroban-std = { version = "^0.1.0", path = "packages/axelar-soroban-std" }
 axelar-gas-service = { version = "^0.1.0", path = "contracts/axelar-gas-service" }
 axelar-gateway = { version = "^0.1.0", path = "contracts/axelar-gateway" }

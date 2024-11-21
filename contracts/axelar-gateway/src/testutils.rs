@@ -32,9 +32,9 @@ pub fn setup_gateway<'a>(
     previous_signers_retention: u32,
     num_signers: u32,
 ) -> (TestSignerSet, AxelarGatewayClient<'a>) {
-    let owner = Address::generate(&env);
-    let operator = Address::generate(&env);
-    let signer_set = generate_signers_set(&env, num_signers, BytesN::random(&env));
+    let owner = Address::generate(env);
+    let operator = Address::generate(env);
+    let signer_set = generate_signers_set(env, num_signers, BytesN::random(env));
     let initial_signers = vec![&env, signer_set.signers.clone()];
     let minimum_rotation_delay: u64 = 0;
 
@@ -50,7 +50,7 @@ pub fn setup_gateway<'a>(
         ),
     );
 
-    let client = AxelarGatewayClient::new(&env, &contract_id);
+    let client = AxelarGatewayClient::new(env, &contract_id);
     (signer_set, client)
 }
 
@@ -188,7 +188,7 @@ pub fn rotate_signers(env: &Env, contract_id: &Address, new_signers: TestSignerS
         env,
         contract_id,
         (
-            Symbol::new(&env, "signers_rotated"),
+            Symbol::new(env, "signers_rotated"),
             epoch_val,
             new_signers.signers.hash(env),
         ),
