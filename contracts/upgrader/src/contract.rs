@@ -57,7 +57,7 @@ fn ensure_new_version_matches_expected(
     new_version: &String,
 ) -> Result<(), ContractError> {
     let versions_match = current_version(env, contract_address) == *new_version;
-    versions_match.then_ok((), ContractError::VersionMismatch)
+    versions_match.then_ok((), ContractError::UnexpectedNewVersion)
 }
 
 fn current_version(env: &Env, contract_address: &Address) -> String {
