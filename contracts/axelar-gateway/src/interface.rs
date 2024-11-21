@@ -1,13 +1,13 @@
-use soroban_sdk::{contractclient, Address, BytesN, Env, String, Vec};
-
+use soroban_sdk::{contractclient, Address, Bytes, BytesN, Env, String, Vec};
 use crate::{
     error::ContractError,
     types::{Message, Proof, WeightedSigners},
     AxelarGatewayMessagingInterface,
 };
+use axelar_soroban_std::UpgradeableInterface;
 
 #[contractclient(name = "AxelarGatewayClient")]
-pub trait AxelarGatewayInterface: AxelarGatewayMessagingInterface {
+pub trait AxelarGatewayInterface: AxelarGatewayMessagingInterface + UpgradeableInterface {
     /// Approves a collection of messages.
     fn approve_messages(
         env: Env,
@@ -31,12 +31,6 @@ pub trait AxelarGatewayInterface: AxelarGatewayMessagingInterface {
 
     /// Returns the epoch of the gateway.
     fn epoch(env: &Env) -> u64;
-
-    /// Returns the version of the gateway.
-    fn version(env: &Env) -> String;
-
-    /// Upgrades the gateway to a new wasm hash.
-    fn upgrade(env: Env, new_wasm_hash: BytesN<32>);
 
     /// Transfers ownership of the gateway to a new address.
     fn transfer_ownership(env: Env, new_owner: Address);

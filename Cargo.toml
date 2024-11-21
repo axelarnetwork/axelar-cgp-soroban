@@ -1,10 +1,6 @@
 [workspace]
 resolver = "2"
-members = [
-  "contracts/*",
-  "integration-tests",
-  "packages/*",
-]
+members = ["contracts/*", "integration-tests", "packages/*"]
 
 [workspace.package]
 edition = "2021"
@@ -18,8 +14,12 @@ axelar-gas-service = { version = "^0.1.0", path = "contracts/axelar-gas-service"
 axelar-gateway = { version = "^0.1.0", path = "contracts/axelar-gateway" }
 axelar-operators = { version = "^0.1.0", path = "contracts/axelar-operators" }
 interchain-token-service = { version = "^0.1.0", path = "contracts/interchain-token-service" }
-interchain-token = { version = "^0.1.0", path = "contracts/interchain-token" }
-example = { version = "^0.1.0", path = "contracts/example" }
+alloy-primitives = { version = "0.7.6", default-features = false, features = [
+  "std",
+] }
+alloy-sol-types = { version = "0.7.6", default-features = false, features = [
+  "std",
+] }
 
 [workspace.lints.clippy]
 nursery = "warn"
