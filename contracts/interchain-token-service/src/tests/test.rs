@@ -1,6 +1,3 @@
-#![cfg(test)]
-extern crate std;
-
 use crate::error::ContractError;
 use crate::{contract::InterchainTokenService, contract::InterchainTokenServiceClient};
 
@@ -9,59 +6,38 @@ use soroban_sdk::testutils::{MockAuth, MockAuthInvoke};
 
 use soroban_sdk::{testutils::Address as _, Address, Env, String, Symbol};
 
-fn setup_env<'a>() -> (Env, Address, InterchainTokenServiceClient<'a>) {
+fn setup_env<'a>() -> (Env, InterchainTokenServiceClient<'a>) {
     let env = Env::default();
-
-    let contract_id = env.register_contract(None, InterchainTokenService);
+    let owner = Address::generate(&env);
+    let contract_id = env.register(InterchainTokenService, (&owner,));
     let client = InterchainTokenServiceClient::new(&env, &contract_id);
 
-    (env, contract_id, client)
-}
-
-fn initialize(_env: &Env, client: &InterchainTokenServiceClient, owner: Address) {
-    client.initialize_its(&owner);
+    (env, client)
 }
 
 #[test]
-fn initialize_succeeds() {
-    let (env, _, client) = setup_env();
+fn register_interchain_token_service() {
+    let env = Env::default();
     let owner = Address::generate(&env);
-
-    initialize(&env, &client, owner.clone());
+    let contract_id = env.register(InterchainTokenService, (&owner,));
+    let client = InterchainTokenServiceClient::new(&env, &contract_id);
 
     assert_eq!(client.owner(), owner);
 }
 
 #[test]
-fn initialize_fails_if_already_initialized() {
-    let (env, _, client) = setup_env();
-    let owner = Address::generate(&env);
-
-    initialize(&env, &client, owner.clone());
-
-    assert_contract_err!(
-        client.try_initialize_its(&owner),
-        ContractError::AlreadyInitialized
-    );
-}
-
-#[test]
 fn set_trusted_address() {
-    let (env, contract_id, client) = setup_env();
-    let owner = Address::generate(&env);
-
-    initialize(&env, &client, owner);
+    let (env, client) = setup_env();
+    env.mock_all_auths();
 
     let chain = String::from_str(&env, "chain");
     let trusted_address = String::from_str(&env, "trusted_address");
-
-    env.mock_all_auths();
 
     client.set_trusted_address(&chain, &trusted_address);
 
     assert_last_emitted_event(
         &env,
-        &contract_id,
+        &client.address,
         (
             Symbol::new(&env, "trusted_address_set"),
             chain.clone(),
@@ -75,10 +51,7 @@ fn set_trusted_address() {
 
 #[test]
 fn set_trusted_address_fails_if_not_owner() {
-    let (env, _, client) = setup_env();
-    let owner = Address::generate(&env);
-
-    initialize(&env, &client, owner);
+    let (env, client) = setup_env();
 
     let not_owner = Address::generate(&env);
     let chain = String::from_str(&env, "chain");
@@ -92,16 +65,12 @@ fn set_trusted_address_fails_if_not_owner() {
 
 #[test]
 fn set_trusted_address_fails_if_already_set() {
-    let (env, _, client) = setup_env();
-    let owner = Address::generate(&env);
-
-    initialize(&env, &client, owner);
+    let (env, client) = setup_env();
+    env.mock_all_auths();
 
     let chain = String::from_str(&env, "chain");
     let trusted_address = String::from_str(&env, "trusted_address");
     let another_trusted_address = String::from_str(&env, "another_trusted_address");
-
-    env.mock_all_auths();
 
     client.set_trusted_address(&chain, &trusted_address);
 
@@ -117,15 +86,11 @@ fn set_trusted_address_fails_if_already_set() {
 
 #[test]
 fn remove_trusted_address() {
-    let (env, contract_id, client) = setup_env();
-    let owner = Address::generate(&env);
-
-    initialize(&env, &client, owner);
+    let (env, client) = setup_env();
+    env.mock_all_auths();
 
     let chain = String::from_str(&env, "chain");
     let trusted_address = String::from_str(&env, "trusted_address");
-
-    env.mock_all_auths();
 
     client.set_trusted_address(&chain, &trusted_address);
 
@@ -133,7 +98,7 @@ fn remove_trusted_address() {
 
     assert_last_emitted_event(
         &env,
-        &contract_id,
+        &client.address,
         (
             Symbol::new(&env, "trusted_address_removed"),
             chain.clone(),
@@ -147,16 +112,12 @@ fn remove_trusted_address() {
 
 #[test]
 fn remove_trusted_address_fails_if_address_not_set() {
-    let (env, _, client) = setup_env();
-    let owner = Address::generate(&env);
-
-    initialize(&env, &client, owner);
+    let (env, client) = setup_env();
+    env.mock_all_auths();
 
     let chain = String::from_str(&env, "chain");
 
     assert_eq!(client.trusted_address(&chain), None);
-
-    env.mock_all_auths();
 
     assert_contract_err!(
         client.try_remove_trusted_address(&chain),
@@ -166,23 +127,20 @@ fn remove_trusted_address_fails_if_address_not_set() {
 
 #[test]
 fn transfer_ownership() {
-    let (env, contract_id, client) = setup_env();
-    let owner = Address::generate(&env);
-
-    initialize(&env, &client, owner.clone());
-
-    let new_owner = Address::generate(&env);
-
+    let (env, client) = setup_env();
     env.mock_all_auths();
+
+    let prev_owner = client.owner();
+    let new_owner = Address::generate(&env);
 
     client.transfer_ownership(&new_owner);
 
     assert_last_emitted_event(
         &env,
-        &contract_id,
+        &client.address,
         (
             Symbol::new(&env, "ownership_transferred"),
-            owner,
+            prev_owner,
             new_owner.clone(),
         ),
         (),

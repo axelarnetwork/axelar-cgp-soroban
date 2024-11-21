@@ -4,6 +4,7 @@ use axelar_soroban_std::ensure;
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
 
+use crate::interface::AxelarGatewayInterface;
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::{auth, event};
 
@@ -24,7 +25,7 @@ pub struct AxelarGateway;
 #[contractimpl]
 impl AxelarGateway {
     /// Initialize the gateway
-    pub fn initialize(
+    pub fn __constructor(
         env: Env,
         owner: Address,
         operator: Address,
@@ -33,16 +34,6 @@ impl AxelarGateway {
         previous_signers_retention: u64,
         initial_signers: Vec<WeightedSigners>,
     ) -> Result<(), ContractError> {
-        ensure!(
-            env.storage()
-                .instance()
-                .get::<DataKey, bool>(&DataKey::Initialized)
-                .is_none(),
-            ContractError::AlreadyInitialized
-        );
-
-        env.storage().instance().set(&DataKey::Initialized, &true);
-
         env.storage().instance().set(&DataKey::Owner, &owner);
         env.storage().instance().set(&DataKey::Operator, &operator);
 
@@ -56,13 +47,11 @@ impl AxelarGateway {
 
         Ok(())
     }
+}
 
-    /// Sends a message to the specified destination chain and contarct address with a given payload.
-    ///
-    /// This function is the entry point for general message passing between chains.
-    ///
-    /// A registered chain name on Axelar must be used for `destination_chain`.
-    pub fn call_contract(
+#[contractimpl]
+impl AxelarGatewayInterface for AxelarGateway {
+    fn call_contract(
         env: Env,
         caller: Address,
         destination_chain: String,
@@ -83,12 +72,7 @@ impl AxelarGateway {
         );
     }
 
-    /// Checks if a message is approved
-    ///
-    /// Determines whether a given message, identified by its `source_chain` and `message_id`, is approved.
-    ///
-    /// Returns true if a message with the given `payload_hash`  is approved.
-    pub fn is_message_approved(
+    fn is_message_approved(
         env: Env,
         source_chain: String,
         message_id: String,
@@ -112,20 +96,13 @@ impl AxelarGateway {
             )
     }
 
-    /// Checks if a message is executed.
-    ///
-    /// Returns true if the message is executed, false otherwise.
-    pub fn is_message_executed(env: Env, source_chain: String, message_id: String) -> bool {
+    fn is_message_executed(env: Env, source_chain: String, message_id: String) -> bool {
         let message_approval = Self::message_approval(&env, source_chain, message_id);
 
         message_approval == MessageApprovalValue::Executed
     }
 
-    /// Validates if a message is approved. If message was in approved status, status is updated to executed to avoid
-    /// replay.
-    ///
-    /// `caller` must be the intended `destination_address` of the contract call for validation to succeed.
-    pub fn validate_message(
+    fn validate_message(
         env: Env,
         caller: Address,
         source_chain: String,
@@ -162,8 +139,7 @@ impl AxelarGateway {
         false
     }
 
-    /// Approves a collection of messages.
-    pub fn approve_messages(
+    fn approve_messages(
         env: Env,
         messages: Vec<Message>,
         proof: Proof,
@@ -202,15 +178,14 @@ impl AxelarGateway {
         Ok(())
     }
 
-    // TODO: add docstring about how bypass_rotation_delay supposed to be used.
-    pub fn rotate_signers(
+    fn rotate_signers(
         env: Env,
         signers: WeightedSigners,
         proof: Proof,
         bypass_rotation_delay: bool,
     ) -> Result<(), ContractError> {
         if bypass_rotation_delay {
-            Self::operator(&env)?.require_auth();
+            Self::operator(&env).require_auth();
         }
 
         let data_hash: BytesN<32> = signers.signers_rotation_hash(&env);
@@ -226,8 +201,8 @@ impl AxelarGateway {
         Ok(())
     }
 
-    pub fn transfer_operatorship(env: Env, new_operator: Address) -> Result<(), ContractError> {
-        let operator: Address = Self::operator(&env)?;
+    fn transfer_operatorship(env: Env, new_operator: Address) {
+        let operator: Address = Self::operator(&env);
         operator.require_auth();
 
         env.storage()
@@ -235,59 +210,50 @@ impl AxelarGateway {
             .set(&DataKey::Operator, &new_operator);
 
         event::transfer_operatorship(&env, operator, new_operator);
-
-        Ok(())
     }
 
-    pub fn operator(env: &Env) -> Result<Address, ContractError> {
+    fn operator(env: &Env) -> Address {
         env.storage()
             .instance()
             .get(&DataKey::Operator)
-            .ok_or(ContractError::NotInitialized)
+            .expect("operator not found")
     }
 
-    pub fn epoch(env: &Env) -> Result<u64, ContractError> {
+    fn epoch(env: &Env) -> u64 {
         auth::epoch(env)
     }
 
-    pub fn version(env: Env) -> String {
-        String::from_str(&env, CONTRACT_VERSION)
+    fn version(env: &Env) -> String {
+        String::from_str(env, CONTRACT_VERSION)
     }
 
-    pub fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), ContractError> {
-        Self::owner(&env)?.require_auth();
+    fn upgrade(env: Env, new_wasm_hash: BytesN<32>) {
+        Self::owner(&env).require_auth();
 
         env.deployer().update_current_contract_wasm(new_wasm_hash);
-
-        Ok(())
     }
 
-    pub fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), ContractError> {
-        let owner: Address = Self::owner(&env)?;
+    fn transfer_ownership(env: Env, new_owner: Address) {
+        let owner: Address = Self::owner(&env);
         owner.require_auth();
 
         env.storage().instance().set(&DataKey::Owner, &new_owner);
 
         event::transfer_ownership(&env, owner, new_owner);
-
-        Ok(())
     }
 
-    pub fn owner(env: &Env) -> Result<Address, ContractError> {
+    fn owner(env: &Env) -> Address {
         env.storage()
             .instance()
             .get(&DataKey::Owner)
-            .ok_or(ContractError::NotInitialized)
+            .expect("owner not found")
     }
 
-    pub fn epoch_by_signers_hash(
-        env: &Env,
-        signers_hash: BytesN<32>,
-    ) -> Result<u64, ContractError> {
+    fn epoch_by_signers_hash(env: &Env, signers_hash: BytesN<32>) -> Result<u64, ContractError> {
         auth::epoch_by_signers_hash(env, signers_hash)
     }
 
-    pub fn signers_hash_by_epoch(env: &Env, epoch: u64) -> Result<BytesN<32>, ContractError> {
+    fn signers_hash_by_epoch(env: &Env, epoch: u64) -> Result<BytesN<32>, ContractError> {
         auth::signers_hash_by_epoch(env, epoch)
     }
 }

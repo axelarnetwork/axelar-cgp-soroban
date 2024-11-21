@@ -1,11 +1,9 @@
-use axelar_gateway::testutils::{generate_proof, get_approve_hash, initialize, TestSignerSet};
+use axelar_gateway::testutils::{generate_proof, get_approve_hash, setup_gateway};
 use axelar_gateway::types::Message;
-use axelar_gateway::{AxelarGateway, AxelarGatewayClient};
+use axelar_gateway::AxelarGatewayClient;
 use axelar_soroban_std::assert_last_emitted_event;
 use soroban_sdk::{contract, contractimpl, log, Bytes, Symbol};
-use soroban_sdk::{
-    testutils::Address as _, testutils::BytesN as _, vec, Address, BytesN, Env, String,
-};
+use soroban_sdk::{testutils::BytesN as _, vec, Address, BytesN, Env, String};
 
 use axelar_gateway::executable::AxelarExecutableInterface;
 
@@ -52,16 +50,6 @@ impl AxelarApp {
     }
 }
 
-fn setup_gateway<'a>(env: &Env) -> (AxelarGatewayClient<'a>, TestSignerSet) {
-    let gateway_id = env.register_contract(None, AxelarGateway);
-    let gateway_client = AxelarGatewayClient::new(env, &gateway_id);
-    let owner = Address::generate(env);
-    let operator = Address::generate(env);
-    let signers = initialize(env, &gateway_client, owner, operator, 0, 5);
-
-    (gateway_client, signers)
-}
-
 fn setup_app<'a>(env: &Env, gateway: &Address) -> AxelarAppClient<'a> {
     let contract_id = env.register_contract(None, AxelarApp);
     let client = AxelarAppClient::new(env, &contract_id);
@@ -77,12 +65,12 @@ fn test_gmp() {
 
     // Setup source Axelar gateway
     let source_chain = String::from_str(&env, "source");
-    let (source_gateway_client, _) = setup_gateway(&env);
+    let (_, source_gateway_client) = setup_gateway(&env, 0, 5);
     let source_app = setup_app(&env, &source_gateway_client.address);
 
     // Setup destination Axelar gateway
     let destination_chain = String::from_str(&env, "destination");
-    let (destination_gateway_client, signers) = setup_gateway(&env);
+    let (signers, destination_gateway_client) = setup_gateway(&env, 0, 5);
     let destination_gateway_id = destination_gateway_client.address.clone();
     let destination_app = setup_app(&env, &destination_gateway_id);
     let destination_app_id = destination_app.address.clone();

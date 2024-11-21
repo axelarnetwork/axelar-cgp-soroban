@@ -2,7 +2,7 @@
 extern crate std;
 
 use crate::auth::{self, epoch};
-use crate::AxelarGatewayClient;
+use crate::{AxelarGateway, AxelarGatewayClient};
 use axelar_soroban_std::{assert_last_emitted_event, assert_ok};
 use ed25519_dalek::{Signature, Signer, SigningKey};
 use rand::Rng;
@@ -27,28 +27,31 @@ pub struct TestSignerSet {
     pub domain_separator: BytesN<32>,
 }
 
-pub fn initialize(
+pub fn setup_gateway<'a>(
     env: &Env,
-    client: &AxelarGatewayClient,
-    owner: Address,
-    operator: Address,
     previous_signers_retention: u32,
     num_signers: u32,
-) -> TestSignerSet {
+) -> (TestSignerSet, AxelarGatewayClient<'a>) {
+    let owner = Address::generate(env);
+    let operator = Address::generate(env);
     let signer_set = generate_signers_set(env, num_signers, BytesN::random(env));
     let initial_signers = vec![&env, signer_set.signers.clone()];
-    let minimum_rotation_delay = 0;
+    let minimum_rotation_delay: u64 = 0;
 
-    client.initialize(
-        &owner,
-        &operator,
-        &signer_set.domain_separator,
-        &minimum_rotation_delay,
-        &(previous_signers_retention as u64),
-        &initial_signers,
+    let contract_id = env.register(
+        AxelarGateway,
+        (
+            owner,
+            operator,
+            &signer_set.domain_separator,
+            minimum_rotation_delay,
+            previous_signers_retention as u64,
+            initial_signers,
+        ),
     );
 
-    signer_set
+    let client = AxelarGatewayClient::new(env, &contract_id);
+    (signer_set, client)
 }
 
 pub fn get_approve_hash(env: &Env, messages: Vec<Message>) -> BytesN<32> {
@@ -177,7 +180,7 @@ pub fn generate_proof(env: &Env, data_hash: BytesN<32>, signer_set: TestSignerSe
 pub fn rotate_signers(env: &Env, contract_id: &Address, new_signers: TestSignerSet) {
     let mut epoch_val: u64 = 0;
     env.as_contract(contract_id, || {
-        epoch_val = assert_ok!(epoch(env)) + 1;
+        epoch_val = epoch(env) + 1;
         assert_ok!(auth::rotate_signers(env, &new_signers.signers, false));
     });
 
@@ -185,7 +188,7 @@ pub fn rotate_signers(env: &Env, contract_id: &Address, new_signers: TestSignerS
         env,
         contract_id,
         (
-            Symbol::new(&env, "signers_rotated"),
+            Symbol::new(env, "signers_rotated"),
             epoch_val,
             new_signers.signers.hash(env),
         ),
