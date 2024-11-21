@@ -24,19 +24,15 @@ pub struct AxelarGateway;
 
 #[contractimpl]
 impl UpgradeableInterface for AxelarGateway {
-    type Error = ContractError;
-
     fn version(env: Env) -> String {
         String::from_str(&env, CONTRACT_VERSION)
     }
 
-    fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), ContractError> {
+    fn upgrade(env: Env, new_wasm_hash: BytesN<32>) {
         Self::owner(&env).require_auth();
 
         env.deployer().update_current_contract_wasm(new_wasm_hash);
         Self::start_migration(&env);
-
-        Ok(())
     }
 }
 
@@ -312,18 +308,16 @@ impl AxelarGateway {
     }
 
     fn ensure_is_migrating(env: &Env) -> Result<(), ContractError> {
-        let is_migrating = env
-            .storage()
-            .instance()
-            .get::<DataKey, bool>(&DataKey::Migrating)
-            .unwrap_or(false);
+        ensure!(
+            env.storage().instance().has(&DataKey::Migrating),
+            ContractError::MigrationNotAllowed
+        );
 
-        ensure!(is_migrating, ContractError::MigrationNotAllowed);
         Ok(())
     }
 
     fn start_migration(env: &Env) {
-        env.storage().instance().set(&DataKey::Migrating, &true);
+        env.storage().instance().set(&DataKey::Migrating, &());
     }
 
     // Modify this function to add migration logic
@@ -331,6 +325,6 @@ impl AxelarGateway {
     fn run_migration(_env: &Env, _migration_data: ()) {}
 
     fn complete_migration(env: &Env) {
-        env.storage().instance().set(&DataKey::Migrating, &false);
+        env.storage().instance().remove(&DataKey::Migrating);
     }
 }
