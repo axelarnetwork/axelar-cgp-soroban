@@ -1,4 +1,4 @@
-use soroban_sdk::{contractclient, Address, Bytes, BytesN, Env, String, Vec};
+use soroban_sdk::{contractclient, Address, BytesN, Env, String, Vec};
 
 use crate::{
     error::ContractError,
