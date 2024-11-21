@@ -1,7 +1,6 @@
 #![cfg(test)]
 extern crate std;
 
-//use axelar_soroban_std::assert_contract_err;
 use interchain_token::{contract::InterchainToken, InterchainTokenClient};
 use soroban_sdk::{
     symbol_short,
