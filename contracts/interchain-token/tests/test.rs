@@ -1,8 +1,7 @@
 #![cfg(test)]
 extern crate std;
 
-use axelar_soroban_std::assert_contract_err;
-use interchain_token::{contract::InterchainToken, error::ContractError, InterchainTokenClient};
+use interchain_token::{contract::InterchainToken, InterchainTokenClient};
 use soroban_sdk::{
     symbol_short,
     testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, BytesN as _},
@@ -19,15 +18,6 @@ fn create_token<'a>(env: &Env, admin: &Address, minter: &Address) -> InterchainT
         symbol: "symbol".into_val(env),
     };
 
-    let contract_id = env.register(
-        InterchainToken,
-        (
-            &interchain_token_service,
-            admin,
-            minter,
-            &token_id,
-            token_meta_data,
-        ),
     let contract_id = env.register(
         InterchainToken,
         (
