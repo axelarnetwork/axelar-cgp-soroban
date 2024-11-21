@@ -47,8 +47,7 @@ fn ensure_new_version_is_different(
     contract_address: &Address,
     new_version: &String,
 ) -> Result<(), ContractError> {
-    let string = current_version(env, contract_address);
-    let no_match = string != *new_version;
+    let no_match = current_version(env, contract_address) != *new_version;
     no_match.then_ok((), ContractError::SameVersion)
 }
 
