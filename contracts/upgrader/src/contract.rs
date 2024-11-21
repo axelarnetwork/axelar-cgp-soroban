@@ -97,7 +97,12 @@ mod tests {
         }
     }
 
+    #[contractimpl]
     impl DummyContract {
+        pub fn __constructor(env: Env, owner: Address) {
+            env.storage().instance().set(&DataKey::Owner, &owner)
+        }
+
         fn owner(env: &Env) -> Address {
             env.storage().instance().get(&DataKey::Owner).unwrap()
         }
@@ -152,10 +157,9 @@ mod tests {
     fn upgrade_and_migrate_are_atomic() {
         let env = Env::default();
 
-        let contract_address = env.register(DummyContract, ());
+        let owner = Address::generate(&env);
+        let contract_address = env.register(DummyContract, (&owner,));
         let upgrader_address = env.register(Upgrader, ());
-
-        let owner = set_owner(&env, &contract_address);
 
         let original_version: String = query_version(&env, &contract_address);
         assert_eq!(original_version, String::from_str(&env, "0.1.0"));
@@ -206,10 +210,9 @@ mod tests {
     fn upgrade_fails_if_caller_is_authenticated_but_not_owner() {
         let env = Env::default();
 
-        let contract_address = env.register(DummyContract, ());
+        let owner = Address::generate(&env);
+        let contract_address = env.register(DummyContract, (&owner,));
         let upgrader_address = env.register(Upgrader, ());
-
-        let _owner = set_owner(&env, &contract_address);
 
         let hash_after_upgrade = env.deployer().upload_contract_wasm(WASM_AFTER_UPGRADE);
         let expected_data = String::from_str(&env, "migration successful");
@@ -245,10 +248,10 @@ mod tests {
     fn upgrade_fails_if_correct_owner_is_not_authenticated_for_full_invocation_tree() {
         let env = Env::default();
 
-        let contract_address = env.register(DummyContract, ());
-        let upgrader_address = env.register(Upgrader, ());
+        let owner = Address::generate(&env);
+        let contract_address = env.register(DummyContract, (&owner,));
 
-        let owner = set_owner(&env, &contract_address);
+        let upgrader_address = env.register(Upgrader, ());
 
         let hash_after_upgrade = env.deployer().upload_contract_wasm(WASM_AFTER_UPGRADE);
         let expected_data = String::from_str(&env, "migration successful");
@@ -305,13 +308,5 @@ mod tests {
             &Symbol::new(env, VERSION),
             soroban_sdk::vec![&env],
         )
-    }
-
-    fn set_owner(env: &Env, contract_address: &Address) -> Address {
-        let owner = Address::generate(env);
-        env.as_contract(contract_address, || {
-            env.storage().instance().set(&DataKey::Owner, &owner);
-        });
-        owner
     }
 }
