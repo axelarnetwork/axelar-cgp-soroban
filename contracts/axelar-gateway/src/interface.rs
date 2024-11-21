@@ -1,12 +1,12 @@
-use soroban_sdk::{contractclient, Address, Bytes, BytesN, Env, String, Vec};
-
 use crate::{
     error::ContractError,
     types::{Message, Proof, WeightedSigners},
 };
+use axelar_soroban_std::UpgradeableInterface;
+use soroban_sdk::{contractclient, Address, Bytes, BytesN, Env, String, Vec};
 
 #[contractclient(name = "AxelarGatewayClient")]
-pub trait AxelarGatewayInterface {
+pub trait AxelarGatewayInterface: UpgradeableInterface {
     /// Sends a message to the specified destination chain and contarct address with a given payload.
     ///
     /// This function is the entry point for general message passing between chains.
@@ -75,12 +75,6 @@ pub trait AxelarGatewayInterface {
 
     /// Returns the epoch of the gateway.
     fn epoch(env: &Env) -> u64;
-
-    /// Returns the version of the gateway.
-    fn version(env: &Env) -> String;
-
-    /// Upgrades the gateway to a new wasm hash.
-    fn upgrade(env: Env, new_wasm_hash: BytesN<32>);
 
     /// Transfers ownership of the gateway to a new address.
     fn transfer_ownership(env: Env, new_owner: Address);

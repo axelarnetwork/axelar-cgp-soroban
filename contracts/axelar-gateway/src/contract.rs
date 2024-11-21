@@ -1,12 +1,12 @@
 use crate::error::ContractError;
-use crate::types::{CommandType, Message, Proof, WeightedSigners};
-use axelar_soroban_std::ensure;
-use soroban_sdk::xdr::ToXdr;
-use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
-
 use crate::interface::AxelarGatewayInterface;
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
+use crate::types::{CommandType, Message, Proof, WeightedSigners};
 use crate::{auth, event};
+use axelar_soroban_std::ensure;
+pub use axelar_soroban_std::UpgradeableInterface;
+use soroban_sdk::xdr::ToXdr;
+use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
 
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -21,6 +21,24 @@ const INSTANCE_TTL_EXTEND_TO: u32 = 60 * LEDGERS_PER_DAY;
 
 #[contract]
 pub struct AxelarGateway;
+
+#[contractimpl]
+impl UpgradeableInterface for AxelarGateway {
+    type Error = ContractError;
+
+    fn version(env: Env) -> String {
+        String::from_str(&env, CONTRACT_VERSION)
+    }
+
+    fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), ContractError> {
+        Self::owner(&env).require_auth();
+
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
+        Self::start_migration(&env);
+
+        Ok(())
+    }
+}
 
 #[contractimpl]
 impl AxelarGateway {
@@ -44,6 +62,18 @@ impl AxelarGateway {
             previous_signers_retention,
             initial_signers,
         )?;
+
+        Ok(())
+    }
+
+    /// Migrate the contract state after upgrading the contract code. the migration_data type can be adjusted as needed.
+    pub fn migrate(env: Env, migration_data: ()) -> Result<(), ContractError> {
+        // This function should not get modified.
+        // Custom migration logic that changes from version to version should be added in the run_migration function
+        Self::ensure_is_migrating(&env)?;
+
+        Self::run_migration(&env, migration_data);
+        Self::complete_migration(&env);
 
         Ok(())
     }
@@ -223,16 +253,6 @@ impl AxelarGatewayInterface for AxelarGateway {
         auth::epoch(env)
     }
 
-    fn version(env: &Env) -> String {
-        String::from_str(env, CONTRACT_VERSION)
-    }
-
-    fn upgrade(env: Env, new_wasm_hash: BytesN<32>) {
-        Self::owner(&env).require_auth();
-
-        env.deployer().update_current_contract_wasm(new_wasm_hash);
-    }
-
     fn transfer_ownership(env: Env, new_owner: Address) {
         let owner: Address = Self::owner(&env);
         owner.require_auth();
@@ -289,5 +309,28 @@ impl AxelarGateway {
         env.storage()
             .instance()
             .extend_ttl(INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
+    }
+
+    fn ensure_is_migrating(env: &Env) -> Result<(), ContractError> {
+        let is_migrating = env
+            .storage()
+            .instance()
+            .get::<DataKey, bool>(&DataKey::Migrating)
+            .unwrap_or(false);
+
+        ensure!(is_migrating, ContractError::MigrationNotAllowed);
+        Ok(())
+    }
+
+    fn start_migration(env: &Env) {
+        env.storage().instance().set(&DataKey::Migrating, &true);
+    }
+
+    // Modify this function to add migration logic
+    #[allow(clippy::missing_const_for_fn)] // exclude no-op implementations from this lint
+    fn run_migration(_env: &Env, _migration_data: ()) {}
+
+    fn complete_migration(env: &Env) {
+        env.storage().instance().set(&DataKey::Migrating, &false);
     }
 }

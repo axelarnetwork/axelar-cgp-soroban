@@ -22,6 +22,7 @@ pub enum DataKey {
     Owner,
     Operator,
     MessageApproval(MessageApprovalKey),
+    Migrating,
     /// Auth Module
     PreviousSignerRetention,
     DomainSeparator,
