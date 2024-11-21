@@ -178,6 +178,7 @@ impl token::Interface for InterchainToken {
         extend_instance_ttl(&env);
 
         spend_allowance(&env, from.clone(), spender, amount);
+
         spend_balance(&env, from.clone(), amount);
         receive_balance(&env, to.clone(), amount);
         TokenUtils::new(&env).events().transfer(from, to, amount)
@@ -200,6 +201,7 @@ impl token::Interface for InterchainToken {
         extend_instance_ttl(&env);
 
         spend_allowance(&env, from.clone(), spender, amount);
+
         spend_balance(&env, from.clone(), amount);
         TokenUtils::new(&env).events().burn(from, amount)
     }
