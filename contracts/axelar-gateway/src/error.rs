@@ -18,6 +18,5 @@ pub enum ContractError {
     InvalidEpoch = 11,
     // Messages
     EmptyMessages = 12,
-    // Executable
-    NotApproved = 13,
+    MigrationNotAllowed = 13,
 }
