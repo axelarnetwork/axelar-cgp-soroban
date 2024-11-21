@@ -1,10 +1,10 @@
-use soroban_sdk::{contractclient, Address, Bytes, BytesN, Env, String, Vec};
 use crate::{
     error::ContractError,
     types::{Message, Proof, WeightedSigners},
     AxelarGatewayMessagingInterface,
 };
 use axelar_soroban_std::UpgradeableInterface;
+use soroban_sdk::{contractclient, Address, BytesN, Env, Vec};
 
 #[contractclient(name = "AxelarGatewayClient")]
 pub trait AxelarGatewayInterface: AxelarGatewayMessagingInterface + UpgradeableInterface {
