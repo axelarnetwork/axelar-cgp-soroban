@@ -10,12 +10,16 @@ publish = true
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+alloy-primitives = { workspace = true }
+alloy-sol-types = { workspace = true }
 axelar-soroban-std = { workspace = true }
-soroban-sdk = { workspace = true }
+soroban-sdk = { workspace = true, features = ["alloc"] }
 
 [dev-dependencies]
 axelar-soroban-std = { workspace = true, features = ["testutils"] }
-soroban-sdk = { workspace = true, features = ["testutils"] }
+goldie = { version = "0.5" }
+hex = "0.4"
+soroban-sdk = { workspace = true, features = ["testutils", "alloc"] }
 
 [features]
 testutils = ["soroban-sdk/testutils", "axelar-soroban-std/testutils"]

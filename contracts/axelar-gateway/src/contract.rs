@@ -1,5 +1,6 @@
 use crate::error::ContractError;
 use crate::interface::AxelarGatewayInterface;
+use crate::messaging_interface::AxelarGatewayMessagingInterface;
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::types::{CommandType, Message, Proof, WeightedSigners};
 use crate::{auth, event};
@@ -76,7 +77,7 @@ impl AxelarGateway {
 }
 
 #[contractimpl]
-impl AxelarGatewayInterface for AxelarGateway {
+impl AxelarGatewayMessagingInterface for AxelarGateway {
     fn call_contract(
         env: Env,
         caller: Address,
@@ -164,7 +165,9 @@ impl AxelarGatewayInterface for AxelarGateway {
 
         false
     }
-
+}
+#[contractimpl]
+impl AxelarGatewayInterface for AxelarGateway {
     fn approve_messages(
         env: Env,
         messages: Vec<Message>,
