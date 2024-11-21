@@ -75,6 +75,8 @@ impl AxelarGateway {
         Self::run_migration(&env, migration_data);
         Self::complete_migration(&env);
 
+        event::upgrade_complete(&env, &Self::version(env.clone()));
+
         Ok(())
     }
 }
