@@ -15,6 +15,7 @@ pub enum MessageError {
     InvalidMessageType = 1,
     AbiDecodeFailed = 2,
     InvalidAmount = 3,
+    InvalidUtf8 = 4,
 }
 
 sol! {
@@ -58,7 +59,7 @@ sol! {
 }
 
 impl Message {
-    pub fn abi_encode(self, env: &Env) -> Bytes {
+    pub fn abi_encode(self, env: &Env) -> Result<Bytes, MessageError> {
         let msg = match self {
             Self::InterchainTransfer(types::InterchainTransfer {
                 token_id,
@@ -84,14 +85,14 @@ impl Message {
             }) => DeployInterchainToken {
                 messageType: MessageType::DeployInterchainToken.into(),
                 tokenId: FixedBytes::<32>::new(token_id.into()),
-                name: to_std_string(name),
-                symbol: to_std_string(symbol),
+                name: to_std_string(name)?,
+                symbol: to_std_string(symbol)?,
                 decimals,
                 minter: into_vec(minter).into(),
             }
             .abi_encode_params(),
         };
-        Bytes::from_slice(env, &msg)
+        Ok(Bytes::from_slice(env, &msg))
     }
 
     pub fn abi_decode(env: &Env, payload: &Bytes) -> Result<Self, MessageError> {
@@ -137,15 +138,15 @@ impl Message {
 
 #[allow(dead_code)]
 impl HubMessage {
-    pub fn abi_encode(self, env: &Env) -> Bytes {
+    pub fn abi_encode(self, env: &Env) -> Result<Bytes, MessageError> {
         let msg = match self {
             Self::SendToHub {
                 destination_chain,
                 message,
             } => SendToHub {
                 messageType: MessageType::SendToHub.into(),
-                destination_chain: to_std_string(destination_chain),
-                message: message.abi_encode(env).to_alloc_vec().into(),
+                destination_chain: to_std_string(destination_chain)?,
+                message: message.abi_encode(env)?.to_alloc_vec().into(),
             }
             .abi_encode_params(),
             Self::ReceiveFromHub {
@@ -153,12 +154,12 @@ impl HubMessage {
                 message,
             } => ReceiveFromHub {
                 messageType: MessageType::ReceiveFromHub.into(),
-                source_chain: to_std_string(source_chain),
-                message: message.abi_encode(env).to_alloc_vec().into(),
+                source_chain: to_std_string(source_chain)?,
+                message: message.abi_encode(env)?.to_alloc_vec().into(),
             }
             .abi_encode_params(),
         };
-        Bytes::from_slice(env, &msg)
+        Ok(Bytes::from_slice(env, &msg))
     }
 
     pub fn abi_decode(env: &Env, payload: &Bytes) -> Result<Self, MessageError> {
@@ -199,11 +200,11 @@ impl HubMessage {
     }
 }
 
-fn to_std_string(soroban_string: String) -> StdString {
+fn to_std_string(soroban_string: String) -> Result<StdString, MessageError> {
     let length = soroban_string.len() as usize;
     let mut bytes = vec![0u8; length];
     soroban_string.copy_into_slice(&mut bytes);
-    StdString::from_utf8(bytes).expect("Invalid UTF-8 sequence")
+    StdString::from_utf8(bytes).map_err(|_| MessageError::InvalidUtf8)
 }
 
 fn to_i128(value: Uint<256, 4>) -> Result<i128, MessageError> {
@@ -258,12 +259,67 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Invalid UTF-8 sequence")]
-    fn to_std_string_panics_invalid_utf8_bytes() {
+    fn soroban_str_to_std_string() {
         let env = Env::default();
-        let invalid_sequence = vec![0x80, 0x81, 0x82, 0x83];
-        let invalid_string = String::from_bytes(&env, &invalid_sequence);
-        to_std_string(invalid_string);
+
+        let plain_string = "hello world";
+        let plain_string_soroban = String::from_str(&env, &plain_string);
+        assert_eq!(
+            to_std_string(plain_string_soroban).unwrap(),
+            StdString::from(plain_string)
+        );
+
+        let var_length_chars = "🎉中🚀π🌈€";
+        let var_length_chars_soroban = String::from_str(&env, &var_length_chars);
+        assert_eq!(
+            to_std_string(var_length_chars_soroban).unwrap(),
+            StdString::from(var_length_chars)
+        );
+
+        let null_bytes = "Hello\x00World";
+        let null_bytes_soroban = String::from_str(&env, &null_bytes);
+        assert_eq!(
+            to_std_string(null_bytes_soroban).unwrap(),
+            StdString::from(null_bytes)
+        );
+
+        let escape_char = "Hello\tWorld";
+        let escape_char_soroban = String::from_str(&env, &escape_char);
+        assert_eq!(
+            to_std_string(escape_char_soroban).unwrap(),
+            StdString::from(escape_char)
+        );
+    }
+
+    #[test]
+    fn to_std_string_fails_invalid_utf8_bytes() {
+        let env = Env::default();
+
+        let invalid_sequences = vec![
+            String::from_bytes(&env, &vec![0xF5, 0x90, 0x80]), // not valid utf-8
+            String::from_bytes(&env, &vec![0x00, 0x01, 0x02, 0xC0]), // valid ASCII characters followed by an invalid UTF-8 starting byte
+            String::from_bytes(&env, &vec![0xC0, 0x80, 0xF5, 0x90]), // invalid UTF-8 starting byte followed by valid UTF-8 sequences
+            String::from_bytes(&env, &vec![0xF0, 0x90, 0x80, 0xDF, 0xFB, 0xBF]), // surrogate pairs with invalid charaters "\uD800\uDDFF"
+            String::from_bytes(&env, &vec![0xF4, 0x90, 0x80, 0x80]), // outside the Basic Multilingual Plane
+        ];
+
+        for sequence in invalid_sequences {
+            let result = to_std_string(sequence);
+            assert!(matches!(result, Err(MessageError::InvalidUtf8)));
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn soroban_string_copy_to_slice_panics_on_missized_array() {
+        let env = Env::default();
+        let soroban_string = String::from_str(&env, &"hello world");
+
+        let mut undersized = vec![0u8; (soroban_string.len() - 1) as usize];
+        soroban_string.copy_into_slice(&mut undersized);
+
+        let mut oversized = vec![0u8; (soroban_string.len() + 1) as usize];
+        soroban_string.copy_into_slice(&mut oversized);
     }
 
     #[test]
@@ -382,6 +438,7 @@ mod tests {
                     original
                         .clone()
                         .abi_encode(&env)
+                        .unwrap()
                         .to_buffer::<1024>()
                         .as_slice(),
                 )
@@ -391,7 +448,7 @@ mod tests {
         goldie::assert_json!(encoded);
 
         for original in cases {
-            let encoded = original.clone().abi_encode(&env);
+            let encoded = original.clone().abi_encode(&env).unwrap();
             let decoded = HubMessage::abi_decode(&env, &encoded);
             assert_eq!(original, decoded.unwrap());
         }
@@ -478,6 +535,7 @@ mod tests {
                     original
                         .clone()
                         .abi_encode(&env)
+                        .unwrap()
                         .to_buffer::<1024>()
                         .as_slice(),
                 )
@@ -487,7 +545,7 @@ mod tests {
         goldie::assert_json!(encoded);
 
         for original in cases {
-            let encoded = original.clone().abi_encode(&env);
+            let encoded = original.clone().abi_encode(&env).unwrap();
             let decoded = HubMessage::abi_decode(&env, &encoded);
             assert_eq!(original, decoded.unwrap());
         }
