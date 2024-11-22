@@ -1,11 +1,9 @@
 use axelar_soroban_std::ensure;
-use soroban_sdk::{contract, contractimpl, /*symbol_short,*/ Address, Env, String, /*Symbol*/};
+use soroban_sdk::{contract, contractimpl, Address, Env, String};
 
 use crate::error::ContractError;
 use crate::event;
 use crate::storage_types::DataKey;
-
-// const ITS_HUB_ROUTING_IDENTIFIER: Symbol = symbol_short!("hub");
 
 #[contract]
 pub struct InterchainTokenService;
