@@ -93,7 +93,7 @@ fn test_gmp_example() {
         &source_gateway_id,
         (
             Symbol::new(&env, "contract_called"),
-            user,
+            source_app.address.clone(),
             destination_chain,
             destination_address,
             payload_hash.clone(),

@@ -66,6 +66,11 @@ impl Example {
             &Bytes::new(&env),
         );
 
-        gateway.call_contract(&caller, &destination_chain, &destination_address, &message);
+        gateway.call_contract(
+            &env.current_contract_address(),
+            &destination_chain,
+            &destination_address,
+            &message,
+        );
     }
 }
