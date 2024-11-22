@@ -10,19 +10,19 @@ const WASM_AFTER_UPGRADE: &[u8] = include_bytes!("testdata/dummy.wasm");
 
 #[test]
 fn upgrade_and_migrate_are_atomic() {
-    let env = Env::default();
-
-    let owner = Address::generate(&env);
-    let contract_address = env.register(DummyContract, (&owner,));
-    let upgrader_address = env.register(Upgrader, ());
+    let TestFixture {
+        env,
+        upgrader_address,
+        contract_owner: owner,
+        contract_address,
+        hash_after_upgrade,
+        expected_data,
+        expected_version,
+    } = setup_contracts_and_call_args();
 
     let dummy_client = DummyContractClient::new(&env, &contract_address);
     let original_version: String = dummy_client.version();
     assert_eq!(original_version, String::from_str(&env, "0.1.0"));
-
-    let hash_after_upgrade = env.deployer().upload_contract_wasm(WASM_AFTER_UPGRADE);
-    let expected_data = String::from_str(&env, "migration successful");
-    let expected_version = String::from_str(&env, "0.2.0");
 
     let (upgrade_auth, migrate_auth) =
         build_invocation_auths(&env, &contract_address, &hash_after_upgrade, &expected_data);
@@ -60,15 +60,15 @@ fn upgrade_and_migrate_are_atomic() {
 #[test]
 #[should_panic(expected = "HostError: Error(Auth, InvalidAction)")]
 fn upgrade_fails_if_caller_is_authenticated_but_not_owner() {
-    let env = Env::default();
-
-    let owner = Address::generate(&env);
-    let contract_address = env.register(DummyContract, (&owner,));
-    let upgrader_address = env.register(Upgrader, ());
-
-    let hash_after_upgrade = env.deployer().upload_contract_wasm(WASM_AFTER_UPGRADE);
-    let expected_data = String::from_str(&env, "migration successful");
-    let expected_version = String::from_str(&env, "0.2.0");
+    let TestFixture {
+        env,
+        upgrader_address,
+        contract_address,
+        hash_after_upgrade,
+        expected_data,
+        expected_version,
+        ..
+    } = setup_contracts_and_call_args();
 
     let (upgrade_auth, migrate_auth) =
         build_invocation_auths(&env, &contract_address, &hash_after_upgrade, &expected_data);
@@ -98,16 +98,15 @@ fn upgrade_fails_if_caller_is_authenticated_but_not_owner() {
 #[test]
 #[should_panic(expected = "HostError: Error(Auth, InvalidAction)")]
 fn upgrade_fails_if_correct_owner_is_not_authenticated_for_full_invocation_tree() {
-    let env = Env::default();
-
-    let owner = Address::generate(&env);
-    let contract_address = env.register(DummyContract, (&owner,));
-
-    let upgrader_address = env.register(Upgrader, ());
-
-    let hash_after_upgrade = env.deployer().upload_contract_wasm(WASM_AFTER_UPGRADE);
-    let expected_data = String::from_str(&env, "migration successful");
-    let expected_version = String::from_str(&env, "0.2.0");
+    let TestFixture {
+        env,
+        upgrader_address,
+        contract_owner: owner,
+        contract_address,
+        hash_after_upgrade,
+        expected_data,
+        expected_version,
+    } = setup_contracts_and_call_args();
 
     let (upgrade_auth, migrate_auth) =
         build_invocation_auths(&env, &contract_address, &hash_after_upgrade, &expected_data);
@@ -136,15 +135,15 @@ fn upgrade_fails_if_correct_owner_is_not_authenticated_for_full_invocation_tree(
 #[test]
 #[should_panic(expected = "HostError: Error(Auth, InvalidAction)")]
 fn upgrade_fails_if_nobody_is_authenticated() {
-    let env = Env::default();
-
-    let owner = Address::generate(&env);
-    let contract_address = env.register(DummyContract, (&owner,));
-    let upgrader_address = env.register(Upgrader, ());
-
-    let hash_after_upgrade = env.deployer().upload_contract_wasm(WASM_AFTER_UPGRADE);
-    let expected_data = String::from_str(&env, "migration successful");
-    let expected_version = String::from_str(&env, "0.2.0");
+    let TestFixture {
+        env,
+        upgrader_address,
+        contract_address,
+        hash_after_upgrade,
+        expected_data,
+        expected_version,
+        ..
+    } = setup_contracts_and_call_args();
 
     UpgraderClient::new(&env, &upgrader_address).upgrade(
         &contract_address,
@@ -152,6 +151,39 @@ fn upgrade_fails_if_nobody_is_authenticated() {
         &hash_after_upgrade,
         &soroban_sdk::vec![&env, expected_data.to_val()],
     );
+}
+
+struct TestFixture {
+    env: Env,
+    upgrader_address: Address,
+    contract_owner: Address,
+    contract_address: Address,
+    hash_after_upgrade: BytesN<32>,
+    expected_data: String,
+    expected_version: String,
+}
+
+fn setup_contracts_and_call_args() -> TestFixture {
+    let env = Env::default();
+
+    let upgrader_address = env.register(Upgrader, ());
+
+    let contract_owner = Address::generate(&env);
+    let contract_address = env.register(DummyContract, (&contract_owner,));
+
+    let hash_after_upgrade = env.deployer().upload_contract_wasm(WASM_AFTER_UPGRADE);
+    let expected_data = String::from_str(&env, "migration successful");
+    let expected_version = String::from_str(&env, "0.2.0");
+
+    TestFixture {
+        env,
+        upgrader_address,
+        contract_owner,
+        contract_address,
+        hash_after_upgrade,
+        expected_data,
+        expected_version,
+    }
 }
 
 fn build_invocation_auths<'a>(
