@@ -6,4 +6,6 @@ use soroban_sdk::contracterror;
 pub enum ContractError {
     OperatorAlreadyAdded = 1,
     NotAnOperator = 2,
+    /// Upgradeable
+    MigrationNotAllowed = 3,
 }

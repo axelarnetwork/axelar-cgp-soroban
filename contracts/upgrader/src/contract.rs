@@ -1,5 +1,6 @@
 use crate::error::ContractError;
-use axelar_soroban_std::{ensure, UpgradeableClient};
+use axelar_soroban_std::ensure;
+use axelar_soroban_std::upgrade::UpgradeableClient;
 use soroban_sdk::{
     contract, contractimpl, symbol_short, Address, BytesN, Env, String, Symbol, Val,
 };

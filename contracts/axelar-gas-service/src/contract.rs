@@ -1,11 +1,11 @@
 use soroban_sdk::{contract, contractimpl, token, Address, Bytes, Env, String};
 
-use axelar_soroban_std::{ensure, types::Token};
-
 use crate::error::ContractError;
 use crate::event;
 use crate::interface::AxelarGasServiceInterface;
 use crate::storage_types::DataKey;
+use axelar_soroban_std::upgrade::{standardized_migrate, UpgradeableInterface};
+use axelar_soroban_std::{ensure, types::Token, upgrade};
 
 #[contract]
 pub struct AxelarGasService;
@@ -13,10 +13,31 @@ pub struct AxelarGasService;
 #[contractimpl]
 impl AxelarGasService {
     /// Initialize the gas service contract with a gas_collector address.
-    pub fn __constructor(env: Env, gas_collector: Address) {
+    pub fn __constructor(env: Env, owner: Address, gas_collector: Address) {
+        env.storage()
+            .instance()
+            .set(&upgrade::DataKey::Owner, &owner);
         env.storage()
             .instance()
             .set(&DataKey::GasCollector, &gas_collector);
+    }
+
+    pub fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
+        standardized_migrate::<Self>(env, || Self::run_migration(env, migration_data))
+            .map_err(|_| ContractError::MigrationNotAllowed)
+    }
+}
+
+impl AxelarGasService {
+    // Modify this function to add migration logic
+    #[allow(clippy::missing_const_for_fn)] // exclude no-op implementations from this lint
+    fn run_migration(_env: &Env, _migration_data: ()) {}
+}
+
+#[contractimpl]
+impl UpgradeableInterface for AxelarGasService {
+    fn version(env: &Env) -> String {
+        String::from_str(env, env!("CARGO_PKG_VERSION"))
     }
 }
 

@@ -12,6 +12,4 @@ pub mod types;
 
 pub mod error;
 
-mod upgrade;
-
-pub use upgrade::{UpgradeableClient, UpgradeableInterface};
+pub mod upgrade;

@@ -7,4 +7,6 @@ pub enum ContractError {
     NotOwner = 1,
     TrustedAddressAlreadySet = 2,
     NoTrustedAddressSet = 3,
+    /// Upgradeable
+    MigrationNotAllowed = 4,
 }

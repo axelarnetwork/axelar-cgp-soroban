@@ -3,7 +3,7 @@ use crate::{
     types::{Message, Proof, WeightedSigners},
     AxelarGatewayMessagingInterface,
 };
-use axelar_soroban_std::UpgradeableInterface;
+use axelar_soroban_std::upgrade::UpgradeableInterface;
 use soroban_sdk::{contractclient, Address, BytesN, Env, Vec};
 
 #[contractclient(name = "AxelarGatewayClient")]
@@ -34,9 +34,6 @@ pub trait AxelarGatewayInterface: AxelarGatewayMessagingInterface + UpgradeableI
 
     /// Transfers ownership of the gateway to a new address.
     fn transfer_ownership(env: Env, new_owner: Address);
-
-    /// Returns the owner address of the gateway.
-    fn owner(env: &Env) -> Address;
 
     /// Returns the epoch by signers hash.
     fn epoch_by_signers_hash(env: &Env, signers_hash: BytesN<32>) -> Result<u64, ContractError>;

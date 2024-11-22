@@ -1,9 +1,9 @@
-use axelar_soroban_std::ensure;
-use soroban_sdk::{contract, contractimpl, Address, Env, String};
-
 use crate::error::ContractError;
 use crate::event;
 use crate::storage_types::DataKey;
+use axelar_soroban_std::upgrade::{standardized_migrate, UpgradeableInterface};
+use axelar_soroban_std::{ensure, upgrade};
+use soroban_sdk::{contract, contractimpl, Address, Env, String};
 
 #[contract]
 pub struct InterchainTokenService;
@@ -11,21 +11,23 @@ pub struct InterchainTokenService;
 #[contractimpl]
 impl InterchainTokenService {
     pub fn __constructor(env: Env, owner: Address) {
-        env.storage().instance().set(&DataKey::Owner, &owner);
-    }
-
-    pub fn owner(env: &Env) -> Address {
         env.storage()
             .instance()
-            .get(&DataKey::Owner)
-            .expect("owner not found")
+            .set(&upgrade::DataKey::Owner, &owner);
+    }
+
+    pub fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
+        standardized_migrate::<Self>(env, || Self::run_migration(env, migration_data))
+            .map_err(|_| ContractError::MigrationNotAllowed)
     }
 
     pub fn transfer_ownership(env: Env, new_owner: Address) {
         let owner = Self::owner(&env);
         owner.require_auth();
 
-        env.storage().instance().set(&DataKey::Owner, &new_owner);
+        env.storage()
+            .instance()
+            .set(&upgrade::DataKey::Owner, &new_owner);
 
         event::transfer_ownership(&env, owner, new_owner);
     }
@@ -71,5 +73,18 @@ impl InterchainTokenService {
         event::remove_trusted_address(&env, chain, trusted_address);
 
         Ok(())
+    }
+}
+
+impl InterchainTokenService {
+    // Modify this function to add migration logic
+    #[allow(clippy::missing_const_for_fn)] // exclude no-op implementations from this lint
+    fn run_migration(_env: &Env, _migration_data: ()) {}
+}
+
+#[contractimpl]
+impl UpgradeableInterface for InterchainTokenService {
+    fn version(env: &Env) -> String {
+        String::from_str(env, env!("CARGO_PKG_VERSION"))
     }
 }
