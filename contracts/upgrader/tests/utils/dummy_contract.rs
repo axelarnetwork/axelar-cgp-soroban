@@ -1,4 +1,5 @@
-use axelar_soroban_std::UpgradeableInterface;
+use axelar_soroban_std::upgrade;
+use axelar_soroban_std::upgrade::UpgradeableInterface;
 use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, BytesN, Env};
 
 /// A simple contract to test the upgrader
@@ -12,6 +13,7 @@ impl UpgradeableInterface for DummyContract {
         soroban_sdk::String::from_str(env, "0.1.0")
     }
 
+    // override the default upgrade function with a simpler one
     fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
         Self::owner(env).require_auth();
 
@@ -22,18 +24,15 @@ impl UpgradeableInterface for DummyContract {
 #[contractimpl]
 impl DummyContract {
     pub fn __constructor(env: Env, owner: Address) {
-        env.storage().instance().set(&DataKey::Owner, &owner)
-    }
-
-    fn owner(env: &Env) -> Address {
-        env.storage().instance().get(&DataKey::Owner).unwrap()
+        env.storage()
+            .instance()
+            .set(&upgrade::DataKey::Owner, &owner)
     }
 }
 
 #[contracttype]
 pub enum DataKey {
     Data,
-    Owner,
 }
 
 #[contracterror]
@@ -66,9 +65,5 @@ pub enum ContractError {
 //             .set(&DataKey::Data, &migration_data);
 //
 //         Ok(())
-//     }
-//
-//     fn owner(env: &Env) -> Address {
-//         env.storage().instance().get(&DataKey::Owner).unwrap()
 //     }
 // }
