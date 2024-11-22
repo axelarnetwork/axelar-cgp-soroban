@@ -52,7 +52,9 @@ pub fn transfer_ownership(env: &Env, previous_owner: Address, new_owner: Address
     env.events().publish(topics, ());
 }
 
-pub fn upgrade_complete(env: &Env, version: &String) {
-    env.events()
-        .publish((Symbol::new(env, "upgrade_completed"),), version.to_val());
+pub fn upgraded(env: &Env, version: &String) {
+    env.events().publish(
+        (Symbol::new(env, "upgraded"),),
+        soroban_sdk::vec!(env, version.to_val()),
+    );
 }
