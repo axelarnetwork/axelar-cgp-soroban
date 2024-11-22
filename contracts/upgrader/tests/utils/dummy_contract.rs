@@ -8,12 +8,12 @@ pub struct DummyContract;
 /// Dummy contract logic before upgrade
 #[contractimpl]
 impl UpgradeableInterface for DummyContract {
-    fn version(env: Env) -> soroban_sdk::String {
-        soroban_sdk::String::from_str(&env, "0.1.0")
+    fn version(env: &Env) -> soroban_sdk::String {
+        soroban_sdk::String::from_str(env, "0.1.0")
     }
 
-    fn upgrade(env: Env, new_wasm_hash: BytesN<32>) {
-        Self::owner(&env).require_auth();
+    fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
+        Self::owner(env).require_auth();
 
         env.deployer().update_current_contract_wasm(new_wasm_hash);
     }
