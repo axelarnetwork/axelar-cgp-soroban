@@ -6,13 +6,13 @@ use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::testutils::{self, generate_proof, get_approve_hash, TestSignerSet};
 use axelar_gateway::types::Message;
 use axelar_gateway::AxelarGatewayClient;
-use axelar_soroban_std::{assert_invoke_auth_ok, assert_last_emitted_event};
+use axelar_soroban_std::assert_last_emitted_event;
 use axelar_soroban_std::types::Token;
 use example::contract::Example;
 use example::ExampleClient;
 use soroban_sdk::token::StellarAssetClient;
 use soroban_sdk::{
-    testutils::Address as _, testutils::BytesN as _, vec, Address, BytesN, Env, String, IntoVal, testutils::{MockAuth, MockAuthInvoke},
+    testutils::Address as _, testutils::BytesN as _, vec, Address, BytesN, Env, String,
 };
 use soroban_sdk::{Bytes, Symbol};
 
@@ -76,15 +76,12 @@ fn test_gmp_example() {
 
     StellarAssetClient::new(&env, &asset.address()).mint(&user, &gas_amount);
 
-    assert_invoke_auth_ok!(
-        user,
-        source_app.try_send(
-            &user,
-            &destination_chain,
-            &destination_address,
-            &payload,
-            &gas_token,
-        )
+    source_app.send(
+        &user,
+        &destination_chain,
+        &destination_address,
+        &payload,
+        &gas_token,
     );
 
     // Axelar hub confirms the contract call, i.e Axelar verifiers verify/vote on the emitted event
@@ -96,7 +93,7 @@ fn test_gmp_example() {
         &source_gateway_id,
         (
             Symbol::new(&env, "contract_called"),
-            source_app.address.clone(),
+            user,
             destination_chain,
             destination_address,
             payload_hash.clone(),

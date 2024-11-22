@@ -5,7 +5,10 @@ use std::format;
 
 use axelar_gas_service::contract::{AxelarGasService, AxelarGasServiceClient};
 use axelar_gas_service::error::ContractError;
-use axelar_soroban_std::{assert_contract_err, assert_last_emitted_event, types::Token};
+use axelar_soroban_std::{
+    assert_contract_err, assert_invoke_auth_err, assert_last_emitted_event, types::Token,
+};
+use soroban_sdk::testutils::{MockAuth, MockAuthInvoke};
 use soroban_sdk::Bytes;
 use soroban_sdk::{
     bytes,
@@ -26,6 +29,16 @@ fn setup_env<'a>() -> (Env, Address, Address, AxelarGasServiceClient<'a>) {
     (env, contract_id, gas_collector, client)
 }
 
+fn message_id(env: &Env) -> String {
+    String::from_str(
+        env,
+        &format!(
+            "{}-{}",
+            "0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d", 0
+        ),
+    )
+}
+
 #[test]
 fn register_gas_service() {
     let env = Env::default();
@@ -38,8 +51,8 @@ fn register_gas_service() {
 }
 
 #[test]
-fn fail_pay_gas_zero_gas_amount() {
-    let (env, contract_id, _gas_collector, client) = setup_env();
+fn fail_pay_gas_zero_amount() {
+    let (env, _, _, client) = setup_env();
 
     let asset = env.register_stellar_asset_contract_v2(Address::generate(&env));
 
@@ -54,16 +67,6 @@ fn fail_pay_gas_zero_gas_amount() {
     let destination_chain: String = String::from_str(&env, "ethereum");
     let destination_address: String =
         String::from_str(&env, "0x4EFE356BEDeCC817cb89B4E9b796dB8bC188DC59");
-
-    let token_client = TokenClient::new(&env, &asset.address());
-    StellarAssetClient::new(&env, &asset.address()).mint(&sender, &gas_amount);
-
-    let expiration_ledger = &env.ledger().sequence() + 200;
-
-    // approve token spend before invoking `pay_gas_for_contract_call`
-    token_client.approve(&sender, &contract_id, &gas_amount, &expiration_ledger);
-
-    assert_eq!(token_client.allowance(&sender, &contract_id), gas_amount);
 
     assert_contract_err!(
         client.try_pay_gas(
@@ -80,42 +83,42 @@ fn fail_pay_gas_zero_gas_amount() {
 }
 
 #[test]
-fn fail_pay_gas_no_approved_allowance() {
-    let (env, _, _gas_collector, client) = setup_env();
+#[should_panic(expected = "HostError: Error(Contract, #10)")]
+fn fail_pay_gas_not_enough_user_balance() {
+    let (env, _, _, client) = setup_env();
 
-    let asset = env.register_stellar_asset_contract_v2(Address::generate(&env));
+    let asset = &env.register_stellar_asset_contract_v2(Address::generate(&env));
 
     let sender: Address = Address::generate(&env);
-    let gas_amount: i128 = 0;
+    let gas_amount: i128 = 2;
     let token = Token {
         address: asset.address(),
         amount: gas_amount,
     };
+
     let refund_address: Address = Address::generate(&env);
     let payload = bytes!(&env, 0x1234);
     let destination_chain: String = String::from_str(&env, "ethereum");
     let destination_address: String =
         String::from_str(&env, "0x4EFE356BEDeCC817cb89B4E9b796dB8bC188DC59");
 
-    StellarAssetClient::new(&env, &asset.address()).mint(&sender, &gas_amount);
+    StellarAssetClient::new(&env, &asset.address()).mint(&sender, &(gas_amount - 1));
 
-    assert_contract_err!(
-        client.try_pay_gas(
-            &sender,
-            &destination_chain,
-            &destination_address,
-            &payload,
-            &token,
-            &refund_address,
-            &Bytes::new(&env),
-        ),
-        ContractError::InvalidAmount
+    // Should panic, the user doesn't have enough balance of the token to pay gas
+    client.pay_gas(
+        &sender,
+        &destination_chain,
+        &destination_address,
+        &payload,
+        &token,
+        &refund_address,
+        &Bytes::new(&env),
     );
 }
 
 #[test]
 fn pay_gas() {
-    let (env, contract_id, _gas_collector, client) = setup_env();
+    let (env, contract_id, _, client) = setup_env();
 
     let asset = &env.register_stellar_asset_contract_v2(Address::generate(&env));
 
@@ -166,30 +169,17 @@ fn pay_gas() {
 
 #[test]
 fn fail_add_gas_zero_gas_amount() {
-    let (env, contract_id, _gas_collector, client) = setup_env();
+    let (env, _, _, client) = setup_env();
 
     let asset = env.register_stellar_asset_contract_v2(Address::generate(&env));
     let sender: Address = Address::generate(&env);
-    let message_id = String::from_str(
-        &env,
-        &format!(
-            "{}-{}",
-            "0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d", 0
-        ),
-    );
+    let message_id = message_id(&env);
     let refund_address: Address = Address::generate(&env);
     let gas_amount: i128 = 0;
     let token = Token {
         address: asset.address(),
         amount: gas_amount,
     };
-
-    let token_client = TokenClient::new(&env, &asset.address());
-    StellarAssetClient::new(&env, &asset.address()).mint(&sender, &gas_amount);
-
-    let expiration_ledger = &env.ledger().sequence() + 200;
-
-    token_client.approve(&sender, &contract_id, &gas_amount, &expiration_ledger);
 
     assert_contract_err!(
         client.try_add_gas(&sender, &message_id, &token, &refund_address,),
@@ -198,46 +188,33 @@ fn fail_add_gas_zero_gas_amount() {
 }
 
 #[test]
-fn fail_add_gas_no_approved_allowance() {
-    let (env, _, _gas_collector, client) = setup_env();
+#[should_panic(expected = "HostError: Error(Contract, #9)")]
+fn fail_add_gas_not_enough_user_balance() {
+    let (env, _, _, client) = setup_env();
 
     let asset = env.register_stellar_asset_contract_v2(Address::generate(&env));
     let sender: Address = Address::generate(&env);
-    let message_id = String::from_str(
-        &env,
-        &format!(
-            "{}-{}",
-            "0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d", 0
-        ),
-    );
+    let message_id = message_id(&env);
     let refund_address: Address = Address::generate(&env);
-    let gas_amount: i128 = 0;
+    let gas_amount: i128 = 2;
     let token = Token {
         address: asset.address(),
         amount: gas_amount,
     };
 
-    StellarAssetClient::new(&env, &asset.address()).mint(&sender, &gas_amount);
+    StellarAssetClient::new(&env, &asset.address()).mint(&sender, &(gas_amount - 1));
 
-    assert_contract_err!(
-        client.try_add_gas(&sender, &message_id, &token, &refund_address,),
-        ContractError::InvalidAmount
-    );
+    // Should panic, the user doesn't have enough balance of the token to add gas
+    client.add_gas(&sender, &message_id, &token, &refund_address);
 }
 
 #[test]
 fn add_gas() {
-    let (env, contract_id, _gas_collector, client) = setup_env();
+    let (env, contract_id, _, client) = setup_env();
 
     let asset = env.register_stellar_asset_contract_v2(Address::generate(&env));
     let sender: Address = Address::generate(&env);
-    let message_id = String::from_str(
-        &env,
-        &format!(
-            "{}-{}",
-            "0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d", 0
-        ),
-    );
+    let message_id = message_id(&env);
     let refund_address: Address = Address::generate(&env);
     let gas_amount: i128 = 1;
     let token = Token {
@@ -284,6 +261,7 @@ fn fail_collect_fees_zero_refund_amount() {
         address: asset.address(),
         amount: refund_amount,
     };
+
     StellarAssetClient::new(&env, &token.address).mint(&contract_id, &supply);
 
     assert_contract_err!(
@@ -305,12 +283,33 @@ fn fail_collect_fees_insufficient_balance() {
         address: asset.address(),
         amount: refund_amount,
     };
+
     StellarAssetClient::new(&env, &token.address).mint(&contract_id, &supply);
 
     assert_contract_err!(
         client.try_collect_fees(&gas_collector, &token),
         ContractError::InsufficientBalance
     );
+}
+
+#[test]
+fn fail_collect_fees_unauthorized() {
+    let (env, contract_id, _, client) = setup_env();
+
+    let asset = &env.register_stellar_asset_contract_v2(Address::generate(&env));
+
+    let supply: i128 = 1000;
+    let refund_amount = 1;
+    let token = Token {
+        address: asset.address(),
+        amount: refund_amount,
+    };
+
+    let user: Address = Address::generate(&env);
+
+    StellarAssetClient::new(&env, &token.address).mint(&contract_id, &supply);
+
+    assert_invoke_auth_err!(user, client.try_collect_fees(&user, &token));
 }
 
 #[test]
@@ -326,6 +325,7 @@ fn collect_fees() {
         address: asset.address(),
         amount: refund_amount,
     };
+
     StellarAssetClient::new(&env, &token.address).mint(&contract_id, &supply);
 
     client.collect_fees(&gas_collector, &token);
@@ -342,8 +342,52 @@ fn collect_fees() {
 }
 
 #[test]
+fn fail_refund_unauthorized() {
+    let (env, contract_id, _, client) = setup_env();
+
+    let asset = &env.register_stellar_asset_contract_v2(Address::generate(&env));
+
+    let supply: i128 = 1000;
+    StellarAssetClient::new(&env, &asset.address()).mint(&contract_id, &supply);
+
+    let receiver: Address = Address::generate(&env);
+    let refund_amount: i128 = 1;
+    let token = Token {
+        address: asset.address(),
+        amount: refund_amount,
+    };
+    let message_id = message_id(&env);
+    let user: Address = Address::generate(&env);
+
+    assert_invoke_auth_err!(user, client.try_refund(&message_id, &receiver, &token));
+}
+
+#[test]
+#[should_panic(expected = "HostError: Error(Contract, #10)")]
+fn fail_refund_not_enough_balance() {
+    let (env, contract_id, _, client) = setup_env();
+
+    let asset = &env.register_stellar_asset_contract_v2(Address::generate(&env));
+
+    let supply: i128 = 1;
+    StellarAssetClient::new(&env, &asset.address()).mint(&contract_id, &(supply));
+
+    let receiver: Address = Address::generate(&env);
+    let refund_amount: i128 = 2;
+    let token = Token {
+        address: asset.address(),
+        amount: refund_amount,
+    };
+
+    let message_id = message_id(&env);
+
+    // Should panic, the contract doesn't have enough balance of the token to refund
+    client.refund(&message_id, &receiver, &token);
+}
+
+#[test]
 fn refund() {
-    let (env, contract_id, _gas_collector, client) = setup_env();
+    let (env, contract_id, _, client) = setup_env();
 
     let asset = &env.register_stellar_asset_contract_v2(Address::generate(&env));
 
@@ -358,13 +402,7 @@ fn refund() {
         amount: refund_amount,
     };
 
-    let message_id = String::from_str(
-        &env,
-        &format!(
-            "{}-{}",
-            "0xfded3f55dec47250a52a8c0bb7038e72fa6ffaae33562f77cd2b629ef7fd424d", 0
-        ),
-    );
+    let message_id = message_id(&env);
 
     client.refund(&message_id, &receiver, &token);
 
