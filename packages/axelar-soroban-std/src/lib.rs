@@ -14,4 +14,4 @@ pub mod error;
 
 mod upgrade;
 
-pub use upgrade::UpgradeableInterface;
+pub use upgrade::{UpgradeableClient, UpgradeableInterface};
