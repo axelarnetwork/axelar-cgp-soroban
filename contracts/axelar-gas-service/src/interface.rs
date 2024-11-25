@@ -28,12 +28,18 @@ pub trait AxelarGasServiceInterface {
     ) -> Result<(), ContractError>;
 
     /// Add additional gas payment after initiating a cross-chain message.
+    /// # Notes
+    /// - The `sender` is distinct from the `spender`. The `sender` initiates the action
+    ///   requiring gas payment but does not directly pay for the gas. Instead, the
+    ///   `spender` is responsible for authorizing and funding the payment.
+    /// - The `spender` can also serve as the `refund_address`, receiving any unused gas
+    ///   or reimbursement as applicable.
     fn add_gas(
         env: Env,
         sender: Address,
         message_id: String,
+        spender: Address,
         token: Token,
-        refund_address: Address,
     ) -> Result<(), ContractError>;
 
     /// Allows the `gas_collector` to collect accumulated fees from the contract.
