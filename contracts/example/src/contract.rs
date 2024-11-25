@@ -58,6 +58,7 @@ impl Example {
 
         gas_service.pay_gas(
             &caller,
+            &env.current_contract_address(),
             &destination_chain,
             &destination_address,
             &message,

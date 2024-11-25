@@ -11,6 +11,7 @@ pub trait AxelarGasServiceInterface {
     /// This function is called on the source chain before calling the gateway to send a message.
     fn pay_gas(
         env: Env,
+        spender: Address,
         sender: Address,
         destination_chain: String,
         destination_address: String,

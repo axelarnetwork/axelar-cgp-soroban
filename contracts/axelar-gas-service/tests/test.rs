@@ -56,6 +56,7 @@ fn fail_pay_gas_zero_amount() {
 
     let asset = env.register_stellar_asset_contract_v2(Address::generate(&env));
 
+    let spender: Address = Address::generate(&env);
     let sender: Address = Address::generate(&env);
     let gas_amount: i128 = 0;
     let token = Token {
@@ -70,6 +71,7 @@ fn fail_pay_gas_zero_amount() {
 
     assert_contract_err!(
         client.try_pay_gas(
+            &spender,
             &sender,
             &destination_chain,
             &destination_address,
@@ -88,7 +90,7 @@ fn fail_pay_gas_not_enough_user_balance() {
     let (env, _, _, client) = setup_env();
 
     let asset = &env.register_stellar_asset_contract_v2(Address::generate(&env));
-
+    let spender: Address = Address::generate(&env);
     let sender: Address = Address::generate(&env);
     let gas_amount: i128 = 2;
     let token = Token {
@@ -102,10 +104,11 @@ fn fail_pay_gas_not_enough_user_balance() {
     let destination_address: String =
         String::from_str(&env, "0x4EFE356BEDeCC817cb89B4E9b796dB8bC188DC59");
 
-    StellarAssetClient::new(&env, &asset.address()).mint(&sender, &(gas_amount - 1));
+    StellarAssetClient::new(&env, &asset.address()).mint(&spender, &(gas_amount - 1));
 
     // Should panic, the user doesn't have enough balance of the token to pay gas
     client.pay_gas(
+        &spender,
         &sender,
         &destination_chain,
         &destination_address,
@@ -122,6 +125,7 @@ fn pay_gas() {
 
     let asset = &env.register_stellar_asset_contract_v2(Address::generate(&env));
 
+    let spender: Address = Address::generate(&env);
     let sender: Address = Address::generate(&env);
     let gas_amount: i128 = 1;
     let token = Token {
@@ -136,9 +140,10 @@ fn pay_gas() {
         String::from_str(&env, "0x4EFE356BEDeCC817cb89B4E9b796dB8bC188DC59");
 
     let token_client = TokenClient::new(&env, &asset.address());
-    StellarAssetClient::new(&env, &asset.address()).mint(&sender, &gas_amount);
+    StellarAssetClient::new(&env, &asset.address()).mint(&spender, &gas_amount);
 
     client.pay_gas(
+        &spender,
         &sender,
         &destination_chain,
         &destination_address,
@@ -172,6 +177,7 @@ fn fail_add_gas_zero_gas_amount() {
     let (env, _, _, client) = setup_env();
 
     let asset = env.register_stellar_asset_contract_v2(Address::generate(&env));
+
     let sender: Address = Address::generate(&env);
     let message_id = message_id(&env);
     let refund_address: Address = Address::generate(&env);
