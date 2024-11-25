@@ -57,13 +57,12 @@ impl Example {
         caller.require_auth();
 
         gas_service.pay_gas(
-            &caller,
             &env.current_contract_address(),
             &destination_chain,
             &destination_address,
             &message,
-            &gas_token,
             &caller,
+            &gas_token,
             &Bytes::new(&env),
         );
 

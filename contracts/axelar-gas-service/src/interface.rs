@@ -9,15 +9,21 @@ pub trait AxelarGasServiceInterface {
     /// Pay for gas using a token for sending a message on a destination chain.
     ///
     /// This function is called on the source chain before calling the gateway to send a message.
+    ///
+    /// # Notes
+    /// - The `sender` is distinct from the `spender`. The `sender` initiates the action
+    ///   requiring gas payment but does not directly pay for the gas. Instead, the
+    ///   `spender` is responsible for authorizing and funding the payment.
+    /// - The `spender` can also serve as the `refund_address`, receiving any unused gas
+    ///   or reimbursement as applicable.
     fn pay_gas(
         env: Env,
-        spender: Address,
         sender: Address,
         destination_chain: String,
         destination_address: String,
         payload: Bytes,
+        spender: Address,
         token: Token,
-        refund_address: Address,
         metadata: Bytes,
     ) -> Result<(), ContractError>;
 

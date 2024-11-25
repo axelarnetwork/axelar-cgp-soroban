@@ -8,8 +8,8 @@ pub fn gas_paid(
     destination_chain: String,
     destination_address: String,
     payload: Bytes,
+    spender: Address,
     token: Token,
-    refund_address: Address,
     metadata: Bytes,
 ) {
     let topics = (
@@ -18,8 +18,8 @@ pub fn gas_paid(
         destination_chain,
         destination_address,
         env.crypto().keccak256(&payload),
+        spender,
         token,
-        refund_address,
     );
     env.events().publish(topics, (metadata,));
 }

@@ -63,7 +63,6 @@ fn fail_pay_gas_zero_amount() {
         address: asset.address(),
         amount: gas_amount,
     };
-    let refund_address: Address = Address::generate(&env);
     let payload = bytes!(&env, 0x1234);
     let destination_chain: String = String::from_str(&env, "ethereum");
     let destination_address: String =
@@ -71,13 +70,12 @@ fn fail_pay_gas_zero_amount() {
 
     assert_contract_err!(
         client.try_pay_gas(
-            &spender,
             &sender,
             &destination_chain,
             &destination_address,
             &payload,
+            &spender,
             &token,
-            &refund_address,
             &Bytes::new(&env),
         ),
         ContractError::InvalidAmount
@@ -85,7 +83,6 @@ fn fail_pay_gas_zero_amount() {
 }
 
 #[test]
-#[should_panic(expected = "HostError: Error(Contract, #10)")]
 fn fail_pay_gas_not_enough_user_balance() {
     let (env, _, _, client) = setup_env();
 
@@ -98,7 +95,6 @@ fn fail_pay_gas_not_enough_user_balance() {
         amount: gas_amount,
     };
 
-    let refund_address: Address = Address::generate(&env);
     let payload = bytes!(&env, 0x1234);
     let destination_chain: String = String::from_str(&env, "ethereum");
     let destination_address: String =
@@ -106,17 +102,17 @@ fn fail_pay_gas_not_enough_user_balance() {
 
     StellarAssetClient::new(&env, &asset.address()).mint(&spender, &(gas_amount - 1));
 
-    // Should panic, the user doesn't have enough balance of the token to pay gas
-    client.pay_gas(
-        &spender,
-        &sender,
-        &destination_chain,
-        &destination_address,
-        &payload,
-        &token,
-        &refund_address,
-        &Bytes::new(&env),
-    );
+    assert!(client
+        .try_pay_gas(
+            &sender,
+            &destination_chain,
+            &destination_address,
+            &payload,
+            &spender,
+            &token,
+            &Bytes::new(&env),
+        )
+        .is_err());
 }
 
 #[test]
@@ -133,7 +129,6 @@ fn pay_gas() {
         amount: gas_amount,
     };
 
-    let refund_address: Address = Address::generate(&env);
     let payload = bytes!(&env, 0x1234);
     let destination_chain: String = String::from_str(&env, "ethereum");
     let destination_address: String =
@@ -143,13 +138,12 @@ fn pay_gas() {
     StellarAssetClient::new(&env, &asset.address()).mint(&spender, &gas_amount);
 
     client.pay_gas(
-        &spender,
         &sender,
         &destination_chain,
         &destination_address,
         &payload,
+        &spender,
         &token,
-        &refund_address,
         &Bytes::new(&env),
     );
 
@@ -165,8 +159,8 @@ fn pay_gas() {
             destination_chain,
             destination_address,
             env.crypto().keccak256(&payload),
+            spender,
             token,
-            refund_address,
         ),
         (Bytes::new(&env),),
     );
@@ -194,7 +188,6 @@ fn fail_add_gas_zero_gas_amount() {
 }
 
 #[test]
-#[should_panic(expected = "HostError: Error(Contract, #9)")]
 fn fail_add_gas_not_enough_user_balance() {
     let (env, _, _, client) = setup_env();
 
@@ -210,8 +203,9 @@ fn fail_add_gas_not_enough_user_balance() {
 
     StellarAssetClient::new(&env, &asset.address()).mint(&sender, &(gas_amount - 1));
 
-    // Should panic, the user doesn't have enough balance of the token to add gas
-    client.add_gas(&sender, &message_id, &token, &refund_address);
+    assert!(client
+        .try_add_gas(&sender, &message_id, &token, &refund_address)
+        .is_err());
 }
 
 #[test]
@@ -369,7 +363,6 @@ fn fail_refund_unauthorized() {
 }
 
 #[test]
-#[should_panic(expected = "HostError: Error(Contract, #10)")]
 fn fail_refund_not_enough_balance() {
     let (env, contract_id, _, client) = setup_env();
 
@@ -387,8 +380,7 @@ fn fail_refund_not_enough_balance() {
 
     let message_id = message_id(&env);
 
-    // Should panic, the contract doesn't have enough balance of the token to refund
-    client.refund(&message_id, &receiver, &token);
+    assert!(client.try_refund(&message_id, &receiver, &token).is_err());
 }
 
 #[test]

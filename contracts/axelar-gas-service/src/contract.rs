@@ -25,13 +25,12 @@ impl AxelarGasServiceInterface for AxelarGasService {
     #[allow(clippy::too_many_arguments)]
     fn pay_gas(
         env: Env,
-        spender: Address,
         sender: Address,
         destination_chain: String,
         destination_address: String,
         payload: Bytes,
+        spender: Address,
         token: Token,
-        refund_address: Address,
         metadata: Bytes,
     ) -> Result<(), ContractError> {
         spender.require_auth();
@@ -50,8 +49,8 @@ impl AxelarGasServiceInterface for AxelarGasService {
             destination_chain,
             destination_address,
             payload,
+            spender,
             token,
-            refund_address,
             metadata,
         );
 

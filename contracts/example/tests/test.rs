@@ -99,13 +99,12 @@ fn test_gmp_example() {
         "pay_gas",
         source_gas_service_id.clone() =>
         (
-            &user,
             source_app.address.clone(),
             destination_chain.clone(),
             destination_address.clone(),
             payload.clone(),
-            gas_token.clone(),
             &user,
+            gas_token.clone(),
             &Bytes::new(&env)
         ),
         transfer_auth
