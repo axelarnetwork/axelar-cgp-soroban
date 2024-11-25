@@ -1,6 +1,6 @@
-use axelar_soroban_std::ownership::OwnershipInterface;
-use axelar_soroban_std::upgrade;
-use axelar_soroban_std::upgrade::UpgradeableInterface;
+use axelar_soroban_std::shared_interfaces;
+use axelar_soroban_std::shared_interfaces::OwnershipInterface;
+use axelar_soroban_std::shared_interfaces::UpgradeableInterface;
 use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, BytesN, Env};
 
 /// A simple contract to test the upgrader
@@ -14,7 +14,6 @@ impl UpgradeableInterface for DummyContract {
         soroban_sdk::String::from_str(env, "0.1.0")
     }
 
-    // override the default upgrade function with a simpler one
     fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
         Self::owner(env).require_auth();
 
@@ -23,14 +22,16 @@ impl UpgradeableInterface for DummyContract {
 }
 
 #[contractimpl]
-impl OwnershipInterface for DummyContract {}
+impl OwnershipInterface for DummyContract {
+    fn owner(env: &Env) -> Address {
+        shared_interfaces::owner(env)
+    }
+}
 
 #[contractimpl]
 impl DummyContract {
     pub fn __constructor(env: Env, owner: Address) {
-        env.storage()
-            .instance()
-            .set(&upgrade::DataKey::Owner, &owner)
+        shared_interfaces::set_owner(&env, &owner);
     }
 }
 
@@ -46,14 +47,20 @@ pub enum ContractError {
 
 // Dummy contract logic after upgrade is available as testdata/dummy.wasm
 //
+//
+// /// A simple contract to test the upgrader
+// #[contract]
+// pub struct DummyContract;
+//
+// /// Dummy contract logic before upgrade
 // #[contractimpl]
 // impl UpgradeableInterface for DummyContract {
-//     fn version(env: Env) -> String {
-//         String::from_str(&env, "0.2.0")
+//     fn version(env: &Env) -> soroban_sdk::String {
+//         soroban_sdk::String::from_str(env, "0.2.0")
 //     }
 //
-//     fn upgrade(env: Env, new_wasm_hash: BytesN<32>) {
-//         Self::owner(&env).require_auth();
+//     fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
+//         Self::owner(env).require_auth();
 //
 //         env.deployer().update_current_contract_wasm(new_wasm_hash);
 //     }
@@ -61,21 +68,22 @@ pub enum ContractError {
 //
 // #[contractimpl]
 // impl OwnershipInterface for DummyContract {
-//     // boilerplate necessary for the contractimpl macro to include function in the generated client
 //     fn owner(env: &Env) -> Address {
-//         ownership::default_owner_impl(env)
+//         shared_interfaces::owner(env)
 //     }
 // }
 //
 // #[contractimpl]
 // impl DummyContract {
-//     pub fn migrate(env: Env, migration_data: String) -> Result<(), ContractError> {
-//         Self::owner(&env).require_auth();
+//     pub fn __constructor(env: Env, owner: Address) {
+//         shared_interfaces::set_owner(&env, &owner);
+//     }
 //
+//     pub fn migrate(env: Env, migration_data: soroban_sdk::String) -> Result<(), ContractError> {
+//         Self::owner(&env).require_auth();
 //         env.storage()
 //             .instance()
 //             .set(&DataKey::Data, &migration_data);
-//
 //         Ok(())
 //     }
 // }

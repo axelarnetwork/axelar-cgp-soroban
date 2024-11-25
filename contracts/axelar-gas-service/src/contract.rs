@@ -1,12 +1,12 @@
-use soroban_sdk::{contract, contractimpl, token, Address, Bytes, Env, String};
+use soroban_sdk::{contract, contractimpl, token, Address, Bytes, BytesN, Env, String};
 
 use crate::error::ContractError;
 use crate::event;
 use crate::interface::AxelarGasServiceInterface;
 use crate::storage_types::DataKey;
-use axelar_soroban_std::ownership::OwnershipInterface;
-use axelar_soroban_std::upgrade::{standardized_migrate, UpgradeableInterface};
-use axelar_soroban_std::{ensure, ownership, types::Token, upgrade};
+use axelar_soroban_std::shared_interfaces::OwnershipInterface;
+use axelar_soroban_std::shared_interfaces::{migrate, UpgradeableInterface};
+use axelar_soroban_std::{ensure, shared_interfaces, types::Token};
 
 #[contract]
 pub struct AxelarGasService;
@@ -15,16 +15,14 @@ pub struct AxelarGasService;
 impl AxelarGasService {
     /// Initialize the gas service contract with a gas_collector address.
     pub fn __constructor(env: Env, owner: Address, gas_collector: Address) {
-        env.storage()
-            .instance()
-            .set(&upgrade::DataKey::Owner, &owner);
+        shared_interfaces::set_owner(&env, &owner);
         env.storage()
             .instance()
             .set(&DataKey::GasCollector, &gas_collector);
     }
 
     pub fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
-        standardized_migrate::<Self>(env, || Self::run_migration(env, migration_data))
+        migrate::<Self>(env, || Self::run_migration(env, migration_data))
             .map_err(|_| ContractError::MigrationNotAllowed)
     }
 }
@@ -40,13 +38,17 @@ impl UpgradeableInterface for AxelarGasService {
     fn version(env: &Env) -> String {
         String::from_str(env, env!("CARGO_PKG_VERSION"))
     }
+
+    fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
+        shared_interfaces::upgrade::<Self>(env, new_wasm_hash);
+    }
 }
 
 #[contractimpl]
 impl OwnershipInterface for AxelarGasService {
     // boilerplate necessary for the contractimpl macro to include function in the generated client
     fn owner(env: &Env) -> Address {
-        ownership::default_owner_impl(env)
+        shared_interfaces::owner(env)
     }
 }
 

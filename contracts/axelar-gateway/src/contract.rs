@@ -4,11 +4,9 @@ use crate::messaging_interface::AxelarGatewayMessagingInterface;
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::types::{CommandType, Message, Proof, WeightedSigners};
 use crate::{auth, event};
-use axelar_soroban_std::ownership::OwnershipInterface;
-use axelar_soroban_std::upgrade::{
-    default_upgrade_impl, standardized_migrate, UpgradeableInterface,
-};
-use axelar_soroban_std::{ensure, ownership, upgrade};
+use axelar_soroban_std::shared_interfaces::OwnershipInterface;
+use axelar_soroban_std::shared_interfaces::{migrate, UpgradeableInterface};
+use axelar_soroban_std::{ensure, shared_interfaces};
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
 
@@ -34,7 +32,7 @@ impl UpgradeableInterface for AxelarGateway {
 
     // boilerplate necessary for the contractimpl macro to include function in the generated client
     fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
-        default_upgrade_impl::<Self>(env, new_wasm_hash);
+        shared_interfaces::upgrade::<Self>(env, new_wasm_hash);
     }
 }
 
@@ -42,7 +40,7 @@ impl UpgradeableInterface for AxelarGateway {
 impl OwnershipInterface for AxelarGateway {
     // boilerplate necessary for the contractimpl macro to include function in the generated client
     fn owner(env: &Env) -> Address {
-        ownership::default_owner_impl(env)
+        shared_interfaces::owner(env)
     }
 }
 
@@ -58,9 +56,7 @@ impl AxelarGateway {
         previous_signers_retention: u64,
         initial_signers: Vec<WeightedSigners>,
     ) -> Result<(), ContractError> {
-        env.storage()
-            .instance()
-            .set(&upgrade::DataKey::Owner, &owner);
+        shared_interfaces::set_owner(&env, &owner);
         env.storage().instance().set(&DataKey::Operator, &operator);
 
         auth::initialize_auth(
@@ -76,7 +72,7 @@ impl AxelarGateway {
 
     /// Migrate the contract state after upgrading the contract code. the migration_data type can be adjusted as needed.
     pub fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
-        standardized_migrate::<Self>(env, || Self::run_migration(env, migration_data))
+        migrate::<Self>(env, || Self::run_migration(env, migration_data))
             .map_err(|_| ContractError::MigrationNotAllowed)
     }
 }
@@ -261,9 +257,7 @@ impl AxelarGatewayInterface for AxelarGateway {
         let owner: Address = Self::owner(&env);
         owner.require_auth();
 
-        env.storage()
-            .instance()
-            .set(&upgrade::DataKey::Owner, &new_owner);
+        shared_interfaces::set_owner(&env, &new_owner);
 
         event::transfer_ownership(&env, owner, new_owner);
     }
