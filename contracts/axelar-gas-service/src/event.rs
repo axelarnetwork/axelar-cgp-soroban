@@ -24,12 +24,13 @@ pub fn gas_paid(
     env.events().publish(topics, (metadata,));
 }
 
-pub fn gas_added(env: &Env, message_id: String, token: Token, refund_address: Address) {
+pub fn gas_added(env: &Env, sender: Address, message_id: String, spender: Address, token: Token) {
     let topics = (
         Symbol::new(env, "gas_added"),
+        sender,
         message_id,
+        spender,
         token,
-        refund_address,
     );
     env.events().publish(topics, ());
 }
