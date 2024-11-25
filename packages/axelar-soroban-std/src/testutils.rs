@@ -70,3 +70,45 @@ where
 {
     assert_emitted_event(env, -1, contract_id, topics, data);
 }
+
+#[macro_export]
+macro_rules! auth_invocation {
+    // Normal invocation: auth!(env, "function_name", address => args)
+    ($env:expr, $fn:expr, $addr:expr => $args:expr) => {{
+        std::vec![AuthorizedInvocation {
+            function: AuthorizedFunction::Contract((
+                $addr,
+                Symbol::new($env, $fn),
+                $args.into_val($env),
+            )),
+            sub_invocations: std::vec![],
+        }]
+    }};
+
+    // Invocation with sub-invocations: auth!(env, "function_name", address => args, subs)
+    ($env:expr, $fn:expr, $addr:expr => $args:expr, $subs:expr) => {{
+        std::vec![AuthorizedInvocation {
+            function: AuthorizedFunction::Contract((
+                $addr,
+                Symbol::new($env, $fn),
+                $args.into_val($env),
+            )),
+            sub_invocations: $subs,
+        }]
+    }};
+
+    // User invocation: auth!(env, user, "function_name", address => args, subs)
+    ($env:expr, $user:expr, $fn:expr, $addr:expr => $args:expr, $subs:expr) => {{
+        std::vec![(
+            $user.clone(),
+            AuthorizedInvocation {
+                function: AuthorizedFunction::Contract((
+                    $addr,
+                    Symbol::new($env, $fn),
+                    $args.into_val($env),
+                )),
+                sub_invocations: $subs
+            }
+        )]
+    }};
+}
