@@ -10,12 +10,9 @@ pub trait AxelarGasServiceInterface {
     ///
     /// This function is called on the source chain before calling the gateway to send a message.
     ///
-    /// # Notes
-    /// - The `sender` is distinct from the `spender`. The `sender` initiates the action
-    ///   requiring gas payment but does not directly pay for the gas. Instead, the
-    ///   `spender` is responsible for authorizing and funding the payment.
-    /// - The `spender` can also serve as the `refund_address`, receiving any unused gas
-    ///   or reimbursement as applicable.
+    /// `sender` refers to the address that sent the cross-chain message via the `axelar_gateway`.
+    /// The `spender` pays the gas but might differ from the `sender`,
+    /// e.g. the `sender` is a contract, but the `spender` can be the user signing the transaction.
     fn pay_gas(
         env: Env,
         sender: Address,
@@ -27,13 +24,17 @@ pub trait AxelarGasServiceInterface {
         metadata: Bytes,
     ) -> Result<(), ContractError>;
 
-    /// Add additional gas payment after initiating a cross-chain message.
+    /// Adds additional gas payment after initiating a cross-chain message.
+    ///
+    /// `sender` refers to the address that sent the cross-chain message via the `axelar_gateway`.
+    /// The `spender` pays the gas but might differ from the `sender`,
+    /// e.g. the `sender` is a contract, but the `spender` can be the user signing the transaction.
     fn add_gas(
         env: Env,
         sender: Address,
         message_id: String,
+        spender: Address,
         token: Token,
-        refund_address: Address,
     ) -> Result<(), ContractError>;
 
     /// Allows the `gas_collector` to collect accumulated fees from the contract.
