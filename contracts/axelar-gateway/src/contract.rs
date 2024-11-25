@@ -4,8 +4,11 @@ use crate::messaging_interface::AxelarGatewayMessagingInterface;
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::types::{CommandType, Message, Proof, WeightedSigners};
 use crate::{auth, event};
-use axelar_soroban_std::upgrade::{standardized_migrate, UpgradeableInterface};
-use axelar_soroban_std::{ensure, upgrade};
+use axelar_soroban_std::ownership::OwnershipInterface;
+use axelar_soroban_std::upgrade::{
+    default_upgrade_impl, standardized_migrate, UpgradeableInterface,
+};
+use axelar_soroban_std::{ensure, ownership, upgrade};
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
 
@@ -27,6 +30,19 @@ pub struct AxelarGateway;
 impl UpgradeableInterface for AxelarGateway {
     fn version(env: &Env) -> String {
         String::from_str(env, CONTRACT_VERSION)
+    }
+
+    // boilerplate necessary for the contractimpl macro to include function in the generated client
+    fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
+        default_upgrade_impl::<Self>(env, new_wasm_hash);
+    }
+}
+
+#[contractimpl]
+impl OwnershipInterface for AxelarGateway {
+    // boilerplate necessary for the contractimpl macro to include function in the generated client
+    fn owner(env: &Env) -> Address {
+        ownership::default_owner_impl(env)
     }
 }
 

@@ -1,3 +1,4 @@
+use axelar_soroban_std::ownership::OwnershipInterface;
 use axelar_soroban_std::upgrade;
 use axelar_soroban_std::upgrade::UpgradeableInterface;
 use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, BytesN, Env};
@@ -20,6 +21,9 @@ impl UpgradeableInterface for DummyContract {
         env.deployer().update_current_contract_wasm(new_wasm_hash);
     }
 }
+
+#[contractimpl]
+impl OwnershipInterface for DummyContract {}
 
 #[contractimpl]
 impl DummyContract {
@@ -52,6 +56,14 @@ pub enum ContractError {
 //         Self::owner(&env).require_auth();
 //
 //         env.deployer().update_current_contract_wasm(new_wasm_hash);
+//     }
+// }
+//
+// #[contractimpl]
+// impl OwnershipInterface for DummyContract {
+//     // boilerplate necessary for the contractimpl macro to include function in the generated client
+//     fn owner(env: &Env) -> Address {
+//         ownership::default_owner_impl(env)
 //     }
 // }
 //

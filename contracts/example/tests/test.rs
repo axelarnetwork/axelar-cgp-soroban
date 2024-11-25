@@ -22,8 +22,9 @@ fn setup_gateway<'a>(env: &Env) -> (TestSignerSet, AxelarGatewayClient<'a>) {
 }
 
 fn setup_gas_service<'a>(env: &Env) -> (AxelarGasServiceClient<'a>, Address, Address) {
+    let owner: Address = Address::generate(env);
     let gas_collector: Address = Address::generate(&env);
-    let gas_service_id = env.register(AxelarGasService, (&gas_collector,));
+    let gas_service_id = env.register(AxelarGasService, (&owner, &gas_collector));
     let gas_service_client = AxelarGasServiceClient::new(env, &gas_service_id);
 
     (gas_service_client, gas_collector, gas_service_id)

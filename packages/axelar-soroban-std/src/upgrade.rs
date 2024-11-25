@@ -1,28 +1,28 @@
 use crate::ensure;
-use soroban_sdk::{contractclient, contracttype, Address, BytesN, Env, String, Symbol};
+use crate::ownership::OwnershipInterface;
+use soroban_sdk::{contractclient, contracttype, BytesN, Env, String, Symbol};
 
 #[contractclient(name = "UpgradeableClient")]
-pub trait UpgradeableInterface {
+pub trait UpgradeableInterface: OwnershipInterface {
     /// Returns the current version of the contract.
     fn version(env: &Env) -> String;
-
-    /// The owner that is allowed to upgrade the contract.
-    fn owner(env: &Env) -> Address {
-        env.storage()
-            .instance()
-            .get(&DataKey::Owner)
-            .expect("owner not found")
-    }
 
     /// Upgrades the contract to a new WASM hash.
     /// This function checks that the caller can authenticate as the owner of the contract,
     /// then upgrades the contract to a new WASM hash and prepares it for migration.
-    fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
-        Self::owner(env).require_auth();
-
-        env.deployer().update_current_contract_wasm(new_wasm_hash);
-        start_migration(env);
+    fn upgrade(env: &Env, new_wasm_hash: BytesN<32>)
+    where
+        Self: Sized,
+    {
+        default_upgrade_impl::<Self>(env, new_wasm_hash);
     }
+}
+
+pub fn default_upgrade_impl<T: OwnershipInterface>(env: &Env, new_wasm_hash: BytesN<32>) {
+    T::owner(env).require_auth();
+
+    env.deployer().update_current_contract_wasm(new_wasm_hash);
+    start_migration(env);
 }
 
 /// This function checks that the caller can authenticate as the owner of the contract,

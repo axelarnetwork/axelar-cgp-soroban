@@ -1,7 +1,8 @@
 use crate::error::ContractError;
 use crate::event;
-use axelar_soroban_std::upgrade;
+use axelar_soroban_std::ownership::OwnershipInterface;
 use axelar_soroban_std::upgrade::{standardized_migrate, UpgradeableInterface};
+use axelar_soroban_std::{ownership, upgrade};
 use soroban_sdk::{contract, contractimpl, Address, Env, String};
 
 #[contract]
@@ -41,5 +42,13 @@ impl InterchainToken {
 impl UpgradeableInterface for InterchainToken {
     fn version(env: &Env) -> String {
         String::from_str(env, env!("CARGO_PKG_VERSION"))
+    }
+}
+
+#[contractimpl]
+impl OwnershipInterface for InterchainToken {
+    // boilerplate necessary for the contractimpl macro to include function in the generated client
+    fn owner(env: &Env) -> Address {
+        ownership::default_owner_impl(env)
     }
 }

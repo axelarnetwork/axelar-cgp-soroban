@@ -18,8 +18,9 @@ fn setup_env<'a>() -> (Env, Address, Address, AxelarGasServiceClient<'a>) {
 
     env.mock_all_auths();
 
+    let owner: Address = Address::generate(&env);
     let gas_collector: Address = Address::generate(&env);
-    let contract_id = env.register(AxelarGasService, (&gas_collector,));
+    let contract_id = env.register(AxelarGasService, (&owner, &gas_collector));
     let client = AxelarGasServiceClient::new(&env, &contract_id);
 
     (env, contract_id, gas_collector, client)
@@ -29,8 +30,9 @@ fn setup_env<'a>() -> (Env, Address, Address, AxelarGasServiceClient<'a>) {
 fn register_gas_service() {
     let env = Env::default();
 
+    let owner: Address = Address::generate(&env);
     let gas_collector = Address::generate(&env);
-    let contract_id = env.register(AxelarGasService, (&gas_collector,));
+    let contract_id = env.register(AxelarGasService, (&owner, &gas_collector));
     let client = AxelarGasServiceClient::new(&env, &contract_id);
 
     assert_eq!(client.gas_collector(), gas_collector);

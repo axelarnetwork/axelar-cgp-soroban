@@ -12,4 +12,5 @@ pub mod types;
 
 pub mod error;
 
+pub mod ownership;
 pub mod upgrade;
