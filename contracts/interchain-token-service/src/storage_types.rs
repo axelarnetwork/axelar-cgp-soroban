@@ -5,4 +5,6 @@ use soroban_sdk::{contracttype, String};
 pub enum DataKey {
     Owner,
     TrustedAddress(String),
+    Gateway,
+    GasService,
 }
