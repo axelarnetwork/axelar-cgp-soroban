@@ -22,34 +22,36 @@ impl AxelarGasService {
 
 #[contractimpl]
 impl AxelarGasServiceInterface for AxelarGasService {
-    fn pay_gas_for_contract_call(
+    #[allow(clippy::too_many_arguments)]
+    fn pay_gas(
         env: Env,
         sender: Address,
         destination_chain: String,
         destination_address: String,
         payload: Bytes,
-        refund_address: Address,
+        spender: Address,
         token: Token,
+        metadata: Bytes,
     ) -> Result<(), ContractError> {
-        sender.require_auth();
+        spender.require_auth();
 
         ensure!(token.amount > 0, ContractError::InvalidAmount);
 
-        token::Client::new(&env, &token.address).transfer_from(
-            &env.current_contract_address(),
-            &sender,
+        token::Client::new(&env, &token.address).transfer(
+            &spender,
             &env.current_contract_address(),
             &token.amount,
         );
 
-        event::gas_paid_for_contract_call(
+        event::gas_paid(
             &env,
             sender,
             destination_chain,
             destination_address,
             payload,
-            refund_address,
+            spender,
             token,
+            metadata,
         );
 
         Ok(())
