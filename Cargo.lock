@@ -1115,6 +1115,8 @@ version = "0.1.0"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-types",
+ "axelar-gas-service",
+ "axelar-gateway",
  "axelar-soroban-std",
  "goldie",
  "hex",
