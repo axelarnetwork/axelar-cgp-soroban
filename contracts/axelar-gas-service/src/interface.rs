@@ -5,7 +5,6 @@ use crate::error::ContractError;
 
 #[contractclient(name = "AxelarGasServiceClient")]
 pub trait AxelarGasServiceInterface {
-    #[allow(clippy::too_many_arguments)]
     /// Pay for gas using a token for sending a message on a destination chain.
     ///
     /// This function is called on the source chain before calling the gateway to send a message.

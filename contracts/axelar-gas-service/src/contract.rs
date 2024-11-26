@@ -22,7 +22,6 @@ impl AxelarGasService {
 
 #[contractimpl]
 impl AxelarGasServiceInterface for AxelarGasService {
-    #[allow(clippy::too_many_arguments)]
     fn pay_gas(
         env: Env,
         sender: Address,

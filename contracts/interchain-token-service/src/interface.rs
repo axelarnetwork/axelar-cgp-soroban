@@ -16,36 +16,35 @@ pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
 
     fn remove_trusted_address(env: &Env, chain: String) -> Result<(), ContractError>;
 
-    #[allow(clippy::too_many_arguments)]
     fn deploy_interchain_token(
-        env: &Env,
-        caller: Address,
-        destination_chain: String,
-        name: String,
-        symbol: String,
-        decimals: u32,
-        minter: Bytes,
-        gas_token: Token,
+        _env: &Env,
+        _caller: Address,
+        _token_id: String,
+        _source_address: Bytes,
+        _destination_chain: String,
+        _destination_address: Bytes,
+        _amount: i128,
+        _metadata: Bytes,
+        _gas_token: Token,
     );
 
     fn deploy_remote_interchain_token(
         env: &Env,
         caller: Address,
         destination_chain: String,
-        token_id: String,
+        _token_id: String,
         gas_token: Token,
     );
 
-    #[allow(clippy::too_many_arguments)]
     fn interchain_transfer(
         env: &Env,
         caller: Address,
-        token_id: String,
-        source_address: Bytes,
+        _token_id: String,
+        _source_address: Bytes,
         destination_chain: String,
         destination_address: Bytes,
-        amount: i128,
-        metadata: Bytes,
+        _amount: i128,
+        _metadata: Bytes,
         gas_token: Token,
     );
 }

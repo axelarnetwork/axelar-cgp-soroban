@@ -149,15 +149,15 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn deploy_interchain_token(
         _env: &Env,
         _caller: Address,
+        _token_id: String,
+        _source_address: Bytes,
         _destination_chain: String,
-        _name: String,
-        _symbol: String,
-        _decimals: u32,
-        _minter: Bytes,
+        _destination_address: Bytes,
+        _amount: i128,
+        _metadata: Bytes,
         _gas_token: Token,
     ) {
         todo!()
@@ -185,7 +185,6 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         );
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn interchain_transfer(
         env: &Env,
         caller: Address,
