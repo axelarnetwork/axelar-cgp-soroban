@@ -96,12 +96,9 @@ impl Message {
     }
 
     pub fn abi_decode(env: &Env, payload: &Bytes) -> Result<Self, MessageError> {
-        ensure!(payload.len() >= 32, MessageError::InsufficientMessageLength);
-
         let payload = payload.to_alloc_vec();
 
-        let message_type = MessageType::abi_decode(&payload[0..32], true)
-            .map_err(|_| MessageError::InvalidMessageType)?;
+        let message_type = get_message_type(&payload)?;
 
         match message_type {
             MessageType::InterchainTransfer => {
@@ -136,7 +133,6 @@ impl Message {
     }
 }
 
-#[allow(dead_code)]
 impl HubMessage {
     pub fn abi_encode(self, env: &Env) -> Result<Bytes, MessageError> {
         let msg = match self {
@@ -163,12 +159,9 @@ impl HubMessage {
     }
 
     pub fn abi_decode(env: &Env, payload: &Bytes) -> Result<Self, MessageError> {
-        ensure!(payload.len() >= 32, MessageError::InsufficientMessageLength);
-
         let payload = payload.to_alloc_vec();
 
-        let message_type = MessageType::abi_decode(&payload[0..32], true)
-            .map_err(|_| MessageError::InvalidMessageType)?;
+        let message_type = get_message_type(&payload)?;
 
         match message_type {
             MessageType::SendToHub => {
@@ -198,6 +191,15 @@ impl HubMessage {
             _ => Err(MessageError::InvalidMessageType),
         }
     }
+}
+
+pub fn get_message_type(payload: &[u8]) -> Result<MessageType, MessageError> {
+    ensure!(payload.len() >= 32, MessageError::InsufficientMessageLength);
+
+    let message_type = MessageType::abi_decode(&payload[0..32], true)
+        .map_err(|_| MessageError::InvalidMessageType)?;
+
+    Ok(message_type)
 }
 
 fn to_std_string(soroban_string: String) -> Result<StdString, MessageError> {

@@ -8,4 +8,6 @@ pub enum ContractError {
     TrustedAddressAlreadySet = 2,
     NoTrustedAddressSet = 3,
     InvalidMessageType = 4,
+    InvalidPayload = 5,
+    UntrustedChain = 6,
 }
