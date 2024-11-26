@@ -70,7 +70,7 @@ impl InterchainTokenService {
         _source_address: String,
         _payload: Bytes,
     ) -> Result<(), ContractError> {
-        // TODO: Add ITS hub execute messaging logic
+        // TODO: Add ITS hub execute logic
 
         let message_type = MessageType::DeployInterchainToken;
 
@@ -173,7 +173,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         let destination_address = String::from_str(env, "");
 
         // TODO: abi encode with MessageType.DeployInterchainToken
-        let payload = bytes!(env, 0x1234);
+        let payload = bytes!(env,);
 
         Self::pay_gas_and_call_contract(
             env.clone(),
