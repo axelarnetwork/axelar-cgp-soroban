@@ -1,6 +1,6 @@
 use axelar_soroban_std::ensure;
 use axelar_soroban_std::types::Token;
-use soroban_sdk::{bytes, contract, contractimpl, Address, Bytes, Env, String};
+use soroban_sdk::{bytes, contract, contractimpl, Address, Bytes, Env, FromVal, String};
 
 use crate::error::ContractError;
 use crate::event;
@@ -43,15 +43,16 @@ impl InterchainTokenService {
 
         caller.require_auth();
 
-        // get_call_aprams from payload
+        // TODO: Add ITS hub routing logic
 
-        gas_service.pay_gas_for_contract_call(
-            &caller,
+        gas_service.pay_gas(
+            &env.current_contract_address(),
             &destination_chain,
             &destination_address,
             &payload,
             &caller,
             &gas_token,
+            &Bytes::new(&env),
         );
 
         gateway.call_contract(
@@ -61,64 +62,6 @@ impl InterchainTokenService {
             &payload,
         );
     }
-}
-
-#[contractimpl]
-impl InterchainTokenServiceInterface for InterchainTokenService {
-    fn owner(env: &Env) -> Address {
-        env.storage()
-            .instance()
-            .get(&DataKey::Owner)
-            .expect("owner not found")
-    }
-
-    fn transfer_ownership(env: Env, new_owner: Address) {
-        let owner = Self::owner(&env);
-        owner.require_auth();
-
-        env.storage().instance().set(&DataKey::Owner, &new_owner);
-
-        event::transfer_ownership(&env, owner, new_owner);
-    }
-
-    fn trusted_address(env: &Env, chain: String) -> Option<String> {
-        env.storage()
-            .persistent()
-            .get(&DataKey::TrustedAddress(chain))
-    }
-
-    fn set_trusted_address(env: Env, chain: String, address: String) -> Result<(), ContractError> {
-        Self::owner(&env).require_auth();
-
-        let key = DataKey::TrustedAddress(chain.clone());
-
-        ensure!(
-            !env.storage().persistent().has(&key),
-            ContractError::TrustedAddressAlreadySet
-        );
-
-        env.storage().persistent().set(&key, &address);
-
-        event::set_trusted_address(&env, chain, address);
-
-        Ok(())
-    }
-
-    fn remove_trusted_address(env: Env, chain: String) -> Result<(), ContractError> {
-        Self::owner(&env).require_auth();
-
-        let Some(trusted_address) = Self::trusted_address(&env, chain.clone()) else {
-            return Err(ContractError::NoTrustedAddressSet);
-        };
-
-        env.storage()
-            .persistent()
-            .remove(&DataKey::TrustedAddress(chain.clone()));
-
-        event::remove_trusted_address(&env, chain, trusted_address);
-
-        Ok(())
-    }
 
     fn execute_message(
         _env: &Env,
@@ -127,7 +70,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         _source_address: String,
         _payload: Bytes,
     ) -> Result<(), ContractError> {
-        // TODO: get_execute_params
+        // TODO: Add ITS hub execute messaging logic
 
         let message_type = MessageType::DeployInterchainToken;
 
@@ -147,36 +90,93 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
             _ => Err(ContractError::InvalidMessageType),
         }
     }
+}
+
+#[contractimpl]
+impl InterchainTokenServiceInterface for InterchainTokenService {
+    fn owner(env: &Env) -> Address {
+        env.storage()
+            .instance()
+            .get(&DataKey::Owner)
+            .expect("owner not found")
+    }
+
+    fn transfer_ownership(env: &Env, new_owner: Address) {
+        let owner = Self::owner(env);
+        owner.require_auth();
+
+        env.storage().instance().set(&DataKey::Owner, &new_owner);
+
+        event::transfer_ownership(env, owner, new_owner);
+    }
+
+    fn trusted_address(env: &Env, chain: String) -> Option<String> {
+        env.storage()
+            .persistent()
+            .get(&DataKey::TrustedAddress(chain))
+    }
+
+    fn set_trusted_address(env: &Env, chain: String, address: String) -> Result<(), ContractError> {
+        Self::owner(env).require_auth();
+
+        let key = DataKey::TrustedAddress(chain.clone());
+
+        ensure!(
+            !env.storage().persistent().has(&key),
+            ContractError::TrustedAddressAlreadySet
+        );
+
+        env.storage().persistent().set(&key, &address);
+
+        event::set_trusted_address(env, chain, address);
+
+        Ok(())
+    }
+
+    fn remove_trusted_address(env: &Env, chain: String) -> Result<(), ContractError> {
+        Self::owner(env).require_auth();
+
+        let Some(trusted_address) = Self::trusted_address(env, chain.clone()) else {
+            return Err(ContractError::NoTrustedAddressSet);
+        };
+
+        env.storage()
+            .persistent()
+            .remove(&DataKey::TrustedAddress(chain.clone()));
+
+        event::remove_trusted_address(env, chain, trusted_address);
+
+        Ok(())
+    }
 
     #[allow(clippy::too_many_arguments)]
     fn deploy_interchain_token(
-        _env: Env,
+        _env: &Env,
         _caller: Address,
         _destination_chain: String,
         _name: String,
         _symbol: String,
-        _decimals: i128,
+        _decimals: u32,
         _minter: Bytes,
         _gas_token: Token,
     ) {
-        // TODO: deploy interchain token
+        todo!()
     }
 
     fn deploy_remote_interchain_token(
-        env: Env,
+        env: &Env,
         caller: Address,
         destination_chain: String,
         _token_id: String,
         gas_token: Token,
-        _metadata: Bytes,
     ) {
-        let destination_address = String::from_str(&env, "destination_address");
+        let destination_address = String::from_str(env, "");
 
         // TODO: abi encode with MessageType.DeployInterchainToken
-        let payload = bytes!(&env, 0x1234);
+        let payload = bytes!(env, 0x1234);
 
         Self::pay_gas_and_call_contract(
-            env,
+            env.clone(),
             caller,
             destination_chain,
             destination_address,
@@ -186,24 +186,25 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn interchain_token_transfer(
-        env: Env,
+    fn interchain_transfer(
+        env: &Env,
         caller: Address,
         _token_id: String,
+        _source_address: Bytes,
         destination_chain: String,
-        destination_address: String,
+        destination_address: Bytes,
         _amount: i128,
         _metadata: Bytes,
         gas_token: Token,
     ) {
         // TODO: _takeToken, decode metadata, and abi encode with MessageType.InterchainTransfer
-        let payload = bytes!(&env, 0x1234);
+        let payload = bytes!(&env,);
 
         Self::pay_gas_and_call_contract(
-            env,
+            env.clone(),
             caller,
             destination_chain,
-            destination_address,
+            String::from_val(env, &destination_address.to_val()),
             payload,
             gas_token,
         );
