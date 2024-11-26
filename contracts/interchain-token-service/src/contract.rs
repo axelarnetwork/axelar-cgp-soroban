@@ -199,6 +199,8 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         // TODO: _takeToken, decode metadata, and abi encode with MessageType.InterchainTransfer
         let payload = bytes!(&env,);
 
+        // TODO: Get the params for the cross-chain message, taking routing via ITS Hub into account.
+
         Self::pay_gas_and_call_contract(
             env.clone(),
             caller,
