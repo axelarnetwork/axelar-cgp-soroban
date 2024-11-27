@@ -1,4 +1,4 @@
-use soroban_sdk::{Address, Env, String, Symbol};
+use soroban_sdk::{Address, Bytes, Env, String, Symbol};
 
 pub fn set_trusted_address(env: &Env, chain: String, trusted_address: String) {
     let topics = (
@@ -25,4 +25,20 @@ pub fn transfer_ownership(env: &Env, previous_owner: Address, new_owner: Address
         new_owner,
     );
     env.events().publish(topics, ());
+}
+
+pub fn executed(
+    env: &Env,
+    source_chain: String,
+    message_id: String,
+    source_address: String,
+    payload: Bytes,
+) {
+    let topics = (
+        Symbol::new(env, "executed"),
+        source_chain,
+        message_id,
+        source_address,
+    );
+    env.events().publish(topics, (payload,));
 }

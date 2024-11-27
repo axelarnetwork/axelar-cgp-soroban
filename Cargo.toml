@@ -23,7 +23,8 @@ alloy-sol-types = { version = "0.7.6", default-features = false, features = [
 ] }
 
 [workspace.lints.clippy]
-nursery = "warn"
+nursery = { level = "warn", priority = -1 }
+too_many_arguments = "allow"
 
 [workspace.lints.rust]
 warnings = "deny"

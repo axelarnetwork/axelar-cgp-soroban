@@ -7,4 +7,5 @@ pub enum ContractError {
     NotOwner = 1,
     TrustedAddressAlreadySet = 2,
     NoTrustedAddressSet = 3,
+    InvalidMessageType = 4,
 }
