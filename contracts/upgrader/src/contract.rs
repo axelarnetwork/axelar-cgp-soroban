@@ -1,5 +1,6 @@
 use crate::error::ContractError;
-use axelar_soroban_std::{ensure, UpgradeableClient};
+use axelar_soroban_std::ensure;
+use axelar_soroban_std::shared_interfaces::UpgradableClient;
 use soroban_sdk::{
     contract, contractimpl, symbol_short, Address, BytesN, Env, String, Symbol, Val,
 };
@@ -20,7 +21,7 @@ impl Upgrader {
         new_wasm_hash: BytesN<32>,
         migration_data: soroban_sdk::Vec<Val>,
     ) -> Result<(), ContractError> {
-        let contract_client = UpgradeableClient::new(&env, &contract_address);
+        let contract_client = UpgradableClient::new(&env, &contract_address);
 
         ensure!(
             contract_client.version() != new_version,

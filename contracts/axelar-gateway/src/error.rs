@@ -4,20 +4,20 @@ use soroban_sdk::contracterror;
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
 pub enum ContractError {
+    /// Upgradable
+    MigrationNotAllowed = 1,
     /// Auth
-    InvalidThreshold = 1,
-    InvalidProof = 2,
-    InvalidSigners = 3,
-    InsufficientRotationDelay = 4,
-    InvalidSignatures = 5,
-    InvalidWeight = 6,
-    WeightOverflow = 7,
-    NotLatestSigners = 8,
-    DuplicateSigners = 9,
-    InvalidSignersHash = 10,
-    InvalidEpoch = 11,
+    InvalidThreshold = 2,
+    InvalidProof = 3,
+    InvalidSigners = 4,
+    InsufficientRotationDelay = 5,
+    InvalidSignatures = 6,
+    InvalidWeight = 7,
+    WeightOverflow = 8,
+    NotLatestSigners = 9,
+    DuplicateSigners = 10,
+    InvalidSignersHash = 11,
+    InvalidEpoch = 12,
     /// Messages
-    EmptyMessages = 12,
-    /// Upgradeable
-    MigrationNotAllowed = 13,
+    EmptyMessages = 13,
 }

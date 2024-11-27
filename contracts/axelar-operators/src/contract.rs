@@ -1,40 +1,30 @@
-use axelar_soroban_std::ensure;
-use soroban_sdk::{contract, contractimpl, Address, Env, Symbol, Val, Vec};
-
 use crate::error::ContractError;
 use crate::event;
 use crate::storage_types::DataKey;
+use axelar_soroban_std::shared_interfaces::{migrate, UpgradableInterface};
+use axelar_soroban_std::shared_interfaces::{MigratableInterface, OwnableInterface};
+use axelar_soroban_std::{ensure, shared_interfaces};
+use soroban_sdk::{contract, contractimpl, Address, BytesN, Env, String, Symbol, Val, Vec};
 
 #[contract]
 pub struct AxelarOperators;
 
 #[contractimpl]
 impl AxelarOperators {
+    pub fn __constructor(env: Env, owner: Address) {
+        shared_interfaces::set_owner(&env, &owner);
+    }
+
     pub fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), ContractError> {
         let owner: Address = Self::owner(&env);
 
         owner.require_auth();
 
-        env.storage().instance().set(&DataKey::Owner, &new_owner);
+        shared_interfaces::set_owner(&env, &new_owner);
 
         event::transfer_ownership(&env, owner, new_owner);
 
         Ok(())
-    }
-
-    pub fn owner(env: &Env) -> Address {
-        env.storage()
-            .instance()
-            .get(&DataKey::Owner)
-            .expect("Owner not found")
-    }
-}
-
-#[contractimpl]
-impl AxelarOperators {
-    /// Initialize the operators contract with an owner.
-    pub fn __constructor(env: Env, owner: Address) {
-        env.storage().instance().set(&DataKey::Owner, &owner);
     }
 
     /// Return true if the account is an operator.
@@ -102,5 +92,40 @@ impl AxelarOperators {
         let res: Val = env.invoke_contract(&contract, &func, args);
 
         Ok(res)
+    }
+}
+
+impl AxelarOperators {
+    // Modify this function to add migration logic
+    const fn run_migration(_env: &Env, _migration_data: ()) {}
+}
+
+#[contractimpl]
+impl MigratableInterface for AxelarOperators {
+    type MigrationData = ();
+    type Error = ContractError;
+
+    fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
+        migrate::<Self>(env, || Self::run_migration(env, migration_data))
+            .map_err(|_| ContractError::MigrationNotAllowed)
+    }
+}
+
+#[contractimpl]
+impl UpgradableInterface for AxelarOperators {
+    fn version(env: &Env) -> String {
+        String::from_str(env, env!("CARGO_PKG_VERSION"))
+    }
+
+    fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
+        shared_interfaces::upgrade::<Self>(env, new_wasm_hash);
+    }
+}
+
+#[contractimpl]
+impl OwnableInterface for AxelarOperators {
+    // boilerplate necessary for the contractimpl macro to include function in the generated client
+    fn owner(env: &Env) -> Address {
+        shared_interfaces::owner(env)
     }
 }

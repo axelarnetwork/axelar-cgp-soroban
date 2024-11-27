@@ -13,7 +13,7 @@ use soroban_sdk::Symbol;
 use soroban_sdk::{
     bytes,
     testutils::{Address as _, Events, MockAuth, MockAuthInvoke},
-    vec, Address, BytesN, Env, IntoVal, String,
+    vec, Address, BytesN, Env, String,
 };
 
 const DESTINATION_CHAIN: &str = "ethereum";

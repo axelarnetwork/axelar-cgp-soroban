@@ -4,8 +4,9 @@ use crate::messaging_interface::AxelarGatewayMessagingInterface;
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::types::{CommandType, Message, Proof, WeightedSigners};
 use crate::{auth, event};
-use axelar_soroban_std::ensure;
-pub use axelar_soroban_std::UpgradeableInterface;
+use axelar_soroban_std::shared_interfaces::{migrate, UpgradableInterface};
+use axelar_soroban_std::shared_interfaces::{MigratableInterface, OwnableInterface};
+use axelar_soroban_std::{ensure, shared_interfaces};
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
 
@@ -24,16 +25,33 @@ const INSTANCE_TTL_EXTEND_TO: u32 = 60 * LEDGERS_PER_DAY;
 pub struct AxelarGateway;
 
 #[contractimpl]
-impl UpgradeableInterface for AxelarGateway {
+impl MigratableInterface for AxelarGateway {
+    type MigrationData = ();
+    type Error = ContractError;
+
+    fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
+        migrate::<Self>(env, || Self::run_migration(env, migration_data))
+            .map_err(|_| ContractError::MigrationNotAllowed)
+    }
+}
+
+#[contractimpl]
+impl UpgradableInterface for AxelarGateway {
     fn version(env: &Env) -> String {
         String::from_str(env, CONTRACT_VERSION)
     }
 
+    // boilerplate necessary for the contractimpl macro to include function in the generated client
     fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
-        Self::owner(env).require_auth();
+        shared_interfaces::upgrade::<Self>(env, new_wasm_hash);
+    }
+}
 
-        env.deployer().update_current_contract_wasm(new_wasm_hash);
-        Self::start_migration(env);
+#[contractimpl]
+impl OwnableInterface for AxelarGateway {
+    // boilerplate necessary for the contractimpl macro to include function in the generated client
+    fn owner(env: &Env) -> Address {
+        shared_interfaces::owner(env)
     }
 }
 
@@ -49,7 +67,7 @@ impl AxelarGateway {
         previous_signers_retention: u64,
         initial_signers: Vec<WeightedSigners>,
     ) -> Result<(), ContractError> {
-        env.storage().instance().set(&DataKey::Owner, &owner);
+        shared_interfaces::set_owner(&env, &owner);
         env.storage().instance().set(&DataKey::Operator, &operator);
 
         auth::initialize_auth(
@@ -59,20 +77,6 @@ impl AxelarGateway {
             previous_signers_retention,
             initial_signers,
         )?;
-
-        Ok(())
-    }
-
-    /// Migrate the contract state after upgrading the contract code. the migration_data type can be adjusted as needed.
-    pub fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
-        // This function should not get modified.
-        // Custom migration logic that changes from version to version should be added in the run_migration function
-        Self::ensure_is_migrating(env)?;
-
-        Self::run_migration(env, migration_data);
-        Self::complete_migration(env);
-
-        event::upgraded(env, &Self::version(env));
 
         Ok(())
     }
@@ -258,16 +262,9 @@ impl AxelarGatewayInterface for AxelarGateway {
         let owner: Address = Self::owner(&env);
         owner.require_auth();
 
-        env.storage().instance().set(&DataKey::Owner, &new_owner);
+        shared_interfaces::set_owner(&env, &new_owner);
 
         event::transfer_ownership(&env, owner, new_owner);
-    }
-
-    fn owner(env: &Env) -> Address {
-        env.storage()
-            .instance()
-            .get(&DataKey::Owner)
-            .expect("owner not found")
     }
 
     fn epoch_by_signers_hash(env: &Env, signers_hash: BytesN<32>) -> Result<u64, ContractError> {
@@ -312,24 +309,6 @@ impl AxelarGateway {
             .extend_ttl(INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
     }
 
-    fn ensure_is_migrating(env: &Env) -> Result<(), ContractError> {
-        ensure!(
-            env.storage().instance().has(&DataKey::Migrating),
-            ContractError::MigrationNotAllowed
-        );
-
-        Ok(())
-    }
-
-    fn start_migration(env: &Env) {
-        env.storage().instance().set(&DataKey::Migrating, &());
-    }
-
     // Modify this function to add migration logic
-    #[allow(clippy::missing_const_for_fn)] // exclude no-op implementations from this lint
-    fn run_migration(_env: &Env, _migration_data: ()) {}
-
-    fn complete_migration(env: &Env) {
-        env.storage().instance().remove(&DataKey::Migrating);
-    }
+    const fn run_migration(_env: &Env, _migration_data: ()) {}
 }

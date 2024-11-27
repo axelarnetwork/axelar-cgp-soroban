@@ -1,6 +1,6 @@
-use axelar_soroban_std::ensure;
 use axelar_soroban_std::types::Token;
-use soroban_sdk::{bytes, contract, contractimpl, Address, Bytes, Env, FromVal, String};
+use axelar_soroban_std::{ensure, shared_interfaces};
+use soroban_sdk::{bytes, contract, contractimpl, Address, Bytes, BytesN, Env, FromVal, String};
 
 use crate::error::ContractError;
 use crate::event;
@@ -12,6 +12,9 @@ use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::AxelarGatewayMessagingClient;
 
 use axelar_gateway::executable::AxelarExecutableInterface;
+use axelar_soroban_std::shared_interfaces::{
+    migrate, MigratableInterface, OwnableInterface, UpgradableInterface,
+};
 
 #[contract]
 pub struct InterchainTokenService;
@@ -19,7 +22,7 @@ pub struct InterchainTokenService;
 #[contractimpl]
 impl InterchainTokenService {
     pub fn __constructor(env: Env, owner: Address, gateway: Address, gas_service: Address) {
-        env.storage().instance().set(&DataKey::Owner, &owner);
+        shared_interfaces::set_owner(&env, &owner);
         env.storage().instance().set(&DataKey::Gateway, &gateway);
         env.storage()
             .instance()
@@ -94,18 +97,11 @@ impl InterchainTokenService {
 
 #[contractimpl]
 impl InterchainTokenServiceInterface for InterchainTokenService {
-    fn owner(env: &Env) -> Address {
-        env.storage()
-            .instance()
-            .get(&DataKey::Owner)
-            .expect("owner not found")
-    }
-
     fn transfer_ownership(env: &Env, new_owner: Address) {
         let owner = Self::owner(env);
         owner.require_auth();
 
-        env.storage().instance().set(&DataKey::Owner, &new_owner);
+        shared_interfaces::set_owner(env, &new_owner);
 
         event::transfer_ownership(env, owner, new_owner);
     }
@@ -236,5 +232,40 @@ impl AxelarExecutableInterface for InterchainTokenService {
         );
 
         event::executed(&env, source_chain, message_id, source_address, payload);
+    }
+}
+
+impl InterchainTokenService {
+    // Modify this function to add migration logic
+    const fn run_migration(_env: &Env, _migration_data: ()) {}
+}
+
+#[contractimpl]
+impl MigratableInterface for InterchainTokenService {
+    type MigrationData = ();
+    type Error = axelar_gateway::error::ContractError;
+
+    fn migrate(env: &Env, migration_data: ()) -> Result<(), axelar_gateway::error::ContractError> {
+        migrate::<Self>(env, || Self::run_migration(env, migration_data))
+            .map_err(|_| axelar_gateway::error::ContractError::MigrationNotAllowed)
+    }
+}
+
+#[contractimpl]
+impl UpgradableInterface for InterchainTokenService {
+    fn version(env: &Env) -> String {
+        String::from_str(env, env!("CARGO_PKG_VERSION"))
+    }
+
+    fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
+        shared_interfaces::upgrade::<Self>(env, new_wasm_hash);
+    }
+}
+
+#[contractimpl]
+impl OwnableInterface for InterchainTokenService {
+    // boilerplate necessary for the contractimpl macro to include function in the generated client
+    fn owner(env: &Env) -> Address {
+        shared_interfaces::owner(env)
     }
 }

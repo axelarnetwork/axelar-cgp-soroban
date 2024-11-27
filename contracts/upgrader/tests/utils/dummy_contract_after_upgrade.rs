@@ -1,4 +1,4 @@
-//! Dummy contract to test the [crate::Upgrader]
+//! Base for the dummy.wasm file. This is the dummy contract after upgrade.
 
 use axelar_soroban_std::shared_interfaces;
 use axelar_soroban_std::shared_interfaces::{OwnableInterface, UpgradableInterface};
@@ -10,7 +10,7 @@ pub struct DummyContract;
 #[contractimpl]
 impl UpgradableInterface for DummyContract {
     fn version(env: &Env) -> soroban_sdk::String {
-        soroban_sdk::String::from_str(env, "0.1.0")
+        soroban_sdk::String::from_str(env, "0.2.0")
     }
 
     fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
@@ -31,6 +31,14 @@ impl OwnableInterface for DummyContract {
 impl DummyContract {
     pub fn __constructor(env: Env, owner: Address) {
         shared_interfaces::set_owner(&env, &owner);
+    }
+
+    pub fn migrate(env: Env, migration_data: soroban_sdk::String) -> Result<(), ContractError> {
+        Self::owner(&env).require_auth();
+        env.storage()
+            .instance()
+            .set(&DataKey::Data, &migration_data);
+        Ok(())
     }
 }
 
