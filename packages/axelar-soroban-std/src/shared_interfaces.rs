@@ -340,6 +340,27 @@ mod test {
         goldie::assert!(format!("{:?}", event))
     }
 
+    // Because migration happens on a contract loaded from WASM, code coverage analysis doesn't recognize
+    // the migration code as covered. This test repeats the migration test with mocked setup
+    #[test]
+    fn simulate_migration_for_code_coverage() {
+        let env = Env::default();
+        let contract_id = env.register(testdata::contract::Contract, ());
+
+        let owner = Address::generate(&env);
+        env.as_contract(&contract_id, || {
+            shared_interfaces::set_owner(&env, &owner);
+            shared_interfaces::start_migration(&env);
+        });
+
+        env.mock_auths(&[MockAuth {
+            address: &owner,
+            invoke: &migrate_auth(&env, &contract_id),
+        }]);
+
+        ContractClient::new(&env, &contract_id).migrate(&());
+    }
+
     #[test]
     #[should_panic(expected = "HostError: Error(Contract, #1)")]
     fn migrate_panics_if_called_twice() {
