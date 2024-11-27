@@ -4,8 +4,8 @@ use crate::messaging_interface::AxelarGatewayMessagingInterface;
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::types::{CommandType, Message, Proof, WeightedSigners};
 use crate::{auth, event};
-use axelar_soroban_std::shared_interfaces::OwnershipInterface;
 use axelar_soroban_std::shared_interfaces::{migrate, UpgradeableInterface};
+use axelar_soroban_std::shared_interfaces::{MigratableInterface, OwnershipInterface};
 use axelar_soroban_std::{ensure, shared_interfaces};
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
@@ -23,6 +23,17 @@ const INSTANCE_TTL_EXTEND_TO: u32 = 60 * LEDGERS_PER_DAY;
 
 #[contract]
 pub struct AxelarGateway;
+
+#[contractimpl]
+impl MigratableInterface for AxelarGateway {
+    type MigrationData = ();
+    type Error = ContractError;
+
+    fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
+        migrate::<Self>(env, || Self::run_migration(env, migration_data))
+            .map_err(|_| ContractError::MigrationNotAllowed)
+    }
+}
 
 #[contractimpl]
 impl UpgradeableInterface for AxelarGateway {
@@ -68,12 +79,6 @@ impl AxelarGateway {
         )?;
 
         Ok(())
-    }
-
-    /// Migrate the contract state after upgrading the contract code. the migration_data type can be adjusted as needed.
-    pub fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
-        migrate::<Self>(env, || Self::run_migration(env, migration_data))
-            .map_err(|_| ContractError::MigrationNotAllowed)
     }
 }
 
@@ -305,6 +310,5 @@ impl AxelarGateway {
     }
 
     // Modify this function to add migration logic
-    #[allow(clippy::missing_const_for_fn)] // exclude no-op implementations from this lint
-    fn run_migration(_env: &Env, _migration_data: ()) {}
+    const fn run_migration(_env: &Env, _migration_data: ()) {}
 }

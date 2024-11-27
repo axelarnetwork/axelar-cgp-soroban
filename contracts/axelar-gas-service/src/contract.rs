@@ -4,8 +4,8 @@ use crate::error::ContractError;
 use crate::event;
 use crate::interface::AxelarGasServiceInterface;
 use crate::storage_types::DataKey;
-use axelar_soroban_std::shared_interfaces::OwnershipInterface;
 use axelar_soroban_std::shared_interfaces::{migrate, UpgradeableInterface};
+use axelar_soroban_std::shared_interfaces::{MigratableInterface, OwnershipInterface};
 use axelar_soroban_std::{ensure, shared_interfaces, types::Token};
 
 #[contract]
@@ -21,16 +21,19 @@ impl AxelarGasService {
             .set(&DataKey::GasCollector, &gas_collector);
     }
 
-    pub fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
+    // Modify this function to add migration logic
+    const fn run_migration(_env: &Env, _migration_data: ()) {}
+}
+
+#[contractimpl]
+impl MigratableInterface for AxelarGasService {
+    type MigrationData = ();
+    type Error = ContractError;
+
+    fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
         migrate::<Self>(env, || Self::run_migration(env, migration_data))
             .map_err(|_| ContractError::MigrationNotAllowed)
     }
-}
-
-impl AxelarGasService {
-    // Modify this function to add migration logic
-    #[allow(clippy::missing_const_for_fn)] // exclude no-op implementations from this lint
-    fn run_migration(_env: &Env, _migration_data: ()) {}
 }
 
 #[contractimpl]

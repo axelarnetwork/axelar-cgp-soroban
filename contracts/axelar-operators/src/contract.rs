@@ -1,8 +1,8 @@
 use crate::error::ContractError;
 use crate::event;
 use crate::storage_types::DataKey;
-use axelar_soroban_std::shared_interfaces::OwnershipInterface;
 use axelar_soroban_std::shared_interfaces::{migrate, UpgradeableInterface};
+use axelar_soroban_std::shared_interfaces::{MigratableInterface, OwnershipInterface};
 use axelar_soroban_std::{ensure, shared_interfaces};
 use soroban_sdk::{contract, contractimpl, Address, BytesN, Env, String, Symbol, Val, Vec};
 
@@ -14,11 +14,6 @@ impl AxelarOperators {
     /// Initialize the operators contract with an owner.
     pub fn __constructor(env: Env, owner: Address) {
         shared_interfaces::set_owner(&env, &owner);
-    }
-
-    pub fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
-        migrate::<Self>(env, || Self::run_migration(env, migration_data))
-            .map_err(|_| ContractError::MigrationNotAllowed)
     }
 
     pub fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), ContractError> {
@@ -101,8 +96,18 @@ impl AxelarOperators {
     }
 
     // Modify this function to add migration logic
-    #[allow(clippy::missing_const_for_fn)] // exclude no-op implementations from this lint
-    fn run_migration(_env: &Env, _migration_data: ()) {}
+    const fn run_migration(_env: &Env, _migration_data: ()) {}
+}
+
+#[contractimpl]
+impl MigratableInterface for AxelarOperators {
+    type MigrationData = ();
+    type Error = ContractError;
+
+    fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
+        migrate::<Self>(env, || Self::run_migration(env, migration_data))
+            .map_err(|_| ContractError::MigrationNotAllowed)
+    }
 }
 
 #[contractimpl]

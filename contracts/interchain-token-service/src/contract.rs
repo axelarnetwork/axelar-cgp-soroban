@@ -1,6 +1,6 @@
-use axelar_soroban_std::ensure;
 use axelar_soroban_std::types::Token;
-use soroban_sdk::{bytes, contract, contractimpl, Address, Bytes, Env, FromVal, String};
+use axelar_soroban_std::{ensure, shared_interfaces};
+use soroban_sdk::{bytes, contract, contractimpl, Address, Bytes, BytesN, Env, FromVal, String};
 
 use crate::error::ContractError;
 use crate::event;
@@ -12,6 +12,9 @@ use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::AxelarGatewayMessagingClient;
 
 use axelar_gateway::executable::AxelarExecutableInterface;
+use axelar_soroban_std::shared_interfaces::{
+    migrate, MigratableInterface, OwnershipInterface, UpgradeableInterface,
+};
 
 #[contract]
 pub struct InterchainTokenService;
@@ -24,11 +27,6 @@ impl InterchainTokenService {
         env.storage()
             .instance()
             .set(&DataKey::GasService, &gas_service);
-    }
-
-    pub fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
-        migrate::<Self>(env, || Self::run_migration(env, migration_data))
-            .map_err(|_| ContractError::MigrationNotAllowed)
     }
 
     fn gas_service(env: &Env) -> Address {
@@ -99,12 +97,6 @@ impl InterchainTokenService {
 
 #[contractimpl]
 impl InterchainTokenServiceInterface for InterchainTokenService {
-    fn owner(env: &Env) -> Address {
-        env.storage()
-            .instance()
-            .get(&DataKey::Owner)
-            .expect("owner not found")
-
     fn transfer_ownership(env: &Env, new_owner: Address) {
         let owner = Self::owner(env);
         owner.require_auth();
@@ -245,8 +237,18 @@ impl AxelarExecutableInterface for InterchainTokenService {
 
 impl InterchainTokenService {
     // Modify this function to add migration logic
-    #[allow(clippy::missing_const_for_fn)] // exclude no-op implementations from this lint
-    fn run_migration(_env: &Env, _migration_data: ()) {}
+    const fn run_migration(_env: &Env, _migration_data: ()) {}
+}
+
+#[contractimpl]
+impl MigratableInterface for InterchainTokenService {
+    type MigrationData = ();
+    type Error = axelar_gateway::error::ContractError;
+
+    fn migrate(env: &Env, migration_data: ()) -> Result<(), axelar_gateway::error::ContractError> {
+        migrate::<Self>(env, || Self::run_migration(env, migration_data))
+            .map_err(|_| axelar_gateway::error::ContractError::MigrationNotAllowed)
+    }
 }
 
 #[contractimpl]
