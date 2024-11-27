@@ -12,8 +12,8 @@ pub struct Contract;
 impl Contract {
     pub fn __constructor(_env: Env) {}
 
-    pub fn migration_data(env: &Env) -> String {
-        env.storage().instance().get(&DataKey::Data).unwrap()
+    pub fn migration_data(env: &Env) -> Option<String> {
+        env.storage().instance().get(&DataKey::Data)
     }
 
     fn run_migration(env: &Env, _migration_data: ()) {
