@@ -4,8 +4,8 @@ use crate::messaging_interface::AxelarGatewayMessagingInterface;
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::types::{CommandType, Message, Proof, WeightedSigners};
 use crate::{auth, event};
-use axelar_soroban_std::shared_interfaces::{migrate, UpgradeableInterface};
-use axelar_soroban_std::shared_interfaces::{MigratableInterface, OwnershipInterface};
+use axelar_soroban_std::shared_interfaces::{migrate, UpgradableInterface};
+use axelar_soroban_std::shared_interfaces::{MigratableInterface, OwnableInterface};
 use axelar_soroban_std::{ensure, shared_interfaces};
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
@@ -36,7 +36,7 @@ impl MigratableInterface for AxelarGateway {
 }
 
 #[contractimpl]
-impl UpgradeableInterface for AxelarGateway {
+impl UpgradableInterface for AxelarGateway {
     fn version(env: &Env) -> String {
         String::from_str(env, CONTRACT_VERSION)
     }
@@ -48,7 +48,7 @@ impl UpgradeableInterface for AxelarGateway {
 }
 
 #[contractimpl]
-impl OwnershipInterface for AxelarGateway {
+impl OwnableInterface for AxelarGateway {
     // boilerplate necessary for the contractimpl macro to include function in the generated client
     fn owner(env: &Env) -> Address {
         shared_interfaces::owner(env)

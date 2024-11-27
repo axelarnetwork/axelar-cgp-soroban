@@ -1,8 +1,8 @@
 use crate::error::ContractError;
 use crate::event;
 use axelar_soroban_std::shared_interfaces;
-use axelar_soroban_std::shared_interfaces::{migrate, UpgradeableInterface};
-use axelar_soroban_std::shared_interfaces::{MigratableInterface, OwnershipInterface};
+use axelar_soroban_std::shared_interfaces::{migrate, UpgradableInterface};
+use axelar_soroban_std::shared_interfaces::{MigratableInterface, OwnableInterface};
 use soroban_sdk::{contract, contractimpl, Address, BytesN, Env, String};
 
 #[contract]
@@ -41,7 +41,7 @@ impl MigratableInterface for InterchainToken {
 }
 
 #[contractimpl]
-impl UpgradeableInterface for InterchainToken {
+impl UpgradableInterface for InterchainToken {
     fn version(env: &Env) -> String {
         String::from_str(env, env!("CARGO_PKG_VERSION"))
     }
@@ -52,7 +52,7 @@ impl UpgradeableInterface for InterchainToken {
 }
 
 #[contractimpl]
-impl OwnershipInterface for InterchainToken {
+impl OwnableInterface for InterchainToken {
     // boilerplate necessary for the contractimpl macro to include function in the generated client
     fn owner(env: &Env) -> Address {
         shared_interfaces::owner(env)

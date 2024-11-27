@@ -1,8 +1,8 @@
 use crate::error::ContractError;
 use crate::event;
 use crate::storage_types::DataKey;
-use axelar_soroban_std::shared_interfaces::{migrate, UpgradeableInterface};
-use axelar_soroban_std::shared_interfaces::{MigratableInterface, OwnershipInterface};
+use axelar_soroban_std::shared_interfaces::{migrate, UpgradableInterface};
+use axelar_soroban_std::shared_interfaces::{MigratableInterface, OwnableInterface};
 use axelar_soroban_std::{ensure, shared_interfaces};
 use soroban_sdk::{contract, contractimpl, Address, BytesN, Env, String, Symbol, Val, Vec};
 
@@ -93,7 +93,9 @@ impl AxelarOperators {
 
         Ok(res)
     }
+}
 
+impl AxelarOperators {
     // Modify this function to add migration logic
     const fn run_migration(_env: &Env, _migration_data: ()) {}
 }
@@ -110,7 +112,7 @@ impl MigratableInterface for AxelarOperators {
 }
 
 #[contractimpl]
-impl UpgradeableInterface for AxelarOperators {
+impl UpgradableInterface for AxelarOperators {
     fn version(env: &Env) -> String {
         String::from_str(env, env!("CARGO_PKG_VERSION"))
     }
@@ -121,7 +123,7 @@ impl UpgradeableInterface for AxelarOperators {
 }
 
 #[contractimpl]
-impl OwnershipInterface for AxelarOperators {
+impl OwnableInterface for AxelarOperators {
     // boilerplate necessary for the contractimpl macro to include function in the generated client
     fn owner(env: &Env) -> Address {
         shared_interfaces::owner(env)

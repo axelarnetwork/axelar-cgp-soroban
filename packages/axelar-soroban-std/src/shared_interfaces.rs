@@ -5,12 +5,12 @@ use soroban_sdk::{
 };
 
 #[contractclient(name = "OwnershipClient")]
-pub trait OwnershipInterface {
+pub trait OwnableInterface {
     fn owner(env: &Env) -> Address;
 }
 
-#[contractclient(name = "UpgradeableClient")]
-pub trait UpgradeableInterface: OwnershipInterface {
+#[contractclient(name = "UpgradableClient")]
+pub trait UpgradableInterface: OwnableInterface {
     /// Returns the current version of the contract.
     fn version(env: &Env) -> String;
 
@@ -18,7 +18,7 @@ pub trait UpgradeableInterface: OwnershipInterface {
     fn upgrade(env: &Env, new_wasm_hash: BytesN<32>);
 }
 
-pub trait MigratableInterface: UpgradeableInterface {
+pub trait MigratableInterface: UpgradableInterface {
     /// Data needed during the migration. Each contract can define its own data type.
     type MigrationData: FromVal<Env, Val>;
     /// Error type returned if the migration fails.
@@ -28,7 +28,7 @@ pub trait MigratableInterface: UpgradeableInterface {
     fn migrate(env: &Env, migration_data: Self::MigrationData) -> Result<(), Self::Error>;
 }
 
-/// Default implementation of the [OwnershipInterface] trait.
+/// Default implementation of the [OwnableInterface] trait.
 pub fn owner(env: &Env) -> Address {
     env.storage()
         .instance()
@@ -36,7 +36,7 @@ pub fn owner(env: &Env) -> Address {
         .expect("owner must be set during contract construction")
 }
 
-/// Default implementation accompanying the [OwnershipInterface] trait. This should never be part of a contract interface,
+/// Default implementation accompanying the [OwnableInterface] trait. This should never be part of a contract interface,
 /// but allows contracts internally to set the owner.
 pub fn set_owner(env: &Env, owner: &Address) {
     env.storage()
@@ -46,7 +46,7 @@ pub fn set_owner(env: &Env, owner: &Address) {
 
 /// This function checks that the caller can authenticate as the owner of the contract,
 /// then upgrades the contract to a new WASM hash and prepares it for migration.
-pub fn upgrade<T: OwnershipInterface>(env: &Env, new_wasm_hash: BytesN<32>) {
+pub fn upgrade<T: OwnableInterface>(env: &Env, new_wasm_hash: BytesN<32>) {
     T::owner(env).require_auth();
 
     env.deployer().update_current_contract_wasm(new_wasm_hash);
@@ -57,7 +57,7 @@ pub fn upgrade<T: OwnershipInterface>(env: &Env, new_wasm_hash: BytesN<32>) {
 /// then runs the custom_migration and finalizes the migration.
 /// An event is emitted when the migration, and with it the overall upgrade, is complete.
 /// Migration can only be run once, after the [upgrade] function has been called.
-pub fn migrate<T: UpgradeableInterface>(
+pub fn migrate<T: UpgradableInterface>(
     env: &Env,
     custom_migration: impl FnOnce(),
 ) -> Result<(), MigrationError> {
@@ -98,6 +98,7 @@ fn ensure_is_migrating(env: &Env) -> Result<(), MigrationError> {
 
     Ok(())
 }
+
 fn complete_migration(env: &Env) {
     env.storage()
         .instance()
@@ -158,7 +159,7 @@ pub enum MigrationError {
 
 #[cfg(test)]
 mod test {
-    use crate::shared_interfaces::{OwnershipClient, UpgradeableClient, UpgradedEvent};
+    use crate::shared_interfaces::{OwnershipClient, UpgradableClient, UpgradedEvent};
     use crate::{assert_invoke_auth_err, assert_invoke_auth_ok, shared_interfaces, testdata};
     use std::format;
 
@@ -221,7 +222,7 @@ mod test {
         let contract_id = env.register(testdata::contract::Contract, ());
         let hash = env.deployer().upload_contract_wasm(WASM);
 
-        assert!(UpgradeableClient::new(&env, &contract_id)
+        assert!(UpgradableClient::new(&env, &contract_id)
             .try_upgrade(&hash)
             .is_err());
     }
@@ -237,7 +238,7 @@ mod test {
             shared_interfaces::set_owner(&env, &owner);
         });
 
-        assert!(UpgradeableClient::new(&env, &contract_id)
+        assert!(UpgradableClient::new(&env, &contract_id)
             .try_upgrade(&hash)
             .is_err());
     }
@@ -253,7 +254,7 @@ mod test {
             shared_interfaces::set_owner(&env, &owner);
         });
 
-        let client = UpgradeableClient::new(&env, &contract_id);
+        let client = UpgradableClient::new(&env, &contract_id);
         assert_invoke_auth_err!(Address::generate(&env), client.try_upgrade(&hash));
     }
 
@@ -268,7 +269,7 @@ mod test {
             shared_interfaces::set_owner(&env, &owner);
         });
 
-        let client = UpgradeableClient::new(&env, &contract_id);
+        let client = UpgradableClient::new(&env, &contract_id);
         assert_invoke_auth_ok!(owner, client.try_upgrade(&hash));
     }
 
@@ -283,7 +284,7 @@ mod test {
             shared_interfaces::set_owner(&env, &owner);
         });
 
-        let upgrade_client = UpgradeableClient::new(&env, &contract_id);
+        let upgrade_client = UpgradableClient::new(&env, &contract_id);
         assert_invoke_auth_ok!(owner, upgrade_client.try_upgrade(&hash));
 
         let client = ContractClient::new(&env, &contract_id);
@@ -301,7 +302,7 @@ mod test {
             shared_interfaces::set_owner(&env, &owner);
         });
 
-        let upgrade_client = UpgradeableClient::new(&env, &contract_id);
+        let upgrade_client = UpgradableClient::new(&env, &contract_id);
         assert_invoke_auth_ok!(owner, upgrade_client.try_upgrade(&hash));
 
         let client = ContractClient::new(&env, &contract_id);
@@ -333,8 +334,8 @@ mod test {
             shared_interfaces::set_owner(&env, &owner);
         });
 
-        let upgradeable_client = UpgradeableClient::new(&env, &contract_id);
-        assert_invoke_auth_ok!(owner, upgradeable_client.try_upgrade(&hash));
+        let upgradable_client = UpgradableClient::new(&env, &contract_id);
+        assert_invoke_auth_ok!(owner, upgradable_client.try_upgrade(&hash));
 
         let client = ContractClient::new(&env, &contract_id);
         assert!(client.migration_data().is_none());
@@ -382,8 +383,8 @@ mod test {
             shared_interfaces::set_owner(&env, &owner);
         });
 
-        let upgradeable_client = UpgradeableClient::new(&env, &contract_id);
-        assert_invoke_auth_ok!(owner, upgradeable_client.try_upgrade(&hash));
+        let upgradable_client = UpgradableClient::new(&env, &contract_id);
+        assert_invoke_auth_ok!(owner, upgradable_client.try_upgrade(&hash));
 
         let client = ContractClient::new(&env, &contract_id);
         assert_invoke_auth_ok!(owner, client.try_migrate(&()));

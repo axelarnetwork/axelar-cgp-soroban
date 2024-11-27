@@ -4,7 +4,7 @@ use soroban_sdk::contracterror;
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
 pub enum ContractError {
-    /// Upgradeable
+    /// Upgradable
     MigrationNotAllowed = 1,
     /// Auth
     InvalidThreshold = 2,

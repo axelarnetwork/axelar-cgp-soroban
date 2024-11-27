@@ -13,7 +13,7 @@ use axelar_gateway::AxelarGatewayMessagingClient;
 
 use axelar_gateway::executable::AxelarExecutableInterface;
 use axelar_soroban_std::shared_interfaces::{
-    migrate, MigratableInterface, OwnershipInterface, UpgradeableInterface,
+    migrate, MigratableInterface, OwnableInterface, UpgradableInterface,
 };
 
 #[contract]
@@ -252,7 +252,7 @@ impl MigratableInterface for InterchainTokenService {
 }
 
 #[contractimpl]
-impl UpgradeableInterface for InterchainTokenService {
+impl UpgradableInterface for InterchainTokenService {
     fn version(env: &Env) -> String {
         String::from_str(env, env!("CARGO_PKG_VERSION"))
     }
@@ -263,7 +263,7 @@ impl UpgradeableInterface for InterchainTokenService {
 }
 
 #[contractimpl]
-impl OwnershipInterface for InterchainTokenService {
+impl OwnableInterface for InterchainTokenService {
     // boilerplate necessary for the contractimpl macro to include function in the generated client
     fn owner(env: &Env) -> Address {
         shared_interfaces::owner(env)

@@ -3,11 +3,11 @@ use crate::{
     types::{Message, Proof, WeightedSigners},
     AxelarGatewayMessagingInterface,
 };
-use axelar_soroban_std::shared_interfaces::UpgradeableInterface;
+use axelar_soroban_std::shared_interfaces::UpgradableInterface;
 use soroban_sdk::{contractclient, Address, BytesN, Env, Vec};
 
 #[contractclient(name = "AxelarGatewayClient")]
-pub trait AxelarGatewayInterface: AxelarGatewayMessagingInterface + UpgradeableInterface {
+pub trait AxelarGatewayInterface: AxelarGatewayMessagingInterface + UpgradableInterface {
     /// Approves a collection of messages.
     fn approve_messages(
         env: Env,
