@@ -108,16 +108,10 @@ macro_rules! assert_some {
 #[macro_export]
 macro_rules! assert_invoke_auth_ok {
     ($caller:expr, $client:ident . $method:ident ( $($arg:expr),* $(,)? )) => {{
+        use soroban_sdk::{IntoVal};
+
         let call_result = $client
-            .mock_auths(&[MockAuth {
-                address: &$caller,
-                invoke: &MockAuthInvoke {
-                    contract: &$client.address,
-                    fn_name: &stringify!($method).replace("try_", ""),
-                    args: ($($arg.clone(),)*).into_val(&$client.env),
-                    sub_invokes: &[],
-                },
-            }])
+            .mock_auths($crate::mock_auth!($caller, $client, $method, $($arg),*))
             .$method($($arg),*);
 
         match call_result {
@@ -133,15 +127,7 @@ macro_rules! assert_invoke_auth_err {
         use soroban_sdk::{IntoVal, xdr::{ScError, ScErrorCode, ScVal}};
 
         let call_result = $client
-            .mock_auths(&[MockAuth {
-                address: &$caller,
-                invoke: &MockAuthInvoke {
-                    contract: &$client.address,
-                    fn_name: &stringify!($method).replace("try_", ""),
-                    args: ($($arg.clone(),)*).into_val(&$client.env),
-                    sub_invokes: &[],
-                },
-            }])
+            .mock_auths($crate::mock_auth!($caller, $client, $method, $($arg),*))
             .$method($($arg),*);
 
         match call_result {
@@ -155,4 +141,19 @@ macro_rules! assert_invoke_auth_err {
             Ok(_) => panic!("Expected error, but got Ok result."),
         }
     }};
+}
+
+#[macro_export]
+macro_rules! mock_auth {
+    ($caller:expr, $client:ident, $method:ident, $($arg:expr),*) => {
+        &[MockAuth {
+                address: &$caller,
+                invoke: &MockAuthInvoke {
+                    contract: &$client.address,
+                    fn_name: &stringify!($method).replace("try_", ""),
+                    args: ($($arg.clone(),)*).into_val(&$client.env),
+                    sub_invokes: &[],
+                },
+            }]
+    };
 }

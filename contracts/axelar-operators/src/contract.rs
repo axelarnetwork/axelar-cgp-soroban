@@ -11,7 +11,6 @@ pub struct AxelarOperators;
 
 #[contractimpl]
 impl AxelarOperators {
-    /// Initialize the operators contract with an owner.
     pub fn __constructor(env: Env, owner: Address) {
         shared_interfaces::set_owner(&env, &owner);
     }
