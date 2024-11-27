@@ -7,7 +7,7 @@ use crate::error::ContractError;
 use crate::event;
 use crate::interface::InterchainTokenServiceInterface;
 use crate::storage_types::DataKey;
-use crate::types::{DeployInterchainToken, HubMessage, Message};
+use crate::types::{HubMessage, InterchainTransfer, Message};
 
 use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::AxelarGatewayMessagingClient;
@@ -256,28 +256,17 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     }
 
     fn deploy_interchain_token(
-        env: &Env,
-        caller: Address,
-        token_id: BytesN<32>,
-        destination_chain: String,
-        name: String,
-        symbol: String,
-        decimals: u32,
-        minter: Option<Bytes>,
-        gas_token: Token,
+        _env: &Env,
+        _caller: Address,
+        _token_id: BytesN<32>,
+        _destination_chain: String,
+        _name: String,
+        _symbol: String,
+        _decimals: u32,
+        _minter: Option<Bytes>,
+        _gas_token: Token,
     ) {
-        // TODO: processing logic
-
-        let message = Message::DeployInterchainToken(DeployInterchainToken {
-            token_id,
-            name,
-            symbol,
-            decimals: decimals.try_into().expect("exceeds u8 max"), // TODO: error handling for conversion to u8
-            minter,
-        });
-
-        let _ = Self::pay_gas_and_call_contract(env, caller, destination_chain, message, gas_token);
-        // TODO: handle Result from call
+        todo!()
     }
 
     fn deploy_remote_interchain_token(
@@ -291,16 +280,25 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     }
 
     fn interchain_transfer(
-        _env: &Env,
-        _caller: Address,
-        _token_id: BytesN<32>,
-        _destination_chain: String,
-        _destination_address: Bytes,
-        _amount: i128,
-        _metadata: Bytes,
-        _gas_token: Token,
+        env: &Env,
+        caller: Address,
+        token_id: BytesN<32>,
+        destination_chain: String,
+        destination_address: Bytes,
+        amount: i128,
+        metadata: Option<Bytes>,
+        gas_token: Token,
     ) {
-        todo!()
+        // EXAMPLE implementation only to compile
+        let message = Message::InterchainTransfer(InterchainTransfer {
+            token_id,
+            source_address: Bytes::from_slice(env, &[0]),
+            destination_address,
+            amount,
+            data: metadata,
+        });
+
+        let _ = Self::pay_gas_and_call_contract(env, caller, destination_chain, message, gas_token);
     }
 }
 

@@ -17,15 +17,15 @@ pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
     fn remove_trusted_address(env: &Env, chain: String) -> Result<(), ContractError>;
 
     fn deploy_interchain_token(
-        env: &Env,
-        caller: Address,
-        token_id: BytesN<32>,
-        destination_chain: String,
-        name: String,
-        symbol: String,
-        decimals: u32,
-        minter: Option<Bytes>,
-        gas_token: Token,
+        _env: &Env,
+        _caller: Address,
+        _token_id: BytesN<32>,
+        _destination_chain: String,
+        _name: String,
+        _symbol: String,
+        _decimals: u32,
+        _minter: Option<Bytes>,
+        _gas_token: Token,
     );
 
     fn deploy_remote_interchain_token(
@@ -37,13 +37,13 @@ pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
     );
 
     fn interchain_transfer(
-        _env: &Env,
-        _caller: Address,
-        _token_id: BytesN<32>,
-        _destination_chain: String,
-        _destination_address: Bytes,
-        _amount: i128,
-        _metadata: Bytes,
-        _gas_token: Token,
+        env: &Env,
+        caller: Address,
+        token_id: BytesN<32>,
+        destination_chain: String,
+        destination_address: Bytes,
+        amount: i128,
+        metadata: Option<Bytes>,
+        gas_token: Token,
     );
 }
