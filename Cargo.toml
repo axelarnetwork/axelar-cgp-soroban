@@ -15,11 +15,12 @@ axelar-gateway = { version = "^0.1.0", path = "contracts/axelar-gateway" }
 axelar-operators = { version = "^0.1.0", path = "contracts/axelar-operators" }
 interchain-token-service = { version = "^0.1.0", path = "contracts/interchain-token-service" }
 alloy-primitives = { version = "0.7.6", default-features = false, features = [
-  "std",
+    "std",
 ] }
 alloy-sol-types = { version = "0.7.6", default-features = false, features = [
-  "std",
+    "std",
 ] }
+goldie = "0.5.0"
 
 [workspace.lints.clippy]
 nursery = "warn"

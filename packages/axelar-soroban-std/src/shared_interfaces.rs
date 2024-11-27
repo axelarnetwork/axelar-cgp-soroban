@@ -1,5 +1,8 @@
 use crate::ensure;
-use soroban_sdk::{contractclient, Address, BytesN, Env, String, Symbol};
+use soroban_sdk::{
+    contractclient, symbol_short, Address, BytesN, ConversionError, Env, FromVal, IntoVal, String,
+    Topics, TryFromVal, Val, Vec,
+};
 
 #[contractclient(name = "OwnershipClient")]
 pub trait OwnershipInterface {
@@ -13,6 +16,13 @@ pub trait UpgradeableInterface: OwnershipInterface {
 
     /// Upgrades the contract to a new WASM hash.
     fn upgrade(env: &Env, new_wasm_hash: BytesN<32>);
+}
+
+pub trait MigratableInterface: UpgradeableInterface {
+    type MigrationData: FromVal<Env, Val>;
+    type Error: Into<soroban_sdk::Error>;
+
+    fn migrate(env: &Env, migration_data: Self::MigrationData) -> Result<(), Self::Error>;
 }
 
 pub fn owner(env: &Env) -> Address {
@@ -40,7 +50,7 @@ pub fn upgrade<T: OwnershipInterface>(env: &Env, new_wasm_hash: BytesN<32>) {
 /// This function checks that the caller can authenticate as the owner of the contract,
 /// then runs the custom_migration and finalizes the migration.
 /// An event is emitted when the migration, and with it the overall upgrade, is complete.
-/// Migration can only be run once, after the standardized_upgrade function has been called.
+/// Migration can only be run once, after the [upgrade] function has been called.
 pub fn migrate<T: UpgradeableInterface>(
     env: &Env,
     custom_migration: impl FnOnce(),
@@ -52,14 +62,18 @@ pub fn migrate<T: UpgradeableInterface>(
     custom_migration();
     complete_migration(env);
 
-    emit_event_upgraded(env, &T::version(env));
+    emit_event_upgraded(
+        env,
+        UpgradedEvent {
+            version: T::version(env),
+        },
+    );
 
     Ok(())
 }
 
-fn emit_event_upgraded(env: &Env, version: &String) {
-    env.events()
-        .publish((Symbol::new(env, "upgraded"),), (version.to_val(),));
+fn emit_event_upgraded(env: &Env, event: UpgradedEvent) {
+    env.events().publish(UpgradedEvent::topic(), event.data());
 }
 
 fn start_migration(env: &Env) {
@@ -82,6 +96,44 @@ fn complete_migration(env: &Env) {
     env.storage()
         .instance()
         .remove(&storage::DataKey::SharedInterfaces_Migrating);
+}
+
+#[derive(Debug)]
+pub struct UpgradedEvent {
+    version: String,
+}
+
+impl UpgradedEvent {
+    pub fn topic() -> impl Topics {
+        (symbol_short!("upgraded"),)
+    }
+
+    pub fn data(&self) -> impl IntoVal<Env, Val> {
+        (self.version.to_val(),)
+    }
+}
+
+impl TryFromVal<Env, (Address, Vec<Val>, Val)> for UpgradedEvent {
+    type Error = ConversionError;
+
+    fn try_from_val(
+        env: &Env,
+        (_address, topics, data): &(Address, Vec<Val>, Val),
+    ) -> Result<Self, Self::Error> {
+        ensure!(topics.eq(&Self::topic().into_val(env)), ConversionError);
+
+        let v: Vec<Val> = Vec::try_from_val(env, data)?;
+        String::try_from_val(env, &v.first().ok_or(ConversionError)?)
+            .map(|version| Self { version })
+    }
+}
+
+impl FromVal<Env, Val> for UpgradedEvent {
+    fn from_val(env: &Env, val: &Val) -> Self {
+        let v: Vec<Val> = Vec::from_val(env, val);
+        let version = String::from_val(env, &v.first().expect("version must be the first element"));
+        Self { version }
+    }
 }
 
 mod storage {
@@ -107,27 +159,228 @@ pub enum MigrationError {
 
 #[cfg(test)]
 mod test {
-    #![allow(clippy::redundant_pub_crate)] // contract macro generates pub types
+    use crate::shared_interfaces::{OwnershipClient, UpgradeableClient, UpgradedEvent};
+    use crate::{shared_interfaces, testdata};
+    use std::format;
 
-    use crate::shared_interfaces;
-    use soroban_sdk::testutils::arbitrary::std;
-    use soroban_sdk::testutils::storage::Instance;
-    use soroban_sdk::{contract, contractimpl, contracttype};
-    use std::println;
+    use crate::testdata::contract::ContractClient;
+    use soroban_sdk::testutils::{Address as _, BytesN as _, Events, MockAuth, MockAuthInvoke};
+    use soroban_sdk::{contracttype, Address, BytesN, Env, String, TryFromVal, TryIntoVal};
 
-    #[contract]
-    struct Contract;
+    const WASM: &[u8] = include_bytes!("testdata/contract.wasm");
 
-    #[contractimpl]
-    impl Contract {
-        pub fn __constructor(env: soroban_sdk::Env) {
-            env.storage().instance().set(&DataKey::Migrating, &true);
-        }
+    #[test]
+    fn contracttype_enum_name_is_irrelevant_for_key_collision() {
+        let env = Env::default();
+        let contract_id = env.register(testdata::contract::Contract, ());
+
+        env.as_contract(&contract_id, || {
+            assert!(!env
+                .storage()
+                .instance()
+                .has(&testdata::contract::DataKey::Migrating));
+            assert!(!env.storage().instance().has(&DataKey2::Migrating));
+
+            env.storage()
+                .instance()
+                .set(&testdata::contract::DataKey::Migrating, &());
+
+            assert!(env
+                .storage()
+                .instance()
+                .has(&testdata::contract::DataKey::Migrating));
+            assert!(env.storage().instance().has(&DataKey2::Migrating));
+        });
     }
 
-    #[contracttype]
-    enum DataKey {
-        Migrating,
+    #[test]
+    #[should_panic(expected = "HostError: Error(WasmVm, InvalidAction)")]
+    fn owner_panics_if_owner_not_set() {
+        let env = Env::default();
+        let contract_id = env.register(testdata::contract::Contract, ());
+
+        let client = OwnershipClient::new(&env, &contract_id);
+        client.owner();
+    }
+
+    #[test]
+    fn owner_returns_correct_owner_when_set() {
+        let env = Env::default();
+
+        let contract_id = env.register(testdata::contract::Contract, ());
+
+        let owner = Address::generate(&env);
+        env.as_contract(&contract_id, || {
+            shared_interfaces::set_owner(&env, &owner);
+        });
+        let client = OwnershipClient::new(&env, &contract_id);
+        assert_eq!(client.owner(), owner);
+    }
+
+    #[test]
+    #[should_panic(expected = "HostError: Error(WasmVm, InvalidAction)")]
+    fn upgrade_panics_if_owner_not_set() {
+        let env = Env::default();
+        let contract_id = env.register(testdata::contract::Contract, ());
+
+        let client = UpgradeableClient::new(&env, &contract_id);
+        client.upgrade(&BytesN::<32>::random(&env));
+    }
+
+    #[test]
+    #[should_panic(expected = "HostError: Error(Auth, InvalidAction)")]
+    fn upgrade_panics_if_owner_not_authenticated() {
+        let env = Env::default();
+        let contract_id = env.register(testdata::contract::Contract, ());
+
+        let owner = Address::generate(&env);
+        env.as_contract(&contract_id, || {
+            shared_interfaces::set_owner(&env, &owner);
+        });
+
+        let client = UpgradeableClient::new(&env, &contract_id);
+        client.upgrade(&BytesN::<32>::random(&env));
+    }
+
+    #[test]
+    fn upgrade_succeeds_if_owner_is_authenticated() {
+        let env = Env::default();
+        let contract_id = env.register(testdata::contract::Contract, ());
+        let hash = env.deployer().upload_contract_wasm(WASM);
+
+        let owner = Address::generate(&env);
+        env.as_contract(&contract_id, || {
+            shared_interfaces::set_owner(&env, &owner);
+        });
+
+        env.mock_auths(&[MockAuth {
+            address: &owner,
+            invoke: &upgrade_auth(&env, &contract_id, &hash),
+        }]);
+
+        let client = UpgradeableClient::new(&env, &contract_id);
+        client.upgrade(&hash);
+    }
+
+    #[test]
+    #[should_panic(expected = "HostError: Error(Auth, InvalidAction)")]
+    fn migrate_panics_if_owner_not_authenticated() {
+        let env = Env::default();
+        let contract_id = env.register(testdata::contract::Contract, ());
+
+        let owner = Address::generate(&env);
+        env.as_contract(&contract_id, || {
+            shared_interfaces::set_owner(&env, &owner);
+        });
+
+        let client = ContractClient::new(&env, &contract_id);
+        client.migrate(&());
+    }
+
+    #[test]
+    #[should_panic(expected = "HostError: Error(Contract, #1)")]
+    fn migrate_panics_if_not_called_after_upgrade() {
+        let env = Env::default();
+        let contract_id = env.register(testdata::contract::Contract, ());
+
+        let owner = Address::generate(&env);
+        env.as_contract(&contract_id, || {
+            shared_interfaces::set_owner(&env, &owner);
+        });
+
+        env.mock_auths(&[MockAuth {
+            address: &owner,
+            invoke: &migrate_auth(&env, &contract_id),
+        }]);
+
+        let client = ContractClient::new(&env, &contract_id);
+        client.migrate(&());
+    }
+
+    #[test]
+    fn migrate_succeeds_if_owner_is_authenticated_and_called_after_upgrade() {
+        let env = Env::default();
+        let contract_id = env.register(testdata::contract::Contract, ());
+        let hash = env.deployer().upload_contract_wasm(WASM);
+
+        let owner = Address::generate(&env);
+        env.as_contract(&contract_id, || {
+            shared_interfaces::set_owner(&env, &owner);
+        });
+
+        env.mock_auths(&[MockAuth {
+            address: &owner,
+            invoke: &upgrade_auth(&env, &contract_id, &hash),
+        }]);
+
+        let client = UpgradeableClient::new(&env, &contract_id);
+        client.upgrade(&hash);
+
+        env.as_contract(&contract_id, || {
+            assert!(!env
+                .storage()
+                .instance()
+                .has(&testdata::contract::DataKey::Data));
+        });
+
+        env.mock_auths(&[MockAuth {
+            address: &owner,
+            invoke: &migrate_auth(&env, &contract_id),
+        }]);
+
+        let client = ContractClient::new(&env, &contract_id);
+        client.migrate(&());
+
+        assert_eq!(client.migration_data(), String::from_str(&env, "migrated"));
+
+        let event = env
+            .events()
+            .all()
+            .iter()
+            .find_map(|event| UpgradedEvent::try_from_val(&env, &event).ok());
+        goldie::assert!(format!("{:?}", event))
+    }
+
+    #[test]
+    #[should_panic(expected = "HostError: Error(Contract, #1)")]
+    fn migrate_panics_if_called_twice() {
+        let env = Env::default();
+        let contract_id = env.register(testdata::contract::Contract, ());
+        let hash = env.deployer().upload_contract_wasm(WASM);
+
+        let owner = Address::generate(&env);
+        env.as_contract(&contract_id, || {
+            shared_interfaces::set_owner(&env, &owner);
+        });
+
+        env.mock_auths(&[MockAuth {
+            address: &owner,
+            invoke: &upgrade_auth(&env, &contract_id, &hash),
+        }]);
+
+        let client = UpgradeableClient::new(&env, &contract_id);
+        client.upgrade(&hash);
+
+        env.as_contract(&contract_id, || {
+            assert!(!env
+                .storage()
+                .instance()
+                .has(&testdata::contract::DataKey::Data));
+        });
+
+        env.mock_auths(&[MockAuth {
+            address: &owner,
+            invoke: &migrate_auth(&env, &contract_id),
+        }]);
+
+        let client = ContractClient::new(&env, &contract_id);
+        client.migrate(&());
+
+        env.mock_auths(&[MockAuth {
+            address: &owner,
+            invoke: &migrate_auth(&env, &contract_id),
+        }]);
+        client.migrate(&());
     }
 
     #[contracttype]
@@ -135,36 +388,25 @@ mod test {
         Migrating,
     }
 
-    #[test]
-    fn contract_can_use_imported_contracttype_enum() {
-        let env = soroban_sdk::Env::default();
-        let contract_id = env.register(Contract, ());
-
-        env.as_contract(&contract_id, || {
-            println!("{:?}", &env.storage().instance().all());
-            assert!(env.storage().instance().has(&DataKey::Migrating));
-            assert!(!env
-                .storage()
-                .instance()
-                .has(&shared_interfaces::storage::DataKey::SharedInterfaces_Migrating));
-
-            shared_interfaces::start_migration(&env);
-            assert!(env
-                .storage()
-                .instance()
-                .has(&shared_interfaces::storage::DataKey::SharedInterfaces_Migrating));
-        });
+    fn upgrade_auth<'a>(
+        env: &Env,
+        contract_id: &'a Address,
+        hash: &'a BytesN<32>,
+    ) -> MockAuthInvoke<'a> {
+        MockAuthInvoke {
+            contract: contract_id,
+            fn_name: "upgrade",
+            args: soroban_sdk::vec![&env, hash.to_val()],
+            sub_invokes: &[],
+        }
     }
 
-    #[test]
-    fn contracttype_enum_name_is_irrelevant_for_key_collision() {
-        let env = soroban_sdk::Env::default();
-        let contract_id = env.register(Contract, ());
-
-        env.as_contract(&contract_id, || {
-            println!("{:?}", &env.storage().instance().all());
-            assert!(env.storage().instance().has(&DataKey::Migrating));
-            assert!(env.storage().instance().has(&DataKey2::Migrating));
-        });
+    fn migrate_auth<'a>(env: &Env, contract_id: &'a Address) -> MockAuthInvoke<'a> {
+        MockAuthInvoke {
+            contract: contract_id,
+            fn_name: "migrate",
+            args: soroban_sdk::vec![&env, ().try_into_val(env).unwrap()],
+            sub_invokes: &[],
+        }
     }
 }
