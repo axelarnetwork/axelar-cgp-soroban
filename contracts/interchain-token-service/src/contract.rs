@@ -101,7 +101,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         let owner = Self::owner(env);
         owner.require_auth();
 
-        shared_interfaces::set_owner(&env, &new_owner);
+        shared_interfaces::set_owner(env, &new_owner);
 
         event::transfer_ownership(env, owner, new_owner);
     }
