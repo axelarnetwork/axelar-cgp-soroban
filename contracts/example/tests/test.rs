@@ -6,15 +6,16 @@ use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::testutils::{self, generate_proof, get_approve_hash, TestSignerSet};
 use axelar_gateway::types::Message;
 use axelar_gateway::AxelarGatewayClient;
-use axelar_soroban_std::assert_last_emitted_event;
 use axelar_soroban_std::types::Token;
+use axelar_soroban_std::{assert_last_emitted_event, auth_invocation};
 use example::contract::Example;
 use example::ExampleClient;
-use soroban_sdk::token::{StellarAssetClient, TokenClient};
+use soroban_sdk::testutils::{AuthorizedFunction, AuthorizedInvocation};
+use soroban_sdk::token::StellarAssetClient;
 use soroban_sdk::{
     testutils::Address as _, testutils::BytesN as _, vec, Address, BytesN, Env, String,
 };
-use soroban_sdk::{Bytes, Symbol};
+use soroban_sdk::{Bytes, IntoVal, Symbol};
 
 fn setup_gateway<'a>(env: &Env) -> (TestSignerSet, AxelarGatewayClient<'a>) {
     let (signers, client) = testutils::setup_gateway(env, 0, 5);
@@ -75,23 +76,7 @@ fn test_gmp_example() {
         amount: gas_amount,
     };
 
-    let token_client = TokenClient::new(&env, &asset.address());
     StellarAssetClient::new(&env, &asset.address()).mint(&user, &gas_amount);
-
-    let expiration_ledger = &env.ledger().sequence() + 200;
-
-    // approve token spend before invoking `pay_gas_for_contract_call` in `send` function
-    token_client.approve(
-        &user,
-        &source_gas_service_id,
-        &gas_amount,
-        &expiration_ledger,
-    );
-
-    assert_eq!(
-        token_client.allowance(&user, &source_gas_service_id),
-        gas_amount
-    );
 
     source_app.send(
         &user,
@@ -100,6 +85,47 @@ fn test_gmp_example() {
         &payload,
         &gas_token,
     );
+
+    let transfer_auth = auth_invocation!(&env,
+        "transfer",
+        asset.address().clone() =>
+        (
+            &user,
+            source_gas_service_id.clone(),
+            gas_token.amount.clone()
+        )
+    );
+
+    let pay_gas_auth = auth_invocation!(&env,
+        "pay_gas",
+        source_gas_service_id.clone() =>
+        (
+            source_app.address.clone(),
+            destination_chain.clone(),
+            destination_address.clone(),
+            payload.clone(),
+            &user,
+            gas_token.clone(),
+            &Bytes::new(&env)
+        ),
+        transfer_auth
+    );
+
+    let send_auth = auth_invocation!(&env,
+        user.clone(),
+        "send",
+        source_app.address.clone() =>
+        (
+            &user,
+            destination_chain.clone(),
+            destination_address.clone(),
+            payload.clone(),
+            gas_token.clone()
+        ),
+        pay_gas_auth
+    );
+
+    assert_eq!(env.auths(), send_auth);
 
     // Axelar hub confirms the contract call, i.e Axelar verifiers verify/vote on the emitted event
     let message_id = String::from_str(&env, "test");

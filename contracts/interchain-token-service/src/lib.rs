@@ -3,6 +3,7 @@
 mod abi;
 pub mod error;
 mod event;
+mod interface;
 mod storage_types;
 mod types;
 

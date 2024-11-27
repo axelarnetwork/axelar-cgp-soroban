@@ -56,13 +56,14 @@ impl Example {
 
         caller.require_auth();
 
-        gas_service.pay_gas_for_contract_call(
-            &caller,
+        gas_service.pay_gas(
+            &env.current_contract_address(),
             &destination_chain,
             &destination_address,
             &message,
             &caller,
             &gas_token,
+            &Bytes::new(&env),
         );
 
         gateway.call_contract(

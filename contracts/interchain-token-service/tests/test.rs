@@ -1,3 +1,6 @@
+use axelar_gas_service::{AxelarGasService, AxelarGasServiceClient};
+use axelar_gateway::testutils;
+use axelar_gateway::AxelarGatewayClient;
 use interchain_token_service::contract::{InterchainTokenService, InterchainTokenServiceClient};
 use interchain_token_service::error::ContractError;
 
@@ -6,10 +9,28 @@ use soroban_sdk::testutils::{MockAuth, MockAuthInvoke};
 
 use soroban_sdk::{testutils::Address as _, Address, Env, String, Symbol};
 
+fn setup_gateway<'a>(env: &Env) -> AxelarGatewayClient<'a> {
+    let (_, client) = testutils::setup_gateway(env, 0, 5);
+    client
+}
+
+fn setup_gas_service<'a>(env: &Env) -> AxelarGasServiceClient<'a> {
+    let gas_collector: Address = Address::generate(&env);
+    let gas_service_id = env.register(AxelarGasService, (&gas_collector,));
+    let gas_service_client = AxelarGasServiceClient::new(env, &gas_service_id);
+
+    gas_service_client
+}
+
 fn setup_env<'a>() -> (Env, InterchainTokenServiceClient<'a>) {
     let env = Env::default();
     let owner = Address::generate(&env);
-    let contract_id = env.register(InterchainTokenService, (&owner,));
+    let gateway_client = setup_gateway(&env);
+    let gas_service_client = setup_gas_service(&env);
+    let contract_id = env.register(
+        InterchainTokenService,
+        (&owner, gateway_client.address, gas_service_client.address),
+    );
     let client = InterchainTokenServiceClient::new(&env, &contract_id);
 
     (env, client)
@@ -19,7 +40,12 @@ fn setup_env<'a>() -> (Env, InterchainTokenServiceClient<'a>) {
 fn register_interchain_token_service() {
     let env = Env::default();
     let owner = Address::generate(&env);
-    let contract_id = env.register(InterchainTokenService, (&owner,));
+    let gateway_client = setup_gateway(&env);
+    let gas_service_client = setup_gas_service(&env);
+    let contract_id = env.register(
+        InterchainTokenService,
+        (&owner, gateway_client.address, gas_service_client.address),
+    );
     let client = InterchainTokenServiceClient::new(&env, &contract_id);
 
     assert_eq!(client.owner(), owner);

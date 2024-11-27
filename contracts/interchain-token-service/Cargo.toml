@@ -12,10 +12,14 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 alloy-primitives = { workspace = true }
 alloy-sol-types = { workspace = true }
+axelar-gas-service = { workspace = true, features = ["library"] }
+axelar-gateway = { workspace = true, features = ["library"] }
 axelar-soroban-std = { workspace = true }
 soroban-sdk = { workspace = true, features = ["alloc"] }
 
 [dev-dependencies]
+axelar-gas-service = { workspace = true, features = ["testutils"] }
+axelar-gateway = { workspace = true, features = ["testutils"] }
 axelar-soroban-std = { workspace = true, features = ["testutils"] }
 goldie = { workspace = true }
 hex = "0.4"
