@@ -1,6 +1,5 @@
-use axelar_soroban_std::{ensure, shared_interfaces};
+use axelar_soroban_std::ensure;
 use soroban_sdk::token::{self, Interface as _};
-use soroban_sdk::{contract, contractimpl, Address, Bytes, Env, IntoVal, String};
 use soroban_token_sdk::metadata::TokenMetadata;
 use soroban_token_sdk::TokenUtils;
 
@@ -13,6 +12,8 @@ use crate::utils::{
     write_allowance, write_metadata,
 };
 
+use soroban_sdk::{contract, contractimpl, Address, Bytes, Env, IntoVal, String};
+
 #[contract]
 pub struct InterchainToken;
 
@@ -21,11 +22,13 @@ impl InterchainToken {
     pub fn __constructor(
         env: Env,
         interchain_token_service: Address,
-        admin: Address,
+        owner: Address,
         minter: Address,
         token_id: Bytes,
         token_meta_data: TokenMetadata,
     ) -> Result<(), ContractError> {
+        env.storage().instance().set(&DataKey::Admin, &owner);
+
         ensure!(!token_id.is_empty(), ContractError::TokenIdZero);
 
         Self::validate_token_metadata(token_meta_data.clone())?;
@@ -33,8 +36,6 @@ impl InterchainToken {
         env.storage().instance().set(&DataKey::TokenId, &token_id);
 
         write_metadata(&env, token_meta_data);
-
-        env.storage().instance().set(&DataKey::Owner, &owner);
 
         env.storage()
             .persistent()
@@ -47,10 +48,6 @@ impl InterchainToken {
             .set(&DataKey::InterchainTokenService, &interchain_token_service);
 
         Ok(())
-    }
-
-    pub fn owner(env: &Env) -> Result<Address, ContractError> {
-            shared_interfaces::owner(env);
     }
 
     pub fn validate_token_metadata(token_meta_data: TokenMetadata) -> Result<(), ContractError> {
