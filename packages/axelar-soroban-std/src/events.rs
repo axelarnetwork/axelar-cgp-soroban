@@ -18,11 +18,7 @@ where
     env.events()
         .all()
         .last()
-        .and_then(|(contract_id, topics, data)| {
-            E::try_from_val(env, &(topics, data))
-                .ok()
-                .map(|e| (contract_id, e))
-        })
+        .and_then(|event| convert_emitted_event(env, event))
 }
 
 pub fn match_emitted_event_at_idx<E>(env: &Env, idx: u32) -> Option<(Address, E)>
@@ -32,11 +28,19 @@ where
     env.events()
         .all()
         .get(idx)
-        .and_then(|(contract_id, topics, data)| {
-            E::try_from_val(env, &(topics, data))
-                .ok()
-                .map(|e| (contract_id, e))
-        })
+        .and_then(|event| convert_emitted_event(env, event))
+}
+
+fn convert_emitted_event<E>(
+    env: &Env,
+    (contract_id, topics, data): (Address, Vec<Val>, Val),
+) -> Option<(Address, E)>
+where
+    E: Event,
+{
+    E::try_from_val(env, &(topics, data))
+        .ok()
+        .map(|e| (contract_id, e))
 }
 
 #[cfg(test)]
