@@ -1,6 +1,10 @@
-use axelar_soroban_std::ensure;
-use soroban_sdk::{contract, contractimpl, Address, Env};
+use axelar_soroban_std::{ensure, shared_interfaces};
+use soroban_sdk::token::{self, Interface as _};
+use soroban_sdk::{contract, contractimpl, Address, Bytes, Env, IntoVal, String};
+use soroban_token_sdk::metadata::TokenMetadata;
+use soroban_token_sdk::TokenUtils;
 
+use crate::error::ContractError;
 use crate::event;
 use crate::storage_types::DataKey;
 use crate::utils::{
@@ -31,13 +35,13 @@ impl InterchainToken {
         write_metadata(&env, token_meta_data);
 
         env.storage().instance().set(&DataKey::Owner, &owner);
+
         env.storage()
             .persistent()
             .set(&DataKey::Minter(minter), &true);
         env.storage()
             .persistent()
             .set(&DataKey::Minter(interchain_token_service.clone()), &true);
-
         env.storage()
             .instance()
             .set(&DataKey::InterchainTokenService, &interchain_token_service);
@@ -46,10 +50,7 @@ impl InterchainToken {
     }
 
     pub fn owner(env: &Env) -> Result<Address, ContractError> {
-        env.storage()
-            .instance()
-            .get(&DataKey::Owner)
-            .ok_or(ContractError::NotInitialized)
+            shared_interfaces::owner(env);
     }
 
     pub fn validate_token_metadata(token_meta_data: TokenMetadata) -> Result<(), ContractError> {
@@ -82,13 +83,10 @@ impl InterchainToken {
             .expect("interchain token service not found")
     }
 
-    pub fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), ContractError> {
-        let owner: Address = Self::owner(&env)?;
-        owner.require_auth();
+    pub fn mint(env: Env, minter: Address, to: Address, amount: i128) -> Result<(), ContractError> {
+        minter.require_auth_for_args((&to, amount).into_val(&env));
 
-        env.storage().instance().set(&DataKey::Owner, &new_owner);
-
-        event::transfer_ownership(&env, owner, new_owner);
+        check_nonnegative_amount(amount);
 
         let is_authorized = env
             .storage()
