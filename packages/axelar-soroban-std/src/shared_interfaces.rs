@@ -1,4 +1,5 @@
 use crate::ensure;
+use crate::events::Event;
 use soroban_sdk::{
     contractclient, symbol_short, Address, BytesN, ConversionError, Env, FromVal, IntoVal, String,
     Topics, TryFromVal, Val, Vec,
@@ -68,18 +69,12 @@ pub fn migrate<T: UpgradableInterface>(
     custom_migration();
     complete_migration(env);
 
-    emit_event_upgraded(
-        env,
-        UpgradedEvent {
-            version: T::version(env),
-        },
-    );
+    UpgradedEvent {
+        version: T::version(env),
+    }
+    .emit(env);
 
     Ok(())
-}
-
-fn emit_event_upgraded(env: &Env, event: UpgradedEvent) {
-    env.events().publish(UpgradedEvent::topic(), event.data());
 }
 
 fn start_migration(env: &Env) {
@@ -110,23 +105,20 @@ pub struct UpgradedEvent {
     version: String,
 }
 
-impl UpgradedEvent {
-    pub fn topic() -> impl Topics {
+impl Event for UpgradedEvent {
+    fn topic() -> impl Topics {
         (symbol_short!("upgraded"),)
     }
 
-    pub fn data(&self) -> impl IntoVal<Env, Val> {
+    fn data(&self) -> impl IntoVal<Env, Val> {
         (self.version.to_val(),)
     }
 }
 
-impl TryFromVal<Env, (Address, Vec<Val>, Val)> for UpgradedEvent {
+impl TryFromVal<Env, (Vec<Val>, Val)> for UpgradedEvent {
     type Error = ConversionError;
 
-    fn try_from_val(
-        env: &Env,
-        (_address, topics, data): &(Address, Vec<Val>, Val),
-    ) -> Result<Self, Self::Error> {
+    fn try_from_val(env: &Env, (topics, data): &(Vec<Val>, Val)) -> Result<Self, Self::Error> {
         ensure!(topics.eq(&Self::topic().into_val(env)), ConversionError);
 
         let v: Vec<Val> = Vec::try_from_val(env, data)?;
@@ -163,9 +155,10 @@ mod test {
     use crate::{assert_invoke_auth_err, assert_invoke_auth_ok, shared_interfaces, testdata};
     use std::format;
 
+    use crate::events::match_last_emitted_event;
     use crate::testdata::contract::ContractClient;
-    use soroban_sdk::testutils::{Address as _, Events, MockAuth, MockAuthInvoke};
-    use soroban_sdk::{contracttype, Address, Env, String, TryFromVal};
+    use soroban_sdk::testutils::{Address as _, MockAuth, MockAuthInvoke};
+    use soroban_sdk::{contracttype, Address, Env, String};
 
     const WASM: &[u8] = include_bytes!("testdata/contract.wasm");
 
@@ -347,11 +340,7 @@ mod test {
             Some(String::from_str(&env, "migrated"))
         );
 
-        let event = env
-            .events()
-            .all()
-            .iter()
-            .find_map(|event| UpgradedEvent::try_from_val(&env, &event).ok());
+        let event = match_last_emitted_event::<UpgradedEvent>(&env);
         goldie::assert!(format!("{:?}", event))
     }
 
