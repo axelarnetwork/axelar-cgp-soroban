@@ -2,7 +2,7 @@ use core::fmt::Debug;
 use soroban_sdk::testutils::Events;
 use soroban_sdk::{Address, Env, IntoVal, Topics, TryFromVal, Val, Vec};
 
-pub trait Event: TryFromVal<Env, (Vec<Val>, Val)> + Debug {
+pub trait Event: TryFromVal<Env, (Vec<Val>, Val)> + Debug + PartialEq {
     fn topic() -> impl Topics;
     fn data(&self) -> impl IntoVal<Env, Val>;
 
@@ -11,7 +11,7 @@ pub trait Event: TryFromVal<Env, (Vec<Val>, Val)> + Debug {
     }
 }
 
-pub fn match_last_emitted_event<E>(env: &Env) -> Option<(Address, E)>
+pub fn parse_last_emitted_event<E>(env: &Env) -> Result<(Address, E), Error>
 where
     E: Event,
 {
@@ -19,9 +19,10 @@ where
         .all()
         .last()
         .and_then(|event| convert_emitted_event(env, event))
+        .ok_or(Error::EventNotFound)
 }
 
-pub fn match_emitted_event_at_idx<E>(env: &Env, idx: u32) -> Option<(Address, E)>
+pub fn parse_emitted_event_at_idx<E>(env: &Env, idx: u32) -> Result<(Address, E), Error>
 where
     E: Event,
 {
@@ -29,6 +30,7 @@ where
         .all()
         .get(idx)
         .and_then(|event| convert_emitted_event(env, event))
+        .ok_or(Error::EventNotFound)
 }
 
 fn convert_emitted_event<E>(
@@ -41,6 +43,11 @@ where
     E::try_from_val(env, &(topics, data))
         .ok()
         .map(|e| (contract_id, e))
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum Error {
+    EventNotFound,
 }
 
 #[cfg(test)]

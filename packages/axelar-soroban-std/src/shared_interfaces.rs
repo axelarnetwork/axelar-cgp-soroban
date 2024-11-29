@@ -155,7 +155,7 @@ mod test {
     use crate::{assert_invoke_auth_err, assert_invoke_auth_ok, shared_interfaces, testdata};
     use std::format;
 
-    use crate::events::match_last_emitted_event;
+    use crate::events::parse_last_emitted_event;
     use crate::testdata::contract::ContractClient;
     use soroban_sdk::testutils::{Address as _, MockAuth, MockAuthInvoke};
     use soroban_sdk::{contracttype, Address, Env, String};
@@ -340,7 +340,7 @@ mod test {
             Some(String::from_str(&env, "migrated"))
         );
 
-        let event = match_last_emitted_event::<UpgradedEvent>(&env);
+        let event = parse_last_emitted_event::<UpgradedEvent>(&env);
         goldie::assert!(format!("{:?}", event))
     }
 
