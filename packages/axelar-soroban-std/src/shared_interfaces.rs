@@ -1,8 +1,9 @@
 use crate::ensure;
 use crate::events::Event;
+#[cfg(any(test, feature = "testutils"))]
+use crate::impl_testutils;
 use soroban_sdk::{
-    contractclient, symbol_short, Address, BytesN, ConversionError, Env, FromVal, IntoVal, String,
-    Topics, TryFromVal, Val, Vec,
+    contractclient, symbol_short, Address, BytesN, Env, FromVal, String, Symbol, Val,
 };
 
 #[contractclient(name = "OwnershipClient")]
@@ -100,31 +101,25 @@ fn complete_migration(env: &Env) {
         .remove(&storage::DataKey::SharedInterfaces_Migrating);
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct UpgradedEvent {
     version: String,
 }
 
 impl Event for UpgradedEvent {
-    fn topic() -> impl Topics {
+    type Data = (String,);
+    type Topics = (Symbol,);
+
+    fn topics(&self) -> Self::Topics {
         (symbol_short!("upgraded"),)
     }
 
-    fn data(&self) -> impl IntoVal<Env, Val> {
-        (self.version.to_val(),)
+    fn data(&self) -> Self::Data {
+        (self.version.clone(),)
     }
-}
 
-impl TryFromVal<Env, (Vec<Val>, Val)> for UpgradedEvent {
-    type Error = ConversionError;
-
-    fn try_from_val(env: &Env, (topics, data): &(Vec<Val>, Val)) -> Result<Self, Self::Error> {
-        ensure!(topics.eq(&Self::topic().into_val(env)), ConversionError);
-
-        let v: Vec<Val> = Vec::try_from_val(env, data)?;
-        String::try_from_val(env, &v.first().ok_or(ConversionError)?)
-            .map(|version| Self { version })
-    }
+    #[cfg(any(test, feature = "testutils"))]
+    impl_testutils!((Symbol), (String));
 }
 
 // submodule to encapsulate the disabled linting
@@ -152,10 +147,10 @@ pub enum MigrationError {
 #[cfg(test)]
 mod test {
     use crate::shared_interfaces::{OwnershipClient, UpgradableClient, UpgradedEvent};
-    use crate::{assert_invoke_auth_err, assert_invoke_auth_ok, shared_interfaces, testdata};
-    use std::format;
+    use crate::{
+        assert_invoke_auth_err, assert_invoke_auth_ok, events, shared_interfaces, testdata,
+    };
 
-    use crate::events::parse_last_emitted_event;
     use crate::testdata::contract::ContractClient;
     use soroban_sdk::testutils::{Address as _, MockAuth, MockAuthInvoke};
     use soroban_sdk::{contracttype, Address, Env, String};
@@ -340,8 +335,8 @@ mod test {
             Some(String::from_str(&env, "migrated"))
         );
 
-        let event = parse_last_emitted_event::<UpgradedEvent>(&env);
-        goldie::assert!(format!("{:?}", event))
+        let event = events::fmt_last_emitted_event::<UpgradedEvent>(&env);
+        goldie::assert!(event)
     }
 
     // Because migration happens on a contract loaded from WASM, code coverage analysis doesn't recognize

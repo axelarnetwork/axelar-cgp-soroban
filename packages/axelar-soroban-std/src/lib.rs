@@ -1,6 +1,5 @@
 #![no_std]
-extern crate alloc;
-#[cfg(test)]
+#[cfg(any(test, feature = "testutils"))]
 extern crate std;
 // required by goldie
 
@@ -18,6 +17,7 @@ pub mod error;
 
 pub mod shared_interfaces;
 
-mod events;
+pub mod events;
+
 #[cfg(test)]
 mod testdata;
