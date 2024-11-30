@@ -56,7 +56,6 @@ mod testutils {
     #[macro_export]
     macro_rules! impl_event_testutils {
         ($event_type:ty, ($($topic_type:ty),*), ($($data_type:ty),*)) => {
-            #[cfg(any(test, feature = "testutils"))]
             impl $crate::events::EventTestutils for $event_type {
                 fn matches(&self, env: &soroban_sdk::Env, event: &(soroban_sdk::Address, soroban_sdk::Vec<soroban_sdk::Val>, soroban_sdk::Val)) -> bool {
                     use soroban_sdk::IntoVal;
