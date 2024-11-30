@@ -113,7 +113,7 @@ impl Event for UpgradedEvent {
     }
 
     fn data(&self) -> impl IntoVal<Env, Val> + Debug {
-        (self.version.clone(),)
+        (self.version.to_val(),)
     }
 }
 
