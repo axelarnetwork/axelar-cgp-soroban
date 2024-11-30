@@ -1,9 +1,10 @@
 use crate::ensure;
 use crate::events::Event;
 #[cfg(any(test, feature = "testutils"))]
-use crate::impl_testutils;
+use crate::impl_event_testutils;
+use core::fmt::Debug;
 use soroban_sdk::{
-    contractclient, symbol_short, Address, BytesN, Env, FromVal, String, Symbol, Val,
+    contractclient, symbol_short, Address, BytesN, Env, FromVal, IntoVal, String, Topics, Val,
 };
 
 #[contractclient(name = "OwnershipClient")]
@@ -107,20 +108,16 @@ pub struct UpgradedEvent {
 }
 
 impl Event for UpgradedEvent {
-    type Data = (String,);
-    type Topics = (Symbol,);
-
-    fn topics(&self) -> Self::Topics {
+    fn topics(&self) -> impl Topics + Debug {
         (symbol_short!("upgraded"),)
     }
 
-    fn data(&self) -> Self::Data {
+    fn data(&self) -> impl IntoVal<Env, Val> + Debug {
         (self.version.clone(),)
     }
-
-    #[cfg(any(test, feature = "testutils"))]
-    impl_testutils!((Symbol), (String));
 }
+
+impl_event_testutils!(UpgradedEvent, (String), (String));
 
 // submodule to encapsulate the disabled linting
 mod storage {
