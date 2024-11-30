@@ -21,7 +21,9 @@ impl AxelarGasService {
             .instance()
             .set(&DataKey::GasCollector, &gas_collector);
     }
+}
 
+impl AxelarGasService {
     // Modify this function to add migration logic
     const fn run_migration(_env: &Env, _migration_data: ()) {}
 }
