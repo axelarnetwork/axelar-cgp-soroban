@@ -25,13 +25,6 @@ pub fn extend_balance_ttl(env: &Env, key: &DataKey) {
         .extend_ttl(key, BALANCE_LIFETIME_THRESHOLD, BALANCE_BUMP_AMOUNT);
 }
 
-pub fn admin(env: &Env) -> Address {
-    env.storage()
-        .instance()
-        .get(&DataKey::Admin)
-        .expect("admin not found")
-}
-
 pub fn read_allowance(env: &Env, from: Address, spender: Address) -> AllowanceValue {
     let key = DataKey::Allowance(AllowanceDataKey { from, spender });
     env.storage()

@@ -9,7 +9,7 @@ use soroban_sdk::{
 };
 use soroban_token_sdk::metadata::TokenMetadata;
 
-fn create_token<'a>(env: &Env, admin: &Address, minter: &Address) -> InterchainTokenClient<'a> {
+fn create_token<'a>(env: &Env, owner: &Address, minter: &Address) -> InterchainTokenClient<'a> {
     let interchain_token_service = Address::generate(&env);
     let token_id: Bytes = BytesN::<20>::random(&env).into();
     let token_meta_data = TokenMetadata {
@@ -21,9 +21,9 @@ fn create_token<'a>(env: &Env, admin: &Address, minter: &Address) -> InterchainT
     let contract_id = env.register(
         InterchainToken,
         (
-            &interchain_token_service,
-            admin,
+            owner,
             minter,
+            &interchain_token_service,
             &token_id,
             token_meta_data,
         ),
@@ -121,7 +121,8 @@ fn test() {
     assert_eq!(token.balance(&user1), 500);
     assert_eq!(token.balance(&user3), 300);
 
-    token.set_admin(&admin2);
+    token.transfer_ownership(&admin2);
+
     assert_eq!(
         env.auths(),
         std::vec![(
@@ -129,7 +130,7 @@ fn test() {
             AuthorizedInvocation {
                 function: AuthorizedFunction::Contract((
                     token.address.clone(),
-                    symbol_short!("set_admin"),
+                    Symbol::new(&env, "transfer_ownership"),
                     (&admin2,).into_val(&env),
                 )),
                 sub_invocations: std::vec![]
