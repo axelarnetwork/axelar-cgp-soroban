@@ -127,7 +127,7 @@ impl InterchainToken {
     }
 
     pub fn add_minter(env: &Env, minter: Address) {
-        Self::owner(&env).require_auth();
+        Self::owner(env).require_auth();
 
         env.storage()
             .persistent()
