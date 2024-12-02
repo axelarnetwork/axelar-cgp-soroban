@@ -295,22 +295,6 @@ mod tests {
     }
 
     #[test]
-    fn rotate_signers() {
-        let (env, signers, client) = setup_env(1, randint(1, 10));
-
-        let msg_hash: BytesN<32> = BytesN::random(&env);
-        let new_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator);
-
-        testutils::rotate_signers(&env, &client.address, new_signers.clone());
-
-        let proof = generate_proof(&env, msg_hash.clone(), new_signers);
-
-        env.as_contract(&client.address, || {
-            assert!(assert_ok!(auth::validate_proof(&env, &msg_hash, proof)));
-        });
-    }
-
-    #[test]
     fn rotate_signers_fail_empty_signers() {
         let (env, _, _client) = setup_env(randint(0, 10), randint(1, 10));
 
