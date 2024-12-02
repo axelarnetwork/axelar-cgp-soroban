@@ -592,8 +592,6 @@ fn fail_validate_proof_threshold_not_met() {
     }
     proof.signers = new_signers;
 
-    // TODO: investgiatge why rotate_signers doesn't work
-
     // should panic, all signatures are valid but total weight is below threshold
     assert_contract_err!(
         client.try_approve_messages(&messages, &proof),

@@ -76,9 +76,7 @@ impl AxelarGateway {
             minimum_rotation_delay,
             previous_signers_retention,
             initial_signers,
-        )?;
-
-        Ok(())
+        )
     }
 }
 
