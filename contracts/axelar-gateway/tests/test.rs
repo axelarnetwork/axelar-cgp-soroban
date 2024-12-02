@@ -534,7 +534,7 @@ fn fail_validate_proof_invalid_signatures() {
     let proof = generate_proof(&env, msg_hash, signers);
 
     // should panic, proof is for different message hash
-    // NOTE: panic occurs in std function cannot handle explicitly
+    // NOTE: panic occurs in std function, cannot handle explicitly
     client.approve_messages(&messages, &proof);
 }
 
