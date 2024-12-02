@@ -3,7 +3,7 @@ use axelar_gateway::testutils::{
     generate_proof, generate_signers_set, generate_test_message, get_approve_hash, randint,
     setup_gateway, TestSignerSet,
 };
-use axelar_gateway::types::{Message, ProofSignature, ProofSigner, WeightedSigners};
+use axelar_gateway::types::{Message, ProofSignature, ProofSigner, WeightedSigner, WeightedSigners};
 use axelar_gateway::{AxelarGateway, AxelarGatewayClient};
 use axelar_soroban_std::{
     assert_contract_err, assert_invocation, assert_invoke_auth_err, assert_invoke_auth_ok,
@@ -622,5 +622,25 @@ fn fail_validate_proof_threshold_overflow() {
     assert_contract_err!(
         client.try_approve_messages(&messages, &proof),
         ContractError::InvalidSignersHash
+    );
+}
+
+#[test]
+fn rotate_signers_fail_empty_signers() {
+    let (env, signers, client) = setup_env(randint(0, 10), randint(1, 10));
+
+    let empty_signers = WeightedSigners {
+        signers: Vec::<WeightedSigner>::new(&env),
+        threshold: 0u128,
+        nonce: BytesN::random(&env),
+    };
+
+    let data_hash = empty_signers.signers_rotation_hash(&env);
+    let proof = generate_proof(&env, data_hash, signers);
+
+    // should throw an error, empty signer set
+    assert_contract_err!(
+        client.try_rotate_signers(&empty_signers, &proof, &true),
+        ContractError::InvalidSigners
     );
 }

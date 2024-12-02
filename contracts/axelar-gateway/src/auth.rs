@@ -295,23 +295,6 @@ mod tests {
     }
 
     #[test]
-    fn rotate_signers_fail_empty_signers() {
-        let (env, _, _client) = setup_env(randint(0, 10), randint(1, 10));
-
-        let empty_signers = WeightedSigners {
-            signers: Vec::<WeightedSigner>::new(&env),
-            threshold: 0u128,
-            nonce: BytesN::random(&env),
-        };
-
-        // should throw an error, empty signer set
-        assert_err!(
-            auth::rotate_signers(&env, &empty_signers, false),
-            ContractError::InvalidSigners
-        );
-    }
-
-    #[test]
     fn rotate_signers_fail_zero_weight() {
         let (env, _, _client) = setup_env(1, randint(1, 10));
 
