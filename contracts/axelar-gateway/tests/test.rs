@@ -3,7 +3,7 @@ use axelar_gateway::testutils::{
     generate_proof, generate_signers_set, generate_test_message, get_approve_hash, randint,
     setup_gateway, TestSignerSet,
 };
-use axelar_gateway::types::{Message, WeightedSigners};
+use axelar_gateway::types::{Message, ProofSignature, ProofSigner, WeightedSigners};
 use axelar_gateway::{AxelarGateway, AxelarGatewayClient};
 use axelar_soroban_std::{
     assert_contract_err, assert_invocation, assert_invoke_auth_err, assert_invoke_auth_ok,
@@ -535,4 +535,29 @@ fn fail_validate_proof_invalid_signatures() {
     // should panic, proof is for different message hash
     // NOTE: panic occurs in std function cannot handle explicitly
     client.approve_messages(&messages, &proof);
+}
+
+#[test]
+fn fail_validate_proof_empty_signatures() {
+    let (env, signers, client) = setup_env(randint(0, 10), randint(1, 10));
+
+    let msg_hash: BytesN<32> = BytesN::random(&env);
+    let mut proof = generate_proof(&env, msg_hash.clone(), signers.clone());
+
+    // Modify signatures to make them invalid
+    let mut new_signers = Vec::new(&env);
+    for signer in proof.signers.iter() {
+        new_signers.push_back(ProofSigner {
+            signer: signer.signer,
+            signature: ProofSignature::Unsigned,
+        });
+    }
+    proof.signers = new_signers;
+
+    let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
+
+    assert_contract_err!(
+        client.try_rotate_signers(&new_signers.signers, &proof, &true),
+        ContractError::InvalidSignatures
+    );
 }

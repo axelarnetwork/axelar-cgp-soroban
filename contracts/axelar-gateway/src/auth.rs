@@ -295,29 +295,6 @@ mod tests {
     }
 
     #[test]
-    fn fail_validate_proof_invalid_signer_set() {
-        let (env, signers, client) = setup_env(randint(0, 10), randint(1, 10));
-
-        let new_signers =
-            generate_signers_set(&env, randint(1, 10), signers.domain_separator.clone());
-
-        let msg_hash: BytesN<32> = BytesN::random(&env);
-        let mut proof = generate_proof(&env, msg_hash.clone(), signers);
-
-        let new_proof = generate_proof(&env, msg_hash.clone(), new_signers);
-
-        proof.signers = new_proof.signers;
-
-        // validate_proof should panic, signatures do not match signers
-        env.as_contract(&client.address, || {
-            assert_err!(
-                auth::validate_proof(&env, &msg_hash, proof),
-                ContractError::InvalidSignersHash
-            );
-        })
-    }
-
-    #[test]
     fn fail_validate_proof_threshold_not_met() {
         let (env, signers, client) = setup_env(randint(0, 10), randint(1, 10));
 
