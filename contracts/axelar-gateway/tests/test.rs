@@ -665,3 +665,27 @@ fn rotate_signers_fail_empty_signers() {
         ContractError::InvalidSigners
     );
 }
+
+#[test]
+fn rotate_signers_fail_zero_weight() {
+    let (env, signers, client) = setup_env(1, randint(1, 10));
+
+    let mut new_signers = generate_signers_set(&env, randint(1, 10), BytesN::random(&env));
+
+    let last_index = new_signers.signers.signers.len() - 1;
+
+    // get last signer and modify its weight to zero
+    if let Some(mut last_signer) = new_signers.signers.signers.get(last_index) {
+        last_signer.weight = 0u128;
+        new_signers.signers.signers.set(last_index, last_signer);
+    }
+
+    let data_hash = new_signers.signers.signers_rotation_hash(&env);
+    let proof = generate_proof(&env, data_hash, signers);
+
+    // should throw an error, last signer weight is zero
+    assert_contract_err!(
+        client.try_rotate_signers(&new_signers.signers, &proof, &true),
+         ContractError::InvalidWeight
+    );
+}

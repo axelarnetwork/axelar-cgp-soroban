@@ -269,27 +269,6 @@ mod tests {
     }
 
     #[test]
-    fn rotate_signers_fail_zero_weight() {
-        let (env, _, _client) = setup_env(1, randint(1, 10));
-
-        let mut new_signers = generate_signers_set(&env, randint(1, 10), BytesN::random(&env));
-
-        let last_index = new_signers.signers.signers.len() - 1;
-
-        // get last signer and modify its weight to zero
-        if let Some(mut last_signer) = new_signers.signers.signers.get(last_index) {
-            last_signer.weight = 0u128;
-            new_signers.signers.signers.set(last_index, last_signer);
-        }
-
-        // should throw an error, last signer weight is zero
-        assert_err!(
-            auth::rotate_signers(&env, &new_signers.signers, false),
-            ContractError::InvalidWeight
-        )
-    }
-
-    #[test]
     fn rotate_signers_fail_weight_overflow() {
         let (env, _, _client) = setup_env(1, randint(1, 10));
 
