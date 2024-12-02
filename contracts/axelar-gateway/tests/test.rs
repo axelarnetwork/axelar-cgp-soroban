@@ -4,7 +4,7 @@ use axelar_gateway::testutils::{
     setup_gateway, TestSignerSet,
 };
 use axelar_gateway::types::Message;
-use axelar_gateway::AxelarGatewayClient;
+use axelar_gateway::{AxelarGateway, AxelarGatewayClient};
 use axelar_soroban_std::{
     assert_contract_err, assert_invocation, assert_invoke_auth_err, assert_invoke_auth_ok,
     assert_last_emitted_event,
@@ -489,4 +489,33 @@ fn upgrade_unauthorized() {
 
     assert_invoke_auth_err!(not_owner, client.try_upgrade(&new_wasm_hash));
     assert_invoke_auth_err!(client.operator(), client.try_upgrade(&new_wasm_hash));
+}
+
+#[test]
+#[should_panic]
+/// TODO: figure out how to detect error in constructor failure
+fn fail_initialization_with_empty_signer_set() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let owner = Address::generate(&env);
+    let operator = Address::generate(&env);
+
+    let empty_signer_set = Vec::<WeightedSigners>::new(&env);
+    let domain_separator: BytesN<32> = BytesN::random(&env);
+    let previous_signers_retention = randint(0, 10) as u64;
+    let minimum_rotation_delay = 0;
+    let initial_signers = empty_signer_set;
+
+    // should panic because of empty signer set
+    env.register(
+        AxelarGateway,
+        (
+            owner,
+            operator,
+            domain_separator,
+            minimum_rotation_delay,
+            previous_signers_retention as u64,
+            initial_signers,
+        ),
+    );
 }

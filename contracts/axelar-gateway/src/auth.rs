@@ -269,32 +269,6 @@ mod tests {
     }
 
     #[test]
-    fn fails_with_empty_signer_set() {
-        let (env, _signers, client) = setup_env(1, randint(1, 10));
-
-        // create an empty WeightedSigners vector
-        let empty_signer_set = Vec::<WeightedSigners>::new(&env);
-        let domain_separator: BytesN<32> = BytesN::random(&env);
-        let previous_signer_retention = randint(0, 10) as u64;
-        let minimum_rotation_delay = 0;
-        let initial_signers = empty_signer_set;
-
-        // call should panic because signer set is empty
-        env.as_contract(&client.address, || {
-            assert_err!(
-                initialize_auth(
-                    env.clone(),
-                    domain_separator,
-                    minimum_rotation_delay,
-                    previous_signer_retention,
-                    initial_signers,
-                ),
-                ContractError::InvalidSigners
-            );
-        })
-    }
-
-    #[test]
     fn validate_proof() {
         let (env, signers, client) = setup_env(randint(0, 10), randint(1, 10));
 
@@ -424,6 +398,7 @@ mod tests {
             );
         })
     }
+
     #[test]
     fn fail_validate_proof_threshold_overflow() {
         let (env, mut signers, client) = setup_env(randint(0, 10), randint(1, 10));
