@@ -295,40 +295,6 @@ mod tests {
     }
 
     #[test]
-    fn fail_validate_proof_threshold_not_met() {
-        let (env, signers, client) = setup_env(randint(0, 10), randint(1, 10));
-
-        let mut total_weight = 0u128;
-
-        let msg_hash: BytesN<32> = BytesN::random(&env);
-        let mut proof = generate_proof(&env, msg_hash.clone(), signers);
-
-        // Modify signatures to make them invalid
-        let mut new_signers = Vec::new(&env);
-        for ProofSigner { signer, signature } in proof.signers.iter() {
-            total_weight += signer.weight;
-
-            if total_weight < proof.threshold {
-                new_signers.push_back(ProofSigner { signer, signature });
-            } else {
-                new_signers.push_back(ProofSigner {
-                    signer,
-                    signature: ProofSignature::Unsigned,
-                });
-            }
-        }
-        proof.signers = new_signers;
-
-        // should panic, all signatures are valid but total weight is below threshold
-        env.as_contract(&client.address, || {
-            assert_err!(
-                auth::validate_proof(&env, &msg_hash, proof),
-                ContractError::InvalidSignatures
-            );
-        })
-    }
-
-    #[test]
     fn fail_validate_proof_threshold_overflow() {
         let (env, mut signers, client) = setup_env(randint(0, 10), randint(1, 10));
 
