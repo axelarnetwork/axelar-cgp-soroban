@@ -599,3 +599,28 @@ fn fail_validate_proof_threshold_not_met() {
         ContractError::InvalidSignatures
     );
 }
+
+#[test]
+fn fail_validate_proof_threshold_overflow() {
+    let (env, mut signers, client) = setup_env(randint(0, 10), randint(1, 10));
+
+    let last_index = signers.signers.signers.len() - 1;
+
+    // get last signer and modify its weight to max u128 - 1
+    if let Some(mut last_signer) = signers.signers.signers.get(last_index) {
+        last_signer.weight = u128::MAX - 1;
+        signers.signers.signers.set(last_index, last_signer);
+    }
+
+    let msg_hash: BytesN<32> = BytesN::random(&env);
+    let proof = generate_proof(&env, msg_hash.clone(), signers.clone());
+
+    let (message, _) = generate_test_message(&env);
+    let messages = vec![&env, message];
+
+    // should panic, as modified signer wouldn't match the epoch
+    assert_contract_err!(
+        client.try_approve_messages(&messages, &proof),
+        ContractError::InvalidSignersHash
+    );
+}
