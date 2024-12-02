@@ -686,6 +686,32 @@ fn rotate_signers_fail_zero_weight() {
     // should throw an error, last signer weight is zero
     assert_contract_err!(
         client.try_rotate_signers(&new_signers.signers, &proof, &true),
-         ContractError::InvalidWeight
+        ContractError::InvalidWeight
+    );
+}
+
+#[test]
+fn rotate_signers_fail_weight_overflow() {
+    let (env, signers, client) = setup_env(1, randint(1, 10));
+
+    let mut new_signers = generate_signers_set(&env, randint(3, 10), BytesN::random(&env));
+
+    let last_index = new_signers.signers.signers.len() - 1;
+
+    // get last signer and modify its weight to max u128 - 1
+    if let Some(mut last_signer) = new_signers.signers.signers.get(last_index) {
+        last_signer.weight = u128::MAX - 1;
+        new_signers.signers.signers.set(last_index, last_signer);
+    }
+
+    let data_hash = new_signers.signers.signers_rotation_hash(&env);
+    let proof = generate_proof(&env, data_hash, signers);
+
+    // last signer weight should cause overflow
+    assert_contract_err!(
+        client.try_rotate_signers(&new_signers.signers, &proof, &true),
+        ContractError::WeightOverflow
+    )
+}
     );
 }

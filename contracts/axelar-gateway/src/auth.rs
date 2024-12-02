@@ -269,27 +269,6 @@ mod tests {
     }
 
     #[test]
-    fn rotate_signers_fail_weight_overflow() {
-        let (env, _, _client) = setup_env(1, randint(1, 10));
-
-        let mut new_signers = generate_signers_set(&env, randint(3, 10), BytesN::random(&env));
-
-        let last_index = new_signers.signers.signers.len() - 1;
-
-        // get last signer and modify its weight to max u128 - 1
-        if let Some(mut last_signer) = new_signers.signers.signers.get(last_index) {
-            last_signer.weight = u128::MAX - 1;
-            new_signers.signers.signers.set(last_index, last_signer);
-        }
-
-        // last signer weight should cause overflow
-        assert_err!(
-            auth::rotate_signers(&env, &new_signers.signers, false),
-            ContractError::WeightOverflow
-        )
-    }
-
-    #[test]
     fn rotate_signers_fail_zero_threshold() {
         let (env, _, _client) = setup_env(1, randint(1, 10));
         let mut new_signers = generate_signers_set(&env, randint(1, 10), BytesN::random(&env));
