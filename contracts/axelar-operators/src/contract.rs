@@ -31,7 +31,7 @@ impl AxelarOperators {
     pub fn is_operator(env: Env, account: Address) -> bool {
         let key = DataKey::Operators(account);
 
-        env.storage().persistent().has(&key)
+        env.storage().instance().has(&key)
     }
 
     /// Add an address as an operator.
@@ -43,11 +43,11 @@ impl AxelarOperators {
         let key = DataKey::Operators(account.clone());
 
         ensure!(
-            !env.storage().persistent().has(&key),
+            !env.storage().instance().has(&key),
             ContractError::OperatorAlreadyAdded
         );
 
-        env.storage().persistent().set(&key, &true);
+        env.storage().instance().set(&key, &true);
 
         event::add_operator(&env, account);
         Ok(())
@@ -62,11 +62,11 @@ impl AxelarOperators {
         let key = DataKey::Operators(account.clone());
 
         ensure!(
-            env.storage().persistent().has(&key),
+            env.storage().instance().has(&key),
             ContractError::NotAnOperator
         );
 
-        env.storage().persistent().remove(&key);
+        env.storage().instance().remove(&key);
 
         event::remove_operator(&env, account);
         Ok(())
@@ -85,7 +85,7 @@ impl AxelarOperators {
         let key = DataKey::Operators(operator);
 
         ensure!(
-            env.storage().persistent().has(&key),
+            env.storage().instance().has(&key),
             ContractError::NotAnOperator
         );
 

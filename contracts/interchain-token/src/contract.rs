@@ -36,11 +36,9 @@ impl InterchainToken {
         Self::write_metadata(&env, token_meta_data);
 
         env.storage().instance().set(&DataKey::TokenId, &token_id);
+        env.storage().instance().set(&DataKey::Minter(minter), &());
         env.storage()
-            .persistent()
-            .set(&DataKey::Minter(minter), &());
-        env.storage()
-            .persistent()
+            .instance()
             .set(&DataKey::Minter(interchain_token_service.clone()), &());
         env.storage()
             .instance()
@@ -64,7 +62,7 @@ impl InterchainToken {
     }
 
     pub fn is_minter(env: &Env, minter: Address) -> bool {
-        env.storage().persistent().has(&DataKey::Minter(minter))
+        env.storage().instance().has(&DataKey::Minter(minter))
     }
 
     pub fn mint(env: Env, minter: Address, to: Address, amount: i128) -> Result<(), ContractError> {
@@ -106,7 +104,7 @@ impl InterchainToken {
         Self::owner(env).require_auth();
 
         env.storage()
-            .persistent()
+            .instance()
             .set(&DataKey::Minter(minter.clone()), &());
 
         event::add_minter(env, minter);
@@ -116,7 +114,7 @@ impl InterchainToken {
         Self::owner(env).require_auth();
 
         env.storage()
-            .persistent()
+            .instance()
             .remove(&DataKey::Minter(minter.clone()));
 
         event::remove_minter(env, minter);
