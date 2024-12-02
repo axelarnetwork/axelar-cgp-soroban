@@ -3,19 +3,20 @@ use axelar_gateway::testutils::{
     generate_proof, generate_signers_set, generate_test_message, get_approve_hash, randint,
     setup_gateway, TestSignerSet,
 };
-use axelar_gateway::types::{Message, ProofSignature, ProofSigner, WeightedSigner, WeightedSigners};
+use axelar_gateway::types::{
+    Message, ProofSignature, ProofSigner, WeightedSigner, WeightedSigners,
+};
 use axelar_gateway::{AxelarGateway, AxelarGatewayClient};
 use axelar_soroban_std::{
     assert_contract_err, assert_invocation, assert_invoke_auth_err, assert_invoke_auth_ok,
     assert_last_emitted_event,
 };
-use soroban_sdk::{Symbol, Vec};
 use soroban_sdk::{
     bytes,
-    testutils::{Address as _, Events, MockAuth, MockAuthInvoke, BytesN as _},
+    testutils::{Address as _, BytesN as _, Events, MockAuth, MockAuthInvoke},
     vec, Address, BytesN, Env, String,
 };
-
+use soroban_sdk::{Symbol, Vec};
 
 const DESTINATION_CHAIN: &str = "ethereum";
 const DESTINATION_ADDRESS: &str = "0x4EFE356BEDeCC817cb89B4E9b796dB8bC188DC59";
@@ -597,6 +598,26 @@ fn fail_validate_proof_threshold_not_met() {
     assert_contract_err!(
         client.try_approve_messages(&messages, &proof),
         ContractError::InvalidSignatures
+    );
+}
+
+#[test]
+fn fail_validate_proof_invalid_signer_set() {
+    let (env, signers, client) = setup_env(randint(0, 10), randint(1, 10));
+
+    let new_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator.clone());
+
+    let msg_hash: BytesN<32> = BytesN::random(&env);
+    let mut proof = generate_proof(&env, msg_hash.clone(), signers);
+
+    let new_proof = generate_proof(&env, msg_hash.clone(), new_signers.clone());
+
+    proof.signers = new_proof.signers;
+
+    // validate_proof should panic, signatures do not match signers
+    assert_contract_err!(
+        client.try_rotate_signers(&new_signers.signers, &proof, &true),
+        ContractError::InvalidSignersHash
     );
 }
 

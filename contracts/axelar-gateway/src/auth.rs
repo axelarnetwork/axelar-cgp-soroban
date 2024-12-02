@@ -269,32 +269,6 @@ mod tests {
     }
 
     #[test]
-    fn fail_validate_proof_empty_signatures() {
-        let (env, signers, client) = setup_env(randint(0, 10), randint(1, 10));
-
-        let msg_hash: BytesN<32> = BytesN::random(&env);
-        let mut proof = generate_proof(&env, msg_hash.clone(), signers);
-
-        // Modify signatures to make them invalid
-        let mut new_signers = Vec::new(&env);
-        for signer in proof.signers.iter() {
-            new_signers.push_back(ProofSigner {
-                signer: signer.signer,
-                signature: ProofSignature::Unsigned,
-            });
-        }
-        proof.signers = new_signers;
-
-        // validate_proof should panic, empty signatures
-        env.as_contract(&client.address, || {
-            assert_err!(
-                auth::validate_proof(&env, &msg_hash, proof),
-                ContractError::InvalidSignatures
-            );
-        })
-    }
-
-    #[test]
     fn rotate_signers_fail_zero_weight() {
         let (env, _, _client) = setup_env(1, randint(1, 10));
 
