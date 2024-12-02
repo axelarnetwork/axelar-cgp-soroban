@@ -759,3 +759,33 @@ fn rotate_signers_fail_low_total_weight() {
         ContractError::InvalidThreshold
     )
 }
+
+#[test]
+fn rotate_signers_fail_wrong_signer_order() {
+    let (env, signers, client) = setup_env(1, randint(1, 10));
+
+    let min_signers = 2; // need at least 2 signers to test incorrect ordering
+    let mut new_signers =
+        generate_signers_set(&env, randint(min_signers, 10), BytesN::random(&env));
+
+    let len = new_signers.signers.signers.len();
+
+    // create a new vec and reverse signer order
+    let mut reversed_signers = Vec::new(&env);
+    for i in (0..len).rev() {
+        if let Some(item) = new_signers.signers.signers.get(i) {
+            reversed_signers.push_back(item);
+        }
+    }
+
+    new_signers.signers.signers = reversed_signers;
+
+    let data_hash = new_signers.signers.signers_rotation_hash(&env);
+    let proof = generate_proof(&env, data_hash, signers);
+
+    // should error because signers are in wrong order
+    assert_contract_err!(
+        client.try_rotate_signers(&new_signers.signers, &proof, &true),
+        ContractError::InvalidSigners
+    )
+}

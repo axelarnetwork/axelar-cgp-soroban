@@ -267,34 +267,6 @@ mod tests {
     fn register_auth() {
         setup_env(randint(0, 10), randint(1, 10));
     }
-
-    #[test]
-    fn rotate_signers_fail_wrong_signer_order() {
-        let (env, _, _client) = setup_env(1, randint(1, 10));
-
-        let min_signers = 2; // need at least 2 signers to test incorrect ordering
-        let mut new_signers =
-            generate_signers_set(&env, randint(min_signers, 10), BytesN::random(&env));
-
-        let len = new_signers.signers.signers.len();
-
-        // create a new vec and reverse signer order
-        let mut reversed_signers = Vec::new(&env);
-        for i in (0..len).rev() {
-            if let Some(item) = new_signers.signers.signers.get(i) {
-                reversed_signers.push_back(item);
-            }
-        }
-
-        new_signers.signers.signers = reversed_signers;
-
-        // should error because signers are in wrong order
-        assert_err!(
-            auth::rotate_signers(&env, &new_signers.signers, false),
-            ContractError::InvalidSigners
-        )
-    }
-
     #[test]
     fn multi_rotate_signers() {
         let previous_signer_retention = randint(1, 5);
