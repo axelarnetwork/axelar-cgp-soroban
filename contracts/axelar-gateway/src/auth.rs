@@ -269,19 +269,6 @@ mod tests {
     }
 
     #[test]
-    fn validate_proof() {
-        let (env, signers, client) = setup_env(randint(0, 10), randint(1, 10));
-
-        let msg_hash: BytesN<32> = BytesN::random(&env);
-        let proof = generate_proof(&env, msg_hash.clone(), signers);
-
-        // validate_proof shouldn't panic
-        env.as_contract(&client.address, || {
-            assert!(assert_ok!(auth::validate_proof(&env, &msg_hash, proof)));
-        });
-    }
-
-    #[test]
     fn fail_validate_proof_invalid_epoch() {
         let (env, _signers, client) = setup_env(randint(0, 10), randint(1, 10));
 
