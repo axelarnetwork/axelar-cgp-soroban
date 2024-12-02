@@ -238,39 +238,20 @@ fn validate_signers(env: &Env, weighted_signers: &WeightedSigners) -> Result<(),
 
 #[cfg(all(test, feature = "testutils"))]
 mod tests {
-    use crate::error::ContractError;
-    use crate::testutils::TestSignerSet;
-    use crate::types::{ProofSignature, ProofSigner, WeightedSigner, WeightedSigners};
-    use crate::AxelarGatewayClient;
+    use soroban_sdk::{testutils::BytesN as _, BytesN, Env};
 
-    use soroban_sdk::{testutils::BytesN as _, BytesN, Env, Vec};
+    use crate::auth;
+    use axelar_soroban_std::assert_ok;
 
-    use axelar_soroban_std::{assert_err, assert_ok};
+    use crate::testutils::{self, generate_proof, generate_signers_set, randint, setup_gateway};
 
-    use crate::{
-        auth::{self, initialize_auth},
-        testutils::{self, generate_proof, generate_signers_set, randint, setup_gateway},
-    };
-
-    fn setup_env<'a>(
-        previous_signers_retention: u32,
-        num_signers: u32,
-    ) -> (Env, TestSignerSet, AxelarGatewayClient<'a>) {
-        let env = Env::default();
-        env.mock_all_auths();
-        let (signers, client) = setup_gateway(&env, previous_signers_retention, num_signers);
-
-        (env, signers, client)
-    }
-
-    #[test]
-    fn register_auth() {
-        setup_env(randint(0, 10), randint(1, 10));
-    }
     #[test]
     fn multi_rotate_signers() {
         let previous_signer_retention = randint(1, 5);
-        let (env, original_signers, client) = setup_env(previous_signer_retention, randint(1, 10));
+        let env = Env::default();
+        env.mock_all_auths();
+        let (original_signers, client) =
+            setup_gateway(&env, previous_signer_retention, randint(1, 10));
 
         let msg_hash: BytesN<32> = BytesN::random(&env);
 
