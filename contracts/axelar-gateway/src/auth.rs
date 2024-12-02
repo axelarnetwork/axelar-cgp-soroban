@@ -269,23 +269,6 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "failed ED25519 verification")]
-    fn fail_validate_proof_invalid_signatures() {
-        let (env, signers, client) = setup_env(randint(0, 10), randint(1, 10));
-
-        let msg_hash: BytesN<32> = BytesN::random(&env);
-        let proof = generate_proof(&env, msg_hash.clone(), signers);
-
-        let different_msg_hash: BytesN<32> = BytesN::random(&env);
-
-        // should panic, proof is for different message hash
-        // NOTE: panic occurs in std function cannot handle explicitly
-        env.as_contract(&client.address, || {
-            assert_ok!(auth::validate_proof(&env, &different_msg_hash, proof));
-        })
-    }
-
-    #[test]
     fn fail_validate_proof_empty_signatures() {
         let (env, signers, client) = setup_env(randint(0, 10), randint(1, 10));
 

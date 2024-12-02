@@ -3,18 +3,19 @@ use axelar_gateway::testutils::{
     generate_proof, generate_signers_set, generate_test_message, get_approve_hash, randint,
     setup_gateway, TestSignerSet,
 };
-use axelar_gateway::types::Message;
+use axelar_gateway::types::{Message, WeightedSigners};
 use axelar_gateway::{AxelarGateway, AxelarGatewayClient};
 use axelar_soroban_std::{
     assert_contract_err, assert_invocation, assert_invoke_auth_err, assert_invoke_auth_ok,
     assert_last_emitted_event,
 };
-use soroban_sdk::Symbol;
+use soroban_sdk::{Symbol, Vec};
 use soroban_sdk::{
     bytes,
-    testutils::{Address as _, Events, MockAuth, MockAuthInvoke},
+    testutils::{Address as _, Events, MockAuth, MockAuthInvoke, BytesN as _},
     vec, Address, BytesN, Env, String,
 };
+
 
 const DESTINATION_CHAIN: &str = "ethereum";
 const DESTINATION_ADDRESS: &str = "0x4EFE356BEDeCC817cb89B4E9b796dB8bC188DC59";
@@ -518,4 +519,20 @@ fn fail_initialization_with_empty_signer_set() {
             initial_signers,
         ),
     );
+}
+
+#[test]
+#[should_panic(expected = "failed ED25519 verification")]
+fn fail_validate_proof_invalid_signatures() {
+    let (env, signers, client) = setup_env(randint(0, 10), randint(1, 10));
+
+    let (message, _) = generate_test_message(&env);
+    let messages = vec![&env, message.clone()];
+
+    let msg_hash: BytesN<32> = BytesN::random(&env);
+    let proof = generate_proof(&env, msg_hash, signers);
+
+    // should panic, proof is for different message hash
+    // NOTE: panic occurs in std function cannot handle explicitly
+    client.approve_messages(&messages, &proof);
 }
