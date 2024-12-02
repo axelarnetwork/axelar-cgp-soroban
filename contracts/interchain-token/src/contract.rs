@@ -323,7 +323,6 @@ impl InterchainToken {
         }
     }
 
-    // ahram: if we add has_check, this won't work
     fn read_balance(env: &Env, addr: Address) -> i128 {
         let key = DataKey::Balance(addr);
         env.storage()
