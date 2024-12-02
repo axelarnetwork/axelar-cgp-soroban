@@ -53,7 +53,7 @@ macro_rules! assert_err {
 /// Panics with a custom error message for consistent error reporting.
 /// Asserts a condition and panics with a custom error message if it fails.
 #[macro_export]
-macro_rules! assert_with_error {
+macro_rules! panic_with_error {
     ($condition:expr, $err:expr) => {
         if !$condition {
             panic!("{}", $err);
