@@ -18,5 +18,7 @@ pub mod error;
 
 pub mod shared_interfaces;
 
+pub mod constants;
+
 #[cfg(test)]
 mod testdata;

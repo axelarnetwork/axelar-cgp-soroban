@@ -1,17 +1,21 @@
 #![cfg(test)]
 extern crate std;
 
+use axelar_soroban_std::{
+    assert_invoke_auth_err, assert_invoke_auth_ok, assert_last_emitted_event,
+};
 use interchain_token::{contract::InterchainToken, InterchainTokenClient};
+use soroban_sdk::testutils::{MockAuth, MockAuthInvoke};
 use soroban_sdk::{
     symbol_short,
     testutils::{Address as _, AuthorizedFunction, AuthorizedInvocation, BytesN as _},
-    Address, Bytes, BytesN, Env, IntoVal as _, Symbol,
+    Address, BytesN, Env, IntoVal as _, Symbol,
 };
 use soroban_token_sdk::metadata::TokenMetadata;
 
 fn create_token<'a>(env: &Env, owner: &Address, minter: &Address) -> InterchainTokenClient<'a> {
     let interchain_token_service = Address::generate(&env);
-    let token_id: Bytes = BytesN::<20>::random(&env).into();
+    let token_id: BytesN<32> = BytesN::<32>::random(&env);
     let token_meta_data = TokenMetadata {
         decimal: 6,
         name: "name".into_val(env),
@@ -28,26 +32,24 @@ fn create_token<'a>(env: &Env, owner: &Address, minter: &Address) -> InterchainT
             token_meta_data,
         ),
     );
-    let token = InterchainTokenClient::new(env, &contract_id);
-    token
+
+    InterchainTokenClient::new(env, &contract_id)
 }
 
 #[test]
 fn test() {
     let env = Env::default();
-    env.mock_all_auths();
 
-    let admin1 = Address::generate(&env);
-    let admin2 = Address::generate(&env);
+    let owner1 = Address::generate(&env);
+    let owner2 = Address::generate(&env);
     let minter1 = Address::generate(&env);
     let user1 = Address::generate(&env);
     let user2 = Address::generate(&env);
     let user3 = Address::generate(&env);
 
-    let token = create_token(&env, &admin1, &minter1);
+    let token = create_token(&env, &owner1, &minter1);
 
-    token.mint(&minter1, &user1, &1000);
-
+    assert_invoke_auth_ok!(minter1, token.try_mint(&minter1, &user1, &1000_i128));
     assert_eq!(
         env.auths(),
         std::vec![(
@@ -56,15 +58,20 @@ fn test() {
                 function: AuthorizedFunction::Contract((
                     token.address.clone(),
                     symbol_short!("mint"),
-                    (&user1, 1000_i128).into_val(&env),
+                    (minter1, &user1, 1000_i128).into_val(&env),
                 )),
                 sub_invocations: std::vec![]
             }
         )]
     );
-    assert_eq!(token.balance(&user1), 1000);
+    assert_eq!(token.balance(&user1), 1000_i128);
 
-    token.approve(&user2, &user3, &500, &200);
+    let expiration_ledger = 200;
+
+    assert_invoke_auth_ok!(
+        user2,
+        token.try_approve(&user2, &user3, &500_i128, &expiration_ledger)
+    );
     assert_eq!(
         env.auths(),
         std::vec![(
@@ -73,15 +80,15 @@ fn test() {
                 function: AuthorizedFunction::Contract((
                     token.address.clone(),
                     symbol_short!("approve"),
-                    (&user2, &user3, 500_i128, 200_u32).into_val(&env),
+                    (&user2, &user3, 500_i128, expiration_ledger).into_val(&env),
                 )),
                 sub_invocations: std::vec![]
             }
         )]
     );
-    assert_eq!(token.allowance(&user2, &user3), 500);
+    assert_eq!(token.allowance(&user2, &user3), 500_i128);
 
-    token.transfer(&user1, &user2, &600);
+    assert_invoke_auth_ok!(user1, token.try_transfer(&user1, &user2, &600_i128));
     assert_eq!(
         env.auths(),
         std::vec![(
@@ -96,10 +103,13 @@ fn test() {
             }
         )]
     );
-    assert_eq!(token.balance(&user1), 400);
-    assert_eq!(token.balance(&user2), 600);
+    assert_eq!(token.balance(&user1), 400_i128);
+    assert_eq!(token.balance(&user2), 600_i128);
 
-    token.transfer_from(&user3, &user2, &user1, &400);
+    assert_invoke_auth_ok!(
+        user3,
+        token.try_transfer_from(&user3, &user2, &user1, &400_i128)
+    );
     assert_eq!(
         env.auths(),
         std::vec![(
@@ -114,24 +124,23 @@ fn test() {
             }
         )]
     );
-    assert_eq!(token.balance(&user1), 800);
-    assert_eq!(token.balance(&user2), 200);
+    assert_eq!(token.balance(&user1), 800_i128);
+    assert_eq!(token.balance(&user2), 200_i128);
 
-    token.transfer(&user1, &user3, &300);
-    assert_eq!(token.balance(&user1), 500);
-    assert_eq!(token.balance(&user3), 300);
+    assert_invoke_auth_ok!(user1, token.try_transfer(&user1, &user3, &300_i128));
+    assert_eq!(token.balance(&user1), 500_i128);
+    assert_eq!(token.balance(&user3), 300_i128);
 
-    token.transfer_ownership(&admin2);
-
+    assert_invoke_auth_ok!(owner1, token.try_transfer_ownership(&owner2));
     assert_eq!(
         env.auths(),
         std::vec![(
-            admin1.clone(),
+            owner1.clone(),
             AuthorizedInvocation {
                 function: AuthorizedFunction::Contract((
                     token.address.clone(),
                     Symbol::new(&env, "transfer_ownership"),
-                    (&admin2,).into_val(&env),
+                    (&owner2,).into_val(&env),
                 )),
                 sub_invocations: std::vec![]
             }
@@ -139,9 +148,16 @@ fn test() {
     );
 
     // Increase to 500
-    token.approve(&user2, &user3, &500, &200);
-    assert_eq!(token.allowance(&user2, &user3), 500);
-    token.approve(&user2, &user3, &0, &200);
+    assert_invoke_auth_ok!(
+        user2,
+        token.try_approve(&user2, &user3, &500_i128, &expiration_ledger)
+    );
+    assert_eq!(token.allowance(&user2, &user3), 500_i128);
+
+    assert_invoke_auth_ok!(
+        user2,
+        token.try_approve(&user2, &user3, &0_i128, &expiration_ledger)
+    );
     assert_eq!(
         env.auths(),
         std::vec![(
@@ -150,7 +166,7 @@ fn test() {
                 function: AuthorizedFunction::Contract((
                     token.address.clone(),
                     symbol_short!("approve"),
-                    (&user2, &user3, 0_i128, 200_u32).into_val(&env),
+                    (&user2, &user3, 0_i128, expiration_ledger).into_val(&env),
                 )),
                 sub_invocations: std::vec![]
             }
@@ -162,17 +178,17 @@ fn test() {
 #[test]
 fn minter_test() {
     let env = Env::default();
-    env.mock_all_auths();
 
     let amount = 1000;
-    let admin = Address::generate(&env);
+    let owner = Address::generate(&env);
     let minter1 = Address::generate(&env);
     let user = Address::generate(&env);
 
-    let token = create_token(&env, &admin, &minter1);
+    let token = create_token(&env, &owner, &minter1);
 
-    // minter can mint token to user
-    token.mint(&minter1, &user, &amount);
+    assert_invoke_auth_err!(owner, token.try_mint(&minter1, &user, &amount));
+    assert_invoke_auth_err!(user, token.try_mint(&minter1, &user, &amount));
+    assert_invoke_auth_ok!(minter1, token.try_mint(&minter1, &user, &amount));
 
     assert_eq!(
         env.auths(),
@@ -182,7 +198,7 @@ fn minter_test() {
                 function: AuthorizedFunction::Contract((
                     token.address.clone(),
                     symbol_short!("mint"),
-                    (&user, amount).into_val(&env),
+                    (minter1, &user, amount).into_val(&env),
                 )),
                 sub_invocations: std::vec![]
             }
@@ -192,23 +208,132 @@ fn minter_test() {
 }
 
 #[test]
+fn add_minter() {
+    let env = Env::default();
+
+    let amount = 1000;
+    let owner = Address::generate(&env);
+    let minter1 = Address::generate(&env);
+    let minter2 = Address::generate(&env);
+    let user = Address::generate(&env);
+
+    let token = create_token(&env, &owner, &minter1);
+
+    assert_invoke_auth_err!(owner, token.try_mint(&minter1, &user, &amount));
+    assert_invoke_auth_err!(user, token.try_mint(&minter1, &user, &amount));
+    assert_invoke_auth_ok!(minter1, token.try_mint(&minter1, &user, &amount));
+
+    assert_eq!(
+        env.auths(),
+        std::vec![(
+            minter1.clone(),
+            AuthorizedInvocation {
+                function: AuthorizedFunction::Contract((
+                    token.address.clone(),
+                    symbol_short!("mint"),
+                    (minter1, &user, amount).into_val(&env),
+                )),
+                sub_invocations: std::vec![]
+            }
+        )]
+    );
+    assert_eq!(token.balance(&user), amount);
+
+    assert_invoke_auth_ok!(owner, token.try_add_minter(&minter2));
+
+    assert_last_emitted_event(
+        &env,
+        &token.address,
+        (Symbol::new(&env, "minter_added"), minter2.clone()),
+        (),
+    );
+
+    assert_invoke_auth_ok!(minter2, token.try_mint(&minter2, &user, &amount));
+
+    assert_eq!(
+        env.auths(),
+        std::vec![(
+            minter2.clone(),
+            AuthorizedInvocation {
+                function: AuthorizedFunction::Contract((
+                    token.address.clone(),
+                    symbol_short!("mint"),
+                    (minter2, &user, amount).into_val(&env),
+                )),
+                sub_invocations: std::vec![]
+            }
+        )]
+    );
+    assert_eq!(token.balance(&user), amount * 2);
+}
+
+#[test]
+fn remove_minter() {
+    let env = Env::default();
+
+    let amount = 1000;
+    let owner = Address::generate(&env);
+    let minter1 = Address::generate(&env);
+    let user = Address::generate(&env);
+
+    let token = create_token(&env, &owner, &minter1);
+
+    assert_invoke_auth_err!(owner, token.try_mint(&minter1, &user, &amount));
+    assert_invoke_auth_err!(user, token.try_mint(&minter1, &user, &amount));
+    assert_invoke_auth_ok!(minter1, token.try_mint(&minter1, &user, &amount));
+
+    assert_eq!(
+        env.auths(),
+        std::vec![(
+            minter1.clone(),
+            AuthorizedInvocation {
+                function: AuthorizedFunction::Contract((
+                    token.address.clone(),
+                    symbol_short!("mint"),
+                    (minter1.clone(), &user, amount).into_val(&env),
+                )),
+                sub_invocations: std::vec![]
+            }
+        )]
+    );
+    assert_eq!(token.balance(&user), amount);
+
+    assert_invoke_auth_ok!(owner, token.try_remove_minter(&minter1));
+
+    assert_last_emitted_event(
+        &env,
+        &token.address,
+        (Symbol::new(&env, "minter_removed"), minter1.clone()),
+        (),
+    );
+
+    assert_invoke_auth_err!(minter1, token.try_mint(&minter1, &user, &amount));
+}
+
+#[test]
 fn test_burn() {
     let env = Env::default();
-    env.mock_all_auths();
 
-    let admin = Address::generate(&env);
+    let owner = Address::generate(&env);
     let minter = Address::generate(&env);
     let user1 = Address::generate(&env);
     let user2 = Address::generate(&env);
-    let token = create_token(&env, &admin, &minter);
+    let token = create_token(&env, &owner, &minter);
+    let amount = 1000;
 
-    token.mint(&minter, &user1, &1000);
-    assert_eq!(token.balance(&user1), 1000);
+    assert_invoke_auth_ok!(minter, token.try_mint(&minter, &user1, &amount));
+    assert_eq!(token.balance(&user1), amount);
 
-    token.approve(&user1, &user2, &500, &200);
-    assert_eq!(token.allowance(&user1, &user2), 500);
+    let expiration_ledger = 200;
+    let amount2 = 500;
 
-    token.burn_from(&user2, &user1, &500);
+    assert_invoke_auth_ok!(
+        user1,
+        token.try_approve(&user1, &user2, &amount2, &expiration_ledger)
+    );
+    assert_eq!(token.allowance(&user1, &user2), amount2);
+
+    assert_invoke_auth_ok!(user2, token.try_burn_from(&user2, &user1, &amount2));
     assert_eq!(
         env.auths(),
         std::vec![(
@@ -217,7 +342,7 @@ fn test_burn() {
                 function: AuthorizedFunction::Contract((
                     token.address.clone(),
                     symbol_short!("burn_from"),
-                    (&user2, &user1, 500_i128).into_val(&env),
+                    (&user2, &user1, amount2).into_val(&env),
                 )),
                 sub_invocations: std::vec![]
             }
@@ -225,10 +350,10 @@ fn test_burn() {
     );
 
     assert_eq!(token.allowance(&user1, &user2), 0);
-    assert_eq!(token.balance(&user1), 500);
+    assert_eq!(token.balance(&user1), amount2);
     assert_eq!(token.balance(&user2), 0);
 
-    token.burn(&user1, &500);
+    assert_invoke_auth_ok!(user1, token.try_burn(&user1, &amount2));
     assert_eq!(
         env.auths(),
         std::vec![(
@@ -237,7 +362,7 @@ fn test_burn() {
                 function: AuthorizedFunction::Contract((
                     token.address.clone(),
                     symbol_short!("burn"),
-                    (&user1, 500_i128).into_val(&env),
+                    (&user1, amount2).into_val(&env),
                 )),
                 sub_invocations: std::vec![]
             }
@@ -252,10 +377,10 @@ fn test_burn() {
 #[should_panic(expected = "HostError: Error(Context, InvalidAction)")]
 fn decimal_is_over_max() {
     let env = Env::default();
-    let admin = Address::generate(&env);
+    let owner = Address::generate(&env);
     let minter = Address::generate(&env);
     let interchain_token_service = Address::generate(&env);
-    let token_id: Bytes = BytesN::<20>::random(&env).into();
+    let token_id: BytesN<32> = BytesN::<32>::random(&env);
     let token_meta_data = TokenMetadata {
         decimal: (u32::from(u8::MAX) + 1),
         name: "name".into_val(&env),
@@ -265,9 +390,9 @@ fn decimal_is_over_max() {
     env.register(
         InterchainToken,
         (
-            &interchain_token_service,
-            admin,
+            owner,
             minter,
+            &interchain_token_service,
             &token_id,
             token_meta_data,
         ),
@@ -278,10 +403,10 @@ fn decimal_is_over_max() {
 #[should_panic(expected = "HostError: Error(Context, InvalidAction)")]
 fn token_name_is_empty() {
     let env = Env::default();
-    let admin = Address::generate(&env);
+    let owner = Address::generate(&env);
     let minter = Address::generate(&env);
     let interchain_token_service = Address::generate(&env);
-    let token_id: Bytes = BytesN::<20>::random(&env).into();
+    let token_id: BytesN<32> = BytesN::<32>::random(&env);
     let token_meta_data = TokenMetadata {
         decimal: 1,
         name: "".into_val(&env),
@@ -291,9 +416,9 @@ fn token_name_is_empty() {
     env.register(
         InterchainToken,
         (
-            &interchain_token_service,
-            admin,
+            owner,
             minter,
+            &interchain_token_service,
             &token_id,
             token_meta_data,
         ),
@@ -304,10 +429,10 @@ fn token_name_is_empty() {
 #[should_panic(expected = "HostError: Error(Context, InvalidAction)")]
 fn token_symbol_is_empty() {
     let env = Env::default();
-    let admin = Address::generate(&env);
+    let owner = Address::generate(&env);
     let minter = Address::generate(&env);
     let interchain_token_service = Address::generate(&env);
-    let token_id: Bytes = BytesN::<20>::random(&env).into();
+    let token_id: BytesN<32> = BytesN::<32>::random(&env);
     let token_meta_data = TokenMetadata {
         decimal: 1,
         name: "name".into_val(&env),
@@ -317,9 +442,9 @@ fn token_symbol_is_empty() {
     env.register(
         InterchainToken,
         (
-            &interchain_token_service,
-            admin,
+            owner,
             minter,
+            &interchain_token_service,
             &token_id,
             token_meta_data,
         ),
@@ -330,10 +455,10 @@ fn token_symbol_is_empty() {
 #[should_panic(expected = "HostError: Error(Context, InvalidAction)")]
 fn token_id_is_empty() {
     let env = Env::default();
-    let admin = Address::generate(&env);
+    let owner = Address::generate(&env);
     let minter = Address::generate(&env);
     let interchain_token_service = Address::generate(&env);
-    let token_id: Bytes = BytesN::from_array(&env, &[]).into();
+    let token_id: BytesN<32> = BytesN::<32>::random(&env);
     let token_meta_data = TokenMetadata {
         decimal: 1,
         name: "name".into_val(&env),
@@ -343,9 +468,9 @@ fn token_id_is_empty() {
     env.register(
         InterchainToken,
         (
-            &interchain_token_service,
-            admin,
+            owner,
             minter,
+            &interchain_token_service,
             &token_id,
             token_meta_data,
         ),
@@ -358,11 +483,11 @@ fn transfer_insufficient_balance() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let admin = Address::generate(&env);
+    let owner = Address::generate(&env);
     let minter = Address::generate(&env);
     let user1 = Address::generate(&env);
     let user2 = Address::generate(&env);
-    let token = create_token(&env, &admin, &minter);
+    let token = create_token(&env, &owner, &minter);
 
     token.mint(&minter, &user1, &1000);
     assert_eq!(token.balance(&user1), 1000);
@@ -376,12 +501,12 @@ fn transfer_from_insufficient_allowance() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let admin = Address::generate(&env);
+    let owner = Address::generate(&env);
     let minter = Address::generate(&env);
     let user1 = Address::generate(&env);
     let user2 = Address::generate(&env);
     let user3 = Address::generate(&env);
-    let token = create_token(&env, &admin, &minter);
+    let token = create_token(&env, &owner, &minter);
 
     token.mint(&minter, &user1, &1000);
     assert_eq!(token.balance(&user1), 1000);

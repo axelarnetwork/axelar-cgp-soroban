@@ -4,6 +4,7 @@ use crate::messaging_interface::AxelarGatewayMessagingInterface;
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::types::{CommandType, Message, Proof, WeightedSigners};
 use crate::{auth, event};
+use axelar_soroban_std::constants::{INSTANCE_TTL_EXTEND_TO, INSTANCE_TTL_THRESHOLD};
 use axelar_soroban_std::shared_interfaces::{migrate, UpgradableInterface};
 use axelar_soroban_std::shared_interfaces::{MigratableInterface, OwnableInterface};
 use axelar_soroban_std::{ensure, shared_interfaces};
@@ -11,15 +12,6 @@ use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
 
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-/// Parameters for extending the contract instance and its instance storage.
-///
-/// If the instance's time to live falls below 14 days, it will be extended by 60 days.
-///
-/// If at least one message is approved every 14 days, the instance should never be archived.
-const LEDGERS_PER_DAY: u32 = (24 * 3600) / 5;
-const INSTANCE_TTL_THRESHOLD: u32 = 14 * LEDGERS_PER_DAY;
-const INSTANCE_TTL_EXTEND_TO: u32 = 60 * LEDGERS_PER_DAY;
 
 #[contract]
 pub struct AxelarGateway;
