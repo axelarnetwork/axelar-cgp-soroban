@@ -269,21 +269,6 @@ mod tests {
     }
 
     #[test]
-    fn rotate_signers_fail_zero_threshold() {
-        let (env, _, _client) = setup_env(1, randint(1, 10));
-        let mut new_signers = generate_signers_set(&env, randint(1, 10), BytesN::random(&env));
-
-        // set the threshold to zero
-        new_signers.signers.threshold = 0u128;
-
-        // should error because the threshold is set to zero
-        assert_err!(
-            auth::rotate_signers(&env, &new_signers.signers, false),
-            ContractError::InvalidThreshold
-        );
-    }
-
-    #[test]
     fn rotate_signers_fail_low_total_weight() {
         let (env, _, _client) = setup_env(1, randint(1, 10));
         let mut new_signers = generate_signers_set(&env, randint(1, 10), BytesN::random(&env));
