@@ -731,3 +731,31 @@ fn rotate_signers_fail_zero_threshold() {
         ContractError::InvalidThreshold
     );
 }
+
+#[test]
+fn rotate_signers_fail_low_total_weight() {
+    let (env, signers, client) = setup_env(1, randint(1, 10));
+    let mut new_signers = generate_signers_set(&env, randint(1, 10), BytesN::random(&env));
+
+    let total_weight = new_signers
+        .signers
+        .signers
+        .iter()
+        .map(|WeightedSigner { weight, .. }| weight)
+        .reduce(|acc, weight| acc + weight)
+        .expect("Empty signers");
+
+    let new_threshold = total_weight + 1;
+
+    // set the threshold to zero
+    new_signers.signers.threshold = new_threshold;
+
+    let data_hash = new_signers.signers.signers_rotation_hash(&env);
+    let proof = generate_proof(&env, data_hash, signers);
+
+    // should error because the threshold is set to zero
+    assert_contract_err!(
+        client.try_rotate_signers(&new_signers.signers, &proof, &true),
+        ContractError::InvalidThreshold
+    )
+}
