@@ -789,3 +789,24 @@ fn rotate_signers_fail_wrong_signer_order() {
         ContractError::InvalidSigners
     )
 }
+
+#[test]
+fn rotate_signers_fail_duplicated_signers() {
+    let (env, signers, client) = setup_env(1, randint(1, 10));
+
+    // let msg_hash = BytesN::random(&env);
+    let new_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator.clone());
+    let duplicated_signers = new_signers.clone();
+
+    let data_hash = new_signers.signers.signers_rotation_hash(&env);
+    let proof = generate_proof(&env, data_hash.clone(), signers);
+    client.rotate_signers(&new_signers.signers, &proof, &true);
+
+    let proof = generate_proof(&env, data_hash, new_signers);
+
+    // should panic, duplicated signers
+    assert_contract_err!(
+        client.try_rotate_signers(&duplicated_signers.signers, &proof, &true),
+        ContractError::DuplicateSigners
+    );
+}

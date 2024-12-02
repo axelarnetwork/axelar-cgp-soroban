@@ -333,30 +333,4 @@ mod tests {
             )
         });
     }
-
-    #[test]
-    fn rotate_signers_fail_duplicated_signers() {
-        let (env, signers, client) = setup_env(1, randint(1, 10));
-
-        let msg_hash = BytesN::random(&env);
-        let new_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator);
-        let duplicated_signers = new_signers.clone();
-
-        testutils::rotate_signers(&env, &client.address, new_signers.clone());
-
-        let proof = generate_proof(&env, msg_hash.clone(), new_signers);
-
-        env.as_contract(&client.address, || {
-            assert!(assert_ok!(auth::validate_proof(&env, &msg_hash, proof)));
-        });
-
-        // should panic, duplicated signers
-
-        env.as_contract(&client.address, || {
-            assert_err!(
-                auth::rotate_signers(&env, &duplicated_signers.signers, false),
-                ContractError::DuplicateSigners
-            );
-        });
-    }
 }
