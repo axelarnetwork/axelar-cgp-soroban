@@ -306,31 +306,4 @@ mod tests {
             assert!(!assert_ok!(auth::validate_proof(&env, &msg_hash, proof)));
         })
     }
-
-    #[test]
-    fn rotate_signers_panics_on_outdated_signer_set() {
-        let previous_signer_retention = randint(0, 5);
-        let (env, original_signers, client) = setup_env(previous_signer_retention, randint(1, 10));
-
-        let msg_hash: BytesN<32> = BytesN::random(&env);
-
-        for _ in 0..(previous_signer_retention + 1) {
-            let new_signers = generate_signers_set(
-                &env,
-                randint(1, 10),
-                original_signers.domain_separator.clone(),
-            );
-            testutils::rotate_signers(&env, &client.address, new_signers.clone());
-        }
-
-        // Proof from the first signer set should fail
-        let proof = generate_proof(&env, msg_hash.clone(), original_signers.clone());
-
-        env.as_contract(&client.address, || {
-            assert_err!(
-                auth::validate_proof(&env, &msg_hash, proof),
-                ContractError::InvalidSigners
-            )
-        });
-    }
 }

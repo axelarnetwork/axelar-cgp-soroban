@@ -810,3 +810,30 @@ fn rotate_signers_fail_duplicated_signers() {
         ContractError::DuplicateSigners
     );
 }
+
+#[test]
+fn rotate_signers_panics_on_outdated_signer_set() {
+    let previous_signer_retention = randint(0, 5);
+    let (env, original_signers, client) = setup_env(previous_signer_retention, randint(1, 10));
+
+    let msg_hash: BytesN<32> = BytesN::random(&env);
+
+    for _ in 0..(previous_signer_retention + 1) {
+        let new_signers = generate_signers_set(
+            &env,
+            randint(1, 10),
+            original_signers.domain_separator.clone(),
+        );
+        let data_hash = new_signers.signers.signers_rotation_hash(&env);
+        let proof = generate_proof(&env, data_hash, original_signers.clone());
+        client.rotate_signers(&new_signers.signers, &proof, &true);
+    }
+
+    // Proof from the first signer set should fail
+    let proof = generate_proof(&env, msg_hash.clone(), original_signers.clone());
+
+    assert_contract_err!(
+        client.try_rotate_signers(&original_signers.signers, &proof, &true),
+        ContractError::InvalidSigners
+    );
+}
