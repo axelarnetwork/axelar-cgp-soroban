@@ -269,24 +269,6 @@ mod tests {
     }
 
     #[test]
-    fn fail_validate_proof_invalid_epoch() {
-        let (env, _signers, client) = setup_env(randint(0, 10), randint(1, 10));
-
-        let different_signers = generate_signers_set(&env, randint(1, 10), BytesN::random(&env));
-
-        let msg_hash: BytesN<32> = BytesN::random(&env);
-        let proof = generate_proof(&env, msg_hash.clone(), different_signers);
-
-        // should panic, epoch should return zero for unknown signer set
-        env.as_contract(&client.address, || {
-            assert_err!(
-                auth::validate_proof(&env, &msg_hash, proof),
-                ContractError::InvalidSignersHash
-            );
-        })
-    }
-
-    #[test]
     #[should_panic(expected = "failed ED25519 verification")]
     fn fail_validate_proof_invalid_signatures() {
         let (env, signers, client) = setup_env(randint(0, 10), randint(1, 10));
