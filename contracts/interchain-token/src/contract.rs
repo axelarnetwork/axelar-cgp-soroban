@@ -33,10 +33,9 @@ impl InterchainToken {
 
         Self::validate_token_metadata(token_meta_data.clone())?;
 
-        env.storage().instance().set(&DataKey::TokenId, &token_id);
-
         Self::write_metadata(&env, token_meta_data);
 
+        env.storage().instance().set(&DataKey::TokenId, &token_id);
         env.storage()
             .persistent()
             .set(&DataKey::Minter(minter), &());
