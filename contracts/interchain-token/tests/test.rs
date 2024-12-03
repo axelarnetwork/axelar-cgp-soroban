@@ -119,6 +119,7 @@ fn register_token_with_invalid_symbol_fails() {
 #[test]
 fn register_interchain_token() {
     let env = Env::default();
+
     let (token, owner, minter) = setup_token(&env);
 
     assert_eq!(token.owner(), owner);
@@ -129,6 +130,7 @@ fn register_interchain_token() {
 #[test]
 fn transfer_ownership_from_non_owner() {
     let env = Env::default();
+
     let new_owner = Address::generate(&env);
     let user = Address::generate(&env);
 
@@ -184,6 +186,7 @@ fn fail_transfer_with_insufficient_balance() {
 #[test]
 fn transfer() {
     let env = Env::default();
+
     let user1 = Address::generate(&env);
     let user2 = Address::generate(&env);
     let amount = 1000;
