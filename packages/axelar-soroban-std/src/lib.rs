@@ -1,7 +1,8 @@
 #![no_std]
+
+// required by goldie
 #[cfg(any(test, feature = "testutils"))]
 extern crate std;
-// required by goldie
 
 #[cfg(any(test, feature = "testutils"))]
 pub mod testutils;
