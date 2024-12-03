@@ -12,7 +12,9 @@ use soroban_sdk::{
 };
 use soroban_token_sdk::metadata::TokenMetadata;
 
-fn create_token<'a>(env: &Env, owner: &Address, minter: &Address) -> InterchainTokenClient<'a> {
+fn setup_token<'a>(env: &Env) -> (InterchainTokenClient<'a>, Address, Address) {
+    let owner = Address::generate(&env);
+    let minter = Address::generate(&env);
     let interchain_token_service = Address::generate(&env);
     let token_id: BytesN<32> = BytesN::<32>::random(&env);
     let token_meta_data = TokenMetadata {
@@ -24,181 +26,16 @@ fn create_token<'a>(env: &Env, owner: &Address, minter: &Address) -> InterchainT
     let contract_id = env.register(
         InterchainToken,
         (
-            owner,
-            minter,
+            owner.clone(),
+            minter.clone(),
             &interchain_token_service,
             &token_id,
             token_meta_data,
         ),
     );
 
-    InterchainTokenClient::new(env, &contract_id)
-}
-
-#[test]
-fn token_operations() {
-    let env = Env::default();
-
-    let owner1 = Address::generate(&env);
-    let owner2 = Address::generate(&env);
-    let minter1 = Address::generate(&env);
-    let user1 = Address::generate(&env);
-    let user2 = Address::generate(&env);
-    let user3 = Address::generate(&env);
-
-    let token = create_token(&env, &owner1, &minter1);
-
-    assert_invoke_auth_ok!(minter1, token.try_mint(&minter1, &user1, &1000_i128));
-    assert_eq!(token.balance(&user1), 1000_i128);
-
-    let expiration_ledger = 200;
-
-    assert_invoke_auth_ok!(
-        user2,
-        token.try_approve(&user2, &user3, &500_i128, &expiration_ledger)
-    );
-    assert_eq!(token.allowance(&user2, &user3), 500_i128);
-
-    assert_invoke_auth_ok!(user1, token.try_transfer(&user1, &user2, &600_i128));
-    assert_eq!(token.balance(&user1), 400_i128);
-    assert_eq!(token.balance(&user2), 600_i128);
-
-    assert_invoke_auth_ok!(
-        user3,
-        token.try_transfer_from(&user3, &user2, &user1, &400_i128)
-    );
-    assert_eq!(token.balance(&user1), 800_i128);
-    assert_eq!(token.balance(&user2), 200_i128);
-
-    assert_invoke_auth_ok!(user1, token.try_transfer(&user1, &user3, &300_i128));
-    assert_eq!(token.balance(&user1), 500_i128);
-    assert_eq!(token.balance(&user3), 300_i128);
-
-    assert_invoke_auth_ok!(owner1, token.try_transfer_ownership(&owner2));
-
-    // Increase to 500
-    assert_invoke_auth_ok!(
-        user2,
-        token.try_approve(&user2, &user3, &500_i128, &expiration_ledger)
-    );
-    assert_eq!(token.allowance(&user2, &user3), 500_i128);
-
-    assert_invoke_auth_ok!(
-        user2,
-        token.try_approve(&user2, &user3, &0_i128, &expiration_ledger)
-    );
-    assert_eq!(token.allowance(&user2, &user3), 0);
-}
-
-#[test]
-fn mint_from_minter_succeeds() {
-    let env = Env::default();
-
-    let amount = 1000;
-    let owner = Address::generate(&env);
-    let minter1 = Address::generate(&env);
-    let user = Address::generate(&env);
-
-    let token = create_token(&env, &owner, &minter1);
-
-    assert_invoke_auth_ok!(minter1, token.try_mint(&minter1, &user, &amount));
-    assert_eq!(token.balance(&user), amount);
-}
-
-#[test]
-fn mint_from_invalid_minter_fails() {
-    let env = Env::default();
-
-    let amount = 1000;
-    let owner = Address::generate(&env);
-    let minter1 = Address::generate(&env);
-    let user = Address::generate(&env);
-
-    let token = create_token(&env, &owner, &minter1);
-
-    assert_invoke_auth_err!(owner, token.try_mint(&minter1, &user, &amount));
-    assert_invoke_auth_err!(user, token.try_mint(&minter1, &user, &amount));
-}
-
-#[test]
-fn add_minter() {
-    let env = Env::default();
-
-    let amount = 1000;
-    let owner = Address::generate(&env);
-    let minter1 = Address::generate(&env);
-    let minter2 = Address::generate(&env);
-    let user = Address::generate(&env);
-
-    let token = create_token(&env, &owner, &minter1);
-
-    assert_invoke_auth_ok!(owner, token.try_add_minter(&minter2));
-
-    assert_last_emitted_event(
-        &env,
-        &token.address,
-        (Symbol::new(&env, "minter_added"), minter2.clone()),
-        (),
-    );
-
-    assert_invoke_auth_ok!(minter2, token.try_mint(&minter2, &user, &amount));
-    assert_eq!(token.balance(&user), amount);
-}
-
-#[test]
-fn remove_minter() {
-    let env = Env::default();
-
-    let amount = 1000;
-    let owner = Address::generate(&env);
-    let minter1 = Address::generate(&env);
-    let user = Address::generate(&env);
-
-    let token = create_token(&env, &owner, &minter1);
-
-    assert_invoke_auth_ok!(owner, token.try_remove_minter(&minter1));
-
-    assert_last_emitted_event(
-        &env,
-        &token.address,
-        (Symbol::new(&env, "minter_removed"), minter1.clone()),
-        (),
-    );
-
-    assert_invoke_auth_err!(minter1, token.try_mint(&minter1, &user, &amount));
-}
-
-#[test]
-fn burn_succeeds() {
-    let env = Env::default();
-
-    let owner = Address::generate(&env);
-    let minter = Address::generate(&env);
-    let user1 = Address::generate(&env);
-    let user2 = Address::generate(&env);
-    let token = create_token(&env, &owner, &minter);
-    let amount = 1000;
-
-    assert_invoke_auth_ok!(minter, token.try_mint(&minter, &user1, &amount));
-    assert_eq!(token.balance(&user1), amount);
-
-    let expiration_ledger = 200;
-    let amount2 = 500;
-
-    assert_invoke_auth_ok!(
-        user1,
-        token.try_approve(&user1, &user2, &amount2, &expiration_ledger)
-    );
-    assert_eq!(token.allowance(&user1, &user2), amount2);
-
-    assert_invoke_auth_ok!(user2, token.try_burn_from(&user2, &user1, &amount2));
-    assert_eq!(token.allowance(&user1, &user2), 0);
-    assert_eq!(token.balance(&user1), amount2);
-    assert_eq!(token.balance(&user2), 0);
-
-    assert_invoke_auth_ok!(user1, token.try_burn(&user1, &amount2));
-    assert_eq!(token.balance(&user1), 0);
-    assert_eq!(token.balance(&user2), 0);
+    let token = InterchainTokenClient::new(env, &contract_id);
+    (token, owner, minter)
 }
 
 #[test]
@@ -280,40 +117,395 @@ fn register_token_with_invalid_symbol_fails() {
 }
 
 #[test]
-#[should_panic(expected = "insufficient balance")]
-fn transfer_insufficient_balance() {
+fn register_interchain_token() {
     let env = Env::default();
-    env.mock_all_auths();
+    let (token, owner, minter) = setup_token(&env);
 
-    let owner = Address::generate(&env);
-    let minter = Address::generate(&env);
-    let user1 = Address::generate(&env);
-    let user2 = Address::generate(&env);
-    let token = create_token(&env, &owner, &minter);
-
-    token.mint(&minter, &user1, &1000);
-    assert_eq!(token.balance(&user1), 1000);
-
-    token.transfer(&user1, &user2, &1001);
+    assert_eq!(token.owner(), owner);
+    assert_eq!(token.is_minter(&owner), false);
+    assert_eq!(token.is_minter(&minter), true);
 }
 
 #[test]
-#[should_panic(expected = "insufficient allowance")]
-fn transfer_from_insufficient_allowance() {
+fn transfer_ownership_from_non_owner() {
+    let env = Env::default();
+    let new_owner = Address::generate(&env);
+    let user = Address::generate(&env);
+
+    let (token, _owner, _minter) = setup_token(&env);
+
+    assert_invoke_auth_err!(user, token.try_transfer_ownership(&new_owner));
+}
+
+#[test]
+fn transfer_ownership() {
+    let env = Env::default();
+    let new_owner = Address::generate(&env);
+
+    let (token, owner, _minter) = setup_token(&env);
+
+    assert_eq!(token.owner(), owner);
+
+    assert_invoke_auth_ok!(owner, token.try_transfer_ownership(&new_owner));
+
+    assert_eq!(token.owner(), new_owner);
+}
+
+#[test]
+#[should_panic(expected = "HostError: Error(Contract, #6)")] // NegativeAmount
+fn fail_transfer_with_negative_amount() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let owner = Address::generate(&env);
-    let minter = Address::generate(&env);
+    let user1 = Address::generate(&env);
+    let user2 = Address::generate(&env);
+    let amount = -1;
+
+    let (token, _owner, _minter) = setup_token(&env);
+
+    token.transfer(&user1, &user2, &amount);
+}
+
+#[test]
+#[should_panic(expected = "HostError: Error(Contract, #9)")] // InsufficientBalance
+fn fail_transfer_with_insufficient_balance() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let user1 = Address::generate(&env);
+    let user2 = Address::generate(&env);
+    let amount = 1000;
+
+    let (token, _owner, _minter) = setup_token(&env);
+
+    token.transfer(&user1, &user2, &amount);
+}
+
+#[test]
+fn transfer() {
+    let env = Env::default();
+    let user1 = Address::generate(&env);
+    let user2 = Address::generate(&env);
+    let amount = 1000;
+
+    let (token, _owner, minter) = setup_token(&env);
+
+    assert_invoke_auth_ok!(minter, token.try_mint(&minter, &user1, &amount));
+    assert_eq!(token.balance(&user1), amount);
+
+    assert_invoke_auth_ok!(user1, token.try_transfer(&user1, &user2, &600_i128));
+    assert_eq!(token.balance(&user1), 400_i128);
+    assert_eq!(token.balance(&user2), 600_i128);
+}
+
+#[test]
+#[should_panic(expected = "HostError: Error(Contract, #6)")] // NegativeAmount
+fn fail_transfer_from_with_negative_amount() {
+    let env = Env::default();
+    env.mock_all_auths();
+
     let user1 = Address::generate(&env);
     let user2 = Address::generate(&env);
     let user3 = Address::generate(&env);
-    let token = create_token(&env, &owner, &minter);
+    let amount = -1;
 
-    token.mint(&minter, &user1, &1000);
+    let (token, _owner, minter) = setup_token(&env);
 
-    token.approve(&user1, &user3, &100, &200);
-    assert_eq!(token.allowance(&user1, &user3), 100);
+    assert_invoke_auth_ok!(minter, token.try_mint(&minter, &user1, &1000_i128));
+    assert_eq!(token.balance(&user1), 1000_i128);
 
-    token.transfer_from(&user3, &user1, &user2, &101);
+    let expiration_ledger = 200;
+
+    assert_invoke_auth_ok!(
+        user1,
+        token.try_approve(&user1, &user2, &500_i128, &expiration_ledger)
+    );
+    assert_eq!(token.allowance(&user1, &user2), 500_i128);
+
+    token.transfer_from(&user2, &user1, &user3, &amount);
+}
+
+#[test]
+#[should_panic(expected = "HostError: Error(Contract, #8)")] // InsufficientAllowance
+fn fail_transfer_from_without_approval() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let user1 = Address::generate(&env);
+    let user2 = Address::generate(&env);
+    let user3 = Address::generate(&env);
+
+    let (token, _owner, minter) = setup_token(&env);
+
+    assert_invoke_auth_ok!(minter, token.try_mint(&minter, &user1, &1000_i128));
+    assert_eq!(token.balance(&user1), 1000_i128);
+
+    token.transfer_from(&user2, &user1, &user3, &400_i128);
+}
+
+#[test]
+#[should_panic(expected = "HostError: Error(Contract, #8)")] // InsufficientAllowance
+fn fail_transfer_from_with_insufficient_allowance() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let user1 = Address::generate(&env);
+    let user2 = Address::generate(&env);
+    let user3 = Address::generate(&env);
+
+    let (token, _owner, minter) = setup_token(&env);
+
+    assert_invoke_auth_ok!(minter, token.try_mint(&minter, &user1, &1000_i128));
+    assert_eq!(token.balance(&user1), 1000_i128);
+
+    let expiration_ledger = 200;
+
+    assert_invoke_auth_ok!(
+        user1,
+        token.try_approve(&user1, &user2, &100_i128, &expiration_ledger)
+    );
+    assert_eq!(token.allowance(&user1, &user2), 100_i128);
+
+    token.transfer_from(&user2, &user1, &user3, &400_i128);
+}
+
+#[test]
+fn transfer_from() {
+    let env = Env::default();
+
+    let user1 = Address::generate(&env);
+    let user2 = Address::generate(&env);
+    let user3 = Address::generate(&env);
+
+    let (token, _owner, minter) = setup_token(&env);
+
+    assert_invoke_auth_ok!(minter, token.try_mint(&minter, &user1, &1000_i128));
+    assert_eq!(token.balance(&user1), 1000_i128);
+
+    let expiration_ledger = 200;
+
+    assert_invoke_auth_ok!(
+        user1,
+        token.try_approve(&user1, &user2, &500_i128, &expiration_ledger)
+    );
+    assert_eq!(token.allowance(&user1, &user2), 500_i128);
+
+    assert_invoke_auth_ok!(
+        user2,
+        token.try_transfer_from(&user2, &user1, &user3, &400_i128)
+    );
+    assert_eq!(token.balance(&user1), 600_i128);
+    assert_eq!(token.balance(&user2), 0_i128);
+    assert_eq!(token.balance(&user3), 400_i128);
+}
+
+#[test]
+fn fail_mint_from_invalid_minter() {
+    let env = Env::default();
+
+    let amount = 1000;
+
+    let user = Address::generate(&env);
+
+    let (token, owner, minter) = setup_token(&env);
+
+    assert_invoke_auth_err!(owner, token.try_mint(&minter, &user, &amount));
+    assert_invoke_auth_err!(user, token.try_mint(&minter, &user, &amount));
+}
+
+#[test]
+fn mint_from_minter_succeeds() {
+    let env = Env::default();
+
+    let amount = 1000;
+    let user = Address::generate(&env);
+
+    let (token, _owner, minter) = setup_token(&env);
+
+    assert_invoke_auth_ok!(minter, token.try_mint(&minter, &user, &amount));
+    assert_eq!(token.balance(&user), amount);
+}
+
+#[test]
+fn fail_add_minter_from_non_owner() {
+    let env = Env::default();
+
+    let minter2 = Address::generate(&env);
+    let user = Address::generate(&env);
+
+    let (token, _owner, _minter1) = setup_token(&env);
+
+    assert_invoke_auth_err!(user, token.try_add_minter(&minter2));
+}
+
+#[test]
+fn add_minter_succeeds() {
+    let env = Env::default();
+
+    let amount = 1000;
+    let minter2 = Address::generate(&env);
+    let user = Address::generate(&env);
+
+    let (token, owner, _minter1) = setup_token(&env);
+
+    assert_invoke_auth_ok!(owner, token.try_add_minter(&minter2));
+
+    assert_last_emitted_event(
+        &env,
+        &token.address,
+        (Symbol::new(&env, "minter_added"), minter2.clone()),
+        (),
+    );
+
+    assert_invoke_auth_ok!(minter2, token.try_mint(&minter2, &user, &amount));
+    assert_eq!(token.balance(&user), amount);
+}
+
+#[test]
+fn fail_remove_minter_from_non_owner() {
+    let env = Env::default();
+
+    let minter1 = Address::generate(&env);
+    let user = Address::generate(&env);
+
+    let (token, _owner, _minter) = setup_token(&env);
+
+    assert_invoke_auth_err!(user, token.try_remove_minter(&minter1));
+}
+
+#[test]
+fn remove_minter() {
+    let env = Env::default();
+
+    let amount = 1000;
+    let minter1 = Address::generate(&env);
+    let user = Address::generate(&env);
+
+    let (token, owner, _minter) = setup_token(&env);
+
+    assert_invoke_auth_ok!(owner, token.try_remove_minter(&minter1));
+
+    assert_last_emitted_event(
+        &env,
+        &token.address,
+        (Symbol::new(&env, "minter_removed"), minter1.clone()),
+        (),
+    );
+
+    assert_invoke_auth_err!(minter1, token.try_mint(&minter1, &user, &amount));
+}
+
+#[test]
+#[should_panic(expected = "HostError: Error(Contract, #6)")] // NegativeAmount
+fn fail_burn_with_negative_amount() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let user = Address::generate(&env);
+
+    let (token, _owner, minter) = setup_token(&env);
+    let amount = 1000;
+
+    assert_invoke_auth_ok!(minter, token.try_mint(&minter, &user, &amount));
+    assert_eq!(token.balance(&user), amount);
+
+    let burn_amount = -1;
+
+    token.burn(&user, &burn_amount);
+}
+
+#[test]
+#[should_panic(expected = "HostError: Error(Contract, #9)")] // InsufficientBalance
+fn fail_burn_with_insufficient_balance() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let user = Address::generate(&env);
+
+    let (token, _owner, minter) = setup_token(&env);
+    let amount = 1000;
+
+    assert_invoke_auth_ok!(minter, token.try_mint(&minter, &user, &amount));
+    assert_eq!(token.balance(&user), amount);
+
+    let burn_amount = 2000;
+
+    token.burn(&user, &burn_amount);
+}
+
+#[test]
+fn burn_succeeds() {
+    let env = Env::default();
+
+    let user = Address::generate(&env);
+
+    let (token, _owner, minter) = setup_token(&env);
+    let amount = 1000;
+
+    assert_invoke_auth_ok!(minter, token.try_mint(&minter, &user, &amount));
+    assert_eq!(token.balance(&user), amount);
+
+    assert_invoke_auth_ok!(user, token.try_burn(&user, &amount));
+    assert_eq!(token.balance(&user), 0);
+}
+
+#[test]
+#[should_panic(expected = "HostError: Error(Contract, #6)")] // NegativeAmount
+fn fail_burn_from_with_negative_amount() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let user1 = Address::generate(&env);
+    let user2 = Address::generate(&env);
+    let (token, _owner, _minter) = setup_token(&env);
+
+    let burn_amount = -1;
+
+    token.burn_from(&user2, &user1, &burn_amount);
+}
+
+#[test]
+#[should_panic(expected = "HostError: Error(Contract, #8)")] // InsufficientAllowance
+fn fail_burn_from_without_approval() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let user1 = Address::generate(&env);
+    let user2 = Address::generate(&env);
+    let (token, _owner, minter) = setup_token(&env);
+    let amount = 1000;
+
+    assert_invoke_auth_ok!(minter, token.try_mint(&minter, &user1, &amount));
+    assert_eq!(token.balance(&user1), amount);
+
+    let burn_amount = 500;
+
+    token.burn_from(&user2, &user1, &burn_amount);
+}
+
+#[test]
+fn burn_from_succeeds() {
+    let env = Env::default();
+
+    let user1 = Address::generate(&env);
+    let user2 = Address::generate(&env);
+    let (token, _owner, minter) = setup_token(&env);
+    let amount = 1000;
+
+    assert_invoke_auth_ok!(minter, token.try_mint(&minter, &user1, &amount));
+    assert_eq!(token.balance(&user1), amount);
+
+    let expiration_ledger = 200;
+    let burn_amount = 100;
+
+    assert_invoke_auth_ok!(
+        user1,
+        token.try_approve(&user1, &user2, &burn_amount, &expiration_ledger)
+    );
+    assert_eq!(token.allowance(&user1, &user2), burn_amount);
+
+    assert_invoke_auth_ok!(user2, token.try_burn_from(&user2, &user1, &burn_amount));
+    assert_eq!(token.allowance(&user1, &user2), 0);
+    assert_eq!(token.balance(&user1), (amount - burn_amount));
+    assert_eq!(token.balance(&user2), 0);
 }

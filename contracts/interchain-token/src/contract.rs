@@ -1,4 +1,6 @@
-use axelar_soroban_std::ttl::{INSTANCE_TTL_EXTEND_TO, INSTANCE_TTL_THRESHOLD};
+use axelar_soroban_std::ttl::{
+    extend_instance_ttl, INSTANCE_TTL_EXTEND_TO, INSTANCE_TTL_THRESHOLD,
+};
 use soroban_token_sdk::metadata::TokenMetadata;
 use soroban_token_sdk::TokenUtils;
 
@@ -11,10 +13,10 @@ use crate::storage_types::{AllowanceDataKey, AllowanceValue};
 use axelar_soroban_std::shared_interfaces::{
     migrate, MigratableInterface, OwnableInterface, UpgradableInterface,
 };
-use axelar_soroban_std::{ensure, panic_with_error, shared_interfaces};
+use axelar_soroban_std::{ensure, shared_interfaces};
 use soroban_sdk::token::TokenInterface;
 
-use soroban_sdk::{contract, contractimpl, token, Address, BytesN, Env, String};
+use soroban_sdk::{assert_with_error, contract, contractimpl, token, Address, BytesN, Env, String};
 
 #[contract]
 pub struct InterchainToken;
@@ -76,9 +78,9 @@ impl InterchainTokenInterface for InterchainToken {
             ContractError::NotMinter
         );
 
-        Self::validate_amount(amount);
+        Self::validate_amount(&env, amount);
 
-        Self::extend_instance_ttl(&env);
+        extend_instance_ttl(&env);
 
         Self::receive_balance(&env, to.clone(), amount);
 
@@ -127,15 +129,15 @@ impl InterchainTokenInterface for InterchainToken {
 #[contractimpl]
 impl token::Interface for InterchainToken {
     fn allowance(env: Env, from: Address, spender: Address) -> i128 {
-        Self::extend_instance_ttl(&env);
+        extend_instance_ttl(&env);
         Self::read_allowance(&env, from, spender).amount
     }
 
     fn approve(env: Env, from: Address, spender: Address, amount: i128, expiration_ledger: u32) {
         from.require_auth();
 
-        Self::validate_amount(amount);
-        Self::extend_instance_ttl(&env);
+        Self::validate_amount(&env, amount);
+        extend_instance_ttl(&env);
 
         Self::write_allowance(
             &env,
@@ -151,15 +153,15 @@ impl token::Interface for InterchainToken {
     }
 
     fn balance(env: Env, id: Address) -> i128 {
-        Self::extend_instance_ttl(&env);
+        extend_instance_ttl(&env);
         Self::read_balance(&env, id)
     }
 
     fn transfer(env: Env, from: Address, to: Address, amount: i128) {
         from.require_auth();
 
-        Self::validate_amount(amount);
-        Self::extend_instance_ttl(&env);
+        extend_instance_ttl(&env);
+        Self::validate_amount(&env, amount);
         Self::spend_balance(&env, from.clone(), amount);
         Self::receive_balance(&env, to.clone(), amount);
 
@@ -169,8 +171,8 @@ impl token::Interface for InterchainToken {
     fn transfer_from(env: Env, spender: Address, from: Address, to: Address, amount: i128) {
         spender.require_auth();
 
-        Self::validate_amount(amount);
-        Self::extend_instance_ttl(&env);
+        extend_instance_ttl(&env);
+        Self::validate_amount(&env, amount);
         Self::spend_allowance(&env, from.clone(), spender, amount);
         Self::spend_balance(&env, from.clone(), amount);
         Self::receive_balance(&env, to.clone(), amount);
@@ -181,8 +183,8 @@ impl token::Interface for InterchainToken {
     fn burn(env: Env, from: Address, amount: i128) {
         from.require_auth();
 
-        Self::validate_amount(amount);
-        Self::extend_instance_ttl(&env);
+        extend_instance_ttl(&env);
+        Self::validate_amount(&env, amount);
         Self::spend_balance(&env, from.clone(), amount);
 
         TokenUtils::new(&env).events().burn(from, amount);
@@ -191,8 +193,8 @@ impl token::Interface for InterchainToken {
     fn burn_from(env: Env, spender: Address, from: Address, amount: i128) {
         spender.require_auth();
 
-        Self::validate_amount(amount);
-        Self::extend_instance_ttl(&env);
+        extend_instance_ttl(&env);
+        Self::validate_amount(&env, amount);
         Self::spend_allowance(&env, from.clone(), spender, amount);
         Self::spend_balance(&env, from.clone(), amount);
 
@@ -216,8 +218,8 @@ impl InterchainToken {
     // Modify this function to add migration logic
     const fn run_migration(_env: &Env, _migration_data: ()) {}
 
-    const fn validate_amount(amount: i128) {
-        panic_with_error!(amount >= 0, "negative amount is not allowed");
+    fn validate_amount(env: &Env, amount: i128) {
+        assert_with_error!(env, amount >= 0, ContractError::InvalidAmount);
     }
 
     fn validate_token_metadata(
@@ -231,12 +233,6 @@ impl InterchainToken {
         ensure!(!name.is_empty(), ContractError::InvalidTokenName);
         ensure!(!symbol.is_empty(), ContractError::InvalidTokenSymbol);
         Ok(())
-    }
-
-    fn extend_instance_ttl(env: &Env) {
-        env.storage()
-            .instance()
-            .extend_ttl(INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
     }
 
     fn extend_balance_ttl(env: &Env, key: &DataKey) {
@@ -280,9 +276,10 @@ impl InterchainToken {
             expiration_ledger,
         };
 
-        panic_with_error!(
+        assert_with_error!(
+            env,
             !(amount > 0 && expiration_ledger < env.ledger().sequence()),
-            "expiration_ledger is less than ledger seq when amount > 0"
+            ContractError::InvalidExpirationLedger
         );
 
         let key = DataKey::Allowance(AllowanceDataKey { from, spender });
@@ -302,7 +299,11 @@ impl InterchainToken {
     fn spend_allowance(env: &Env, from: Address, spender: Address, amount: i128) {
         let allowance = Self::read_allowance(env, from.clone(), spender.clone());
 
-        panic_with_error!(allowance.amount >= amount, "insufficient allowance");
+        assert_with_error!(
+            env,
+            allowance.amount >= amount,
+            ContractError::InsufficientAllowance
+        );
 
         if amount > 0 {
             Self::write_allowance(
@@ -343,7 +344,7 @@ impl InterchainToken {
     fn spend_balance(env: &Env, addr: Address, amount: i128) {
         let balance = Self::read_balance(env, addr.clone());
 
-        panic_with_error!(balance >= amount, "insufficient balance");
+        assert_with_error!(env, balance >= amount, ContractError::InsufficientBalance);
 
         Self::write_balance(env, addr, balance - amount);
     }

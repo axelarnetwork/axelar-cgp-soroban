@@ -1107,6 +1107,7 @@ name = "interchain-token"
 version = "0.1.0"
 dependencies = [
  "axelar-soroban-std",
+ "cfg-if",
  "soroban-sdk",
  "soroban-token-sdk",
 ]

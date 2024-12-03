@@ -13,7 +13,7 @@ pub struct AllowanceValue {
     pub expiration_ledger: u32,
 }
 
-/// Do not use `METADATA_KEY`` as it is reserved for token metadata.
+/// Do not use the symbol `METADATA` as a key as it is reserved for token metadata.
 #[contracttype]
 #[derive(Clone)]
 pub enum DataKey {
