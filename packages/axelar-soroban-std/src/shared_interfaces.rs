@@ -4,8 +4,7 @@ use crate::events::Event;
 use crate::impl_event_testutils;
 use core::fmt::Debug;
 use soroban_sdk::{
-    contractclient, symbol_short, Address, BytesN, Env, FromVal, IntoVal, String, Symbol, Topics,
-    Val,
+    contractclient, symbol_short, Address, BytesN, Env, FromVal, IntoVal, String, Topics, Val,
 };
 
 #[contractclient(name = "OwnershipClient")]
@@ -119,7 +118,7 @@ impl Event for UpgradedEvent {
 }
 
 #[cfg(any(test, feature = "testutils"))]
-impl_event_testutils!(UpgradedEvent, (Symbol), (String));
+impl_event_testutils!(UpgradedEvent, (soroban_sdk::Symbol), (String));
 
 // submodule to encapsulate the disabled linting
 mod storage {
