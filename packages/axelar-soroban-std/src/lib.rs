@@ -16,11 +16,8 @@ pub mod types;
 
 pub mod error;
 
-pub mod shared_interfaces;
-
 pub mod ttl;
 
 pub mod events;
 
-#[cfg(test)]
-mod testdata;
+pub mod interfaces;
