@@ -6,4 +6,5 @@ pub enum DataKey {
     TrustedAddress(String),
     Gateway,
     GasService,
+    ChainName,
 }

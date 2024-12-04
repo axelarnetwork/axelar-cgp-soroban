@@ -7,6 +7,7 @@ use interchain_token_service::error::ContractError;
 use axelar_soroban_std::{assert_contract_err, assert_invoke_auth_err, assert_last_emitted_event};
 use soroban_sdk::testutils::{MockAuth, MockAuthInvoke};
 
+use soroban_sdk::BytesN;
 use soroban_sdk::{testutils::Address as _, Address, Env, String, Symbol};
 
 fn setup_gateway<'a>(env: &Env) -> AxelarGatewayClient<'a> {
@@ -28,9 +29,15 @@ fn setup_env<'a>() -> (Env, InterchainTokenServiceClient<'a>) {
     let owner = Address::generate(&env);
     let gateway_client = setup_gateway(&env);
     let gas_service_client = setup_gas_service(&env);
+    let chain_name = String::from_str(&env, "chain_name");
     let contract_id = env.register(
         InterchainTokenService,
-        (&owner, gateway_client.address, gas_service_client.address),
+        (
+            &owner,
+            gateway_client.address,
+            gas_service_client.address,
+            chain_name,
+        ),
     );
     let client = InterchainTokenServiceClient::new(&env, &contract_id);
 
@@ -43,9 +50,15 @@ fn register_interchain_token_service() {
     let owner = Address::generate(&env);
     let gateway_client = setup_gateway(&env);
     let gas_service_client = setup_gas_service(&env);
+    let chain_name = String::from_str(&env, "chain_name");
     let contract_id = env.register(
         InterchainTokenService,
-        (&owner, gateway_client.address, gas_service_client.address),
+        (
+            &owner,
+            gateway_client.address,
+            gas_service_client.address,
+            chain_name,
+        ),
     );
     let client = InterchainTokenServiceClient::new(&env, &contract_id);
 
@@ -174,4 +187,20 @@ fn transfer_ownership() {
     );
 
     assert_eq!(client.owner(), new_owner);
+}
+
+#[test]
+fn interchain_token_deploy_salt() {
+    let (env, client) = setup_env();
+
+    let deployer: Address = Address::from_str(
+        &env,
+        "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
+    );
+
+    let salt = BytesN::<32>::from_array(&env, &[1; 32]);
+
+    let deploy_salt = client.interchain_token_deploy_salt(&deployer, &salt);
+
+    goldie::assert!(hex::encode(deploy_salt.to_array()));
 }
