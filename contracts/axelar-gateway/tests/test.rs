@@ -731,7 +731,6 @@ fn rotate_signers_fail_low_total_weight() {
 
     let new_threshold = total_weight + 1;
 
-    // set the threshold to zero
     new_signers.signers.threshold = new_threshold;
 
     let data_hash = new_signers.signers.signers_rotation_hash(&env);
