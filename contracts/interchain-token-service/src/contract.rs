@@ -177,27 +177,6 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         _gas_token: Token,
     ) {
         todo!()
-
-        // caller.require_auth();
-
-        // // TODO: minterBytes
-        // let _minter_bytes = minter;
-
-        // let _deploy_salt = Self::interchain_token_deploy_salt(env, caller, salt);
-
-        // let _token_meta_data = TokenMetadata {
-        //     decimal,
-        //     name,
-        //     symbol,
-        // };
-
-        // let _token_id = BytesN::<32>::from_array(env, &[0; 32]);
-
-        // // TODO: _deployInterchainToken(deploySalt, currentChain, name, symbol, decimals, minterBytes, gasValue);
-
-        // if initial_supply > 0 {
-        //     // TODO: mint, transferMintership
-        // }
     }
 
     fn interchain_token_deploy_salt(env: &Env, deployer: Address, salt: BytesN<32>) -> BytesN<32> {

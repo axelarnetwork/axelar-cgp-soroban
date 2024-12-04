@@ -198,7 +198,7 @@ fn interchain_token_deploy_salt() {
         "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
     );
 
-    let salt = BytesN::<32>::from_array(&env, &[0; 32]);
+    let salt = BytesN::<32>::from_array(&env, &[1; 32]);
 
     let deploy_salt = client.interchain_token_deploy_salt(&deployer, &salt);
 
