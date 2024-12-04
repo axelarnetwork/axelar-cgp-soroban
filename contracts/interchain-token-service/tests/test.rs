@@ -28,9 +28,15 @@ fn setup_env<'a>() -> (Env, InterchainTokenServiceClient<'a>) {
     let owner = Address::generate(&env);
     let gateway_client = setup_gateway(&env);
     let gas_service_client = setup_gas_service(&env);
+    let chain_name = String::from_str(&env, "chain_name");
     let contract_id = env.register(
         InterchainTokenService,
-        (&owner, gateway_client.address, gas_service_client.address),
+        (
+            &owner,
+            gateway_client.address,
+            gas_service_client.address,
+            chain_name,
+        ),
     );
     let client = InterchainTokenServiceClient::new(&env, &contract_id);
 
@@ -43,9 +49,15 @@ fn register_interchain_token_service() {
     let owner = Address::generate(&env);
     let gateway_client = setup_gateway(&env);
     let gas_service_client = setup_gas_service(&env);
+    let chain_name = String::from_str(&env, "chain_name");
     let contract_id = env.register(
         InterchainTokenService,
-        (&owner, gateway_client.address, gas_service_client.address),
+        (
+            &owner,
+            gateway_client.address,
+            gas_service_client.address,
+            chain_name,
+        ),
     );
     let client = InterchainTokenServiceClient::new(&env, &contract_id);
 

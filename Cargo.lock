@@ -1124,6 +1124,7 @@ dependencies = [
  "goldie",
  "hex",
  "soroban-sdk",
+ "soroban-token-sdk",
 ]
 
 [[package]]

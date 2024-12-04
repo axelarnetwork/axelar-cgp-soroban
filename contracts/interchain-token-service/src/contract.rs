@@ -1,5 +1,6 @@
 use axelar_soroban_std::types::Token;
 use axelar_soroban_std::{ensure, shared_interfaces};
+use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{bytes, contract, contractimpl, Address, Bytes, BytesN, Env, FromVal, String};
 
 use crate::error::ContractError;
@@ -15,22 +16,44 @@ use axelar_gateway::executable::AxelarExecutableInterface;
 use axelar_soroban_std::shared_interfaces::{
     migrate, MigratableInterface, OwnableInterface, UpgradableInterface,
 };
+use soroban_token_sdk::metadata::TokenMetadata;
+
+const PREFIX_INTERCHAIN_TOKEN_SALT: &str = "interchain-token-salt";
 
 #[contract]
 pub struct InterchainTokenService;
 
 #[contractimpl]
 impl InterchainTokenService {
-    pub fn __constructor(env: Env, owner: Address, gateway: Address, gas_service: Address) {
+    pub fn __constructor(
+        env: Env,
+        owner: Address,
+        gateway: Address,
+        gas_service: Address,
+        chain_name: String,
+    ) {
         shared_interfaces::set_owner(&env, &owner);
         env.storage().instance().set(&DataKey::Gateway, &gateway);
         env.storage()
             .instance()
             .set(&DataKey::GasService, &gas_service);
+        env.storage()
+            .instance()
+            .set(&DataKey::ChainName, &chain_name);
     }
 
     fn gas_service(env: &Env) -> Address {
-        env.storage().instance().get(&DataKey::GasService).unwrap()
+        env.storage()
+            .instance()
+            .get(&DataKey::GasService)
+            .expect("gas service not found")
+    }
+
+    fn chain_name(env: &Env) -> String {
+        env.storage()
+            .instance()
+            .get(&DataKey::ChainName)
+            .expect("chain name not found")
     }
 
     fn pay_gas_and_call_contract(
@@ -146,17 +169,52 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     }
 
     fn deploy_interchain_token(
-        _env: &Env,
-        _caller: Address,
-        _token_id: String,
-        _source_address: Bytes,
-        _destination_chain: String,
-        _destination_address: Bytes,
-        _amount: i128,
-        _metadata: Bytes,
+        env: &Env,
+        caller: Address,
+        salt: BytesN<32>,
+        name: String,
+        symbol: String,
+        decimal: u32,
+        initial_supply: i128,
+        minter: Address,
         _gas_token: Token,
     ) {
-        todo!()
+        caller.require_auth();
+
+        // TODO: minterBytes
+        let _minter_bytes = minter;
+
+        let _deploy_salt = Self::interchain_token_deploy_salt(env, caller, salt);
+
+        let _token_meta_data = TokenMetadata {
+            decimal,
+            name,
+            symbol,
+        };
+
+        let _token_id = BytesN::<32>::from_array(env, &[0; 32]);
+
+        // TODO: _deployInterchainToken(deploySalt, currentChain, name, symbol, decimals, minterBytes, gasValue);
+
+        if initial_supply > 0 {
+            // TODO: mint, transferMintership
+        }
+    }
+
+    fn interchain_token_deploy_salt(env: &Env, deployer: Address, salt: BytesN<32>) -> BytesN<32> {
+        let chain_name = Self::chain_name(env);
+        let chain_name_hash: BytesN<32> = env.crypto().keccak256(&(chain_name).to_xdr(env)).into();
+        env.crypto()
+            .keccak256(
+                &(
+                    PREFIX_INTERCHAIN_TOKEN_SALT,
+                    chain_name_hash,
+                    deployer,
+                    salt,
+                )
+                    .to_xdr(env),
+            )
+            .into()
     }
 
     fn deploy_remote_interchain_token(
@@ -211,7 +269,10 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
 #[contractimpl]
 impl AxelarExecutableInterface for InterchainTokenService {
     fn gateway(env: &Env) -> Address {
-        env.storage().instance().get(&DataKey::Gateway).unwrap()
+        env.storage()
+            .instance()
+            .get(&DataKey::Gateway)
+            .expect("gateway not found")
     }
 
     fn execute(
