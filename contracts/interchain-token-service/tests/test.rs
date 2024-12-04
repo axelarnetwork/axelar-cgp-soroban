@@ -192,7 +192,6 @@ fn transfer_ownership() {
 #[test]
 fn interchain_token_deploy_salt() {
     let (env, client) = setup_env();
-    env.mock_all_auths();
 
     let deployer: Address = Address::from_str(
         &env,
