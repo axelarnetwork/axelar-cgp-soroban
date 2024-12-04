@@ -603,15 +603,9 @@ fn fail_validate_proof_invalid_signer_set() {
     let new_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator.clone());
 
     let msg_hash: BytesN<32> = BytesN::random(&env);
-    let mut proof = generate_proof(&env, msg_hash.clone(), signers);
-
-    let new_proof = generate_proof(&env, msg_hash.clone(), new_signers.clone());
-
-    proof.signers = new_proof.signers;
-
-    // validate_proof should panic, signatures do not match signers
+    let invalid_proof = generate_proof(&env, msg_hash.clone(), new_signers.clone());
     assert_contract_err!(
-        client.try_rotate_signers(&new_signers.signers, &proof, &true),
+        client.try_rotate_signers(&new_signers.signers, &invalid_proof, &true),
         ContractError::InvalidSignersHash
     );
 }
