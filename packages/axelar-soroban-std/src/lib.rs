@@ -1,7 +1,8 @@
 #![no_std]
-#[cfg(test)]
-extern crate std;
+
 // required by goldie
+#[cfg(any(test, feature = "testutils"))]
+extern crate std;
 
 #[cfg(any(test, feature = "testutils"))]
 pub mod testutils;
@@ -16,5 +17,7 @@ pub mod types;
 pub mod error;
 
 pub mod ttl;
+
+pub mod events;
 
 pub mod contract_traits;
