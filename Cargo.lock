@@ -1955,9 +1955,9 @@ dependencies = [
 
 [[package]]
 name = "soroban-token-sdk"
-version = "22.0.0-rc.3"
+version = "22.0.0-rc.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17bb933a3dcf41d234f6d669b077eb755663773630c6899a1c8a30dddf950f52"
+checksum = "2d9986d00de31e52f3d19b6e1a867403387226e1011987ff48f9c9a9e3379335"
 dependencies = [
  "soroban-sdk",
 ]
