@@ -1,14 +1,11 @@
 use axelar_gateway::error::ContractError;
-use axelar_gateway::testutils::{
-    generate_proof, generate_signers_set, generate_test_message, get_approve_hash, randint,
-    setup_env,
-};
+use axelar_gateway::testutils::{generate_proof, generate_signers_set, randint, setup_env};
 use axelar_gateway::types::{ProofSignature, ProofSigner, WeightedSigner, WeightedSigners};
 use axelar_gateway::AxelarGateway;
 use axelar_soroban_std::assert_contract_err;
 use soroban_sdk::{
     testutils::{Address as _, BytesN as _},
-    vec, Address, BytesN, Env, Vec,
+    Address, BytesN, Env, Vec,
 };
 
 #[test]
@@ -44,15 +41,13 @@ fn fail_initialization_with_empty_signer_set() {
 fn fail_validate_proof_invalid_signatures() {
     let (env, signers, client) = setup_env(randint(0, 10), randint(1, 10));
 
-    let (message, _) = generate_test_message(&env);
-    let messages = vec![&env, message.clone()];
-
-    let msg_hash: BytesN<32> = BytesN::random(&env);
-    let proof = generate_proof(&env, msg_hash, signers);
+    let proof_hash: BytesN<32> = BytesN::random(&env);
+    let proof = generate_proof(&env, proof_hash, signers);
+    let random_hash: BytesN<32> = BytesN::random(&env);
 
     // should panic, proof is for different message hash
     // NOTE: panic occurs in std function, cannot handle explicitly
-    client.approve_messages(&messages, &proof);
+    client.validate_proof(&random_hash, &proof);
 }
 
 #[test]
@@ -72,11 +67,8 @@ fn fail_validate_proof_empty_signatures() {
     }
     proof.signers = new_signers;
 
-    let (message, _) = generate_test_message(&env);
-    let messages = vec![&env, message];
-
     assert_contract_err!(
-        client.try_approve_messages(&messages, &proof),
+        client.try_validate_proof(&msg_hash, &proof),
         ContractError::InvalidSignatures
     );
 }
@@ -87,10 +79,7 @@ fn fail_validate_proof_threshold_not_met() {
 
     let mut total_weight = 0u128;
 
-    let (message, _) = generate_test_message(&env);
-    let messages = vec![&env, message.clone()];
-    let msg_hash = get_approve_hash(&env, messages.clone());
-
+    let msg_hash = BytesN::random(&env);
     let mut proof = generate_proof(&env, msg_hash.clone(), signers);
 
     let mut new_signers = Vec::new(&env);
@@ -109,7 +98,7 @@ fn fail_validate_proof_threshold_not_met() {
 
     // should panic, all signatures are valid but total weight is below threshold
     assert_contract_err!(
-        client.try_approve_messages(&messages, &proof),
+        client.try_validate_proof(&msg_hash, &proof),
         ContractError::InvalidSignatures
     );
 }
@@ -123,7 +112,7 @@ fn fail_validate_proof_invalid_signer_set() {
     let msg_hash: BytesN<32> = BytesN::random(&env);
     let invalid_proof = generate_proof(&env, msg_hash.clone(), new_signers.clone());
     assert_contract_err!(
-        client.try_rotate_signers(&new_signers.signers, &invalid_proof, &true),
+        client.try_validate_proof(&msg_hash, &invalid_proof),
         ContractError::InvalidSignersHash
     );
 }
@@ -143,11 +132,8 @@ fn fail_validate_proof_threshold_overflow() {
     let msg_hash: BytesN<32> = BytesN::random(&env);
     let proof = generate_proof(&env, msg_hash.clone(), signers.clone());
 
-    let (message, _) = generate_test_message(&env);
-    let messages = vec![&env, message];
-
     assert_contract_err!(
-        client.try_approve_messages(&messages, &proof),
+        client.try_validate_proof(&msg_hash, &proof),
         ContractError::InvalidSignersHash
     );
 }
