@@ -1,7 +1,7 @@
 use axelar_gateway::error::ContractError;
 use axelar_gateway::testutils::{
     generate_proof, generate_signers_set, generate_test_message, get_approve_hash, randint,
-    setup_env
+    setup_env,
 };
 use axelar_gateway::types::{ProofSignature, ProofSigner, WeightedSigner, WeightedSigners};
 use axelar_gateway::AxelarGateway;
@@ -337,4 +337,38 @@ fn rotate_signers_panics_on_outdated_signer_set() {
         client.try_rotate_signers(&original_signers.signers, &proof, &true),
         ContractError::InvalidSigners
     );
+}
+
+#[test]
+fn multi_rotate_signers() {
+    let previous_signer_retention = randint(1, 5);
+    let (env, original_signers, client) = setup_env(previous_signer_retention, randint(1, 10));
+
+    let msg_hash: BytesN<32> = BytesN::random(&env);
+
+    let mut previous_signers = original_signers.clone();
+
+    for _ in 0..previous_signer_retention {
+        let new_signers = generate_signers_set(
+            &env,
+            randint(1, 10),
+            original_signers.domain_separator.clone(),
+        );
+
+        let data_hash = new_signers.signers.signers_rotation_hash(&env);
+        let proof = generate_proof(&env, data_hash.clone(), original_signers.clone());
+        client.rotate_signers(&new_signers.signers, &proof, &true);
+
+        let proof = generate_proof(&env, msg_hash.clone(), new_signers.clone());
+        client.validate_proof(&msg_hash, &proof);
+
+        let proof = generate_proof(&env, msg_hash.clone(), previous_signers.clone());
+        client.validate_proof(&msg_hash, &proof);
+
+        previous_signers = new_signers;
+    }
+
+    // Proof from the first signer set should still be valid
+    let proof = generate_proof(&env, msg_hash.clone(), original_signers.clone());
+    client.validate_proof(&msg_hash, &proof);
 }
