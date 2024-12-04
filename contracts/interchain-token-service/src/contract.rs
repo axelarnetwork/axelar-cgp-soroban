@@ -16,7 +16,6 @@ use axelar_gateway::executable::AxelarExecutableInterface;
 use axelar_soroban_std::shared_interfaces::{
     migrate, MigratableInterface, OwnableInterface, UpgradableInterface,
 };
-use soroban_token_sdk::metadata::TokenMetadata;
 
 const PREFIX_INTERCHAIN_TOKEN_SALT: &str = "interchain-token-salt";
 
