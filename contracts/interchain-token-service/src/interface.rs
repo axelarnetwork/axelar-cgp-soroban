@@ -6,6 +6,12 @@ use crate::error::ContractError;
 
 #[contractclient(name = "InterchainTokenServiceClient")]
 pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
+    fn gas_service(env: &Env) -> Address;
+
+    fn its_hub_routing_identifier(env: &Env) -> String;
+
+    fn its_hub_chain_name(env: &Env) -> String;
+
     fn owner(env: &Env) -> Address;
 
     fn transfer_ownership(env: &Env, new_owner: Address);
