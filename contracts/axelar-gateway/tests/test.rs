@@ -554,10 +554,11 @@ fn fail_validate_proof_empty_signatures() {
     }
     proof.signers = new_signers;
 
-    let new_signers = generate_signers_set(&env, 5, signers.domain_separator.clone());
+    let (message, _) = generate_test_message(&env);
+    let messages = vec![&env, message];
 
     assert_contract_err!(
-        client.try_rotate_signers(&new_signers.signers, &proof, &true),
+        client.try_approve_messages(&messages, &proof),
         ContractError::InvalidSignatures
     );
 }
