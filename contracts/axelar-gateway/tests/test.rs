@@ -498,7 +498,6 @@ fn upgrade_unauthorized() {
 /// TODO: figure out how to detect error in constructor failure
 fn fail_initialization_with_empty_signer_set() {
     let env = Env::default();
-    env.mock_all_auths();
     let owner = Address::generate(&env);
     let operator = Address::generate(&env);
 
