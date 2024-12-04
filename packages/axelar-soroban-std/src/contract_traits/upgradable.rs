@@ -159,11 +159,12 @@ pub enum MigrationError {
 
 #[cfg(test)]
 mod test {
-    use crate::shared_interfaces::{OwnershipClient, UpgradableClient, UpgradedEvent};
-    use crate::{assert_invoke_auth_err, assert_invoke_auth_ok, shared_interfaces, testdata};
+    use crate::contract_traits::upgradable::{OwnershipClient, UpgradableClient, UpgradedEvent};
+    use crate::{assert_invoke_auth_err, assert_invoke_auth_ok};
     use std::format;
 
-    use crate::testdata::contract::ContractClient;
+    use crate::contract_traits::testdata::contract::ContractClient;
+    use crate::contract_traits::{testdata, upgradable};
     use soroban_sdk::testutils::{Address as _, Events, MockAuth, MockAuthInvoke};
     use soroban_sdk::{contracttype, Address, Env, String, TryFromVal};
 
@@ -210,7 +211,7 @@ mod test {
 
         let owner = Address::generate(&env);
         env.as_contract(&contract_id, || {
-            shared_interfaces::set_owner(&env, &owner);
+            upgradable::set_owner(&env, &owner);
         });
 
         assert_eq!(OwnershipClient::new(&env, &contract_id).owner(), owner);
@@ -235,7 +236,7 @@ mod test {
 
         let owner = Address::generate(&env);
         env.as_contract(&contract_id, || {
-            shared_interfaces::set_owner(&env, &owner);
+            upgradable::set_owner(&env, &owner);
         });
 
         assert!(UpgradableClient::new(&env, &contract_id)
@@ -251,7 +252,7 @@ mod test {
 
         let owner = Address::generate(&env);
         env.as_contract(&contract_id, || {
-            shared_interfaces::set_owner(&env, &owner);
+            upgradable::set_owner(&env, &owner);
         });
 
         let client = UpgradableClient::new(&env, &contract_id);
@@ -266,7 +267,7 @@ mod test {
 
         let owner = Address::generate(&env);
         env.as_contract(&contract_id, || {
-            shared_interfaces::set_owner(&env, &owner);
+            upgradable::set_owner(&env, &owner);
         });
 
         let client = UpgradableClient::new(&env, &contract_id);
@@ -281,7 +282,7 @@ mod test {
 
         let owner = Address::generate(&env);
         env.as_contract(&contract_id, || {
-            shared_interfaces::set_owner(&env, &owner);
+            upgradable::set_owner(&env, &owner);
         });
 
         let upgrade_client = UpgradableClient::new(&env, &contract_id);
@@ -299,7 +300,7 @@ mod test {
 
         let owner = Address::generate(&env);
         env.as_contract(&contract_id, || {
-            shared_interfaces::set_owner(&env, &owner);
+            upgradable::set_owner(&env, &owner);
         });
 
         let upgrade_client = UpgradableClient::new(&env, &contract_id);
@@ -316,7 +317,7 @@ mod test {
 
         let owner = Address::generate(&env);
         env.as_contract(&contract_id, || {
-            shared_interfaces::set_owner(&env, &owner);
+            upgradable::set_owner(&env, &owner);
         });
 
         let client = ContractClient::new(&env, &contract_id);
@@ -331,7 +332,7 @@ mod test {
 
         let owner = Address::generate(&env);
         env.as_contract(&contract_id, || {
-            shared_interfaces::set_owner(&env, &owner);
+            upgradable::set_owner(&env, &owner);
         });
 
         let upgradable_client = UpgradableClient::new(&env, &contract_id);
@@ -364,8 +365,8 @@ mod test {
 
         let owner = Address::generate(&env);
         env.as_contract(&contract_id, || {
-            shared_interfaces::set_owner(&env, &owner);
-            shared_interfaces::start_migration(&env);
+            upgradable::set_owner(&env, &owner);
+            upgradable::start_migration(&env);
         });
 
         let client = ContractClient::new(&env, &contract_id);
@@ -380,7 +381,7 @@ mod test {
 
         let owner = Address::generate(&env);
         env.as_contract(&contract_id, || {
-            shared_interfaces::set_owner(&env, &owner);
+            upgradable::set_owner(&env, &owner);
         });
 
         let upgradable_client = UpgradableClient::new(&env, &contract_id);

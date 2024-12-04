@@ -1,5 +1,6 @@
-use crate::shared_interfaces;
-use crate::shared_interfaces::{MigratableInterface, OwnableInterface, UpgradableInterface};
+use crate::contract_traits::{
+    upgradable, MigratableInterface, OwnableInterface, UpgradableInterface,
+};
 use soroban_sdk::testutils::arbitrary::std;
 use soroban_sdk::{
     contract, contracterror, contractimpl, contracttype, Address, BytesN, Env, String,
@@ -29,7 +30,7 @@ impl MigratableInterface for Contract {
     type Error = ContractError;
 
     fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
-        shared_interfaces::migrate::<Self>(env, || Self::run_migration(env, migration_data))
+        upgradable::migrate::<Self>(env, || Self::run_migration(env, migration_data))
             .map_err(|_| ContractError::SomeFailure)
     }
 }
@@ -37,7 +38,7 @@ impl MigratableInterface for Contract {
 #[contractimpl]
 impl OwnableInterface for Contract {
     fn owner(env: &Env) -> Address {
-        shared_interfaces::owner(env)
+        upgradable::owner(env)
     }
 }
 
@@ -48,7 +49,7 @@ impl UpgradableInterface for Contract {
     }
 
     fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
-        shared_interfaces::upgrade::<Self>(env, new_wasm_hash);
+        upgradable::upgrade::<Self>(env, new_wasm_hash);
     }
 }
 

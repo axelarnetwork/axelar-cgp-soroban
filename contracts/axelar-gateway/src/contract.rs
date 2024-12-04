@@ -4,10 +4,11 @@ use crate::messaging_interface::AxelarGatewayMessagingInterface;
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::types::{CommandType, Message, Proof, WeightedSigners};
 use crate::{auth, event};
-use axelar_soroban_std::shared_interfaces::{migrate, UpgradableInterface};
-use axelar_soroban_std::shared_interfaces::{MigratableInterface, OwnableInterface};
+use axelar_soroban_std::contract_traits::{
+    migrate, MigratableInterface, OwnableInterface, UpgradableInterface,
+};
 use axelar_soroban_std::ttl::{INSTANCE_TTL_EXTEND_TO, INSTANCE_TTL_THRESHOLD};
-use axelar_soroban_std::{ensure, shared_interfaces};
+use axelar_soroban_std::{contract_traits, ensure};
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
 
@@ -35,7 +36,7 @@ impl UpgradableInterface for AxelarGateway {
 
     // boilerplate necessary for the contractimpl macro to include function in the generated client
     fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
-        shared_interfaces::upgrade::<Self>(env, new_wasm_hash);
+        contract_traits::upgrade::<Self>(env, new_wasm_hash);
     }
 }
 
@@ -43,7 +44,7 @@ impl UpgradableInterface for AxelarGateway {
 impl OwnableInterface for AxelarGateway {
     // boilerplate necessary for the contractimpl macro to include function in the generated client
     fn owner(env: &Env) -> Address {
-        shared_interfaces::owner(env)
+        contract_traits::owner(env)
     }
 }
 
@@ -59,7 +60,7 @@ impl AxelarGateway {
         previous_signers_retention: u64,
         initial_signers: Vec<WeightedSigners>,
     ) -> Result<(), ContractError> {
-        shared_interfaces::set_owner(&env, &owner);
+        contract_traits::set_owner(&env, &owner);
         env.storage().instance().set(&DataKey::Operator, &operator);
 
         auth::initialize_auth(
@@ -254,7 +255,7 @@ impl AxelarGatewayInterface for AxelarGateway {
         let owner: Address = Self::owner(&env);
         owner.require_auth();
 
-        shared_interfaces::set_owner(&env, &new_owner);
+        contract_traits::set_owner(&env, &new_owner);
 
         event::transfer_ownership(&env, owner, new_owner);
     }

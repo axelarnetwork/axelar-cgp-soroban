@@ -4,10 +4,10 @@ use crate::error::ContractError;
 use crate::event;
 use crate::interface::AxelarGasServiceInterface;
 use crate::storage_types::DataKey;
-use axelar_soroban_std::shared_interfaces::{
-    migrate, MigratableInterface, OwnableInterface, UpgradableInterface,
+use axelar_soroban_std::contract_traits::{
+    MigratableInterface, OwnableInterface, UpgradableInterface,
 };
-use axelar_soroban_std::{ensure, shared_interfaces, types::Token};
+use axelar_soroban_std::{contract_traits, ensure, types::Token};
 
 #[contract]
 pub struct AxelarGasService;
@@ -16,7 +16,7 @@ pub struct AxelarGasService;
 impl AxelarGasService {
     /// Initialize the gas service contract with a gas_collector address.
     pub fn __constructor(env: Env, owner: Address, gas_collector: Address) {
-        shared_interfaces::set_owner(&env, &owner);
+        contract_traits::set_owner(&env, &owner);
         env.storage()
             .instance()
             .set(&DataKey::GasCollector, &gas_collector);
@@ -34,7 +34,7 @@ impl MigratableInterface for AxelarGasService {
     type Error = ContractError;
 
     fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
-        migrate::<Self>(env, || Self::run_migration(env, migration_data))
+        contract_traits::migrate::<Self>(env, || Self::run_migration(env, migration_data))
             .map_err(|_| ContractError::MigrationNotAllowed)
     }
 }
@@ -46,7 +46,7 @@ impl UpgradableInterface for AxelarGasService {
     }
 
     fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
-        shared_interfaces::upgrade::<Self>(env, new_wasm_hash);
+        contract_traits::upgrade::<Self>(env, new_wasm_hash);
     }
 }
 
@@ -54,7 +54,7 @@ impl UpgradableInterface for AxelarGasService {
 impl OwnableInterface for AxelarGasService {
     // boilerplate necessary for the contractimpl macro to include function in the generated client
     fn owner(env: &Env) -> Address {
-        shared_interfaces::owner(env)
+        contract_traits::owner(env)
     }
 }
 

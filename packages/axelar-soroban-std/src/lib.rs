@@ -15,9 +15,6 @@ pub mod types;
 
 pub mod error;
 
-pub mod shared_interfaces;
-
 pub mod ttl;
 
-#[cfg(test)]
-mod testdata;
+pub mod contract_traits;
