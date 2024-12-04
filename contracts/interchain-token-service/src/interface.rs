@@ -17,15 +17,15 @@ pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
     fn interchain_token_deploy_salt(env: &Env, deployer: Address, salt: BytesN<32>) -> BytesN<32>;
 
     fn deploy_interchain_token(
-        env: &Env,
-        caller: Address,
-        salt: BytesN<32>,
-        name: String,
-        symbol: String,
-        decimals: u32,
-        initial_supply: i128,
-        minter: Address,
-        gas_token: Token,
+        _env: &Env,
+        _caller: Address,
+        _token_id: String,
+        _source_address: Bytes,
+        _destination_chain: String,
+        _destination_address: Bytes,
+        _amount: i128,
+        _metadata: Bytes,
+        _gas_token: Token,
     );
 
     fn deploy_remote_interchain_token(

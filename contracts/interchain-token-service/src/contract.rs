@@ -169,36 +169,38 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     }
 
     fn deploy_interchain_token(
-        env: &Env,
-        caller: Address,
-        salt: BytesN<32>,
-        name: String,
-        symbol: String,
-        decimal: u32,
-        initial_supply: i128,
-        minter: Address,
+        _env: &Env,
+        _caller: Address,
+        _token_id: String,
+        _source_address: Bytes,
+        _destination_chain: String,
+        _destination_address: Bytes,
+        _amount: i128,
+        _metadata: Bytes,
         _gas_token: Token,
     ) {
-        caller.require_auth();
+        todo!()
 
-        // TODO: minterBytes
-        let _minter_bytes = minter;
+        // caller.require_auth();
 
-        let _deploy_salt = Self::interchain_token_deploy_salt(env, caller, salt);
+        // // TODO: minterBytes
+        // let _minter_bytes = minter;
 
-        let _token_meta_data = TokenMetadata {
-            decimal,
-            name,
-            symbol,
-        };
+        // let _deploy_salt = Self::interchain_token_deploy_salt(env, caller, salt);
 
-        let _token_id = BytesN::<32>::from_array(env, &[0; 32]);
+        // let _token_meta_data = TokenMetadata {
+        //     decimal,
+        //     name,
+        //     symbol,
+        // };
 
-        // TODO: _deployInterchainToken(deploySalt, currentChain, name, symbol, decimals, minterBytes, gasValue);
+        // let _token_id = BytesN::<32>::from_array(env, &[0; 32]);
 
-        if initial_supply > 0 {
-            // TODO: mint, transferMintership
-        }
+        // // TODO: _deployInterchainToken(deploySalt, currentChain, name, symbol, decimals, minterBytes, gasValue);
+
+        // if initial_supply > 0 {
+        //     // TODO: mint, transferMintership
+        // }
     }
 
     fn interchain_token_deploy_salt(env: &Env, deployer: Address, salt: BytesN<32>) -> BytesN<32> {
