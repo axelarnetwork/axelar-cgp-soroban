@@ -18,14 +18,10 @@ pub trait Event: Debug + PartialEq {
 mod testutils {
     use crate::events::Event;
     use soroban_sdk::testutils::Events;
-    use soroban_sdk::{Env, Val};
+    use soroban_sdk::{Address, Env, Val, Vec};
 
     pub trait EventTestutils: Event {
-        fn matches(
-            &self,
-            env: &Env,
-            event: &(soroban_sdk::Address, soroban_sdk::Vec<Val>, Val),
-        ) -> bool;
+        fn matches(&self, env: &Env, event: &(Address, Vec<Val>, Val)) -> bool;
 
         fn standardized_fmt(
             env: &Env,
@@ -82,7 +78,6 @@ mod testutils {
 
                     let mut data_output = std::vec![];
 
-
                     let mut i = 0;
                     $(
                         let data_entry = data.get(i).expect("the number of data entries does not match this function's definition");
@@ -92,7 +87,7 @@ mod testutils {
                         i += 1;
                     )*
 
-                    std::format!("contract: {:?}, topics: ({}), data: ({})", contract_id, topics_output.join(", "), data_output.join(", "))
+                    std::format!("contract: {:?}\ntopics: ({})\ndata: ({})", contract_id, topics_output.join(", "), data_output.join(", "))
                 }
             }
         };
