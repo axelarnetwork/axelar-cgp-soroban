@@ -573,22 +573,19 @@ fn fail_validate_proof_threshold_not_met() {
     let messages = vec![&env, message.clone()];
     let msg_hash = get_approve_hash(&env, messages.clone());
 
-    // let msg_hash: BytesN<32> = BytesN::random(&env);
     let mut proof = generate_proof(&env, msg_hash.clone(), signers);
 
-    // Modify signatures to make them invalid
     let mut new_signers = Vec::new(&env);
     for ProofSigner { signer, signature } in proof.signers {
         total_weight += signer.weight;
 
-        if total_weight < proof.threshold {
-            new_signers.push_back(ProofSigner { signer, signature });
+        let signature = if total_weight < proof.threshold {
+            signature
         } else {
-            new_signers.push_back(ProofSigner {
-                signer,
-                signature: ProofSignature::Unsigned,
-            });
-        }
+            ProofSignature::Unsigned
+        };
+
+        new_signers.push_back(ProofSigner { signer, signature });
     }
     proof.signers = new_signers;
 
