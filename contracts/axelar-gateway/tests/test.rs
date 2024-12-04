@@ -628,7 +628,6 @@ fn fail_validate_proof_threshold_overflow() {
     let (message, _) = generate_test_message(&env);
     let messages = vec![&env, message];
 
-    // should panic, as modified signer wouldn't match the epoch
     assert_contract_err!(
         client.try_approve_messages(&messages, &proof),
         ContractError::InvalidSignersHash
@@ -661,13 +660,11 @@ fn rotate_signers_fail_zero_weight() {
 
     let mut new_signers = generate_signers_set(&env, randint(1, 10), BytesN::random(&env));
 
-    let last_index = new_signers.signers.signers.len() - 1;
-
-    // get last signer and modify its weight to zero
-    if let Some(mut last_signer) = new_signers.signers.signers.get(last_index) {
-        last_signer.weight = 0u128;
-        new_signers.signers.signers.set(last_index, last_signer);
-    }
+    let WeightedSigner { signer, .. } = new_signers.signers.signers.pop_back_unchecked();
+    new_signers
+        .signers
+        .signers
+        .push_back(WeightedSigner { signer, weight: 0 });
 
     let data_hash = new_signers.signers.signers_rotation_hash(&env);
     let proof = generate_proof(&env, data_hash, signers);
@@ -685,13 +682,11 @@ fn rotate_signers_fail_weight_overflow() {
 
     let mut new_signers = generate_signers_set(&env, randint(3, 10), BytesN::random(&env));
 
-    let last_index = new_signers.signers.signers.len() - 1;
-
-    // get last signer and modify its weight to max u128 - 1
-    if let Some(mut last_signer) = new_signers.signers.signers.get(last_index) {
-        last_signer.weight = u128::MAX - 1;
-        new_signers.signers.signers.set(last_index, last_signer);
-    }
+    let WeightedSigner { signer, .. } = new_signers.signers.signers.pop_back_unchecked();
+    new_signers.signers.signers.push_back(WeightedSigner {
+        signer,
+        weight: u128::MAX,
+    });
 
     let data_hash = new_signers.signers.signers_rotation_hash(&env);
     let proof = generate_proof(&env, data_hash, signers);
