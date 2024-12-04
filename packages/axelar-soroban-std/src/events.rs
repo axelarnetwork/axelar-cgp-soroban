@@ -128,7 +128,7 @@ mod test {
     struct Contract;
 
     #[test]
-    fn test_format_last_emitted_event() {
+    fn format_last_emitted_event() {
         let env = Env::default();
         let expected = TestEvent {
             topic1: Symbol::new(&env, "topic1"),

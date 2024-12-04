@@ -10,10 +10,8 @@ use crate::storage_types::DataKey;
 
 use crate::interface::InterchainTokenInterface;
 use crate::storage_types::{AllowanceDataKey, AllowanceValue};
-use axelar_soroban_std::shared_interfaces::{
-    migrate, MigratableInterface, OwnableInterface, UpgradableInterface,
-};
-use axelar_soroban_std::{ensure, shared_interfaces};
+use axelar_soroban_std::interfaces::{MigratableInterface, OwnableInterface, UpgradableInterface};
+use axelar_soroban_std::{ensure, interfaces};
 use soroban_sdk::token::TokenInterface;
 
 use soroban_sdk::{assert_with_error, contract, contractimpl, token, Address, BytesN, Env, String};
@@ -31,7 +29,7 @@ impl InterchainToken {
         token_id: BytesN<32>,
         token_meta_data: TokenMetadata,
     ) -> Result<(), ContractError> {
-        shared_interfaces::set_owner(&env, &owner);
+        interfaces::set_owner(&env, &owner);
 
         Self::validate_token_metadata(token_meta_data.clone())?;
 
@@ -114,7 +112,7 @@ impl InterchainTokenInterface for InterchainToken {
 
         owner.require_auth();
 
-        shared_interfaces::set_owner(&env, &new_owner);
+        interfaces::set_owner(&env, &new_owner);
 
         TokenUtils::new(&env)
             .events()
@@ -366,7 +364,7 @@ impl MigratableInterface for InterchainToken {
     type Error = ContractError;
 
     fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
-        migrate::<Self>(env, || Self::run_migration(env, migration_data))
+        interfaces::migrate::<Self>(env, || Self::run_migration(env, migration_data))
             .map_err(|_| ContractError::MigrationNotAllowed)
     }
 }
@@ -378,7 +376,7 @@ impl UpgradableInterface for InterchainToken {
     }
 
     fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
-        shared_interfaces::upgrade::<Self>(env, new_wasm_hash);
+        interfaces::upgrade::<Self>(env, new_wasm_hash);
     }
 }
 
@@ -386,6 +384,6 @@ impl UpgradableInterface for InterchainToken {
 impl OwnableInterface for InterchainToken {
     // boilerplate necessary for the contractimpl macro to include function in the generated client
     fn owner(env: &Env) -> Address {
-        shared_interfaces::owner(env)
+        interfaces::owner(env)
     }
 }

@@ -1,7 +1,7 @@
 //! Dummy contract to test the [crate::Upgrader]
 
-use axelar_soroban_std::shared_interfaces;
-use axelar_soroban_std::shared_interfaces::{OwnableInterface, UpgradableInterface};
+use axelar_soroban_std::interfaces;
+use axelar_soroban_std::interfaces::{OwnableInterface, UpgradableInterface};
 use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, BytesN, Env};
 
 #[contract]
@@ -23,14 +23,14 @@ impl UpgradableInterface for DummyContract {
 #[contractimpl]
 impl OwnableInterface for DummyContract {
     fn owner(env: &Env) -> Address {
-        shared_interfaces::owner(env)
+        interfaces::owner(env)
     }
 }
 
 #[contractimpl]
 impl DummyContract {
     pub fn __constructor(env: Env, owner: Address) {
-        shared_interfaces::set_owner(&env, &owner);
+        interfaces::set_owner(&env, &owner);
     }
 }
 
