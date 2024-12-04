@@ -1,6 +1,4 @@
-use crate::contract_traits::{
-    upgradable, MigratableInterface, OwnableInterface, UpgradableInterface,
-};
+use crate::interfaces::{upgradable, MigratableInterface, OwnableInterface, UpgradableInterface};
 use soroban_sdk::testutils::arbitrary::std;
 use soroban_sdk::{
     contract, contracterror, contractimpl, contracttype, Address, BytesN, Env, String,

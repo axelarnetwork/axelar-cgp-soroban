@@ -1,7 +1,7 @@
 //! Base for the dummy.wasm file. This is the dummy contract after upgrade.
 
-use axelar_soroban_std::contract_traits;
-use axelar_soroban_std::contract_traits::{OwnableInterface, UpgradableInterface};
+use axelar_soroban_std::interfaces;
+use axelar_soroban_std::interfaces::{OwnableInterface, UpgradableInterface};
 use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, BytesN, Env};
 
 #[contract]
@@ -23,14 +23,14 @@ impl UpgradableInterface for DummyContract {
 #[contractimpl]
 impl OwnableInterface for DummyContract {
     fn owner(env: &Env) -> Address {
-        contract_traits::owner(env)
+        interfaces::owner(env)
     }
 }
 
 #[contractimpl]
 impl DummyContract {
     pub fn __constructor(env: Env, owner: Address) {
-        contract_traits::set_owner(&env, &owner);
+        interfaces::set_owner(&env, &owner);
     }
 
     pub fn migrate(env: Env, migration_data: soroban_sdk::String) -> Result<(), ContractError> {

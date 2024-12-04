@@ -4,11 +4,11 @@ use crate::messaging_interface::AxelarGatewayMessagingInterface;
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::types::{CommandType, Message, Proof, WeightedSigners};
 use crate::{auth, event};
-use axelar_soroban_std::contract_traits::{
+use axelar_soroban_std::interfaces::{
     migrate, MigratableInterface, OwnableInterface, UpgradableInterface,
 };
 use axelar_soroban_std::ttl::{INSTANCE_TTL_EXTEND_TO, INSTANCE_TTL_THRESHOLD};
-use axelar_soroban_std::{contract_traits, ensure};
+use axelar_soroban_std::{ensure, interfaces};
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
 
@@ -36,7 +36,7 @@ impl UpgradableInterface for AxelarGateway {
 
     // boilerplate necessary for the contractimpl macro to include function in the generated client
     fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
-        contract_traits::upgrade::<Self>(env, new_wasm_hash);
+        interfaces::upgrade::<Self>(env, new_wasm_hash);
     }
 }
 
@@ -44,7 +44,7 @@ impl UpgradableInterface for AxelarGateway {
 impl OwnableInterface for AxelarGateway {
     // boilerplate necessary for the contractimpl macro to include function in the generated client
     fn owner(env: &Env) -> Address {
-        contract_traits::owner(env)
+        interfaces::owner(env)
     }
 }
 
@@ -60,7 +60,7 @@ impl AxelarGateway {
         previous_signers_retention: u64,
         initial_signers: Vec<WeightedSigners>,
     ) -> Result<(), ContractError> {
-        contract_traits::set_owner(&env, &owner);
+        interfaces::set_owner(&env, &owner);
         env.storage().instance().set(&DataKey::Operator, &operator);
 
         auth::initialize_auth(
@@ -255,7 +255,7 @@ impl AxelarGatewayInterface for AxelarGateway {
         let owner: Address = Self::owner(&env);
         owner.require_auth();
 
-        contract_traits::set_owner(&env, &new_owner);
+        interfaces::set_owner(&env, &new_owner);
 
         event::transfer_ownership(&env, owner, new_owner);
     }

@@ -20,4 +20,4 @@ pub mod ttl;
 
 pub mod events;
 
-pub mod contract_traits;
+pub mod interfaces;

@@ -1,5 +1,5 @@
 use axelar_soroban_std::types::Token;
-use axelar_soroban_std::{contract_traits, ensure};
+use axelar_soroban_std::{ensure, interfaces};
 use soroban_sdk::{bytes, contract, contractimpl, Address, Bytes, BytesN, Env, FromVal, String};
 
 use crate::error::ContractError;
@@ -12,9 +12,7 @@ use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::AxelarGatewayMessagingClient;
 
 use axelar_gateway::executable::AxelarExecutableInterface;
-use axelar_soroban_std::contract_traits::{
-    MigratableInterface, OwnableInterface, UpgradableInterface,
-};
+use axelar_soroban_std::interfaces::{MigratableInterface, OwnableInterface, UpgradableInterface};
 
 #[contract]
 pub struct InterchainTokenService;
@@ -22,7 +20,7 @@ pub struct InterchainTokenService;
 #[contractimpl]
 impl InterchainTokenService {
     pub fn __constructor(env: Env, owner: Address, gateway: Address, gas_service: Address) {
-        contract_traits::set_owner(&env, &owner);
+        interfaces::set_owner(&env, &owner);
         env.storage().instance().set(&DataKey::Gateway, &gateway);
         env.storage()
             .instance()
@@ -101,7 +99,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         let owner = Self::owner(env);
         owner.require_auth();
 
-        contract_traits::set_owner(env, &new_owner);
+        interfaces::set_owner(env, &new_owner);
 
         event::transfer_ownership(env, owner, new_owner);
     }
@@ -246,7 +244,7 @@ impl MigratableInterface for InterchainTokenService {
     type Error = axelar_gateway::error::ContractError;
 
     fn migrate(env: &Env, migration_data: ()) -> Result<(), axelar_gateway::error::ContractError> {
-        contract_traits::migrate::<Self>(env, || Self::run_migration(env, migration_data))
+        interfaces::migrate::<Self>(env, || Self::run_migration(env, migration_data))
             .map_err(|_| axelar_gateway::error::ContractError::MigrationNotAllowed)
     }
 }
@@ -258,7 +256,7 @@ impl UpgradableInterface for InterchainTokenService {
     }
 
     fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
-        contract_traits::upgrade::<Self>(env, new_wasm_hash);
+        interfaces::upgrade::<Self>(env, new_wasm_hash);
     }
 }
 
@@ -266,6 +264,6 @@ impl UpgradableInterface for InterchainTokenService {
 impl OwnableInterface for InterchainTokenService {
     // boilerplate necessary for the contractimpl macro to include function in the generated client
     fn owner(env: &Env) -> Address {
-        contract_traits::owner(env)
+        interfaces::owner(env)
     }
 }

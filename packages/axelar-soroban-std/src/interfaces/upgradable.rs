@@ -144,14 +144,13 @@ pub enum MigrationError {
 
 #[cfg(test)]
 mod test {
-    use crate::contract_traits::upgradable::{OwnershipClient, UpgradableClient, UpgradedEvent};
-    use crate::{assert_invoke_auth_err, assert_invoke_auth_ok};
-    use std::format;
+    use crate::interfaces::upgradable::{OwnershipClient, UpgradableClient, UpgradedEvent};
+    use crate::{assert_invoke_auth_err, assert_invoke_auth_ok, events};
 
-    use crate::contract_traits::testdata::contract::ContractClient;
-    use crate::contract_traits::{testdata, upgradable};
-    use soroban_sdk::testutils::{Address as _, Events, MockAuth, MockAuthInvoke};
-    use soroban_sdk::{contracttype, Address, Env, String, TryFromVal};
+    use crate::interfaces::testdata::contract::ContractClient;
+    use crate::interfaces::{testdata, upgradable};
+    use soroban_sdk::testutils::{Address as _, MockAuth, MockAuthInvoke};
+    use soroban_sdk::{contracttype, Address, Env, String};
 
     const WASM: &[u8] = include_bytes!("testdata/contract.wasm");
 
