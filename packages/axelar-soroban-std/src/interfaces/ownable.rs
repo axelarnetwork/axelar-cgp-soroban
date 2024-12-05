@@ -1,8 +1,8 @@
 use crate::events::Event;
 #[cfg(any(test, feature = "testutils"))]
 use crate::impl_event_testutils;
+use core::fmt::Debug;
 use soroban_sdk::{contractclient, Address, Env, IntoVal, Symbol, Topics, Val, Vec};
-use std::fmt::Debug;
 
 #[contractclient(name = "OwnableClient")]
 pub trait OwnableInterface {
