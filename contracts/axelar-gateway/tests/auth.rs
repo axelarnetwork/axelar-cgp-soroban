@@ -9,8 +9,7 @@ use soroban_sdk::{
 };
 
 #[test]
-#[should_panic]
-/// TODO: figure out how to detect error in constructor failure
+#[should_panic(expected = "Error(Contract, #4)")]
 fn fail_initialization_with_empty_signer_set() {
     let env = Env::default();
     let owner = Address::generate(&env);
@@ -19,7 +18,7 @@ fn fail_initialization_with_empty_signer_set() {
     let empty_signer_set = Vec::<WeightedSigners>::new(&env);
     let domain_separator: BytesN<32> = BytesN::random(&env);
     let previous_signers_retention = randint(0, 10) as u64;
-    let minimum_rotation_delay = 0;
+    let minimum_rotation_delay: u64 = 0;
     let initial_signers = empty_signer_set;
 
     // should panic because of empty signer set
@@ -30,7 +29,7 @@ fn fail_initialization_with_empty_signer_set() {
             operator,
             domain_separator,
             minimum_rotation_delay,
-            previous_signers_retention as u64,
+            previous_signers_retention,
             initial_signers,
         ),
     );
