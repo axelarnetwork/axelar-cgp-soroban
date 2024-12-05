@@ -11,6 +11,4 @@ pub trait InterchainTokenInterface: token::Interface {
     fn mint(env: Env, minter: Address, to: Address, amount: i128) -> Result<(), ContractError>;
     fn add_minter(env: &Env, minter: Address);
     fn remove_minter(env: &Env, minter: Address);
-
-    fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), ContractError>;
 }

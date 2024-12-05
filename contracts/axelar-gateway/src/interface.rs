@@ -32,9 +32,6 @@ pub trait AxelarGatewayInterface: AxelarGatewayMessagingInterface + UpgradableIn
     /// Returns the epoch of the gateway.
     fn epoch(env: &Env) -> u64;
 
-    /// Transfers ownership of the gateway to a new address.
-    fn transfer_ownership(env: Env, new_owner: Address);
-
     /// Returns the epoch by signers hash.
     fn epoch_by_signers_hash(env: &Env, signers_hash: BytesN<32>) -> Result<u64, ContractError>;
 

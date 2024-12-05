@@ -42,9 +42,12 @@ impl UpgradableInterface for AxelarGateway {
 
 #[contractimpl]
 impl OwnableInterface for AxelarGateway {
-    // boilerplate necessary for the contractimpl macro to include function in the generated client
     fn owner(env: &Env) -> Address {
         interfaces::owner(env)
+    }
+
+    fn transfer_ownership(env: &Env, new_owner: Address) {
+        interfaces::transfer_ownership::<Self>(env, new_owner);
     }
 }
 
@@ -249,15 +252,6 @@ impl AxelarGatewayInterface for AxelarGateway {
 
     fn epoch(env: &Env) -> u64 {
         auth::epoch(env)
-    }
-
-    fn transfer_ownership(env: Env, new_owner: Address) {
-        let owner: Address = Self::owner(&env);
-        owner.require_auth();
-
-        interfaces::set_owner(&env, &new_owner);
-
-        event::transfer_ownership(&env, owner, new_owner);
     }
 
     fn epoch_by_signers_hash(env: &Env, signers_hash: BytesN<32>) -> Result<u64, ContractError> {

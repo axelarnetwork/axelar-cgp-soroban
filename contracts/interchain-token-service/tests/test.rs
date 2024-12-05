@@ -5,7 +5,6 @@ use interchain_token_service::contract::{InterchainTokenService, InterchainToken
 use interchain_token_service::error::ContractError;
 
 use axelar_soroban_std::{assert_contract_err, assert_invoke_auth_err, assert_last_emitted_event};
-use soroban_sdk::testutils::{MockAuth, MockAuthInvoke};
 
 use soroban_sdk::{testutils::Address as _, Address, Env, String, Symbol};
 
@@ -150,28 +149,4 @@ fn remove_trusted_address_fails_if_address_not_set() {
         client.try_remove_trusted_address(&chain),
         ContractError::NoTrustedAddressSet
     );
-}
-
-#[test]
-fn transfer_ownership() {
-    let (env, client) = setup_env();
-    env.mock_all_auths();
-
-    let prev_owner = client.owner();
-    let new_owner = Address::generate(&env);
-
-    client.transfer_ownership(&new_owner);
-
-    assert_last_emitted_event(
-        &env,
-        &client.address,
-        (
-            Symbol::new(&env, "ownership_transferred"),
-            prev_owner,
-            new_owner.clone(),
-        ),
-        (),
-    );
-
-    assert_eq!(client.owner(), new_owner);
 }
