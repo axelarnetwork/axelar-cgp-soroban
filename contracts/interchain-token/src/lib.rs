@@ -4,11 +4,6 @@ pub mod error;
 
 mod interface;
 
-// Allows using std (and its macros) in test modules
-#[cfg(test)]
-#[macro_use]
-extern crate std;
-
 cfg_if::cfg_if! {
     if #[cfg(all(feature = "library", not(feature = "testutils")))] {
         pub use interface::{InterchainTokenClient, InterchainTokenInterface};
