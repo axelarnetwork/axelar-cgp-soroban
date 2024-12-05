@@ -1,5 +1,5 @@
 use axelar_gateway::error::ContractError;
-use axelar_gateway::testutils::{generate_proof, generate_signers_set, randint, setup_env};
+use axelar_gateway::testutils::{generate_proof, generate_signers_set, randint};
 use axelar_gateway::types::{ProofSignature, ProofSigner, WeightedSigner, WeightedSigners};
 use axelar_gateway::AxelarGateway;
 use axelar_soroban_std::assert_contract_err;
@@ -7,6 +7,9 @@ use soroban_sdk::{
     testutils::{Address as _, BytesN as _},
     Address, BytesN, Env, Vec,
 };
+
+mod utils;
+use utils::setup_env;
 
 #[test]
 #[should_panic(expected = "Error(Contract, #4)")] // ContractError::InvalidSigners
@@ -21,7 +24,6 @@ fn fail_initialization_with_empty_signer_set() {
     let minimum_rotation_delay: u64 = 0;
     let initial_signers = empty_signer_set;
 
-    // should panic because of empty signer set
     env.register(
         AxelarGateway,
         (

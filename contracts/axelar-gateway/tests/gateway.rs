@@ -1,7 +1,6 @@
 use axelar_gateway::error::ContractError;
 use axelar_gateway::testutils::{
     generate_proof, generate_signers_set, generate_test_message, get_approve_hash, randint,
-    setup_env,
 };
 use axelar_gateway::types::Message;
 use axelar_soroban_std::{
@@ -13,6 +12,9 @@ use soroban_sdk::{
     testutils::{Address as _, Events, MockAuth, MockAuthInvoke},
     vec, Address, BytesN, String, Symbol,
 };
+
+mod utils;
+use utils::setup_env;
 
 const DESTINATION_CHAIN: &str = "ethereum";
 const DESTINATION_ADDRESS: &str = "0x4EFE356BEDeCC817cb89B4E9b796dB8bC188DC59";
