@@ -203,8 +203,7 @@ fn approve_messages_skip_duplicate_message() {
     client.approve_messages(&messages, &proof);
 
     // should not throw an error, should just skip
-    let res = client.try_approve_messages(&messages, &proof);
-    assert!(res.is_ok());
+    assert!(client.try_approve_messages(&messages, &proof).is_ok());
 
     // should not emit any more events (2 total because of rotate signers in auth)
     assert_eq!(env.events().all().len(), 2);

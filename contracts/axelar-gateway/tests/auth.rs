@@ -46,7 +46,6 @@ fn fail_validate_proof_invalid_signatures() {
     let proof = generate_proof(&env, proof_hash, signers);
     let random_hash: BytesN<32> = BytesN::random(&env);
 
-    // should panic, proof is for different message hash
     // NOTE: panic occurs in std function, cannot handle explicitly
     client.validate_proof(&random_hash, &proof);
 }
@@ -58,7 +57,6 @@ fn fail_validate_proof_empty_signatures() {
     let msg_hash: BytesN<32> = BytesN::random(&env);
     let mut proof = generate_proof(&env, msg_hash.clone(), signers.clone());
 
-    // Modify signatures to make them invalid
     let mut new_signers = Vec::new(&env);
     for signer in proof.signers.iter() {
         new_signers.push_back(ProofSigner {
@@ -97,7 +95,6 @@ fn fail_validate_proof_threshold_not_met() {
     }
     proof.signers = new_signers;
 
-    // should panic, all signatures are valid but total weight is below threshold
     assert_contract_err!(
         client.try_validate_proof(&msg_hash, &proof),
         ContractError::InvalidSignatures
@@ -124,7 +121,6 @@ fn fail_validate_proof_threshold_overflow() {
 
     let last_index = signers.signers.signers.len() - 1;
 
-    // get last signer and modify its weight to max u128 - 1
     if let Some(mut last_signer) = signers.signers.signers.get(last_index) {
         last_signer.weight = u128::MAX - 1;
         signers.signers.signers.set(last_index, last_signer);
@@ -152,7 +148,6 @@ fn rotate_signers_fail_empty_signers() {
     let data_hash = empty_signers.signers_rotation_hash(&env);
     let proof = generate_proof(&env, data_hash, signers);
 
-    // should throw an error, empty signer set
     assert_contract_err!(
         client.try_rotate_signers(&empty_signers, &proof, &true),
         ContractError::InvalidSigners
@@ -174,7 +169,6 @@ fn rotate_signers_fail_zero_weight() {
     let data_hash = new_signers.signers.signers_rotation_hash(&env);
     let proof = generate_proof(&env, data_hash, signers);
 
-    // should throw an error, last signer weight is zero
     assert_contract_err!(
         client.try_rotate_signers(&new_signers.signers, &proof, &true),
         ContractError::InvalidWeight
@@ -196,7 +190,6 @@ fn rotate_signers_fail_weight_overflow() {
     let data_hash = new_signers.signers.signers_rotation_hash(&env);
     let proof = generate_proof(&env, data_hash, signers);
 
-    // last signer weight should cause overflow
     assert_contract_err!(
         client.try_rotate_signers(&new_signers.signers, &proof, &true),
         ContractError::WeightOverflow
@@ -208,13 +201,11 @@ fn rotate_signers_fail_zero_threshold() {
     let (env, signers, client) = setup_env(1, randint(1, 10));
     let mut new_signers = generate_signers_set(&env, randint(1, 10), BytesN::random(&env));
 
-    // set the threshold to zero
     new_signers.signers.threshold = 0u128;
 
     let data_hash = new_signers.signers.signers_rotation_hash(&env);
     let proof = generate_proof(&env, data_hash, signers);
 
-    // should error because the threshold is set to zero
     assert_contract_err!(
         client.try_rotate_signers(&new_signers.signers, &proof, &true),
         ContractError::InvalidThreshold
@@ -241,7 +232,6 @@ fn rotate_signers_fail_low_total_weight() {
     let data_hash = new_signers.signers.signers_rotation_hash(&env);
     let proof = generate_proof(&env, data_hash, signers);
 
-    // should error because the threshold is set to zero
     assert_contract_err!(
         client.try_rotate_signers(&new_signers.signers, &proof, &true),
         ContractError::InvalidThreshold
@@ -258,7 +248,6 @@ fn rotate_signers_fail_wrong_signer_order() {
 
     let len = new_signers.signers.signers.len();
 
-    // create a new vec and reverse signer order
     let mut reversed_signers = Vec::new(&env);
     for i in (0..len).rev() {
         if let Some(item) = new_signers.signers.signers.get(i) {
@@ -271,7 +260,6 @@ fn rotate_signers_fail_wrong_signer_order() {
     let data_hash = new_signers.signers.signers_rotation_hash(&env);
     let proof = generate_proof(&env, data_hash, signers);
 
-    // should error because signers are in wrong order
     assert_contract_err!(
         client.try_rotate_signers(&new_signers.signers, &proof, &true),
         ContractError::InvalidSigners
@@ -292,7 +280,6 @@ fn rotate_signers_fail_duplicated_signers() {
 
     let proof = generate_proof(&env, data_hash, new_signers);
 
-    // should panic, duplicated signers
     assert_contract_err!(
         client.try_rotate_signers(&duplicated_signers.signers, &proof, &true),
         ContractError::DuplicateSigners
