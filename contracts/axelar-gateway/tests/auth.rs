@@ -9,7 +9,7 @@ use soroban_sdk::{
 };
 
 #[test]
-#[should_panic(expected = "Error(Contract, #4)")]
+#[should_panic(expected = "Error(Contract, #4)")] // ContractError::InvalidSigners
 fn fail_initialization_with_empty_signer_set() {
     let env = Env::default();
     let owner = Address::generate(&env);
