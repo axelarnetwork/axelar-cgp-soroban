@@ -89,14 +89,14 @@ pub enum ContractError {
 }
 
 mod test {
-    use soroban_sdk::{contracttype, Env};
+    use soroban_sdk::{contracttype, Address, Env};
 
     use super::{Contract, DataKey};
 
     #[test]
     fn contracttype_enum_name_is_irrelevant_for_key_collision() {
         let env = Env::default();
-        let contract_id = env.register(Contract, ());
+        let contract_id = env.register(Contract, (None::<Address>, None::<Address>));
 
         env.as_contract(&contract_id, || {
             assert!(!env.storage().instance().has(&DataKey::Migrating));
