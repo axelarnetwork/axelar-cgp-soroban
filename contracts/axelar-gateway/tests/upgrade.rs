@@ -12,13 +12,13 @@ use soroban_sdk::{Env, String};
 
 mod old_contract {
     soroban_sdk::contractimport!(
-        file = "../integration-tests/tests/testdata/axelar_gateway_old.wasm"
+        file = "./tests/testdata/axelar_gateway_old.wasm"
     );
 }
 
 mod new_contract {
     soroban_sdk::contractimport!(
-        file = "../integration-tests/tests/testdata/axelar_gateway_new.wasm"
+        file = "./tests/testdata/axelar_gateway_new.wasm"
     );
 }
 
