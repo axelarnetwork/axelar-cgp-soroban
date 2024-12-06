@@ -1123,6 +1123,7 @@ dependencies = [
  "axelar-soroban-std",
  "goldie",
  "hex",
+ "interchain-token",
  "soroban-sdk",
  "soroban-token-sdk",
 ]

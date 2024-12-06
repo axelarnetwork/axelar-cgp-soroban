@@ -9,4 +9,5 @@ pub enum ContractError {
     TrustedAddressAlreadySet = 3,
     NoTrustedAddressSet = 4,
     InvalidMessageType = 5,
+    InvalidMinter = 6,
 }

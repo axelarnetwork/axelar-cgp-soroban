@@ -15,6 +15,7 @@ alloy-sol-types = { workspace = true }
 axelar-gas-service = { workspace = true, features = ["library"] }
 axelar-gateway = { workspace = true, features = ["library"] }
 axelar-soroban-std = { workspace = true }
+interchain-token = { workspace = true, features = ["library"] }
 soroban-sdk = { workspace = true, features = ["alloc"] }
 soroban-token-sdk = { workspace = true }
 
@@ -24,6 +25,7 @@ axelar-gateway = { workspace = true, features = ["testutils"] }
 axelar-soroban-std = { workspace = true, features = ["testutils"] }
 goldie = { workspace = true }
 hex = "0.4"
+interchain-token = { workspace = true, features = ["testutils"] }
 soroban-sdk = { workspace = true, features = ["testutils", "alloc"] }
 
 [features]
