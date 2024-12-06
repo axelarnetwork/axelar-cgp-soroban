@@ -1,14 +1,14 @@
 #![cfg(test)]
 extern crate std;
 
-use axelar_gas_service::contract::AxelarGasService;
+use axelar_gas_service::AxelarGasService;
 use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::testutils::{self, generate_proof, get_approve_hash, TestSignerSet};
 use axelar_gateway::types::Message;
 use axelar_gateway::AxelarGatewayClient;
 use axelar_soroban_std::types::Token;
 use axelar_soroban_std::{assert_last_emitted_event, auth_invocation};
-use example::contract::Example;
+use example::Example;
 use example::ExampleClient;
 use soroban_sdk::testutils::{AuthorizedFunction, AuthorizedInvocation};
 use soroban_sdk::token::StellarAssetClient;

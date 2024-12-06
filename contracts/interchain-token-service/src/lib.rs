@@ -1,15 +1,14 @@
 #![no_std]
 
 mod abi;
+mod contract;
 pub mod error;
 mod event;
 mod interface;
 mod storage_types;
 mod types;
 
-pub mod contract;
-
 #[cfg(test)]
 extern crate std;
 
-pub use contract::InterchainTokenServiceClient;
+pub use contract::{InterchainTokenService, InterchainTokenServiceClient};
