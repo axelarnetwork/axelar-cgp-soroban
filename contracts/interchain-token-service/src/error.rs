@@ -4,10 +4,15 @@ use soroban_sdk::contracterror;
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[repr(u32)]
 pub enum ContractError {
-    NotOwner = 1,
-    TrustedAddressAlreadySet = 2,
-    NoTrustedAddressSet = 3,
-    InvalidMessageType = 4,
-    InvalidPayload = 5,
-    UntrustedChain = 6,
+    MigrationNotAllowed = 1,
+    NotOwner = 2,
+    TrustedAddressAlreadySet = 3,
+    NoTrustedAddressSet = 4,
+    InvalidMessageType = 5,
+    InvalidPayload = 6,
+    UntrustedChain = 7,
+    InsufficientMessageLength = 8,
+    AbiDecodeFailed = 9,
+    InvalidAmount = 10,
+    InvalidUtf8 = 11,
 }

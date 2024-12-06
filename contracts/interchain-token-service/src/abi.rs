@@ -1,22 +1,12 @@
 use alloy_primitives::{FixedBytes, Uint, U256};
 use alloy_sol_types::{sol, SolValue};
 use axelar_soroban_std::ensure;
-use soroban_sdk::{contracterror, Bytes, BytesN, Env, String};
+use soroban_sdk::{Bytes, BytesN, Env, String};
 
+use crate::abi::alloc::{string::String as StdString, vec};
+use crate::error::ContractError;
 use crate::types::{self, HubMessage, Message};
 extern crate alloc;
-use crate::abi::alloc::{string::String as StdString, vec};
-
-#[contracterror]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-#[repr(u32)]
-pub enum MessageError {
-    InsufficientMessageLength = 0,
-    InvalidMessageType = 1,
-    AbiDecodeFailed = 2,
-    InvalidAmount = 3,
-    InvalidUtf8 = 4,
-}
 
 sol! {
     #[derive(PartialEq, Eq)]
@@ -60,7 +50,7 @@ sol! {
 }
 
 impl Message {
-    pub fn abi_encode(self, env: &Env) -> Result<Bytes, MessageError> {
+    pub fn abi_encode(self, env: &Env) -> Result<Bytes, ContractError> {
         let msg = match self {
             Self::InterchainTransfer(types::InterchainTransfer {
                 token_id,
@@ -96,7 +86,7 @@ impl Message {
         Ok(Bytes::from_slice(env, &msg))
     }
 
-    pub fn abi_decode(env: &Env, payload: &Bytes) -> Result<Self, MessageError> {
+    pub fn abi_decode(env: &Env, payload: &Bytes) -> Result<Self, ContractError> {
         let payload = payload.to_alloc_vec();
 
         let message_type = get_message_type(&payload)?;
@@ -104,7 +94,7 @@ impl Message {
         match message_type {
             MessageType::InterchainTransfer => {
                 let decoded = InterchainTransfer::abi_decode_params(&payload, true)
-                    .map_err(|_| MessageError::AbiDecodeFailed)?;
+                    .map_err(|_| ContractError::AbiDecodeFailed)?;
 
                 Ok(Self::InterchainTransfer(types::InterchainTransfer {
                     token_id: BytesN::from_array(env, &decoded.tokenId.into()),
@@ -119,7 +109,7 @@ impl Message {
             }
             MessageType::DeployInterchainToken => {
                 let decoded = DeployInterchainToken::abi_decode_params(&payload, true)
-                    .map_err(|_| MessageError::AbiDecodeFailed)?;
+                    .map_err(|_| ContractError::AbiDecodeFailed)?;
 
                 Ok(Self::DeployInterchainToken(types::DeployInterchainToken {
                     token_id: BytesN::from_array(env, &decoded.tokenId.into()),
@@ -129,13 +119,13 @@ impl Message {
                     minter: from_vec(env, decoded.minter.as_ref()),
                 }))
             }
-            _ => Err(MessageError::InvalidMessageType),
+            _ => Err(ContractError::InvalidMessageType),
         }
     }
 }
 
 impl HubMessage {
-    pub fn abi_encode(self, env: &Env) -> Result<Bytes, MessageError> {
+    pub fn abi_encode(self, env: &Env) -> Result<Bytes, ContractError> {
         let msg = match self {
             Self::SendToHub {
                 destination_chain,
@@ -159,7 +149,7 @@ impl HubMessage {
         Ok(Bytes::from_slice(env, &msg))
     }
 
-    pub fn abi_decode(env: &Env, payload: &Bytes) -> Result<Self, MessageError> {
+    pub fn abi_decode(env: &Env, payload: &Bytes) -> Result<Self, ContractError> {
         let payload = payload.to_alloc_vec();
 
         let message_type = get_message_type(&payload)?;
@@ -167,7 +157,7 @@ impl HubMessage {
         match message_type {
             MessageType::SendToHub => {
                 let decoded = SendToHub::abi_decode_params(&payload, true)
-                    .map_err(|_| MessageError::AbiDecodeFailed)?;
+                    .map_err(|_| ContractError::AbiDecodeFailed)?;
 
                 Ok(Self::SendToHub {
                     destination_chain: String::from_str(env, &decoded.destination_chain),
@@ -179,7 +169,7 @@ impl HubMessage {
             }
             MessageType::ReceiveFromHub => {
                 let decoded = ReceiveFromHub::abi_decode_params(&payload, true)
-                    .map_err(|_| MessageError::AbiDecodeFailed)?;
+                    .map_err(|_| ContractError::AbiDecodeFailed)?;
 
                 Ok(Self::ReceiveFromHub {
                     source_chain: String::from_str(env, &decoded.source_chain),
@@ -189,28 +179,31 @@ impl HubMessage {
                     )?,
                 })
             }
-            _ => Err(MessageError::InvalidMessageType),
+            _ => Err(ContractError::InvalidMessageType),
         }
     }
 }
 
-pub fn get_message_type(payload: &[u8]) -> Result<MessageType, MessageError> {
-    ensure!(payload.len() >= 32, MessageError::InsufficientMessageLength);
+pub fn get_message_type(payload: &[u8]) -> Result<MessageType, ContractError> {
+    ensure!(
+        payload.len() >= 32,
+        ContractError::InsufficientMessageLength
+    );
 
     let message_type = MessageType::abi_decode(&payload[0..32], true)
-        .map_err(|_| MessageError::InvalidMessageType)?;
+        .map_err(|_| ContractError::InvalidMessageType)?;
 
     Ok(message_type)
 }
 
-fn to_std_string(soroban_string: String) -> Result<StdString, MessageError> {
+fn to_std_string(soroban_string: String) -> Result<StdString, ContractError> {
     let length = soroban_string.len() as usize;
     let mut bytes = vec![0u8; length];
     soroban_string.copy_into_slice(&mut bytes);
-    StdString::from_utf8(bytes).map_err(|_| MessageError::InvalidUtf8)
+    StdString::from_utf8(bytes).map_err(|_| ContractError::InvalidUtf8)
 }
 
-fn to_i128(value: Uint<256, 4>) -> Result<i128, MessageError> {
+fn to_i128(value: Uint<256, 4>) -> Result<i128, ContractError> {
     let slice = value.as_le_slice();
 
     let mut bytes_to_remove = [0; 16];
@@ -220,12 +213,12 @@ fn to_i128(value: Uint<256, 4>) -> Result<i128, MessageError> {
 
     ensure!(
         i128::from_le_bytes(bytes_to_remove) == 0,
-        MessageError::InvalidAmount
+        ContractError::InvalidAmount
     );
 
     let i128_value = i128::from_le_bytes(bytes_to_convert);
 
-    ensure!(i128_value >= 0, MessageError::InvalidAmount);
+    ensure!(i128_value >= 0, ContractError::InvalidAmount);
 
     Ok(i128_value)
 }
@@ -306,7 +299,7 @@ mod tests {
 
         for sequence in invalid_sequences {
             let result = to_std_string(sequence);
-            assert!(matches!(result, Err(MessageError::InvalidUtf8)));
+            assert!(matches!(result, Err(ContractError::InvalidUtf8)));
         }
     }
 
@@ -341,18 +334,18 @@ mod tests {
 
         let result = to_i128(bad_uint);
 
-        assert!(matches!(result, Err(MessageError::InvalidAmount)));
+        assert!(matches!(result, Err(ContractError::InvalidAmount)));
     }
 
     #[test]
     fn to_i128_fails_overflow() {
         let overflow: Uint<256, 4> = Uint::from(i128::MAX) + Uint::from(1);
         let result = to_i128(overflow);
-        assert!(matches!(result, Err(MessageError::InvalidAmount)));
+        assert!(matches!(result, Err(ContractError::InvalidAmount)));
 
         let overflow: Uint<256, 4> = Uint::from(u128::MAX);
         let result = to_i128(overflow);
-        assert!(matches!(result, Err(MessageError::InvalidAmount)));
+        assert!(matches!(result, Err(ContractError::InvalidAmount)));
     }
 
     #[test]
@@ -540,7 +533,7 @@ mod tests {
         let invalid_payload = Bytes::from_slice(&env, &bytes);
 
         let result = HubMessage::abi_decode(&env, &invalid_payload);
-        assert!(matches!(result, Err(MessageError::InvalidMessageType)));
+        assert!(matches!(result, Err(ContractError::InvalidMessageType)));
 
         let invalid_hub_message_type = assert_ok!(types::Message::InterchainTransfer(
             types::InterchainTransfer {
@@ -554,6 +547,6 @@ mod tests {
         .abi_encode(&env));
 
         let result = HubMessage::abi_decode(&env, &invalid_hub_message_type);
-        assert!(matches!(result, Err(MessageError::InvalidMessageType)));
+        assert!(matches!(result, Err(ContractError::InvalidMessageType)));
     }
 }

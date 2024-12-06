@@ -259,8 +259,7 @@ impl InterchainTokenService {
         source_chain: String,
         payload: &Bytes,
     ) -> Result<(String, Message), ContractError> {
-        let message_type =
-            get_message_type(&payload.to_alloc_vec()).map_err(|_| ContractError::InvalidPayload)?;
+        let message_type = get_message_type(&payload.to_alloc_vec())?;
 
         ensure!(
             message_type == EncodedMessageType::ReceiveFromHub,
@@ -272,8 +271,7 @@ impl InterchainTokenService {
             ContractError::UntrustedChain
         );
 
-        let decoded_message =
-            HubMessage::abi_decode(env, payload).map_err(|_| ContractError::InvalidPayload)?;
+        let decoded_message = HubMessage::abi_decode(env, payload)?;
 
         let HubMessage::ReceiveFromHub {
             source_chain: original_source_chain,
@@ -319,8 +317,7 @@ impl InterchainTokenService {
             destination_chain,
             message,
         }
-        .abi_encode(env)
-        .map_err(|_| ContractError::InvalidPayload)?;
+        .abi_encode(env)?;
 
         Ok(payload)
     }
