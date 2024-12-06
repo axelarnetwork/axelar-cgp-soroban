@@ -72,6 +72,8 @@ fn validate_message() {
         _,
     ) = generate_test_message(&env);
 
+    let prev_event_count = env.events().all().len();
+
     let approved = client.validate_message(
         &contract_address,
         &source_chain,
@@ -95,7 +97,7 @@ fn validate_message() {
         ),
     );
 
-    assert_eq!(env.events().all().len(), 1);
+    assert_eq!(env.events().all().len(), prev_event_count);
 }
 
 #[test]
@@ -201,9 +203,10 @@ fn approve_messages_skip_duplicate_message() {
     let proof = generate_proof(&env, data_hash, signers);
     client.approve_messages(&messages, &proof);
 
+    let prev_event_count = env.events().all().len();
     assert!(client.try_approve_messages(&messages, &proof).is_ok());
 
-    assert_eq!(env.events().all().len(), 2);
+    assert_eq!(env.events().all().len(), prev_event_count);
 }
 
 #[test]
