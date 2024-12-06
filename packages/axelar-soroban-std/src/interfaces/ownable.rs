@@ -23,13 +23,13 @@ pub fn owner(env: &Env) -> Address {
 
 /// Default implementation of the [OwnableInterface] trait. Ensures the current owner is authorized and emits an event after the transfer.
 pub fn transfer_ownership<T: OwnableInterface>(env: &Env, new_owner: Address) {
-    let previous_owner = T::owner(env);
-    previous_owner.require_auth();
+    let current_owner = T::owner(env);
+    current_owner.require_auth();
 
     set_owner(env, &new_owner);
 
-    OwnerChangedEvent {
-        previous_owner,
+    OwnershipTransferredEvent {
+        previous_owner: current_owner,
         new_owner,
     }
     .emit(env);
@@ -44,12 +44,12 @@ pub fn set_owner(env: &Env, owner: &Address) {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OwnerChangedEvent {
+pub struct OwnershipTransferredEvent {
     pub previous_owner: Address,
     pub new_owner: Address,
 }
 
-impl Event for OwnerChangedEvent {
+impl Event for OwnershipTransferredEvent {
     fn topics(&self, env: &Env) -> impl Topics + Debug {
         (
             Symbol::new(env, "ownership_transferred"),
@@ -64,7 +64,7 @@ impl Event for OwnerChangedEvent {
 }
 
 #[cfg(any(test, feature = "testutils"))]
-impl_event_testutils!(OwnerChangedEvent, (Symbol, Address, Address), ());
+impl_event_testutils!(OwnershipTransferredEvent, (Symbol, Address, Address), ());
 
 // submodule to encapsulate the disabled linting
 mod storage {
@@ -86,7 +86,7 @@ mod storage {
 #[cfg(test)]
 mod test {
     use crate::interfaces::testdata::contract::Contract;
-    use crate::interfaces::{OwnableClient, OwnerChangedEvent};
+    use crate::interfaces::{OwnableClient, OwnershipTransferredEvent};
     use crate::{assert_invoke_auth_err, assert_invoke_auth_ok, events};
     use soroban_sdk::testutils::Address as _;
     use soroban_sdk::{Address, Env};
@@ -133,7 +133,9 @@ mod test {
         let new_owner = Address::generate(&env);
         assert_invoke_auth_ok!(owner, client.try_transfer_ownership(&new_owner));
 
-        goldie::assert!(events::fmt_last_emitted_event::<OwnerChangedEvent>(&env));
+        goldie::assert!(events::fmt_last_emitted_event::<OwnershipTransferredEvent>(
+            &env
+        ));
 
         assert_eq!(client.owner(), new_owner);
     }

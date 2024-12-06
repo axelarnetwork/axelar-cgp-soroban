@@ -133,6 +133,16 @@ mod test {
 
     const WASM: &[u8] = include_bytes!("testdata/contract.wasm");
 
+    fn prepare_client_and_bytecode(
+        env: &Env,
+        owner: Option<Address>,
+    ) -> (ContractClient, BytesN<32>) {
+        let contract_id = env.register(testdata::contract::Contract, (owner,));
+        let hash = env.deployer().upload_contract_wasm(WASM);
+        let client = ContractClient::new(env, &contract_id);
+        (client, hash)
+    }
+
     #[test]
     fn contracttype_enum_name_is_irrelevant_for_key_collision() {
         let env = Env::default();
@@ -266,16 +276,6 @@ mod test {
         assert_invoke_auth_ok!(owner, client.try_upgrade(&hash));
         assert_invoke_auth_ok!(owner, client.try_migrate(&()));
         assert_invoke_auth_err!(owner, client.try_migrate(&()));
-    }
-
-    fn prepare_client_and_bytecode(
-        env: &Env,
-        owner: Option<Address>,
-    ) -> (ContractClient, BytesN<32>) {
-        let contract_id = env.register(testdata::contract::Contract, (owner,));
-        let hash = env.deployer().upload_contract_wasm(WASM);
-        let client = ContractClient::new(env, &contract_id);
-        (client, hash)
     }
 
     #[contracttype]
