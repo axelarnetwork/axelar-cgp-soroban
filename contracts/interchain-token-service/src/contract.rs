@@ -133,15 +133,6 @@ impl InterchainTokenService {
 
 #[contractimpl]
 impl InterchainTokenServiceInterface for InterchainTokenService {
-    fn transfer_ownership(env: &Env, new_owner: Address) {
-        let owner = Self::owner(env);
-        owner.require_auth();
-
-        interfaces::set_owner(env, &new_owner);
-
-        event::transfer_ownership(env, owner, new_owner);
-    }
-
     fn trusted_address(env: &Env, chain: String) -> Option<String> {
         env.storage()
             .persistent()
@@ -359,8 +350,11 @@ impl UpgradableInterface for InterchainTokenService {
 
 #[contractimpl]
 impl OwnableInterface for InterchainTokenService {
-    // boilerplate necessary for the contractimpl macro to include function in the generated client
     fn owner(env: &Env) -> Address {
         interfaces::owner(env)
+    }
+
+    fn transfer_ownership(env: &Env, new_owner: Address) {
+        interfaces::transfer_ownership::<Self>(env, new_owner);
     }
 }

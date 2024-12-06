@@ -6,7 +6,6 @@ use axelar_soroban_std::{
 };
 
 use interchain_token::contract::{InterchainToken, InterchainTokenClient};
-use soroban_sdk::testutils::{MockAuth, MockAuthInvoke};
 use soroban_sdk::{
     testutils::{Address as _, BytesN as _},
     Address, BytesN, Env, IntoVal as _, Symbol,
