@@ -62,14 +62,14 @@ pub fn migrate<T: UpgradableInterface>(
 fn start_migration(env: &Env) {
     env.storage()
         .instance()
-        .set(&storage::MigratingDataKey::Interfaces_Migrating, &());
+        .set(&storage::migrating::DataKey::Interfaces_Migrating, &());
 }
 
 fn ensure_is_migrating(env: &Env) -> Result<(), MigrationError> {
     ensure!(
         env.storage()
             .instance()
-            .has(&storage::MigratingDataKey::Interfaces_Migrating),
+            .has(&storage::migrating::DataKey::Interfaces_Migrating),
         MigrationError::NotAllowed
     );
 
@@ -79,7 +79,7 @@ fn ensure_is_migrating(env: &Env) -> Result<(), MigrationError> {
 fn complete_migration(env: &Env) {
     env.storage()
         .instance()
-        .remove(&storage::MigratingDataKey::Interfaces_Migrating);
+        .remove(&storage::migrating::DataKey::Interfaces_Migrating);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

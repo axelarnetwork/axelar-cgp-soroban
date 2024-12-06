@@ -18,7 +18,7 @@ pub trait OperatableInterface {
 pub fn operator(env: &Env) -> Address {
     env.storage()
         .instance()
-        .get(&storage::OperatorDataKey::Interfaces_Operator)
+        .get(&storage::operator::DataKey::Interfaces_Operator)
         .expect("operator must be set during contract construction")
 }
 
@@ -41,7 +41,7 @@ pub fn transfer_operatorship<T: OperatableInterface>(env: &Env, new_operator: Ad
 pub fn set_operator(env: &Env, operator: &Address) {
     env.storage()
         .instance()
-        .set(&storage::OperatorDataKey::Interfaces_Operator, operator);
+        .set(&storage::operator::DataKey::Interfaces_Operator, operator);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

@@ -18,7 +18,7 @@ pub trait OwnableInterface {
 pub fn owner(env: &Env) -> Address {
     env.storage()
         .instance()
-        .get(&storage::OwnerDataKey::Interfaces_Owner)
+        .get(&storage::owner::DataKey::Interfaces_Owner)
         .expect("owner must be set during contract construction")
 }
 
@@ -41,7 +41,7 @@ pub fn transfer_ownership<T: OwnableInterface>(env: &Env, new_owner: Address) {
 pub fn set_owner(env: &Env, owner: &Address) {
     env.storage()
         .instance()
-        .set(&storage::OwnerDataKey::Interfaces_Owner, owner);
+        .set(&storage::owner::DataKey::Interfaces_Owner, owner);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

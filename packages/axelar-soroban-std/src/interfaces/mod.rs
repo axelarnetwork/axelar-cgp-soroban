@@ -15,23 +15,34 @@ pub use upgradable::*;
 mod storage {
     #![allow(non_camel_case_types)]
 
-    use soroban_sdk::contracttype;
+    // add a separate module for each interface with a dedicated data key.
+    // Using a single enum could lead to unintentionally breaks of unrelated interfaces,
+    // because the key serialization is variant order dependent.
 
-    // add a separate data key type for each interface. Using a single enum could lead to unintentionally breaks
-    // of unrelated interfaces, because the key serialization is variant order dependent.
+    pub mod operator {
+        use soroban_sdk::contracttype;
 
-    #[contracttype]
-    pub enum OperatorDataKey {
-        Interfaces_Operator,
+        #[contracttype]
+        pub enum DataKey {
+            Interfaces_Operator,
+        }
     }
 
-    #[contracttype]
-    pub enum OwnerDataKey {
-        Interfaces_Owner,
+    pub mod owner {
+        use soroban_sdk::contracttype;
+
+        #[contracttype]
+        pub enum DataKey {
+            Interfaces_Owner,
+        }
     }
 
-    #[contracttype]
-    pub enum MigratingDataKey {
-        Interfaces_Migrating,
+    pub mod migrating {
+        use soroban_sdk::contracttype;
+
+        #[contracttype]
+        pub enum DataKey {
+            Interfaces_Migrating,
+        }
     }
 }
