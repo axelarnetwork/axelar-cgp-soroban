@@ -1,6 +1,7 @@
 use crate::events::Event;
 #[cfg(any(test, feature = "testutils"))]
 use crate::impl_event_testutils;
+use crate::interfaces::storage;
 use core::fmt::Debug;
 use soroban_sdk::{contractclient, Address, Env, IntoVal, Symbol, Topics, Val, Vec};
 
@@ -17,7 +18,7 @@ pub trait OperatableInterface {
 pub fn operator(env: &Env) -> Address {
     env.storage()
         .instance()
-        .get(&storage::DataKey::Interfaces_Operator)
+        .get(&storage::OperatorDataKey::Interfaces_Operator)
         .expect("operator must be set during contract construction")
 }
 
@@ -40,7 +41,7 @@ pub fn transfer_operatorship<T: OperatableInterface>(env: &Env, new_operator: Ad
 pub fn set_operator(env: &Env, operator: &Address) {
     env.storage()
         .instance()
-        .set(&storage::DataKey::Interfaces_Operator, operator);
+        .set(&storage::OperatorDataKey::Interfaces_Operator, operator);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -65,23 +66,6 @@ impl Event for OperatorshipTransferredEvent {
 
 #[cfg(any(test, feature = "testutils"))]
 impl_event_testutils!(OperatorshipTransferredEvent, (Symbol, Address, Address), ());
-
-// submodule to encapsulate the disabled linting
-mod storage {
-    // linting is disabled for the enum variant names on purpose, so we can define names that would otherwise be invalid.
-    // This way, if a contract that implements a shared interface defines a variant with the same name, the linter will
-    // complain about it.
-    #![allow(non_camel_case_types)]
-
-    use soroban_sdk::contracttype;
-
-    #[contracttype]
-    /// Variants do not follow the naming convention of other variants to let the linter help to avoid
-    /// collisions with contract types defined in other contracts that implement a shared interface.
-    pub enum DataKey {
-        Interfaces_Operator,
-    }
-}
 
 #[cfg(test)]
 mod test {

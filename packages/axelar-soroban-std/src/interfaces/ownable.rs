@@ -1,6 +1,7 @@
 use crate::events::Event;
 #[cfg(any(test, feature = "testutils"))]
 use crate::impl_event_testutils;
+use crate::interfaces::storage;
 use core::fmt::Debug;
 use soroban_sdk::{contractclient, Address, Env, IntoVal, Symbol, Topics, Val, Vec};
 
@@ -17,7 +18,7 @@ pub trait OwnableInterface {
 pub fn owner(env: &Env) -> Address {
     env.storage()
         .instance()
-        .get(&storage::DataKey::Interfaces_Owner)
+        .get(&storage::OwnerDataKey::Interfaces_Owner)
         .expect("owner must be set during contract construction")
 }
 
@@ -40,7 +41,7 @@ pub fn transfer_ownership<T: OwnableInterface>(env: &Env, new_owner: Address) {
 pub fn set_owner(env: &Env, owner: &Address) {
     env.storage()
         .instance()
-        .set(&storage::DataKey::Interfaces_Owner, owner);
+        .set(&storage::OwnerDataKey::Interfaces_Owner, owner);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -66,23 +67,6 @@ impl Event for OwnershipTransferredEvent {
 #[cfg(any(test, feature = "testutils"))]
 impl_event_testutils!(OwnershipTransferredEvent, (Symbol, Address, Address), ());
 
-// submodule to encapsulate the disabled linting
-mod storage {
-    // linting is disabled for the enum variant names on purpose, so we can define names that would otherwise be invalid.
-    // This way, if a contract that implements a shared interface defines a variant with the same name, the linter will
-    // complain about it.
-    #![allow(non_camel_case_types)]
-
-    use soroban_sdk::contracttype;
-
-    #[contracttype]
-    /// Variants do not follow the naming convention of other variants to let the linter help to avoid
-    /// collisions with contract types defined in other contracts that implement a shared interface.
-    pub enum DataKey {
-        Interfaces_Owner,
-    }
-}
-
 #[cfg(test)]
 mod test {
     use crate::interfaces::testdata::contract::Contract;
@@ -90,6 +74,12 @@ mod test {
     use crate::{assert_invoke_auth_err, assert_invoke_auth_ok, events};
     use soroban_sdk::testutils::Address as _;
     use soroban_sdk::{Address, Env};
+
+    fn prepare_client(env: &Env, owner: Option<Address>) -> OwnableClient {
+        let operator = Address::generate(env);
+        let contract_id = env.register(Contract, (owner, operator));
+        OwnableClient::new(env, &contract_id)
+    }
 
     #[test]
     fn owner_fails_if_owner_not_set() {
@@ -134,11 +124,5 @@ mod test {
         ));
 
         assert_eq!(client.owner(), new_owner);
-    }
-
-    fn prepare_client(env: &Env, owner: Option<Address>) -> OwnableClient {
-        let operator = Address::generate(env);
-        let contract_id = env.register(Contract, (owner, operator));
-        OwnableClient::new(env, &contract_id)
     }
 }
