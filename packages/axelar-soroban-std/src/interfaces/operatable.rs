@@ -23,13 +23,13 @@ pub fn operator(env: &Env) -> Address {
 
 /// Default implementation of the [OperatableInterface] trait. Ensures the current operator is authorized and emits an event after the transfer.
 pub fn transfer_operatorship<T: OperatableInterface>(env: &Env, new_operator: Address) {
-    let previous_operator = T::operator(env);
-    previous_operator.require_auth();
+    let current_operator = T::operator(env);
+    current_operator.require_auth();
 
     set_operator(env, &new_operator);
 
-    OperatorChangedEvent {
-        previous_operator,
+    OperatorshipTransferredEvent {
+        previous_operator: current_operator,
         new_operator,
     }
     .emit(env);
@@ -44,12 +44,12 @@ pub fn set_operator(env: &Env, operator: &Address) {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OperatorChangedEvent {
+pub struct OperatorshipTransferredEvent {
     pub previous_operator: Address,
     pub new_operator: Address,
 }
 
-impl Event for OperatorChangedEvent {
+impl Event for OperatorshipTransferredEvent {
     fn topics(&self, env: &Env) -> impl Topics + Debug {
         (
             Symbol::new(env, "operatorship_transferred"),
@@ -64,7 +64,7 @@ impl Event for OperatorChangedEvent {
 }
 
 #[cfg(any(test, feature = "testutils"))]
-impl_event_testutils!(OperatorChangedEvent, (Symbol, Address, Address), ());
+impl_event_testutils!(OperatorshipTransferredEvent, (Symbol, Address, Address), ());
 
 // submodule to encapsulate the disabled linting
 mod storage {
@@ -86,10 +86,16 @@ mod storage {
 #[cfg(test)]
 mod test {
     use crate::interfaces::testdata::contract::Contract;
-    use crate::interfaces::{OperatableClient, OperatorChangedEvent};
+    use crate::interfaces::{OperatableClient, OperatorshipTransferredEvent};
     use crate::{assert_invoke_auth_err, assert_invoke_auth_ok, events};
     use soroban_sdk::testutils::Address as _;
     use soroban_sdk::{Address, Env};
+
+    fn prepare_client(env: &Env, operator: Option<Address>) -> OperatableClient {
+        let owner = Address::generate(env);
+        let contract_id = env.register(Contract, (owner, operator));
+        OperatableClient::new(env, &contract_id)
+    }
 
     #[test]
     fn operator_fails_if_operator_not_set() {
@@ -132,14 +138,8 @@ mod test {
         let new_operator = Address::generate(&env);
         assert_invoke_auth_ok!(operator, client.try_transfer_operatorship(&new_operator));
 
-        goldie::assert!(events::fmt_last_emitted_event::<OperatorChangedEvent>(&env));
+        goldie::assert!(events::fmt_last_emitted_event::<OperatorshipTransferredEvent>(&env));
 
         assert_eq!(client.operator(), new_operator);
-    }
-
-    fn prepare_client(env: &Env, operator: Option<Address>) -> OperatableClient {
-        let owner = Address::generate(env);
-        let contract_id = env.register(Contract, (owner, operator));
-        OperatableClient::new(env, &contract_id)
     }
 }
