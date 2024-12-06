@@ -95,7 +95,6 @@ fn validate_message() {
         ),
     );
 
-    // there is an event emitted when initializing, ensure that no more are emitted
     assert_eq!(env.events().all().len(), 1);
 }
 
@@ -202,10 +201,8 @@ fn approve_messages_skip_duplicate_message() {
     let proof = generate_proof(&env, data_hash, signers);
     client.approve_messages(&messages, &proof);
 
-    // should not throw an error, should just skip
     assert!(client.try_approve_messages(&messages, &proof).is_ok());
 
-    // should not emit any more events (2 total because of rotate signers in auth)
     assert_eq!(env.events().all().len(), 2);
 }
 
@@ -232,7 +229,6 @@ fn rotate_signers() {
         (),
     );
 
-    // test approve with new signer set
     let (message, _) = generate_test_message(&env);
     let messages = vec![&env, message.clone()];
     let data_hash = get_approve_hash(&env, messages.clone());
@@ -464,7 +460,6 @@ fn upgrade_invalid_wasm_hash() {
     let (env, _, client) = setup_env(1, randint(1, 10));
 
     let new_wasm_hash = BytesN::<32>::from_array(&env, &[0; 32]);
-    // Should panic with invalid wasm hash
     client.upgrade(&new_wasm_hash);
 }
 

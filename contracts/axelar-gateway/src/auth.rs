@@ -94,7 +94,6 @@ pub fn rotate_signers(
         .persistent()
         .set(&DataKey::SignersHashByEpoch(new_epoch), &new_signers_hash);
 
-    // signers must be distinct, since nonce should guarantee uniqueness even if signers are repeated
     ensure!(
         epoch_by_signers_hash(env, new_signers_hash.clone()).is_err(),
         ContractError::DuplicateSigners
