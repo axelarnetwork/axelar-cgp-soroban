@@ -14,18 +14,6 @@ impl AxelarOperators {
         interfaces::set_owner(&env, &owner);
     }
 
-    pub fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), ContractError> {
-        let owner: Address = Self::owner(&env);
-
-        owner.require_auth();
-
-        interfaces::set_owner(&env, &new_owner);
-
-        event::transfer_ownership(&env, owner, new_owner);
-
-        Ok(())
-    }
-
     /// Return true if the account is an operator.
     pub fn is_operator(env: Env, account: Address) -> bool {
         let key = DataKey::Operators(account);
@@ -123,8 +111,11 @@ impl UpgradableInterface for AxelarOperators {
 
 #[contractimpl]
 impl OwnableInterface for AxelarOperators {
-    // boilerplate necessary for the contractimpl macro to include function in the generated client
     fn owner(env: &Env) -> Address {
         interfaces::owner(env)
+    }
+
+    fn transfer_ownership(env: &Env, new_owner: Address) {
+        interfaces::transfer_ownership::<Self>(env, new_owner);
     }
 }

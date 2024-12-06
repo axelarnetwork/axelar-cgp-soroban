@@ -8,7 +8,6 @@ use axelar_gas_service::{AxelarGasService, AxelarGasServiceClient};
 use axelar_soroban_std::{
     assert_contract_err, assert_invoke_auth_err, assert_last_emitted_event, types::Token,
 };
-use soroban_sdk::testutils::{MockAuth, MockAuthInvoke};
 use soroban_sdk::Bytes;
 use soroban_sdk::{
     bytes,

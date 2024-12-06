@@ -5,7 +5,7 @@ use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::types::{CommandType, Message, Proof, WeightedSigners};
 use crate::{auth, event};
 use axelar_soroban_std::interfaces::{
-    migrate, MigratableInterface, OwnableInterface, UpgradableInterface,
+    migrate, MigratableInterface, OperatableInterface, OwnableInterface, UpgradableInterface,
 };
 use axelar_soroban_std::ttl::{INSTANCE_TTL_EXTEND_TO, INSTANCE_TTL_THRESHOLD};
 use axelar_soroban_std::{ensure, interfaces};
@@ -42,9 +42,23 @@ impl UpgradableInterface for AxelarGateway {
 
 #[contractimpl]
 impl OwnableInterface for AxelarGateway {
-    // boilerplate necessary for the contractimpl macro to include function in the generated client
     fn owner(env: &Env) -> Address {
         interfaces::owner(env)
+    }
+
+    fn transfer_ownership(env: &Env, new_owner: Address) {
+        interfaces::transfer_ownership::<Self>(env, new_owner);
+    }
+}
+
+#[contractimpl]
+impl OperatableInterface for AxelarGateway {
+    fn operator(env: &Env) -> Address {
+        interfaces::operator(env)
+    }
+
+    fn transfer_operatorship(env: &Env, new_operator: Address) {
+        interfaces::transfer_operatorship::<Self>(env, new_operator);
     }
 }
 
@@ -61,7 +75,7 @@ impl AxelarGateway {
         initial_signers: Vec<WeightedSigners>,
     ) -> Result<(), ContractError> {
         interfaces::set_owner(&env, &owner);
-        env.storage().instance().set(&DataKey::Operator, &operator);
+        interfaces::set_operator(&env, &operator);
 
         auth::initialize_auth(
             env,
@@ -229,35 +243,8 @@ impl AxelarGatewayInterface for AxelarGateway {
         Ok(())
     }
 
-    fn transfer_operatorship(env: Env, new_operator: Address) {
-        let operator: Address = Self::operator(&env);
-        operator.require_auth();
-
-        env.storage()
-            .instance()
-            .set(&DataKey::Operator, &new_operator);
-
-        event::transfer_operatorship(&env, operator, new_operator);
-    }
-
-    fn operator(env: &Env) -> Address {
-        env.storage()
-            .instance()
-            .get(&DataKey::Operator)
-            .expect("operator not found")
-    }
-
     fn epoch(env: &Env) -> u64 {
         auth::epoch(env)
-    }
-
-    fn transfer_ownership(env: Env, new_owner: Address) {
-        let owner: Address = Self::owner(&env);
-        owner.require_auth();
-
-        interfaces::set_owner(&env, &new_owner);
-
-        event::transfer_ownership(&env, owner, new_owner);
     }
 
     fn epoch_by_signers_hash(env: &Env, signers_hash: BytesN<32>) -> Result<u64, ContractError> {
