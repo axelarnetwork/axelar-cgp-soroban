@@ -2,6 +2,7 @@ use soroban_sdk::{contractclient, token, Address, BytesN, Env};
 
 use crate::error::ContractError;
 
+#[allow(dead_code)]
 #[contractclient(name = "InterchainTokenClient")]
 pub trait InterchainTokenInterface: token::Interface {
     fn token_id(env: &Env) -> BytesN<32>;
