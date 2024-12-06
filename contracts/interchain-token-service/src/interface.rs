@@ -1,8 +1,9 @@
 use axelar_gateway::executable::AxelarExecutableInterface;
 use axelar_soroban_std::types::Token;
 use soroban_sdk::{contractclient, Address, Bytes, BytesN, Env, String};
+use soroban_token_sdk::metadata::TokenMetadata;
 
-use crate::{error::ContractError, types::TokenMetadata};
+use crate::error::ContractError;
 
 #[contractclient(name = "InterchainTokenServiceClient")]
 pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
@@ -35,7 +36,6 @@ pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
     fn deploy_remote_interchain_token(
         _env: &Env,
         caller: Address,
-        _original_chain: String,
         _salt: BytesN<32>,
         _minter: Option<Bytes>,
         _destination_chain: String,

@@ -12,7 +12,7 @@ pub mod contract;
 #[cfg(test)]
 extern crate std;
 
-#[cfg(feature = "testutils")]
+#[cfg(any(test, feature = "testutils"))]
 pub mod testutils;
 
 pub use contract::{InterchainTokenService, InterchainTokenServiceClient};

@@ -16,6 +16,7 @@ axelar-gas-service = { workspace = true, features = ["library"] }
 axelar-gateway = { workspace = true, features = ["library"] }
 axelar-soroban-std = { workspace = true }
 soroban-sdk = { workspace = true, features = ["alloc"] }
+soroban-token-sdk = { workspace = true }
 
 [dev-dependencies]
 axelar-gas-service = { workspace = true, features = ["testutils"] }

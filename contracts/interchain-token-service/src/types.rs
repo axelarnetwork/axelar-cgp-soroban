@@ -46,11 +46,3 @@ pub enum HubMessage {
         message: Message,
     },
 }
-
-#[contracttype]
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TokenMetadata {
-    name: String,
-    symbol: String,
-    decimals: u32,
-}

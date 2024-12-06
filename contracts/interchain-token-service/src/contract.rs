@@ -3,13 +3,14 @@ use axelar_gateway::{executable::AxelarExecutableInterface, AxelarGatewayMessagi
 use axelar_soroban_std::{ensure, types::Token};
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String};
+use soroban_token_sdk::metadata::TokenMetadata;
 
 use crate::abi::{get_message_type, MessageType as EncodedMessageType};
 use crate::error::ContractError;
 use crate::event;
 use crate::interface::InterchainTokenServiceInterface;
 use crate::storage_types::DataKey;
-use crate::types::{HubMessage, InterchainTransfer, Message, TokenMetadata};
+use crate::types::{HubMessage, InterchainTransfer, Message};
 
 const ITS_HUB_CHAIN_NAME: &str = "axelar";
 const ITS_HUB_ROUTING_IDENTIFIER: &str = "hub";
@@ -112,7 +113,6 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     fn deploy_remote_interchain_token(
         _env: &Env,
         _caller: Address,
-        _original_chain: String,
         _salt: BytesN<32>,
         _minter: Option<Bytes>,
         _destination_chain: String,
@@ -150,7 +150,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
             data: metadata,
         });
 
-        pay_gas_and_call_contract(env, caller, destination_chain, message, gas_token)?;
+        Self::pay_gas_and_call_contract(env, caller, destination_chain, message, gas_token)?;
 
         Ok(())
     }
@@ -171,7 +171,7 @@ impl AxelarExecutableInterface for InterchainTokenService {
     ) {
         let _ = Self::validate_message(&env, &source_chain, &message_id, &source_address, &payload);
 
-        let _ = execute_message(
+        let _ = Self::execute_message(
             &env,
             source_chain.clone(),
             message_id.clone(),
@@ -183,146 +183,145 @@ impl AxelarExecutableInterface for InterchainTokenService {
     }
 }
 
-fn pay_gas_and_call_contract(
-    env: &Env,
-    caller: Address,
-    destination_chain: String,
-    message: Message,
-    gas_token: Token,
-) -> Result<(), ContractError> {
-    let gateway = AxelarGatewayMessagingClient::new(env, &InterchainTokenService::gateway(env));
-    let gas_service = AxelarGasServiceClient::new(env, &InterchainTokenService::gas_service(env));
+impl InterchainTokenService {
+    fn pay_gas_and_call_contract(
+        env: &Env,
+        caller: Address,
+        destination_chain: String,
+        message: Message,
+        gas_token: Token,
+    ) -> Result<(), ContractError> {
+        let gateway = AxelarGatewayMessagingClient::new(env, &Self::gateway(env));
+        let gas_service = AxelarGasServiceClient::new(env, &Self::gas_service(env));
 
-    let payload = get_call_params(env, destination_chain, message)?;
+        let payload = Self::get_call_params(env, destination_chain, message)?;
 
-    let destination_address = InterchainTokenService::trusted_address(
-        env,
-        InterchainTokenService::its_hub_chain_name(env),
-    )
-    .ok_or(ContractError::NoTrustedAddressSet)?;
+        let destination_address = Self::trusted_address(env, Self::its_hub_chain_name(env))
+            .ok_or(ContractError::NoTrustedAddressSet)?;
 
-    gas_service.pay_gas(
-        &env.current_contract_address(),
-        &InterchainTokenService::its_hub_chain_name(env),
-        &destination_address,
-        &payload,
-        &caller,
-        &gas_token,
-        &Bytes::new(env),
-    );
+        gas_service.pay_gas(
+            &env.current_contract_address(),
+            &Self::its_hub_chain_name(env),
+            &destination_address,
+            &payload,
+            &caller,
+            &gas_token,
+            &Bytes::new(env),
+        );
 
-    gateway.call_contract(
-        &env.current_contract_address(),
-        &InterchainTokenService::its_hub_chain_name(env),
-        &destination_address,
-        &payload,
-    );
+        gateway.call_contract(
+            &env.current_contract_address(),
+            &Self::its_hub_chain_name(env),
+            &destination_address,
+            &payload,
+        );
 
-    Ok(())
-}
-
-fn execute_message(
-    env: &Env,
-    source_chain: String,
-    _message_id: String,
-    _source_address: String,
-    payload: Bytes,
-) -> Result<(), ContractError> {
-    // TODO: Add ITS hub execute logic
-
-    let (original_source_chain, message) = get_execute_params(env, source_chain, &payload)?;
-
-    match message {
-        Message::InterchainTransfer(inner_message) => {
-            // TODO: transfer implementation
-
-            event::interchain_transfer_received(
-                env,
-                original_source_chain,
-                inner_message.token_id,
-                inner_message.source_address,
-                inner_message.destination_address,
-                inner_message.amount,
-                inner_message.data,
-            );
-
-            Ok(())
-        }
-        Message::DeployInterchainToken(_) => {
-            // TODO
-            Ok(())
-        }
+        Ok(())
     }
-}
 
-fn get_execute_params(
-    env: &Env,
-    source_chain: String,
-    payload: &Bytes,
-) -> Result<(String, Message), ContractError> {
-    let message_type =
-        get_message_type(&payload.to_alloc_vec()).map_err(|_| ContractError::InvalidPayload)?;
+    fn execute_message(
+        env: &Env,
+        source_chain: String,
+        _message_id: String,
+        _source_address: String,
+        payload: Bytes,
+    ) -> Result<(), ContractError> {
+        // TODO: Add ITS hub execute logic
 
-    match message_type {
-        EncodedMessageType::ReceiveFromHub => {
-            ensure!(
-                source_chain == InterchainTokenService::its_hub_chain_name(env),
-                ContractError::UntrustedChain
-            );
+        let (original_source_chain, message) =
+            Self::get_execute_params(env, source_chain, &payload)?;
 
-            let decoded_message =
-                HubMessage::abi_decode(env, payload).map_err(|_| ContractError::InvalidPayload)?;
+        match message {
+            Message::InterchainTransfer(inner_message) => {
+                // TODO: transfer implementation
 
-            let HubMessage::ReceiveFromHub {
-                source_chain: original_source_chain,
-                message: inner_message,
-            } = decoded_message
-            else {
-                return Err(ContractError::InvalidMessageType);
-            };
+                event::interchain_transfer_received(
+                    env,
+                    original_source_chain,
+                    inner_message.token_id,
+                    inner_message.source_address,
+                    inner_message.destination_address,
+                    inner_message.amount,
+                    inner_message.data,
+                );
 
-            let trusted_address =
-                InterchainTokenService::trusted_address(env, original_source_chain.clone());
-            let routing_identifier = InterchainTokenService::its_hub_routing_identifier(env);
-
-            ensure!(
-                trusted_address.is_some_and(|addr| addr == routing_identifier),
-                ContractError::UntrustedChain
-            );
-
-            Ok((original_source_chain, inner_message))
-        }
-        _ => Err(ContractError::InvalidMessageType),
-    }
-}
-
-fn get_call_params(
-    env: &Env,
-    destination_chain: String,
-    message: Message,
-) -> Result<Bytes, ContractError> {
-    // Note: ITS Hub chain as the actual destination chain for the messsage isn't supported
-    ensure!(
-        destination_chain != InterchainTokenService::its_hub_chain_name(env),
-        ContractError::UntrustedChain
-    );
-
-    match InterchainTokenService::trusted_address(env, destination_chain.clone()) {
-        Some(destination_address) => {
-            ensure!(
-                destination_address == InterchainTokenService::its_hub_routing_identifier(env),
-                ContractError::UntrustedChain
-            );
-
-            let payload = HubMessage::SendToHub {
-                destination_chain,
-                message,
+                Ok(())
             }
-            .abi_encode(env)
-            .map_err(|_| ContractError::InvalidPayload)?;
-
-            Ok(payload)
+            Message::DeployInterchainToken(_) => {
+                // TODO
+                Ok(())
+            }
         }
-        _ => Err(ContractError::UntrustedChain),
+    }
+
+    fn get_execute_params(
+        env: &Env,
+        source_chain: String,
+        payload: &Bytes,
+    ) -> Result<(String, Message), ContractError> {
+        let message_type =
+            get_message_type(&payload.to_alloc_vec()).map_err(|_| ContractError::InvalidPayload)?;
+
+        ensure!(
+            message_type == EncodedMessageType::ReceiveFromHub,
+            ContractError::InvalidMessageType
+        );
+
+        ensure!(
+            source_chain == Self::its_hub_chain_name(env),
+            ContractError::UntrustedChain
+        );
+
+        let decoded_message =
+            HubMessage::abi_decode(env, payload).map_err(|_| ContractError::InvalidPayload)?;
+
+        let HubMessage::ReceiveFromHub {
+            source_chain: original_source_chain,
+            message: inner_message,
+        } = decoded_message
+        else {
+            return Err(ContractError::InvalidMessageType);
+        };
+
+        let trusted_address = Self::trusted_address(env, original_source_chain.clone());
+        let routing_identifier = Self::its_hub_routing_identifier(env);
+
+        ensure!(
+            trusted_address.is_some_and(|addr| addr == routing_identifier),
+            ContractError::UntrustedChain
+        );
+
+        Ok((original_source_chain, inner_message))
+    }
+
+    fn get_call_params(
+        env: &Env,
+        destination_chain: String,
+        message: Message,
+    ) -> Result<Bytes, ContractError> {
+        // Note: ITS Hub chain as the actual destination chain for the messsage isn't supported
+        ensure!(
+            destination_chain != Self::its_hub_chain_name(env),
+            ContractError::UntrustedChain
+        );
+
+        let Some(destination_address) = Self::trusted_address(env, destination_chain.clone())
+        else {
+            return Err(ContractError::UntrustedChain);
+        };
+
+        ensure!(
+            destination_address == Self::its_hub_routing_identifier(env),
+            ContractError::UntrustedChain
+        );
+
+        let payload = HubMessage::SendToHub {
+            destination_chain,
+            message,
+        }
+        .abi_encode(env)
+        .map_err(|_| ContractError::InvalidPayload)?;
+
+        Ok(payload)
     }
 }
