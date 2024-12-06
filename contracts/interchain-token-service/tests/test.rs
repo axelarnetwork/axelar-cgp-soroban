@@ -164,7 +164,6 @@ fn remove_trusted_address_fails_if_address_not_set() {
     );
 }
 
-
 #[test]
 fn interchain_token_deploy_salt() {
     let (env, client) = setup_env();
