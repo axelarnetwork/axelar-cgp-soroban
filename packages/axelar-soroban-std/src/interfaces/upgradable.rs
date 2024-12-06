@@ -1,7 +1,10 @@
 use crate::ensure;
+use crate::events::Event;
+#[cfg(any(test, feature = "testutils"))]
+use crate::impl_event_testutils;
+use core::fmt::Debug;
 use soroban_sdk::{
-    contractclient, symbol_short, Address, BytesN, ConversionError, Env, FromVal, IntoVal, String,
-    Topics, TryFromVal, Val, Vec,
+    contractclient, symbol_short, Address, BytesN, Env, FromVal, IntoVal, String, Topics, Val,
 };
 
 #[contractclient(name = "OwnershipClient")]
@@ -68,18 +71,12 @@ pub fn migrate<T: UpgradableInterface>(
     custom_migration();
     complete_migration(env);
 
-    emit_event_upgraded(
-        env,
-        UpgradedEvent {
-            version: T::version(env),
-        },
-    );
+    UpgradedEvent {
+        version: T::version(env),
+    }
+    .emit(env);
 
     Ok(())
-}
-
-fn emit_event_upgraded(env: &Env, event: UpgradedEvent) {
-    env.events().publish(UpgradedEvent::topic(), event.data());
 }
 
 fn start_migration(env: &Env) {
@@ -105,35 +102,23 @@ fn complete_migration(env: &Env) {
         .remove(&storage::DataKey::SharedInterfaces_Migrating);
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct UpgradedEvent {
     version: String,
 }
 
-impl UpgradedEvent {
-    pub fn topic() -> impl Topics {
+impl Event for UpgradedEvent {
+    fn topics(&self) -> impl Topics + Debug {
         (symbol_short!("upgraded"),)
     }
 
-    pub fn data(&self) -> impl IntoVal<Env, Val> {
-        (self.version.to_val(),)
+    fn data(&self) -> impl IntoVal<Env, Val> + Debug {
+        (self.version.clone(),)
     }
 }
 
-impl TryFromVal<Env, (Address, Vec<Val>, Val)> for UpgradedEvent {
-    type Error = ConversionError;
-
-    fn try_from_val(
-        env: &Env,
-        (_address, topics, data): &(Address, Vec<Val>, Val),
-    ) -> Result<Self, Self::Error> {
-        ensure!(topics.eq(&Self::topic().into_val(env)), ConversionError);
-
-        let v: Vec<Val> = Vec::try_from_val(env, data)?;
-        String::try_from_val(env, &v.first().ok_or(ConversionError)?)
-            .map(|version| Self { version })
-    }
-}
+#[cfg(any(test, feature = "testutils"))]
+impl_event_testutils!(UpgradedEvent, (soroban_sdk::Symbol), (String));
 
 // submodule to encapsulate the disabled linting
 mod storage {
@@ -159,13 +144,13 @@ pub enum MigrationError {
 
 #[cfg(test)]
 mod test {
-    use crate::shared_interfaces::{OwnershipClient, UpgradableClient, UpgradedEvent};
-    use crate::{assert_invoke_auth_err, assert_invoke_auth_ok, shared_interfaces, testdata};
-    use std::format;
+    use crate::interfaces::upgradable::{OwnershipClient, UpgradableClient, UpgradedEvent};
+    use crate::{assert_invoke_auth_err, assert_invoke_auth_ok, events};
 
-    use crate::testdata::contract::ContractClient;
-    use soroban_sdk::testutils::{Address as _, Events, MockAuth, MockAuthInvoke};
-    use soroban_sdk::{contracttype, Address, Env, String, TryFromVal};
+    use crate::interfaces::testdata::contract::ContractClient;
+    use crate::interfaces::{testdata, upgradable};
+    use soroban_sdk::testutils::{Address as _, MockAuth, MockAuthInvoke};
+    use soroban_sdk::{contracttype, Address, Env, String};
 
     const WASM: &[u8] = include_bytes!("testdata/contract.wasm");
 
@@ -210,7 +195,7 @@ mod test {
 
         let owner = Address::generate(&env);
         env.as_contract(&contract_id, || {
-            shared_interfaces::set_owner(&env, &owner);
+            upgradable::set_owner(&env, &owner);
         });
 
         assert_eq!(OwnershipClient::new(&env, &contract_id).owner(), owner);
@@ -235,7 +220,7 @@ mod test {
 
         let owner = Address::generate(&env);
         env.as_contract(&contract_id, || {
-            shared_interfaces::set_owner(&env, &owner);
+            upgradable::set_owner(&env, &owner);
         });
 
         assert!(UpgradableClient::new(&env, &contract_id)
@@ -251,7 +236,7 @@ mod test {
 
         let owner = Address::generate(&env);
         env.as_contract(&contract_id, || {
-            shared_interfaces::set_owner(&env, &owner);
+            upgradable::set_owner(&env, &owner);
         });
 
         let client = UpgradableClient::new(&env, &contract_id);
@@ -266,7 +251,7 @@ mod test {
 
         let owner = Address::generate(&env);
         env.as_contract(&contract_id, || {
-            shared_interfaces::set_owner(&env, &owner);
+            upgradable::set_owner(&env, &owner);
         });
 
         let client = UpgradableClient::new(&env, &contract_id);
@@ -281,7 +266,7 @@ mod test {
 
         let owner = Address::generate(&env);
         env.as_contract(&contract_id, || {
-            shared_interfaces::set_owner(&env, &owner);
+            upgradable::set_owner(&env, &owner);
         });
 
         let upgrade_client = UpgradableClient::new(&env, &contract_id);
@@ -299,7 +284,7 @@ mod test {
 
         let owner = Address::generate(&env);
         env.as_contract(&contract_id, || {
-            shared_interfaces::set_owner(&env, &owner);
+            upgradable::set_owner(&env, &owner);
         });
 
         let upgrade_client = UpgradableClient::new(&env, &contract_id);
@@ -316,7 +301,7 @@ mod test {
 
         let owner = Address::generate(&env);
         env.as_contract(&contract_id, || {
-            shared_interfaces::set_owner(&env, &owner);
+            upgradable::set_owner(&env, &owner);
         });
 
         let client = ContractClient::new(&env, &contract_id);
@@ -331,7 +316,7 @@ mod test {
 
         let owner = Address::generate(&env);
         env.as_contract(&contract_id, || {
-            shared_interfaces::set_owner(&env, &owner);
+            upgradable::set_owner(&env, &owner);
         });
 
         let upgradable_client = UpgradableClient::new(&env, &contract_id);
@@ -347,12 +332,8 @@ mod test {
             Some(String::from_str(&env, "migrated"))
         );
 
-        let event = env
-            .events()
-            .all()
-            .iter()
-            .find_map(|event| UpgradedEvent::try_from_val(&env, &event).ok());
-        goldie::assert!(format!("{:?}", event))
+        let event = events::fmt_last_emitted_event::<UpgradedEvent>(&env);
+        goldie::assert!(event)
     }
 
     // Because migration happens on a contract loaded from WASM, code coverage analysis doesn't recognize
@@ -364,8 +345,8 @@ mod test {
 
         let owner = Address::generate(&env);
         env.as_contract(&contract_id, || {
-            shared_interfaces::set_owner(&env, &owner);
-            shared_interfaces::start_migration(&env);
+            upgradable::set_owner(&env, &owner);
+            upgradable::start_migration(&env);
         });
 
         let client = ContractClient::new(&env, &contract_id);
@@ -380,7 +361,7 @@ mod test {
 
         let owner = Address::generate(&env);
         env.as_contract(&contract_id, || {
-            shared_interfaces::set_owner(&env, &owner);
+            upgradable::set_owner(&env, &owner);
         });
 
         let upgradable_client = UpgradableClient::new(&env, &contract_id);

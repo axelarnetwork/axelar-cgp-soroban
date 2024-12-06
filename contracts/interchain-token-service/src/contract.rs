@@ -1,5 +1,6 @@
 use axelar_soroban_std::types::Token;
-use axelar_soroban_std::{ensure, shared_interfaces};
+use axelar_soroban_std::{ensure, interfaces};
+use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{bytes, contract, contractimpl, Address, Bytes, BytesN, Env, FromVal, String};
 
 use crate::error::ContractError;
@@ -12,25 +13,44 @@ use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::AxelarGatewayMessagingClient;
 
 use axelar_gateway::executable::AxelarExecutableInterface;
-use axelar_soroban_std::shared_interfaces::{
-    migrate, MigratableInterface, OwnableInterface, UpgradableInterface,
-};
+use axelar_soroban_std::interfaces::{MigratableInterface, OwnableInterface, UpgradableInterface};
+
+const PREFIX_INTERCHAIN_TOKEN_SALT: &str = "interchain-token-salt";
 
 #[contract]
 pub struct InterchainTokenService;
 
 #[contractimpl]
 impl InterchainTokenService {
-    pub fn __constructor(env: Env, owner: Address, gateway: Address, gas_service: Address) {
-        shared_interfaces::set_owner(&env, &owner);
+    pub fn __constructor(
+        env: Env,
+        owner: Address,
+        gateway: Address,
+        gas_service: Address,
+        chain_name: String,
+    ) {
+        interfaces::set_owner(&env, &owner);
         env.storage().instance().set(&DataKey::Gateway, &gateway);
         env.storage()
             .instance()
             .set(&DataKey::GasService, &gas_service);
+        env.storage()
+            .instance()
+            .set(&DataKey::ChainName, &chain_name);
     }
 
     fn gas_service(env: &Env) -> Address {
-        env.storage().instance().get(&DataKey::GasService).unwrap()
+        env.storage()
+            .instance()
+            .get(&DataKey::GasService)
+            .expect("gas service not found")
+    }
+
+    fn chain_name(env: &Env) -> String {
+        env.storage()
+            .instance()
+            .get(&DataKey::ChainName)
+            .expect("chain name not found")
     }
 
     fn pay_gas_and_call_contract(
@@ -101,7 +121,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         let owner = Self::owner(env);
         owner.require_auth();
 
-        shared_interfaces::set_owner(env, &new_owner);
+        interfaces::set_owner(env, &new_owner);
 
         event::transfer_ownership(env, owner, new_owner);
     }
@@ -159,6 +179,22 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         todo!()
     }
 
+    fn interchain_token_deploy_salt(env: &Env, deployer: Address, salt: BytesN<32>) -> BytesN<32> {
+        let chain_name = Self::chain_name(env);
+        let chain_name_hash: BytesN<32> = env.crypto().keccak256(&(chain_name).to_xdr(env)).into();
+        env.crypto()
+            .keccak256(
+                &(
+                    PREFIX_INTERCHAIN_TOKEN_SALT,
+                    chain_name_hash,
+                    deployer,
+                    salt,
+                )
+                    .to_xdr(env),
+            )
+            .into()
+    }
+
     fn deploy_remote_interchain_token(
         env: &Env,
         caller: Address,
@@ -211,7 +247,10 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
 #[contractimpl]
 impl AxelarExecutableInterface for InterchainTokenService {
     fn gateway(env: &Env) -> Address {
-        env.storage().instance().get(&DataKey::Gateway).unwrap()
+        env.storage()
+            .instance()
+            .get(&DataKey::Gateway)
+            .expect("gateway not found")
     }
 
     fn execute(
@@ -246,7 +285,7 @@ impl MigratableInterface for InterchainTokenService {
     type Error = axelar_gateway::error::ContractError;
 
     fn migrate(env: &Env, migration_data: ()) -> Result<(), axelar_gateway::error::ContractError> {
-        migrate::<Self>(env, || Self::run_migration(env, migration_data))
+        interfaces::migrate::<Self>(env, || Self::run_migration(env, migration_data))
             .map_err(|_| axelar_gateway::error::ContractError::MigrationNotAllowed)
     }
 }
@@ -258,7 +297,7 @@ impl UpgradableInterface for InterchainTokenService {
     }
 
     fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
-        shared_interfaces::upgrade::<Self>(env, new_wasm_hash);
+        interfaces::upgrade::<Self>(env, new_wasm_hash);
     }
 }
 
@@ -266,6 +305,6 @@ impl UpgradableInterface for InterchainTokenService {
 impl OwnableInterface for InterchainTokenService {
     // boilerplate necessary for the contractimpl macro to include function in the generated client
     fn owner(env: &Env) -> Address {
-        shared_interfaces::owner(env)
+        interfaces::owner(env)
     }
 }

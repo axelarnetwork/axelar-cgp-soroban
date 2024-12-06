@@ -4,22 +4,15 @@ use crate::messaging_interface::AxelarGatewayMessagingInterface;
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::types::{CommandType, Message, Proof, WeightedSigners};
 use crate::{auth, event};
-use axelar_soroban_std::shared_interfaces::{migrate, UpgradableInterface};
-use axelar_soroban_std::shared_interfaces::{MigratableInterface, OwnableInterface};
-use axelar_soroban_std::{ensure, shared_interfaces};
+use axelar_soroban_std::interfaces::{
+    migrate, MigratableInterface, OwnableInterface, UpgradableInterface,
+};
+use axelar_soroban_std::ttl::{INSTANCE_TTL_EXTEND_TO, INSTANCE_TTL_THRESHOLD};
+use axelar_soroban_std::{ensure, interfaces};
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
 
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-/// Parameters for extending the contract instance and its instance storage.
-///
-/// If the instance's time to live falls below 14 days, it will be extended by 60 days.
-///
-/// If at least one message is approved every 14 days, the instance should never be archived.
-const LEDGERS_PER_DAY: u32 = (24 * 3600) / 5;
-const INSTANCE_TTL_THRESHOLD: u32 = 14 * LEDGERS_PER_DAY;
-const INSTANCE_TTL_EXTEND_TO: u32 = 60 * LEDGERS_PER_DAY;
 
 #[contract]
 pub struct AxelarGateway;
@@ -43,7 +36,7 @@ impl UpgradableInterface for AxelarGateway {
 
     // boilerplate necessary for the contractimpl macro to include function in the generated client
     fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
-        shared_interfaces::upgrade::<Self>(env, new_wasm_hash);
+        interfaces::upgrade::<Self>(env, new_wasm_hash);
     }
 }
 
@@ -51,7 +44,7 @@ impl UpgradableInterface for AxelarGateway {
 impl OwnableInterface for AxelarGateway {
     // boilerplate necessary for the contractimpl macro to include function in the generated client
     fn owner(env: &Env) -> Address {
-        shared_interfaces::owner(env)
+        interfaces::owner(env)
     }
 }
 
@@ -67,7 +60,7 @@ impl AxelarGateway {
         previous_signers_retention: u64,
         initial_signers: Vec<WeightedSigners>,
     ) -> Result<(), ContractError> {
-        shared_interfaces::set_owner(&env, &owner);
+        interfaces::set_owner(&env, &owner);
         env.storage().instance().set(&DataKey::Operator, &operator);
 
         auth::initialize_auth(
@@ -260,7 +253,7 @@ impl AxelarGatewayInterface for AxelarGateway {
         let owner: Address = Self::owner(&env);
         owner.require_auth();
 
-        shared_interfaces::set_owner(&env, &new_owner);
+        interfaces::set_owner(&env, &new_owner);
 
         event::transfer_ownership(&env, owner, new_owner);
     }
