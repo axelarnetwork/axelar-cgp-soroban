@@ -39,7 +39,7 @@ fn setup_app<'a>(env: &Env, gateway: &Address, gas_service: &Address) -> Example
 }
 
 #[test]
-fn test_gmp_example() {
+fn gmp_example() {
     let env = Env::default();
     env.mock_all_auths();
 
