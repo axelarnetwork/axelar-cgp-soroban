@@ -1,47 +1,24 @@
-use axelar_soroban_std::ensure;
-use soroban_sdk::{contract, contractimpl, Address, Env, Symbol, Val, Vec};
-
 use crate::error::ContractError;
 use crate::event;
 use crate::storage_types::DataKey;
+use axelar_soroban_std::interfaces::{MigratableInterface, OwnableInterface, UpgradableInterface};
+use axelar_soroban_std::{ensure, interfaces};
+use soroban_sdk::{contract, contractimpl, Address, BytesN, Env, String, Symbol, Val, Vec};
 
 #[contract]
 pub struct AxelarOperators;
 
 #[contractimpl]
 impl AxelarOperators {
-    pub fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), ContractError> {
-        let owner: Address = Self::owner(&env);
-
-        owner.require_auth();
-
-        env.storage().instance().set(&DataKey::Owner, &new_owner);
-
-        event::transfer_ownership(&env, owner, new_owner);
-
-        Ok(())
-    }
-
-    pub fn owner(env: &Env) -> Address {
-        env.storage()
-            .instance()
-            .get(&DataKey::Owner)
-            .expect("Owner not found")
-    }
-}
-
-#[contractimpl]
-impl AxelarOperators {
-    /// Initialize the operators contract with an owner.
     pub fn __constructor(env: Env, owner: Address) {
-        env.storage().instance().set(&DataKey::Owner, &owner);
+        interfaces::set_owner(&env, &owner);
     }
 
     /// Return true if the account is an operator.
     pub fn is_operator(env: Env, account: Address) -> bool {
         let key = DataKey::Operators(account);
 
-        env.storage().persistent().has(&key)
+        env.storage().instance().has(&key)
     }
 
     /// Add an address as an operator.
@@ -53,11 +30,11 @@ impl AxelarOperators {
         let key = DataKey::Operators(account.clone());
 
         ensure!(
-            !env.storage().persistent().has(&key),
+            !env.storage().instance().has(&key),
             ContractError::OperatorAlreadyAdded
         );
 
-        env.storage().persistent().set(&key, &true);
+        env.storage().instance().set(&key, &true);
 
         event::add_operator(&env, account);
         Ok(())
@@ -72,11 +49,11 @@ impl AxelarOperators {
         let key = DataKey::Operators(account.clone());
 
         ensure!(
-            env.storage().persistent().has(&key),
+            env.storage().instance().has(&key),
             ContractError::NotAnOperator
         );
 
-        env.storage().persistent().remove(&key);
+        env.storage().instance().remove(&key);
 
         event::remove_operator(&env, account);
         Ok(())
@@ -95,12 +72,50 @@ impl AxelarOperators {
         let key = DataKey::Operators(operator);
 
         ensure!(
-            env.storage().persistent().has(&key),
+            env.storage().instance().has(&key),
             ContractError::NotAnOperator
         );
 
         let res: Val = env.invoke_contract(&contract, &func, args);
 
         Ok(res)
+    }
+}
+
+impl AxelarOperators {
+    // Modify this function to add migration logic
+    const fn run_migration(_env: &Env, _migration_data: ()) {}
+}
+
+#[contractimpl]
+impl MigratableInterface for AxelarOperators {
+    type MigrationData = ();
+    type Error = ContractError;
+
+    fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
+        interfaces::migrate::<Self>(env, || Self::run_migration(env, migration_data))
+            .map_err(|_| ContractError::MigrationNotAllowed)
+    }
+}
+
+#[contractimpl]
+impl UpgradableInterface for AxelarOperators {
+    fn version(env: &Env) -> String {
+        String::from_str(env, env!("CARGO_PKG_VERSION"))
+    }
+
+    fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
+        interfaces::upgrade::<Self>(env, new_wasm_hash);
+    }
+}
+
+#[contractimpl]
+impl OwnableInterface for AxelarOperators {
+    fn owner(env: &Env) -> Address {
+        interfaces::owner(env)
+    }
+
+    fn transfer_ownership(env: &Env, new_owner: Address) {
+        interfaces::transfer_ownership::<Self>(env, new_owner);
     }
 }

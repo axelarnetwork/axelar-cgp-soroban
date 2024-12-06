@@ -4,7 +4,8 @@ use soroban_sdk::contracterror;
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
 pub enum ContractError {
-    InvalidAddress = 1,
-    InvalidAmount = 2,
-    InsufficientBalance = 3,
+    MigrationNotAllowed = 1,
+    InvalidAddress = 2,
+    InvalidAmount = 3,
+    InsufficientBalance = 4,
 }

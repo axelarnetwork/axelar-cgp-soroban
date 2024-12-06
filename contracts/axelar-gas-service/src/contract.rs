@@ -1,11 +1,11 @@
-use soroban_sdk::{contract, contractimpl, token, Address, Bytes, Env, String};
-
-use axelar_soroban_std::{ensure, types::Token};
+use soroban_sdk::{contract, contractimpl, token, Address, Bytes, BytesN, Env, String};
 
 use crate::error::ContractError;
 use crate::event;
 use crate::interface::AxelarGasServiceInterface;
 use crate::storage_types::DataKey;
+use axelar_soroban_std::interfaces::{MigratableInterface, OwnableInterface, UpgradableInterface};
+use axelar_soroban_std::{ensure, interfaces, types::Token};
 
 #[contract]
 pub struct AxelarGasService;
@@ -13,10 +13,49 @@ pub struct AxelarGasService;
 #[contractimpl]
 impl AxelarGasService {
     /// Initialize the gas service contract with a gas_collector address.
-    pub fn __constructor(env: Env, gas_collector: Address) {
+    pub fn __constructor(env: Env, owner: Address, gas_collector: Address) {
+        interfaces::set_owner(&env, &owner);
         env.storage()
             .instance()
             .set(&DataKey::GasCollector, &gas_collector);
+    }
+}
+
+impl AxelarGasService {
+    // Modify this function to add migration logic
+    const fn run_migration(_env: &Env, _migration_data: ()) {}
+}
+
+#[contractimpl]
+impl MigratableInterface for AxelarGasService {
+    type MigrationData = ();
+    type Error = ContractError;
+
+    fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
+        interfaces::migrate::<Self>(env, || Self::run_migration(env, migration_data))
+            .map_err(|_| ContractError::MigrationNotAllowed)
+    }
+}
+
+#[contractimpl]
+impl UpgradableInterface for AxelarGasService {
+    fn version(env: &Env) -> String {
+        String::from_str(env, env!("CARGO_PKG_VERSION"))
+    }
+
+    fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
+        interfaces::upgrade::<Self>(env, new_wasm_hash);
+    }
+}
+
+#[contractimpl]
+impl OwnableInterface for AxelarGasService {
+    fn owner(env: &Env) -> Address {
+        interfaces::owner(env)
+    }
+
+    fn transfer_ownership(env: &Env, new_owner: Address) {
+        interfaces::transfer_ownership::<Self>(env, new_owner);
     }
 }
 

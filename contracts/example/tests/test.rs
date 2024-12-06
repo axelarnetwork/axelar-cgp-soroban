@@ -1,14 +1,14 @@
 #![cfg(test)]
 extern crate std;
 
-use axelar_gas_service::contract::AxelarGasService;
+use axelar_gas_service::AxelarGasService;
 use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::testutils::{self, generate_proof, get_approve_hash, TestSignerSet};
 use axelar_gateway::types::Message;
 use axelar_gateway::AxelarGatewayClient;
 use axelar_soroban_std::types::Token;
 use axelar_soroban_std::{assert_last_emitted_event, auth_invocation};
-use example::contract::Example;
+use example::Example;
 use example::ExampleClient;
 use soroban_sdk::testutils::{AuthorizedFunction, AuthorizedInvocation};
 use soroban_sdk::token::StellarAssetClient;
@@ -23,8 +23,9 @@ fn setup_gateway<'a>(env: &Env) -> (TestSignerSet, AxelarGatewayClient<'a>) {
 }
 
 fn setup_gas_service<'a>(env: &Env) -> (AxelarGasServiceClient<'a>, Address, Address) {
+    let owner: Address = Address::generate(env);
     let gas_collector: Address = Address::generate(&env);
-    let gas_service_id = env.register(AxelarGasService, (&gas_collector,));
+    let gas_service_id = env.register(AxelarGasService, (&owner, &gas_collector));
     let gas_service_client = AxelarGasServiceClient::new(env, &gas_service_id);
 
     (gas_service_client, gas_collector, gas_service_id)

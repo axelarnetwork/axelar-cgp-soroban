@@ -3,11 +3,13 @@ use crate::{
     types::{Message, Proof, WeightedSigners},
     AxelarGatewayMessagingInterface,
 };
-use axelar_soroban_std::UpgradeableInterface;
-use soroban_sdk::{contractclient, Address, BytesN, Env, Vec};
+use axelar_soroban_std::interfaces::{OperatableInterface, OwnableInterface, UpgradableInterface};
+use soroban_sdk::{contractclient, BytesN, Env, Vec};
 
 #[contractclient(name = "AxelarGatewayClient")]
-pub trait AxelarGatewayInterface: AxelarGatewayMessagingInterface + UpgradeableInterface {
+pub trait AxelarGatewayInterface:
+    AxelarGatewayMessagingInterface + UpgradableInterface + OwnableInterface + OperatableInterface
+{
     /// Approves a collection of messages.
     fn approve_messages(
         env: Env,
@@ -23,20 +25,8 @@ pub trait AxelarGatewayInterface: AxelarGatewayMessagingInterface + UpgradeableI
         bypass_rotation_delay: bool,
     ) -> Result<(), ContractError>;
 
-    /// Transfers operatorship of the gateway to a new address.
-    fn transfer_operatorship(env: Env, new_operator: Address);
-
-    /// Returns the operator address of the gateway.
-    fn operator(env: &Env) -> Address;
-
     /// Returns the epoch of the gateway.
     fn epoch(env: &Env) -> u64;
-
-    /// Transfers ownership of the gateway to a new address.
-    fn transfer_ownership(env: Env, new_owner: Address);
-
-    /// Returns the owner address of the gateway.
-    fn owner(env: &Env) -> Address;
 
     /// Returns the epoch by signers hash.
     fn epoch_by_signers_hash(env: &Env, signers_hash: BytesN<32>) -> Result<u64, ContractError>;

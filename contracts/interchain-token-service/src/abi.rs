@@ -246,7 +246,6 @@ mod tests {
     use super::*;
     use alloc::vec;
     use axelar_soroban_std::assert_ok;
-    use core::u128;
     use soroban_sdk::{Bytes, BytesN, Env, String};
     use std::vec::Vec;
 
@@ -257,28 +256,28 @@ mod tests {
         let env = Env::default();
 
         let plain_string = "hello world";
-        let plain_string_soroban = String::from_str(&env, &plain_string);
+        let plain_string_soroban = String::from_str(&env, plain_string);
         assert_eq!(
             to_std_string(plain_string_soroban).unwrap(),
             StdString::from(plain_string)
         );
 
         let var_length_chars = "🎉中🚀π🌈€";
-        let var_length_chars_soroban = String::from_str(&env, &var_length_chars);
+        let var_length_chars_soroban = String::from_str(&env, var_length_chars);
         assert_eq!(
             to_std_string(var_length_chars_soroban).unwrap(),
             StdString::from(var_length_chars)
         );
 
         let null_bytes = "Hello\x00World";
-        let null_bytes_soroban = String::from_str(&env, &null_bytes);
+        let null_bytes_soroban = String::from_str(&env, null_bytes);
         assert_eq!(
             to_std_string(null_bytes_soroban).unwrap(),
             StdString::from(null_bytes)
         );
 
         let escape_char = "Hello\tWorld";
-        let escape_char_soroban = String::from_str(&env, &escape_char);
+        let escape_char_soroban = String::from_str(&env, escape_char);
         assert_eq!(
             to_std_string(escape_char_soroban).unwrap(),
             StdString::from(escape_char)
@@ -290,11 +289,11 @@ mod tests {
         let env = Env::default();
 
         let invalid_sequences = vec![
-            String::from_bytes(&env, &vec![0xF5, 0x90, 0x80]), // not valid utf-8
-            String::from_bytes(&env, &vec![0x00, 0x01, 0x02, 0xC0]), // valid ASCII characters followed by an invalid UTF-8 starting byte
-            String::from_bytes(&env, &vec![0xC0, 0x80, 0xF5, 0x90]), // invalid UTF-8 starting byte followed by valid UTF-8 sequences
-            String::from_bytes(&env, &vec![0xF0, 0x90, 0x80, 0xDF, 0xFB, 0xBF]), // surrogate pairs with invalid charaters "\uD800\uDDFF"
-            String::from_bytes(&env, &vec![0xF4, 0x90, 0x80, 0x80]), // outside the Basic Multilingual Plane
+            String::from_bytes(&env, &[0xF5, 0x90, 0x80]), // not valid utf-8
+            String::from_bytes(&env, &[0x00, 0x01, 0x02, 0xC0]), // valid ASCII characters followed by an invalid UTF-8 starting byte
+            String::from_bytes(&env, &[0xC0, 0x80, 0xF5, 0x90]), // invalid UTF-8 starting byte followed by valid UTF-8 sequences
+            String::from_bytes(&env, &[0xF0, 0x90, 0x80, 0xDF, 0xFB, 0xBF]), // surrogate pairs with invalid charaters "\uD800\uDDFF"
+            String::from_bytes(&env, &[0xF4, 0x90, 0x80, 0x80]), // outside the Basic Multilingual Plane
         ];
 
         for sequence in invalid_sequences {
@@ -351,7 +350,7 @@ mod tests {
     #[test]
     fn interchain_transfer_encode_decode() {
         let env = Env::default();
-        let remote_chain = String::from_str(&env, &"chain");
+        let remote_chain = String::from_str(&env, "chain");
 
         let cases = vec![
             types::HubMessage::SendToHub {
@@ -360,10 +359,9 @@ mod tests {
                     token_id: BytesN::from_array(&env, &[0u8; 32]),
                     source_address: bytes_from_hex(&env, "00"),
                     destination_address: bytes_from_hex(&env, "00"),
-                    amount: 1u64.try_into().unwrap(),
+                    amount: 1u64.into(),
                     data: None,
-                })
-                .into(),
+                }),
             },
             types::HubMessage::SendToHub {
                 destination_chain: remote_chain.clone(),
@@ -379,8 +377,7 @@ mod tests {
                     ),
                     amount: i128::MAX,
                     data: Some(bytes_from_hex(&env, "abcd")),
-                })
-                .into(),
+                }),
             },
             types::HubMessage::ReceiveFromHub {
                 source_chain: remote_chain.clone(),
@@ -388,13 +385,12 @@ mod tests {
                     token_id: BytesN::from_array(&env, &[0u8; 32]),
                     source_address: bytes_from_hex(&env, "00"),
                     destination_address: bytes_from_hex(&env, "00"),
-                    amount: 1u64.try_into().unwrap(),
+                    amount: 1u64.into(),
                     data: None,
-                })
-                .into(),
+                }),
             },
             types::HubMessage::ReceiveFromHub {
-                source_chain: remote_chain.clone(),
+                source_chain: remote_chain,
                 message: types::Message::InterchainTransfer(types::InterchainTransfer {
                     token_id: BytesN::from_array(&env, &[255u8; 32]),
                     source_address: bytes_from_hex(
@@ -407,8 +403,7 @@ mod tests {
                     ),
                     amount: i128::MAX,
                     data: Some(bytes_from_hex(&env, "abcd")),
-                })
-                .into(),
+                }),
             },
         ];
 
@@ -435,74 +430,68 @@ mod tests {
     #[test]
     fn deploy_interchain_token_encode_decode() {
         let env = Env::default();
-        let remote_chain = String::from_str(&env, &"chain");
+        let remote_chain = String::from_str(&env, "chain");
 
         let cases = vec![
             types::HubMessage::SendToHub {
                 destination_chain: remote_chain.clone(),
                 message: types::Message::DeployInterchainToken(types::DeployInterchainToken {
                     token_id: BytesN::from_array(&env, &[0u8; 32]),
-                    name: String::from_str(&env, &"t"),
-                    symbol: String::from_str(&env, &"T"),
+                    name: String::from_str(&env, "t"),
+                    symbol: String::from_str(&env, "T"),
                     decimals: 0,
                     minter: None,
-                })
-                .into(),
+                }),
             },
             types::HubMessage::SendToHub {
                 destination_chain: remote_chain.clone(),
                 message: types::Message::DeployInterchainToken(types::DeployInterchainToken {
                     token_id: BytesN::from_array(&env, &[1u8; 32]),
-                    name: String::from_str(&env, &"Test Token"),
-                    symbol: String::from_str(&env, &"TST"),
+                    name: String::from_str(&env, "Test Token"),
+                    symbol: String::from_str(&env, "TST"),
                     decimals: 18,
                     minter: Some(bytes_from_hex(&env, "1234")),
-                })
-                .into(),
+                }),
             },
             types::HubMessage::SendToHub {
                 destination_chain: remote_chain.clone(),
                 message: types::Message::DeployInterchainToken(types::DeployInterchainToken {
                     token_id: BytesN::from_array(&env, &[0u8; 32]),
-                    name: String::from_str(&env, &"Unicode Token 🪙"),
-                    symbol: String::from_str(&env, &"UNI🔣"),
+                    name: String::from_str(&env, "Unicode Token 🪙"),
+                    symbol: String::from_str(&env, "UNI🔣"),
                     decimals: 255,
                     minter: Some(bytes_from_hex(&env, "abcd")),
-                })
-                .into(),
+                }),
             },
             types::HubMessage::ReceiveFromHub {
                 source_chain: remote_chain.clone(),
                 message: types::Message::DeployInterchainToken(types::DeployInterchainToken {
                     token_id: BytesN::from_array(&env, &[0u8; 32]),
-                    name: String::from_str(&env, &"t"),
-                    symbol: String::from_str(&env, &"T"),
+                    name: String::from_str(&env, "t"),
+                    symbol: String::from_str(&env, "T"),
                     decimals: 0,
                     minter: None,
-                })
-                .into(),
+                }),
             },
             types::HubMessage::ReceiveFromHub {
                 source_chain: remote_chain.clone(),
                 message: types::Message::DeployInterchainToken(types::DeployInterchainToken {
                     token_id: BytesN::from_array(&env, &[1u8; 32]),
-                    name: String::from_str(&env, &"Test Token"),
-                    symbol: String::from_str(&env, &"TST"),
+                    name: String::from_str(&env, "Test Token"),
+                    symbol: String::from_str(&env, "TST"),
                     decimals: 18,
                     minter: Some(bytes_from_hex(&env, "1234")),
-                })
-                .into(),
+                }),
             },
             types::HubMessage::ReceiveFromHub {
-                source_chain: remote_chain.clone(),
+                source_chain: remote_chain,
                 message: types::Message::DeployInterchainToken(types::DeployInterchainToken {
                     token_id: BytesN::from_array(&env, &[0u8; 32]),
-                    name: String::from_str(&env, &"Unicode Token 🪙"),
-                    symbol: String::from_str(&env, &"UNI🔣"),
+                    name: String::from_str(&env, "Unicode Token 🪙"),
+                    symbol: String::from_str(&env, "UNI🔣"),
                     decimals: 255,
                     minter: Some(bytes_from_hex(&env, "abcd")),
-                })
-                .into(),
+                }),
             },
         ];
 
@@ -540,7 +529,7 @@ mod tests {
                 token_id: BytesN::from_array(&env, &[0u8; 32]),
                 source_address: bytes_from_hex(&env, "00"),
                 destination_address: bytes_from_hex(&env, "00"),
-                amount: 1u64.try_into().unwrap(),
+                amount: 1u64.into(),
                 data: None,
             }
         )

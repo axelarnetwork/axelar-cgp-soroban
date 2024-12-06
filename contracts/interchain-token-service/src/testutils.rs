@@ -22,8 +22,9 @@ pub fn setup_gateway<'a>(env: &Env) -> (TestSignerSet, AxelarGatewayClient<'a>) 
 }
 
 pub fn setup_gas_service<'a>(env: &Env) -> AxelarGasServiceClient<'a> {
+    let owner: Address = Address::generate(env);
     let gas_collector: Address = Address::generate(&env);
-    let gas_service_id = env.register(AxelarGasService, (&gas_collector,));
+    let gas_service_id = env.register(AxelarGasService, (&owner, &gas_collector));
     let gas_service_client = AxelarGasServiceClient::new(env, &gas_service_id);
 
     gas_service_client
@@ -39,9 +40,15 @@ pub fn setup_env<'a>() -> (
     let owner = Address::generate(&env);
     let (signers, gateway_client) = setup_gateway(&env);
     let gas_service_client = setup_gas_service(&env);
+    let chain_name = String::from_str(&env, "chain_name");
     let contract_id = env.register(
         InterchainTokenService,
-        (&owner, &gateway_client.address, gas_service_client.address),
+        (
+            &owner,
+            &gateway_client.address,
+            gas_service_client.address,
+            chain_name,
+        ),
     );
     let client = InterchainTokenServiceClient::new(&env, &contract_id);
 

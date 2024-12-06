@@ -1,5 +1,9 @@
 #![no_std]
 
+// required by goldie
+#[cfg(any(test, feature = "testutils"))]
+extern crate std;
+
 #[cfg(any(test, feature = "testutils"))]
 pub mod testutils;
 
@@ -12,6 +16,8 @@ pub mod types;
 
 pub mod error;
 
-mod upgrade;
+pub mod ttl;
 
-pub use upgrade::{UpgradeableClient, UpgradeableInterface};
+pub mod events;
+
+pub mod interfaces;

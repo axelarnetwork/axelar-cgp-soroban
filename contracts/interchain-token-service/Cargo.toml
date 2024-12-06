@@ -22,7 +22,7 @@ soroban-token-sdk = { workspace = true }
 axelar-gas-service = { workspace = true, features = ["testutils"] }
 axelar-gateway = { workspace = true, features = ["testutils"] }
 axelar-soroban-std = { workspace = true, features = ["testutils"] }
-goldie = { version = "0.5" }
+goldie = { workspace = true }
 hex = "0.4"
 soroban-sdk = { workspace = true, features = ["testutils", "alloc"] }
 

@@ -5,23 +5,24 @@ use soroban_token_sdk::metadata::TokenMetadata;
 
 use crate::error::ContractError;
 
+#[allow(dead_code)]
 #[contractclient(name = "InterchainTokenServiceClient")]
 pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
+    fn chain_name(env: &Env) -> String;
+
     fn gas_service(env: &Env) -> Address;
 
     fn its_hub_routing_identifier(env: &Env) -> String;
 
     fn its_hub_chain_name(env: &Env) -> String;
 
-    fn owner(env: &Env) -> Address;
-
-    fn transfer_ownership(env: &Env, new_owner: Address);
-
     fn trusted_address(env: &Env, chain: String) -> Option<String>;
 
     fn set_trusted_address(env: &Env, chain: String, address: String) -> Result<(), ContractError>;
 
     fn remove_trusted_address(env: &Env, chain: String) -> Result<(), ContractError>;
+
+    fn interchain_token_deploy_salt(env: &Env, deployer: Address, salt: BytesN<32>) -> BytesN<32>;
 
     fn deploy_interchain_token(
         _env: &Env,

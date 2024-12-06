@@ -19,7 +19,7 @@ soroban-sdk = { workspace = true }
 [dev-dependencies]
 axelar-soroban-std = { workspace = true, features = ["testutils"] }
 ed25519-dalek = { version = "^2.1" }
-goldie = { version = "0.5" }
+goldie = { workspace = true }
 hex = "0.4"
 hex-literal = "0.4"
 rand = { version = "0.8.5" }

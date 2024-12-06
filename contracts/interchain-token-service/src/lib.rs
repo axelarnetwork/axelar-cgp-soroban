@@ -1,13 +1,12 @@
 #![no_std]
 
 mod abi;
+mod contract;
 pub mod error;
 mod event;
 mod interface;
 mod storage_types;
 pub mod types;
-
-pub mod contract;
 
 #[cfg(test)]
 extern crate std;
