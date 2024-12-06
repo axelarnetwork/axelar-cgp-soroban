@@ -6,7 +6,6 @@ use axelar_soroban_std::{
 };
 
 use interchain_token::{InterchainToken, InterchainTokenClient};
-use soroban_sdk::testutils::{MockAuth, MockAuthInvoke};
 use soroban_sdk::{
     testutils::{Address as _, BytesN as _},
     Address, BytesN, Env, IntoVal as _, Symbol,
@@ -14,10 +13,10 @@ use soroban_sdk::{
 use soroban_token_sdk::metadata::TokenMetadata;
 
 fn setup_token<'a>(env: &Env) -> (InterchainTokenClient<'a>, Address, Address) {
-    let owner = Address::generate(&env);
-    let minter = Address::generate(&env);
-    let interchain_token_service = Address::generate(&env);
-    let token_id: BytesN<32> = BytesN::<32>::random(&env);
+    let owner = Address::generate(env);
+    let minter = Address::generate(env);
+    let interchain_token_service = Address::generate(env);
+    let token_id: BytesN<32> = BytesN::<32>::random(env);
     let token_meta_data = TokenMetadata {
         decimal: 6,
         name: "name".into_val(env),
@@ -124,8 +123,8 @@ fn register_interchain_token() {
     let (token, owner, minter) = setup_token(&env);
 
     assert_eq!(token.owner(), owner);
-    assert_eq!(token.is_minter(&owner), false);
-    assert_eq!(token.is_minter(&minter), true);
+    assert!(!token.is_minter(&owner));
+    assert!(token.is_minter(&minter));
 }
 
 #[test]
