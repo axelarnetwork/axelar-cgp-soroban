@@ -53,7 +53,6 @@ pub fn setup_gateway<'a>(
     (signer_set, client)
 }
 
-
 pub fn get_approve_hash(env: &Env, messages: Vec<Message>) -> BytesN<32> {
     env.crypto()
         .keccak256(&(CommandType::ApproveMessages, messages).to_xdr(env))
