@@ -146,9 +146,9 @@ macro_rules! assert_invoke_auth_err {
 #[macro_export]
 macro_rules! mock_auth {
     ($caller:expr, $client:ident, $method:ident, $($arg:expr),*) => {
-        &[soroban_sdk::testutils::MockAuth {
+        &[MockAuth {
                 address: &$caller,
-                invoke: &soroban_sdk::testutils::MockAuthInvoke {
+                invoke: &MockAuthInvoke {
                     contract: &$client.address,
                     fn_name: &stringify!($method).replace("try_", ""),
                     args: ($($arg.clone(),)*).into_val(&$client.env),

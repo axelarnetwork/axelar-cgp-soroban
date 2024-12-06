@@ -9,7 +9,9 @@ use axelar_soroban_std::{
 
 use axelar_operators::contract::{AxelarOperators, AxelarOperatorsClient};
 use soroban_sdk::{
-    contract, contractimpl, symbol_short, testutils::Address as _, Address, Env, Symbol, Val, Vec,
+    contract, contractimpl, symbol_short,
+    testutils::{Address as _, MockAuth, MockAuthInvoke},
+    Address, Env, Symbol, Val, Vec,
 };
 
 #[contract]

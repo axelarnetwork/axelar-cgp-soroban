@@ -164,7 +164,7 @@ mod test {
     use std::format;
 
     use crate::testdata::contract::ContractClient;
-    use soroban_sdk::testutils::{Address as _, Events};
+    use soroban_sdk::testutils::{Address as _, Events, MockAuth, MockAuthInvoke};
     use soroban_sdk::{contracttype, Address, Env, String, TryFromVal};
 
     const WASM: &[u8] = include_bytes!("testdata/contract.wasm");
