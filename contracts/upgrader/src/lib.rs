@@ -2,5 +2,5 @@
 #[cfg(test)]
 extern crate alloc;
 
-pub mod contract;
+mod contract;
 pub mod error;

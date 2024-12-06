@@ -26,8 +26,8 @@ cfg_if::cfg_if! {
         mod auth;
         mod event;
         mod storage_types;
+        mod contract;
 
-        pub mod contract;
         pub use contract::{AxelarGateway, AxelarGatewayClient};
     }
 }

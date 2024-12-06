@@ -5,7 +5,7 @@ use axelar_soroban_std::{
     assert_invoke_auth_err, assert_invoke_auth_ok, assert_last_emitted_event,
 };
 
-use interchain_token::contract::{InterchainToken, InterchainTokenClient};
+use interchain_token::{InterchainToken, InterchainTokenClient};
 use soroban_sdk::testutils::{MockAuth, MockAuthInvoke};
 use soroban_sdk::{
     testutils::{Address as _, BytesN as _},

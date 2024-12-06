@@ -1,8 +1,8 @@
 use axelar_gas_service::{AxelarGasService, AxelarGasServiceClient};
 use axelar_gateway::testutils;
 use axelar_gateway::AxelarGatewayClient;
-use interchain_token_service::contract::{InterchainTokenService, InterchainTokenServiceClient};
 use interchain_token_service::error::ContractError;
+use interchain_token_service::{InterchainTokenService, InterchainTokenServiceClient};
 
 use axelar_soroban_std::{assert_contract_err, assert_invoke_auth_err, assert_last_emitted_event};
 use soroban_sdk::testutils::{MockAuth, MockAuthInvoke};
