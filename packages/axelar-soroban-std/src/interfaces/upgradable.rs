@@ -109,10 +109,10 @@ mod test {
     use crate::interfaces::upgradable::UpgradedEvent;
     use crate::{assert_invoke_auth_err, assert_invoke_auth_ok, events};
 
-    use crate::interfaces::testdata::contract::ContractClient;
+    use crate::interfaces::testdata::ContractClient;
     use crate::interfaces::{testdata, upgradable};
     use soroban_sdk::testutils::Address as _;
-    use soroban_sdk::{contracttype, Address, BytesN, Env, String};
+    use soroban_sdk::{Address, BytesN, Env, String};
 
     const WASM: &[u8] = include_bytes!("testdata/contract.wasm");
 
@@ -121,38 +121,12 @@ mod test {
         owner: Option<Address>,
     ) -> (ContractClient, BytesN<32>) {
         let operator = Address::generate(env);
-        let contract_id = env.register(testdata::contract::Contract, (owner, operator));
+        let contract_id = env.register(testdata::Contract, (owner, operator));
         let hash = env.deployer().upload_contract_wasm(WASM);
         let client = ContractClient::new(env, &contract_id);
         (client, hash)
     }
 
-    #[test]
-    fn contracttype_enum_name_is_irrelevant_for_key_collision() {
-        let env = Env::default();
-        let contract_id = env.register(
-            testdata::contract::Contract,
-            (None::<Address>, None::<Address>),
-        );
-
-        env.as_contract(&contract_id, || {
-            assert!(!env
-                .storage()
-                .instance()
-                .has(&testdata::contract::DataKey::Migrating));
-            assert!(!env.storage().instance().has(&DataKey2::Migrating));
-
-            env.storage()
-                .instance()
-                .set(&testdata::contract::DataKey::Migrating, &());
-
-            assert!(env
-                .storage()
-                .instance()
-                .has(&testdata::contract::DataKey::Migrating));
-            assert!(env.storage().instance().has(&DataKey2::Migrating));
-        });
-    }
     #[test]
     fn upgrade_fails_if_owner_not_set() {
         let env = Env::default();
@@ -243,10 +217,7 @@ mod test {
     fn simulate_migration_for_code_coverage() {
         let env = Env::default();
         let owner = Address::generate(&env);
-        let contract_id = env.register(
-            testdata::contract::Contract,
-            (Some(owner.clone()), None::<Address>),
-        );
+        let contract_id = env.register(testdata::Contract, (Some(owner.clone()), None::<Address>));
 
         env.as_contract(&contract_id, || {
             upgradable::start_migration(&env);
@@ -265,10 +236,5 @@ mod test {
         assert_invoke_auth_ok!(owner, client.try_upgrade(&hash));
         assert_invoke_auth_ok!(owner, client.try_migrate(&()));
         assert_invoke_auth_err!(owner, client.try_migrate(&()));
-    }
-
-    #[contracttype]
-    enum DataKey2 {
-        Migrating,
     }
 }

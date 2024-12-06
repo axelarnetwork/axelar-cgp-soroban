@@ -69,7 +69,7 @@ impl_event_testutils!(OwnershipTransferredEvent, (Symbol, Address, Address), ())
 
 #[cfg(test)]
 mod test {
-    use crate::interfaces::testdata::contract::Contract;
+    use crate::interfaces::testdata::Contract;
     use crate::interfaces::{OwnableClient, OwnershipTransferredEvent};
     use crate::{assert_invoke_auth_err, assert_invoke_auth_ok, events};
     use soroban_sdk::testutils::Address as _;
