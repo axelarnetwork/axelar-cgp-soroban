@@ -7,7 +7,7 @@ use axelar_soroban_std::{
     testutils::assert_invocation,
 };
 
-use axelar_operators::contract::{AxelarOperators, AxelarOperatorsClient};
+use axelar_operators::{AxelarOperators, AxelarOperatorsClient};
 use soroban_sdk::{
     contract, contractimpl, symbol_short, testutils::Address as _, Address, Env, Symbol, Val, Vec,
 };

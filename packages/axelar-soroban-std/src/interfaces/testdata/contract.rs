@@ -87,3 +87,30 @@ pub enum DataKey {
 pub enum ContractError {
     SomeFailure = 1,
 }
+
+mod test {
+    use soroban_sdk::{contracttype, Address, Env};
+
+    use super::{Contract, DataKey};
+
+    #[test]
+    fn contracttype_enum_name_is_irrelevant_for_key_collision() {
+        let env = Env::default();
+        let contract_id = env.register(Contract, (None::<Address>, None::<Address>));
+
+        env.as_contract(&contract_id, || {
+            assert!(!env.storage().instance().has(&DataKey::Migrating));
+            assert!(!env.storage().instance().has(&DataKey2::Migrating));
+
+            env.storage().instance().set(&DataKey::Migrating, &());
+
+            assert!(env.storage().instance().has(&DataKey::Migrating));
+            assert!(env.storage().instance().has(&DataKey2::Migrating));
+        });
+    }
+
+    #[contracttype]
+    enum DataKey2 {
+        Migrating,
+    }
+}
