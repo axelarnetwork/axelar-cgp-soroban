@@ -10,8 +10,9 @@ crate-type = ["rlib"]
 [dependencies]
 
 [dev-dependencies]
-axelar-gateway = { workspace = true, features = [ "testutils" ] }
+axelar-gateway = { workspace = true, features = ["testutils"] }
 axelar-soroban-std = { workspace = true, features = ["testutils"] }
+interchain-token-service = { workspace = true, features = ["testutils"] }
 soroban-sdk = { workspace = true, features = ["testutils"] }
 
 [lints]

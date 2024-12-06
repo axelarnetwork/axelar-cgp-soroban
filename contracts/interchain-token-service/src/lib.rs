@@ -5,11 +5,14 @@ pub mod error;
 mod event;
 mod interface;
 mod storage_types;
-mod types;
+pub mod types;
 
 pub mod contract;
 
 #[cfg(test)]
 extern crate std;
 
-pub use contract::InterchainTokenServiceClient;
+#[cfg(feature = "testutils")]
+pub mod testutils;
+
+pub use contract::{InterchainTokenService, InterchainTokenServiceClient};

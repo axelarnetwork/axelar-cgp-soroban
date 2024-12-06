@@ -1,5 +1,7 @@
-use axelar_soroban_std::ensure;
-use axelar_soroban_std::types::Token;
+use axelar_gas_service::AxelarGasServiceClient;
+use axelar_gateway::{executable::AxelarExecutableInterface, AxelarGatewayMessagingClient};
+use axelar_soroban_std::{ensure, types::Token};
+use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String};
 
 use crate::abi::{get_message_type, MessageType as EncodedMessageType};
@@ -7,12 +9,7 @@ use crate::error::ContractError;
 use crate::event;
 use crate::interface::InterchainTokenServiceInterface;
 use crate::storage_types::DataKey;
-use crate::types::{HubMessage, InterchainTransfer, Message};
-
-use axelar_gas_service::AxelarGasServiceClient;
-use axelar_gateway::AxelarGatewayMessagingClient;
-
-use axelar_gateway::executable::AxelarExecutableInterface;
+use crate::types::{HubMessage, InterchainTransfer, Message, TokenMetadata};
 
 const ITS_HUB_CHAIN_NAME: &str = "axelar";
 const ITS_HUB_ROUTING_IDENTIFIER: &str = "hub";
@@ -103,24 +100,31 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     fn deploy_interchain_token(
         _env: &Env,
         _caller: Address,
-        _token_id: BytesN<32>,
+        _salt: BytesN<32>,
         _destination_chain: String,
-        _name: String,
-        _symbol: String,
-        _decimals: u32,
+        _token_metadata: TokenMetadata,
         _minter: Option<Bytes>,
         _gas_token: Token,
-    ) {
+    ) -> Result<BytesN<32>, ContractError> {
         todo!()
     }
 
     fn deploy_remote_interchain_token(
         _env: &Env,
         _caller: Address,
+        _original_chain: String,
+        _salt: BytesN<32>,
+        _minter: Option<Bytes>,
         _destination_chain: String,
-        _token_id: String,
         _gas_token: Token,
-    ) {
+    ) -> Result<BytesN<32>, ContractError> {
+        // TODO: implementation
+        // deploy salt
+        // minter approval
+        // registered token address - get token metadata
+        // abi encode with MessageType.DeployInterchainToken
+        // token id
+        // pay_gas_and_call_contract
         todo!()
     }
 
@@ -133,17 +137,22 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         amount: i128,
         metadata: Option<Bytes>,
         gas_token: Token,
-    ) {
-        // EXAMPLE implementation only to compile
+    ) -> Result<(), ContractError> {
+        caller.require_auth();
+
+        // TODO: implementation
+
         let message = Message::InterchainTransfer(InterchainTransfer {
             token_id,
-            source_address: Bytes::from_slice(env, &[0]),
+            source_address: caller.clone().to_xdr(env),
             destination_address,
             amount,
             data: metadata,
         });
 
-        let _ = pay_gas_and_call_contract(env, caller, destination_chain, message, gas_token);
+        pay_gas_and_call_contract(env, caller, destination_chain, message, gas_token)?;
+
+        Ok(())
     }
 }
 
@@ -221,11 +230,22 @@ fn execute_message(
 ) -> Result<(), ContractError> {
     // TODO: Add ITS hub execute logic
 
-    let (_original_source_chain, message) = get_execute_params(env, source_chain, payload)?;
+    let (original_source_chain, message) = get_execute_params(env, source_chain, &payload)?;
 
     match message {
-        Message::InterchainTransfer(_) => {
-            // TODO
+        Message::InterchainTransfer(inner_message) => {
+            // TODO: transfer implementation
+
+            event::interchain_transfer_received(
+                env,
+                original_source_chain,
+                inner_message.token_id,
+                inner_message.source_address,
+                inner_message.destination_address,
+                inner_message.amount,
+                inner_message.data,
+            );
+
             Ok(())
         }
         Message::DeployInterchainToken(_) => {
@@ -238,7 +258,7 @@ fn execute_message(
 fn get_execute_params(
     env: &Env,
     source_chain: String,
-    payload: Bytes,
+    payload: &Bytes,
 ) -> Result<(String, Message), ContractError> {
     let message_type =
         get_message_type(&payload.to_alloc_vec()).map_err(|_| ContractError::InvalidPayload)?;
@@ -251,7 +271,7 @@ fn get_execute_params(
             );
 
             let decoded_message =
-                HubMessage::abi_decode(env, &payload).map_err(|_| ContractError::InvalidPayload)?;
+                HubMessage::abi_decode(env, payload).map_err(|_| ContractError::InvalidPayload)?;
 
             let HubMessage::ReceiveFromHub {
                 source_chain: original_source_chain,
@@ -304,231 +324,5 @@ fn get_call_params(
             Ok(payload)
         }
         _ => Err(ContractError::UntrustedChain),
-    }
-}
-
-#[cfg(test)]
-pub mod tests {
-    use super::*;
-    use crate::types::*;
-    use axelar_soroban_std::assert_ok;
-    use soroban_sdk::{testutils::Address as _, Address, Bytes, BytesN, Env, String};
-    use std::vec;
-    use std::vec::Vec;
-
-    const HUB_CHAIN: &str = "hub_chain";
-    const HUB_ADDRESS: &str = "hub_address";
-
-    fn setup_env<'a>() -> (Env, InterchainTokenServiceClient<'a>) {
-        let env = Env::default();
-        let owner = Address::generate(&env);
-        let gateway = Address::generate(&env);
-        let gas_service = Address::generate(&env);
-        let contract_id = env.register(InterchainTokenService, (&owner, gateway, gas_service));
-        let client = InterchainTokenServiceClient::new(&env, &contract_id);
-
-        (env, client)
-    }
-
-    fn register_chains(env: &Env, client: &InterchainTokenServiceClient) {
-        env.mock_all_auths();
-
-        let chain = String::from_str(&env, HUB_CHAIN);
-        client.set_trusted_address(&chain, &client.its_hub_routing_identifier());
-
-        let chain = client.its_hub_chain_name();
-        let addr = String::from_str(&env, HUB_ADDRESS);
-        client.set_trusted_address(&chain, &addr);
-    }
-
-    fn bytes_from_hex(env: &Env, hex_string: &str) -> Bytes {
-        let bytes_vec: Vec<u8> = hex::decode(hex_string).unwrap();
-        Bytes::from_slice(env, &bytes_vec)
-    }
-
-    #[test]
-    fn get_call_params_hub_message() {
-        let (env, client) = setup_env();
-        register_chains(&env, &client);
-
-        let msg = Message::InterchainTransfer(InterchainTransfer {
-            token_id: BytesN::from_array(&env, &[255u8; 32]),
-            source_address: bytes_from_hex(&env, "4F4495243837681061C4743b74B3eEdf548D56A5"),
-            destination_address: bytes_from_hex(&env, "4F4495243837681061C4743b74B3eEdf548D56A5"),
-            amount: i128::MAX,
-            data: Some(bytes_from_hex(&env, "abcd")),
-        });
-
-        let expected_payload = assert_ok!(HubMessage::SendToHub {
-            destination_chain: String::from_str(&env, HUB_CHAIN),
-            message: msg.clone()
-        }
-        .abi_encode(&env));
-
-        let payload = assert_ok!(env.as_contract(&client.address, || {
-            get_call_params(&env, String::from_str(&env, HUB_CHAIN), msg.clone())
-        }));
-
-        assert_eq!(payload, expected_payload);
-    }
-
-    #[test]
-    fn get_call_params_fails_send_directly_to_hub_chain() {
-        let (env, client) = setup_env();
-        register_chains(&env, &client);
-
-        let msg = Message::DeployInterchainToken(DeployInterchainToken {
-            token_id: BytesN::from_array(&env, &[1u8; 32]),
-            name: String::from_str(&env, &"Test Token"),
-            symbol: String::from_str(&env, &"TST"),
-            decimals: 18,
-            minter: Some(bytes_from_hex(&env, "1234")),
-        });
-
-        let destination_chain = client.its_hub_chain_name();
-        let result = get_call_params(&env, destination_chain, msg.clone());
-        assert!(matches!(result, Err(ContractError::UntrustedChain)));
-    }
-
-    #[test]
-    fn get_call_params_fails_untrusted_chain() {
-        let (env, client) = setup_env();
-        register_chains(&env, &client);
-
-        let msg = Message::DeployInterchainToken(DeployInterchainToken {
-            token_id: BytesN::from_array(&env, &[1u8; 32]),
-            name: String::from_str(&env, &"Test Token"),
-            symbol: String::from_str(&env, &"TST"),
-            decimals: 18,
-            minter: Some(bytes_from_hex(&env, "1234")),
-        });
-
-        let result = env.as_contract(&client.address, || {
-            get_call_params(&env, String::from_str(&env, "untrusted_chain"), msg.clone())
-        });
-        assert!(matches!(result, Err(ContractError::UntrustedChain)));
-    }
-
-    #[test]
-    fn get_call_params_fails_invalid_payload() {
-        let (env, client) = setup_env();
-        register_chains(&env, &client);
-
-        let msg = Message::DeployInterchainToken(DeployInterchainToken {
-            token_id: BytesN::from_array(&env, &[1u8; 32]),
-            name: String::from_bytes(&env, &vec![0xF5, 0x90, 0x80]), // invalid UTF-8
-            symbol: String::from_str(&env, &"TST"),
-            decimals: 18,
-            minter: Some(bytes_from_hex(&env, "1234")),
-        });
-
-        let result = env.as_contract(&client.address, || {
-            get_call_params(&env, String::from_str(&env, HUB_CHAIN), msg.clone())
-        });
-        assert!(matches!(result, Err(ContractError::InvalidPayload)));
-    }
-
-    #[test]
-    fn get_execute_params_hub_message() {
-        let (env, client) = setup_env();
-        register_chains(&env, &client);
-
-        let msgs = vec![
-            HubMessage::ReceiveFromHub {
-                source_chain: String::from_str(&env, HUB_CHAIN),
-                message: Message::InterchainTransfer(InterchainTransfer {
-                    token_id: BytesN::from_array(&env, &[255u8; 32]),
-                    source_address: bytes_from_hex(
-                        &env,
-                        "4F4495243837681061C4743b74B3eEdf548D56A5",
-                    ),
-                    destination_address: bytes_from_hex(
-                        &env,
-                        "4F4495243837681061C4743b74B3eEdf548D56A5",
-                    ),
-                    amount: i128::MAX,
-                    data: Some(bytes_from_hex(&env, "abcd")),
-                }),
-            },
-            HubMessage::ReceiveFromHub {
-                source_chain: String::from_str(&env, HUB_CHAIN),
-                message: Message::DeployInterchainToken(DeployInterchainToken {
-                    token_id: BytesN::from_array(&env, &[1u8; 32]),
-                    name: String::from_str(&env, &"Test Token"),
-                    symbol: String::from_str(&env, &"TST"),
-                    decimals: 18,
-                    minter: Some(bytes_from_hex(&env, "1234")),
-                }),
-            },
-        ];
-
-        for msg in msgs {
-            let encoded_hub_msg = assert_ok!(msg.clone().abi_encode(&env));
-            let (original_chain_name, inner_message) =
-                assert_ok!(env.as_contract(&client.address, || {
-                    get_execute_params(
-                        &env,
-                        InterchainTokenService::its_hub_chain_name(&env),
-                        encoded_hub_msg,
-                    )
-                }));
-
-            if let HubMessage::ReceiveFromHub {
-                source_chain,
-                message,
-            } = msg
-            {
-                assert_eq!(original_chain_name, source_chain);
-                assert_eq!(inner_message, message);
-            }
-        }
-    }
-
-    #[test]
-    fn get_execute_params_fails_hub_message_sent_from_external_chain() {
-        let (env, client) = setup_env();
-        register_chains(&env, &client);
-
-        let msg = HubMessage::ReceiveFromHub {
-            source_chain: String::from_str(&env, HUB_CHAIN),
-            message: Message::DeployInterchainToken(DeployInterchainToken {
-                token_id: BytesN::from_array(&env, &[1u8; 32]),
-                name: String::from_str(&env, &"Test Token"),
-                symbol: String::from_str(&env, &"TST"),
-                decimals: 18,
-                minter: Some(bytes_from_hex(&env, "1234")),
-            }),
-        }
-        .abi_encode(&env);
-
-        let result = get_execute_params(&env, String::from_str(&env, "somechain"), msg.unwrap());
-        assert!(matches!(result, Err(ContractError::UntrustedChain)));
-    }
-
-    #[test]
-    fn get_execute_params_fails_hub_message_non_hub_source_chain() {
-        let (env, client) = setup_env();
-        register_chains(&env, &client);
-
-        let msg = HubMessage::ReceiveFromHub {
-            source_chain: String::from_str(&env, "somechain"),
-            message: Message::DeployInterchainToken(DeployInterchainToken {
-                token_id: BytesN::from_array(&env, &[1u8; 32]),
-                name: String::from_str(&env, &"Test Token"),
-                symbol: String::from_str(&env, &"TST"),
-                decimals: 18,
-                minter: Some(bytes_from_hex(&env, "1234")),
-            }),
-        }
-        .abi_encode(&env);
-
-        let result = env.as_contract(&client.address, || {
-            get_execute_params(
-                &env,
-                InterchainTokenService::its_hub_chain_name(&env),
-                msg.unwrap(),
-            )
-        });
-        assert!(matches!(result, Err(ContractError::UntrustedChain)));
     }
 }
