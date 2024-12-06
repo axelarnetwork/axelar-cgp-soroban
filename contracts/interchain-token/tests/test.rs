@@ -6,7 +6,7 @@ use axelar_soroban_std::{
 };
 use interchain_token::contract::InterchainToken;
 use interchain_token::InterchainTokenClient;
-use soroban_sdk::testutils::{Address as _, MockAuth, MockAuthInvoke};
+use soroban_sdk::testutils::Address as _;
 use soroban_sdk::{Address, Env, Symbol};
 
 fn setup_env<'a>() -> (Env, InterchainTokenClient<'a>) {
