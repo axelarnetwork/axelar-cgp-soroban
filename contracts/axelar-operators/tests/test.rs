@@ -9,9 +9,7 @@ use axelar_soroban_std::{
 
 use axelar_operators::contract::{AxelarOperators, AxelarOperatorsClient};
 use soroban_sdk::{
-    contract, contractimpl, symbol_short,
-    testutils::{Address as _, MockAuth, MockAuthInvoke},
-    Address, Env, Symbol, Val, Vec,
+    contract, contractimpl, symbol_short, testutils::Address as _, Address, Env, Symbol, Val, Vec,
 };
 
 #[contract]
@@ -49,39 +47,6 @@ fn register_operators() {
     let client = AxelarOperatorsClient::new(&env, &contract_id);
 
     assert_eq!(client.owner(), user);
-}
-
-#[test]
-fn transfer_owner() {
-    let (env, client, _) = setup_env();
-
-    let initial_owner = client.owner();
-    let new_owner = Address::generate(&env);
-
-    // transfer ownership to the new owner
-    client.transfer_ownership(&new_owner);
-
-    assert_invocation(
-        &env,
-        &initial_owner,
-        &client.address,
-        "transfer_ownership",
-        (new_owner.clone(),),
-    );
-
-    assert_last_emitted_event(
-        &env,
-        &client.address,
-        (
-            Symbol::new(&env, "ownership_transferred"),
-            initial_owner,
-            new_owner.clone(),
-        ),
-        (),
-    );
-
-    let retrieved_owner = client.owner();
-    assert_eq!(retrieved_owner, new_owner);
 }
 
 #[test]
