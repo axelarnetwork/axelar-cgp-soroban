@@ -1,4 +1,6 @@
-use crate::interfaces::{upgradable, MigratableInterface, OwnableInterface, UpgradableInterface};
+use crate::interfaces::{
+    ownable, upgradable, MigratableInterface, OwnableInterface, UpgradableInterface,
+};
 use soroban_sdk::testutils::arbitrary::std;
 use soroban_sdk::{
     contract, contracterror, contractimpl, contracttype, Address, BytesN, Env, String,
@@ -9,7 +11,11 @@ pub struct Contract;
 
 #[contractimpl]
 impl Contract {
-    pub fn __constructor(_env: Env) {}
+    pub fn __constructor(_env: Env, owner: Option<Address>) {
+        if let Some(owner) = owner {
+            ownable::set_owner(&_env, &owner);
+        }
+    }
 
     pub fn migration_data(env: &Env) -> Option<String> {
         env.storage().instance().get(&DataKey::Data)
@@ -36,7 +42,11 @@ impl MigratableInterface for Contract {
 #[contractimpl]
 impl OwnableInterface for Contract {
     fn owner(env: &Env) -> Address {
-        upgradable::owner(env)
+        ownable::owner(env)
+    }
+
+    fn transfer_ownership(env: &Env, new_owner: Address) {
+        ownable::transfer_ownership::<Self>(env, new_owner);
     }
 }
 
