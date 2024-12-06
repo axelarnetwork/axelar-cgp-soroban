@@ -250,7 +250,6 @@ mod tests {
     use super::*;
     use alloc::vec;
     use axelar_soroban_std::assert_ok;
-    use core::u128;
     use soroban_sdk::{Bytes, BytesN, Env, String};
     use std::vec::Vec;
 
