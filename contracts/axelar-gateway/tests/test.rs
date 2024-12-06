@@ -330,29 +330,6 @@ fn rotate_signers_fail_not_latest_signers() {
 }
 
 #[test]
-fn transfer_operatorship() {
-    let (env, _signers, client) = setup_env(1, randint(1, 10));
-
-    let operator = client.operator();
-    let new_operator = Address::generate(&env);
-
-    assert_invoke_auth_ok!(operator, client.try_transfer_operatorship(&new_operator));
-
-    assert_last_emitted_event(
-        &env,
-        &client.address,
-        (
-            Symbol::new(&env, "operatorship_transferred"),
-            operator,
-            new_operator.clone(),
-        ),
-        (),
-    );
-
-    assert_eq!(client.operator(), new_operator);
-}
-
-#[test]
 fn transfer_operatorship_unauthorized() {
     let (env, _, client) = setup_env(1, randint(1, 10));
     let not_operator = Address::generate(&env);

@@ -94,28 +94,25 @@ mod test {
     #[test]
     fn owner_fails_if_owner_not_set() {
         let env = Env::default();
-        let contract_id = env.register(Contract, (None::<Address>,));
+        let client = prepare_client(&env, None);
 
-        assert!(OwnableClient::new(&env, &contract_id).try_owner().is_err());
+        assert!(client.try_owner().is_err());
     }
 
     #[test]
     fn owner_returns_correct_owner_when_set() {
         let env = Env::default();
         let owner = Address::generate(&env);
-        let contract_id = env.register(Contract, (owner.clone(),));
+        let client = prepare_client(&env, Some(owner.clone()));
 
-        assert_eq!(OwnableClient::new(&env, &contract_id).owner(), owner);
+        assert_eq!(client.owner(), owner);
     }
 
     #[test]
     fn transfer_ownership_fails_if_caller_is_not_owner() {
         let env = Env::default();
         let owner = Address::generate(&env);
-        let contract_id = env.register(Contract, (owner.clone(),));
-
-        let client = OwnableClient::new(&env, &contract_id);
-        assert_eq!(client.owner(), owner);
+        let client = prepare_client(&env, Some(owner));
 
         let new_owner = Address::generate(&env);
         assert_invoke_auth_err!(new_owner, client.try_transfer_ownership(&new_owner));
@@ -125,9 +122,8 @@ mod test {
     fn transfer_ownership_succeeds_if_caller_is_owner() {
         let env = Env::default();
         let owner = Address::generate(&env);
-        let contract_id = env.register(Contract, (owner.clone(),));
+        let client = prepare_client(&env, Some(owner.clone()));
 
-        let client = OwnableClient::new(&env, &contract_id);
         assert_eq!(client.owner(), owner);
 
         let new_owner = Address::generate(&env);
@@ -138,5 +134,11 @@ mod test {
         ));
 
         assert_eq!(client.owner(), new_owner);
+    }
+
+    fn prepare_client(env: &Env, owner: Option<Address>) -> OwnableClient {
+        let operator = Address::generate(env);
+        let contract_id = env.register(Contract, (owner, operator));
+        OwnableClient::new(env, &contract_id)
     }
 }

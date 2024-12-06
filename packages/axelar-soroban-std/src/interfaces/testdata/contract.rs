@@ -1,5 +1,6 @@
 use crate::interfaces::{
-    ownable, upgradable, MigratableInterface, OwnableInterface, UpgradableInterface,
+    operatable, ownable, upgradable, MigratableInterface, OperatableInterface, OwnableInterface,
+    UpgradableInterface,
 };
 use soroban_sdk::testutils::arbitrary::std;
 use soroban_sdk::{
@@ -11,9 +12,13 @@ pub struct Contract;
 
 #[contractimpl]
 impl Contract {
-    pub fn __constructor(_env: Env, owner: Option<Address>) {
+    pub fn __constructor(_env: Env, owner: Option<Address>, operator: Option<Address>) {
         if let Some(owner) = owner {
             ownable::set_owner(&_env, &owner);
+        }
+
+        if let Some(operator) = operator {
+            operatable::set_operator(&_env, &operator);
         }
     }
 
@@ -47,6 +52,17 @@ impl OwnableInterface for Contract {
 
     fn transfer_ownership(env: &Env, new_owner: Address) {
         ownable::transfer_ownership::<Self>(env, new_owner);
+    }
+}
+
+#[contractimpl]
+impl OperatableInterface for Contract {
+    fn operator(env: &Env) -> Address {
+        operatable::operator(env)
+    }
+
+    fn transfer_operatorship(env: &Env, new_operator: Address) {
+        operatable::transfer_operatorship::<Self>(env, new_operator);
     }
 }
 
