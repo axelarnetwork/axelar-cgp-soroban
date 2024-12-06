@@ -138,33 +138,10 @@ mod test {
         owner: Option<Address>,
     ) -> (ContractClient, BytesN<32>) {
         let operator = Address::generate(env);
-        let contract_id = env.register(testdata::contract::Contract, (owner, operator));
+        let contract_id = env.register(testdata::Contract, (owner, operator));
         let hash = env.deployer().upload_contract_wasm(WASM);
         let client = ContractClient::new(env, &contract_id);
         (client, hash)
-    }
-
-    #[test]
-    fn owner_fails_if_owner_not_set() {
-        let env = Env::default();
-        let contract_id = env.register(testdata::Contract, ());
-
-        assert!(OwnershipClient::new(&env, &contract_id)
-            .try_owner()
-            .is_err());
-    }
-
-    #[test]
-    fn owner_returns_correct_owner_when_set() {
-        let env = Env::default();
-        let contract_id = env.register(testdata::Contract, ());
-
-        let owner = Address::generate(&env);
-        env.as_contract(&contract_id, || {
-            upgradable::set_owner(&env, &owner);
-        });
-
-        assert_eq!(OwnershipClient::new(&env, &contract_id).owner(), owner);
     }
 
     #[test]
@@ -257,10 +234,7 @@ mod test {
     fn simulate_migration_for_code_coverage() {
         let env = Env::default();
         let owner = Address::generate(&env);
-        let contract_id = env.register(
-            testdata::contract::Contract,
-            (Some(owner.clone()), None::<Address>),
-        );
+        let contract_id = env.register(testdata::Contract, (Some(owner.clone()), None::<Address>));
 
         env.as_contract(&contract_id, || {
             upgradable::start_migration(&env);

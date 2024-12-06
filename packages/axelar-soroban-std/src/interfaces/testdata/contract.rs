@@ -91,9 +91,7 @@ pub enum ContractError {
 mod test {
     use soroban_sdk::{contracttype, Env};
 
-    use crate::interfaces::testdata::contract::DataKey;
-
-    use super::Contract;
+    use super::{Contract, DataKey};
 
     #[test]
     fn contracttype_enum_name_is_irrelevant_for_key_collision() {
