@@ -41,7 +41,7 @@ pub trait AxelarGatewayInterface: AxelarGatewayMessagingInterface + UpgradableIn
     /// Returns the signers hash by epoch.
     fn signers_hash_by_epoch(env: &Env, epoch: u64) -> Result<BytesN<32>, ContractError>;
 
-    /// Returns a boolean indicating if provided signers are the latest ones
+    /// Validate the `proof` for `data_hash` created by the signers. Returns a boolean indicating if the proof was created by the latest signers.
     fn validate_proof(
         env: &Env,
         data_hash: BytesN<32>,
