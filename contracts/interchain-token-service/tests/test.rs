@@ -1,8 +1,8 @@
 use axelar_gas_service::{AxelarGasService, AxelarGasServiceClient};
 use axelar_gateway::testutils;
 use axelar_gateway::AxelarGatewayClient;
-use interchain_token_service::contract::{InterchainTokenService, InterchainTokenServiceClient};
 use interchain_token_service::error::ContractError;
+use interchain_token_service::{InterchainTokenService, InterchainTokenServiceClient};
 
 use axelar_soroban_std::{assert_contract_err, assert_invoke_auth_err, assert_last_emitted_event};
 
@@ -16,7 +16,7 @@ fn setup_gateway<'a>(env: &Env) -> AxelarGatewayClient<'a> {
 
 fn setup_gas_service<'a>(env: &Env) -> AxelarGasServiceClient<'a> {
     let owner: Address = Address::generate(env);
-    let gas_collector: Address = Address::generate(&env);
+    let gas_collector: Address = Address::generate(env);
     let gas_service_id = env.register(AxelarGasService, (&owner, &gas_collector));
     let gas_service_client = AxelarGasServiceClient::new(env, &gas_service_id);
 

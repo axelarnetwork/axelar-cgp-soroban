@@ -5,6 +5,7 @@ use soroban_token_sdk::metadata::TokenMetadata;
 
 use crate::error::ContractError;
 
+#[allow(dead_code)]
 #[contractclient(name = "InterchainTokenServiceClient")]
 pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
     fn trusted_address(env: &Env, chain: String) -> Option<String>;
