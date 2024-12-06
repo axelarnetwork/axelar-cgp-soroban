@@ -7,8 +7,8 @@ edition = "2021"
 rust-version = "1.81.0"
 
 [workspace.dependencies]
-soroban-sdk = { version = "22.0.0-rc.3" }
-soroban-token-sdk = { version = "22.0.0-rc.3" }
+soroban-sdk = { version = "22.0.0" }
+soroban-token-sdk = { version = "22.0.0" }
 cfg-if = { version = "1.0" }
 axelar-soroban-std = { version = "^0.1.0", path = "packages/axelar-soroban-std" }
 axelar-gas-service = { version = "^0.1.0", path = "contracts/axelar-gas-service" }
@@ -16,10 +16,10 @@ axelar-gateway = { version = "^0.1.0", path = "contracts/axelar-gateway" }
 axelar-operators = { version = "^0.1.0", path = "contracts/axelar-operators" }
 interchain-token = { version = "^0.1.0", path = "contracts/interchain-token" }
 interchain-token-service = { version = "^0.1.0", path = "contracts/interchain-token-service" }
-alloy-primitives = { version = "0.7.6", default-features = false, features = [
+alloy-primitives = { version = "0.8.14", default-features = false, features = [
     "std",
 ] }
-alloy-sol-types = { version = "0.7.6", default-features = false, features = [
+alloy-sol-types = { version = "0.8.14", default-features = false, features = [
     "std",
 ] }
 goldie = "0.5.0"
