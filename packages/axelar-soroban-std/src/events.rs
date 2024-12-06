@@ -5,12 +5,12 @@ use soroban_sdk::{Env, IntoVal, Topics, Val};
 pub use testutils::*;
 
 pub trait Event: Debug + PartialEq {
-    fn topics(&self) -> impl Topics + Debug;
+    fn topics(&self, env: &Env) -> impl Topics + Debug;
 
-    fn data(&self) -> impl IntoVal<Env, Val> + Debug;
+    fn data(&self, env: &Env) -> impl IntoVal<Env, Val> + Debug;
 
     fn emit(&self, env: &Env) {
-        env.events().publish(self.topics(), self.data());
+        env.events().publish(self.topics(env), self.data(env));
     }
 }
 
@@ -56,14 +56,16 @@ mod testutils {
                 fn matches(&self, env: &soroban_sdk::Env, event: &(soroban_sdk::Address, soroban_sdk::Vec<soroban_sdk::Val>, soroban_sdk::Val)) -> bool {
                     use soroban_sdk::IntoVal;
 
-                    Self::standardized_fmt(env, event) == Self::standardized_fmt(env, &(event.0.clone(), self.topics().into_val(env), self.data().into_val(env)))
+                    Self::standardized_fmt(env, event) == Self::standardized_fmt(env, &(event.0.clone(), self.topics(env).into_val(env), self.data(env).into_val(env)))
                 }
 
                 #[allow(unused_assignments)]
+                #[allow(unused_variables)]
+                #[allow(unused_mut)]
                 fn standardized_fmt(env: &soroban_sdk::Env, (contract_id, topics, data): &(soroban_sdk::Address, soroban_sdk::Vec<soroban_sdk::Val>, soroban_sdk::Val)) -> std::string::String {
                     use soroban_sdk::TryFromVal;
 
-                    let mut topics_output = std::vec![];
+                    let mut topics_output: std::vec::Vec<std::string::String> = std::vec![];
 
                     let mut i = 0;
                     $(
@@ -76,7 +78,7 @@ mod testutils {
 
                     let data = soroban_sdk::Vec::<soroban_sdk::Val>::try_from_val(env, data).expect("data should be defined as a vector-compatible type");
 
-                    let mut data_output = std::vec![];
+                    let mut data_output: std::vec::Vec<std::string::String> = std::vec![];
 
                     let mut i = 0;
                     $(
@@ -113,11 +115,11 @@ mod test {
     }
 
     impl Event for TestEvent {
-        fn topics(&self) -> impl Topics + Debug {
+        fn topics(&self, _env: &Env) -> impl Topics + Debug {
             (self.topic1.clone(), self.topic2.clone(), self.topic3)
         }
 
-        fn data(&self) -> impl IntoVal<Env, Val> + Debug {
+        fn data(&self, _env: &Env) -> impl IntoVal<Env, Val> + Debug {
             (self.data1.clone(), self.data2.clone())
         }
     }

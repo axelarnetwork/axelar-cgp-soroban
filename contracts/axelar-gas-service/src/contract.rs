@@ -50,9 +50,12 @@ impl UpgradableInterface for AxelarGasService {
 
 #[contractimpl]
 impl OwnableInterface for AxelarGasService {
-    // boilerplate necessary for the contractimpl macro to include function in the generated client
     fn owner(env: &Env) -> Address {
         interfaces::owner(env)
+    }
+
+    fn transfer_ownership(env: &Env, new_owner: Address) {
+        interfaces::transfer_ownership::<Self>(env, new_owner);
     }
 }
 

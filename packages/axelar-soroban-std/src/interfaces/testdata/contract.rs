@@ -1,4 +1,7 @@
-use crate::interfaces::{upgradable, MigratableInterface, OwnableInterface, UpgradableInterface};
+use crate::interfaces::{
+    operatable, ownable, upgradable, MigratableInterface, OperatableInterface, OwnableInterface,
+    UpgradableInterface,
+};
 use soroban_sdk::testutils::arbitrary::std;
 use soroban_sdk::{
     contract, contracterror, contractimpl, contracttype, Address, BytesN, Env, String,
@@ -9,7 +12,15 @@ pub struct Contract;
 
 #[contractimpl]
 impl Contract {
-    pub fn __constructor(_env: Env) {}
+    pub fn __constructor(_env: Env, owner: Option<Address>, operator: Option<Address>) {
+        if let Some(owner) = owner {
+            ownable::set_owner(&_env, &owner);
+        }
+
+        if let Some(operator) = operator {
+            operatable::set_operator(&_env, &operator);
+        }
+    }
 
     pub fn migration_data(env: &Env) -> Option<String> {
         env.storage().instance().get(&DataKey::Data)
@@ -36,7 +47,22 @@ impl MigratableInterface for Contract {
 #[contractimpl]
 impl OwnableInterface for Contract {
     fn owner(env: &Env) -> Address {
-        upgradable::owner(env)
+        ownable::owner(env)
+    }
+
+    fn transfer_ownership(env: &Env, new_owner: Address) {
+        ownable::transfer_ownership::<Self>(env, new_owner);
+    }
+}
+
+#[contractimpl]
+impl OperatableInterface for Contract {
+    fn operator(env: &Env) -> Address {
+        operatable::operator(env)
+    }
+
+    fn transfer_operatorship(env: &Env, new_operator: Address) {
+        operatable::transfer_operatorship::<Self>(env, new_operator);
     }
 }
 
@@ -60,4 +86,31 @@ pub enum DataKey {
 #[contracterror]
 pub enum ContractError {
     SomeFailure = 1,
+}
+
+mod test {
+    use soroban_sdk::{contracttype, Address, Env};
+
+    use super::{Contract, DataKey};
+
+    #[test]
+    fn contracttype_enum_name_is_irrelevant_for_key_collision() {
+        let env = Env::default();
+        let contract_id = env.register(Contract, (None::<Address>, None::<Address>));
+
+        env.as_contract(&contract_id, || {
+            assert!(!env.storage().instance().has(&DataKey::Migrating));
+            assert!(!env.storage().instance().has(&DataKey2::Migrating));
+
+            env.storage().instance().set(&DataKey::Migrating, &());
+
+            assert!(env.storage().instance().has(&DataKey::Migrating));
+            assert!(env.storage().instance().has(&DataKey2::Migrating));
+        });
+    }
+
+    #[contracttype]
+    enum DataKey2 {
+        Migrating,
+    }
 }

@@ -16,7 +16,7 @@ mod interface;
 #[cfg(all(target_family = "wasm", feature = "testutils"))]
 compile_error!("'testutils' feature is not supported on 'wasm' target");
 
-#[cfg(feature = "testutils")]
+#[cfg(any(test, feature = "testutils"))]
 pub mod testutils;
 
 cfg_if::cfg_if! {
@@ -26,8 +26,8 @@ cfg_if::cfg_if! {
         mod auth;
         mod event;
         mod storage_types;
+        mod contract;
 
-        pub mod contract;
         pub use contract::{AxelarGateway, AxelarGatewayClient};
     }
 }

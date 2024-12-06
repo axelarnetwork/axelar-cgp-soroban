@@ -4,10 +4,9 @@ use soroban_sdk::{contractclient, Address, Bytes, BytesN, Env, String};
 
 use crate::error::ContractError;
 
+#[allow(dead_code)]
 #[contractclient(name = "InterchainTokenServiceClient")]
 pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
-    fn transfer_ownership(env: &Env, new_owner: Address);
-
     fn trusted_address(env: &Env, chain: String) -> Option<String>;
 
     fn set_trusted_address(env: &Env, chain: String, address: String) -> Result<(), ContractError>;

@@ -15,6 +15,7 @@ use axelar_soroban_std::{ensure, interfaces};
 use soroban_sdk::token::TokenInterface;
 
 use soroban_sdk::{assert_with_error, contract, contractimpl, token, Address, BytesN, Env, String};
+use soroban_token_sdk::event::Events as TokenEvents;
 
 #[contract]
 pub struct InterchainToken;
@@ -105,22 +106,6 @@ impl InterchainTokenInterface for InterchainToken {
             .remove(&DataKey::Minter(minter.clone()));
 
         event::remove_minter(env, minter);
-    }
-
-    fn transfer_ownership(env: Env, new_owner: Address) -> Result<(), ContractError> {
-        let owner: Address = Self::owner(&env);
-
-        owner.require_auth();
-
-        interfaces::set_owner(&env, &new_owner);
-
-        TokenUtils::new(&env)
-            .events()
-            .set_admin(owner.clone(), new_owner.clone());
-
-        event::transfer_ownership(&env, owner, new_owner);
-
-        Ok(())
     }
 }
 
@@ -382,8 +367,13 @@ impl UpgradableInterface for InterchainToken {
 
 #[contractimpl]
 impl OwnableInterface for InterchainToken {
-    // boilerplate necessary for the contractimpl macro to include function in the generated client
     fn owner(env: &Env) -> Address {
         interfaces::owner(env)
+    }
+
+    fn transfer_ownership(env: &Env, new_owner: Address) {
+        interfaces::transfer_ownership::<Self>(env, new_owner.clone());
+        // adhere to reference implementation for tokens and emit predefined soroban event
+        TokenEvents::new(env).set_admin(Self::owner(env), new_owner);
     }
 }
