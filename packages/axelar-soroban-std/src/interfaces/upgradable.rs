@@ -137,7 +137,8 @@ mod test {
         env: &Env,
         owner: Option<Address>,
     ) -> (ContractClient, BytesN<32>) {
-        let contract_id = env.register(testdata::contract::Contract, (owner,));
+        let operator = Address::generate(env);
+        let contract_id = env.register(testdata::contract::Contract, (owner, operator));
         let hash = env.deployer().upload_contract_wasm(WASM);
         let client = ContractClient::new(env, &contract_id);
         (client, hash)
@@ -146,7 +147,10 @@ mod test {
     #[test]
     fn contracttype_enum_name_is_irrelevant_for_key_collision() {
         let env = Env::default();
-        let contract_id = env.register(testdata::contract::Contract, (None::<Address>,));
+        let contract_id = env.register(
+            testdata::contract::Contract,
+            (None::<Address>, None::<Address>),
+        );
 
         env.as_contract(&contract_id, || {
             assert!(!env
@@ -225,9 +229,8 @@ mod test {
     fn migrate_fails_if_not_called_after_upgrade() {
         let env = Env::default();
         let owner = Address::generate(&env);
-        let contract_id = env.register(testdata::contract::Contract, (Some(owner.clone()),));
+        let (client, _) = prepare_client_and_bytecode(&env, Some(owner.clone()));
 
-        let client = ContractClient::new(&env, &contract_id);
         assert_invoke_auth_err!(owner, client.try_migrate(&()));
     }
 
@@ -257,7 +260,10 @@ mod test {
     fn simulate_migration_for_code_coverage() {
         let env = Env::default();
         let owner = Address::generate(&env);
-        let contract_id = env.register(testdata::contract::Contract, (Some(owner.clone()),));
+        let contract_id = env.register(
+            testdata::contract::Contract,
+            (Some(owner.clone()), None::<Address>),
+        );
 
         env.as_contract(&contract_id, || {
             upgradable::start_migration(&env);
