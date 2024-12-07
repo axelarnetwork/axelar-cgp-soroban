@@ -1,17 +1,14 @@
+mod utils;
 use axelar_gateway::testutils::{generate_proof, get_approve_hash};
 use axelar_gateway::types::Message as GatewayMessage;
 use axelar_soroban_std::{assert_emitted_event, assert_last_emitted_event, assert_ok};
-use interchain_token_service::testutils::{
-    bytes_from_hex, register_chains, setup_env, setup_gas_token,
-};
 use interchain_token_service::types::{HubMessage, InterchainTransfer, Message};
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{testutils::Address as _, vec, Address, BytesN, String, Symbol};
-
-const HUB_CHAIN: &str = "hub_chain";
+use utils::{bytes_from_hex, register_chains, setup_env, setup_gas_token, HUB_CHAIN};
 
 #[test]
-fn message_routing_send() {
+fn interchain_transfer_send() {
     let (env, client, gateway_client, _) = setup_env();
     register_chains(&env, &client);
     let sender: Address = Address::generate(&env);
@@ -43,7 +40,7 @@ fn message_routing_send() {
         .unwrap();
     let expected_payload_hash: BytesN<32> = env.crypto().keccak256(&expected_payload).into();
 
-    client.interchain_transfer(
+    client.mock_all_auths().interchain_transfer(
         &sender,
         &token_id,
         &destination_chain,
@@ -68,7 +65,7 @@ fn message_routing_send() {
 }
 
 #[test]
-fn message_routing_receive() {
+fn interchain_transfer_receive() {
     let (env, client, gateway_client, signers) = setup_env();
     register_chains(&env, &client);
 

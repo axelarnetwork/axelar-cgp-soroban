@@ -1,6 +1,9 @@
+#[allow(dead_code)]
+mod utils;
+use utils::setup_env;
+
 use axelar_soroban_std::{assert_contract_err, assert_invoke_auth_err, assert_last_emitted_event};
 use interchain_token_service::error::ContractError;
-use interchain_token_service::testutils::setup_env;
 use soroban_sdk::testutils::Address as _;
 use soroban_sdk::{Address, String, Symbol};
 

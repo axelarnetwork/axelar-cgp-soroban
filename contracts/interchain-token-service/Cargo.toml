@@ -26,8 +26,5 @@ goldie = { workspace = true }
 hex = "0.4"
 soroban-sdk = { workspace = true, features = ["testutils", "alloc"] }
 
-[features]
-testutils = ["soroban-sdk/testutils", "axelar-soroban-std/testutils"]
-
 [lints]
 workspace = true

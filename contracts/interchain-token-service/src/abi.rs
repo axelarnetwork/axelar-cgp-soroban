@@ -250,7 +250,10 @@ mod tests {
     use soroban_sdk::{Bytes, BytesN, Env, String};
     use std::vec::Vec;
 
-    use crate::testutils::bytes_from_hex;
+    pub fn bytes_from_hex(env: &Env, hex_string: &str) -> Bytes {
+        let bytes_vec: Vec<u8> = hex::decode(hex_string).unwrap();
+        Bytes::from_slice(env, &bytes_vec)
+    }
 
     #[test]
     fn soroban_str_to_std_string() {
