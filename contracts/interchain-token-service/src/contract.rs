@@ -134,12 +134,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         _gas_token: Token,
     ) -> Result<BytesN<32>, ContractError> {
         // TODO: implementation
-        // deploy salt
-        // minter approval
-        // registered token address - get token metadata
-        // abi encode with MessageType.DeployInterchainToken
-        // token id
-        // pay_gas_and_call_contract
+
         todo!()
     }
 
@@ -347,11 +342,11 @@ impl InterchainTokenService {
 #[contractimpl]
 impl MigratableInterface for InterchainTokenService {
     type MigrationData = ();
-    type Error = axelar_gateway::error::ContractError;
+    type Error = ContractError;
 
-    fn migrate(env: &Env, migration_data: ()) -> Result<(), axelar_gateway::error::ContractError> {
+    fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
         interfaces::migrate::<Self>(env, || Self::run_migration(env, migration_data))
-            .map_err(|_| axelar_gateway::error::ContractError::MigrationNotAllowed)
+            .map_err(|_| ContractError::MigrationNotAllowed)
     }
 }
 

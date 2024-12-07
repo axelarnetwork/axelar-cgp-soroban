@@ -3,6 +3,7 @@ use alloy_sol_types::{sol, SolValue};
 use axelar_soroban_std::ensure;
 use soroban_sdk::{Bytes, BytesN, Env, String};
 
+// alloc needed for converting to alloy types
 use crate::abi::alloc::{string::String as StdString, vec};
 use crate::error::ContractError;
 use crate::types::{self, HubMessage, Message};
