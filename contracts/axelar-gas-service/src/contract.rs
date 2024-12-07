@@ -1,4 +1,4 @@
-use soroban_sdk::{contract, contractimpl, token, Address, Bytes, BytesN, Env, String};
+use soroban_sdk::{contract, contractimpl, token, Address, Bytes, Env, String};
 
 use crate::error::ContractError;
 use crate::event;
@@ -6,7 +6,9 @@ use crate::interface::AxelarGasServiceInterface;
 use crate::storage_types::DataKey;
 use axelar_soroban_std::interfaces::{MigratableInterface, OwnableInterface, UpgradableInterface};
 use axelar_soroban_std::{ensure, interfaces, types::Token};
+use axelar_soroban_std_derive::upgradable;
 
+#[upgradable]
 #[contract]
 pub struct AxelarGasService;
 
@@ -34,28 +36,6 @@ impl MigratableInterface for AxelarGasService {
     fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
         interfaces::migrate::<Self>(env, || Self::run_migration(env, migration_data))
             .map_err(|_| ContractError::MigrationNotAllowed)
-    }
-}
-
-#[contractimpl]
-impl UpgradableInterface for AxelarGasService {
-    fn version(env: &Env) -> String {
-        String::from_str(env, env!("CARGO_PKG_VERSION"))
-    }
-
-    fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
-        interfaces::upgrade::<Self>(env, new_wasm_hash);
-    }
-}
-
-#[contractimpl]
-impl OwnableInterface for AxelarGasService {
-    fn owner(env: &Env) -> Address {
-        interfaces::owner(env)
-    }
-
-    fn transfer_ownership(env: &Env, new_owner: Address) {
-        interfaces::transfer_ownership::<Self>(env, new_owner);
     }
 }
 
