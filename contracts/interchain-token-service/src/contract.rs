@@ -1,20 +1,20 @@
-use axelar_soroban_std::types::Token;
-use axelar_soroban_std::{ensure, interfaces};
+use axelar_gas_service::AxelarGasServiceClient;
+use axelar_gateway::{executable::AxelarExecutableInterface, AxelarGatewayMessagingClient};
+use axelar_soroban_std::interfaces::{MigratableInterface, OwnableInterface, UpgradableInterface};
+use axelar_soroban_std::{ensure, interfaces, types::Token};
 use soroban_sdk::xdr::ToXdr;
-use soroban_sdk::{bytes, contract, contractimpl, Address, Bytes, BytesN, Env, FromVal, String};
+use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String};
+use soroban_token_sdk::metadata::TokenMetadata;
 
+use crate::abi::{get_message_type, MessageType as EncodedMessageType};
 use crate::error::ContractError;
 use crate::event;
 use crate::interface::InterchainTokenServiceInterface;
 use crate::storage_types::DataKey;
-use crate::types::MessageType;
+use crate::types::{HubMessage, InterchainTransfer, Message};
 
-use axelar_gas_service::AxelarGasServiceClient;
-use axelar_gateway::AxelarGatewayMessagingClient;
-
-use axelar_gateway::executable::AxelarExecutableInterface;
-use axelar_soroban_std::interfaces::{MigratableInterface, OwnableInterface, UpgradableInterface};
-
+const ITS_HUB_CHAIN_NAME: &str = "axelar";
+const ITS_HUB_ROUTING_IDENTIFIER: &str = "hub";
 const PREFIX_INTERCHAIN_TOKEN_SALT: &str = "interchain-token-salt";
 
 #[contract]
@@ -38,85 +38,26 @@ impl InterchainTokenService {
             .instance()
             .set(&DataKey::ChainName, &chain_name);
     }
-
-    fn gas_service(env: &Env) -> Address {
-        env.storage()
-            .instance()
-            .get(&DataKey::GasService)
-            .expect("gas service not found")
-    }
-
-    fn chain_name(env: &Env) -> String {
-        env.storage()
-            .instance()
-            .get(&DataKey::ChainName)
-            .expect("chain name not found")
-    }
-
-    fn pay_gas_and_call_contract(
-        env: Env,
-        caller: Address,
-        destination_chain: String,
-        destination_address: String,
-        payload: Bytes,
-        gas_token: Token,
-    ) {
-        let gateway = AxelarGatewayMessagingClient::new(&env, &Self::gateway(&env));
-        let gas_service = AxelarGasServiceClient::new(&env, &Self::gas_service(&env));
-
-        caller.require_auth();
-
-        // TODO: Add ITS hub routing logic
-
-        gas_service.pay_gas(
-            &env.current_contract_address(),
-            &destination_chain,
-            &destination_address,
-            &payload,
-            &caller,
-            &gas_token,
-            &Bytes::new(&env),
-        );
-
-        gateway.call_contract(
-            &env.current_contract_address(),
-            &destination_chain,
-            &destination_address,
-            &payload,
-        );
-    }
-
-    fn execute_message(
-        _env: &Env,
-        _source_chain: String,
-        _message_id: String,
-        _source_address: String,
-        _payload: Bytes,
-    ) -> Result<(), ContractError> {
-        // TODO: Add ITS hub execute logic
-
-        let message_type = MessageType::DeployInterchainToken;
-
-        match message_type {
-            MessageType::InterchainTransfer => {
-                // TODO
-                Ok(())
-            }
-            MessageType::DeployInterchainToken => {
-                // TODO
-                Ok(())
-            }
-            MessageType::DeployTokenManager => {
-                // Note: this case is not supported by the ITS hub
-                Ok(())
-            }
-            _ => Err(ContractError::InvalidMessageType),
-        }
-    }
 }
 
 #[contractimpl]
 impl InterchainTokenServiceInterface for InterchainTokenService {
+    fn chain_name(env: &Env) -> String {
+        env.storage().instance().get(&DataKey::ChainName).unwrap()
+    }
+
+    fn gas_service(env: &Env) -> Address {
+        env.storage().instance().get(&DataKey::GasService).unwrap()
+    }
+
+    fn its_hub_routing_identifier(env: &Env) -> String {
+        String::from_str(env, ITS_HUB_ROUTING_IDENTIFIER)
+    }
+
+    fn its_hub_chain_name(env: &Env) -> String {
+        String::from_str(env, ITS_HUB_CHAIN_NAME)
+    }
+
     fn trusted_address(env: &Env, chain: String) -> Option<String> {
         env.storage()
             .persistent()
@@ -156,20 +97,6 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         Ok(())
     }
 
-    fn deploy_interchain_token(
-        _env: &Env,
-        _caller: Address,
-        _token_id: String,
-        _source_address: Bytes,
-        _destination_chain: String,
-        _destination_address: Bytes,
-        _amount: i128,
-        _metadata: Bytes,
-        _gas_token: Token,
-    ) {
-        todo!()
-    }
-
     fn interchain_token_deploy_salt(env: &Env, deployer: Address, salt: BytesN<32>) -> BytesN<32> {
         let chain_name = Self::chain_name(env);
         let chain_name_hash: BytesN<32> = env.crypto().keccak256(&(chain_name).to_xdr(env)).into();
@@ -186,52 +113,56 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
             .into()
     }
 
+    fn deploy_interchain_token(
+        _env: &Env,
+        _caller: Address,
+        _salt: BytesN<32>,
+        _destination_chain: String,
+        _token_metadata: TokenMetadata,
+        _minter: Option<Bytes>,
+        _gas_token: Token,
+    ) -> Result<BytesN<32>, ContractError> {
+        todo!()
+    }
+
     fn deploy_remote_interchain_token(
-        env: &Env,
-        caller: Address,
-        destination_chain: String,
-        _token_id: String,
-        gas_token: Token,
-    ) {
-        let destination_address = String::from_str(env, "");
+        _env: &Env,
+        _caller: Address,
+        _salt: BytesN<32>,
+        _minter: Option<Bytes>,
+        _destination_chain: String,
+        _gas_token: Token,
+    ) -> Result<BytesN<32>, ContractError> {
+        // TODO: implementation
 
-        // TODO: abi encode with MessageType.DeployInterchainToken
-        let payload = bytes!(env,);
-
-        Self::pay_gas_and_call_contract(
-            env.clone(),
-            caller,
-            destination_chain,
-            destination_address,
-            payload,
-            gas_token,
-        );
+        todo!()
     }
 
     fn interchain_transfer(
         env: &Env,
         caller: Address,
-        _token_id: String,
-        _source_address: Bytes,
+        token_id: BytesN<32>,
         destination_chain: String,
         destination_address: Bytes,
-        _amount: i128,
-        _metadata: Bytes,
+        amount: i128,
+        metadata: Option<Bytes>,
         gas_token: Token,
-    ) {
-        // TODO: _takeToken, decode metadata, and abi encode with MessageType.InterchainTransfer
-        let payload = bytes!(&env,);
+    ) -> Result<(), ContractError> {
+        caller.require_auth();
 
-        // TODO: Get the params for the cross-chain message, taking routing via ITS Hub into account.
+        // TODO: implementation
 
-        Self::pay_gas_and_call_contract(
-            env.clone(),
-            caller,
-            destination_chain,
-            String::from_val(env, &destination_address.to_val()),
-            payload,
-            gas_token,
-        );
+        let message = Message::InterchainTransfer(InterchainTransfer {
+            token_id,
+            source_address: caller.clone().to_xdr(env),
+            destination_address,
+            amount,
+            data: metadata,
+        });
+
+        Self::pay_gas_and_call_contract(env, caller, destination_chain, message, gas_token)?;
+
+        Ok(())
     }
 }
 
@@ -268,16 +199,154 @@ impl AxelarExecutableInterface for InterchainTokenService {
 impl InterchainTokenService {
     // Modify this function to add migration logic
     const fn run_migration(_env: &Env, _migration_data: ()) {}
+
+    fn pay_gas_and_call_contract(
+        env: &Env,
+        caller: Address,
+        destination_chain: String,
+        message: Message,
+        gas_token: Token,
+    ) -> Result<(), ContractError> {
+        let gateway = AxelarGatewayMessagingClient::new(env, &Self::gateway(env));
+        let gas_service = AxelarGasServiceClient::new(env, &Self::gas_service(env));
+
+        let payload = Self::get_call_params(env, destination_chain, message)?;
+
+        let destination_address = Self::trusted_address(env, Self::its_hub_chain_name(env))
+            .ok_or(ContractError::NoTrustedAddressSet)?;
+
+        gas_service.pay_gas(
+            &env.current_contract_address(),
+            &Self::its_hub_chain_name(env),
+            &destination_address,
+            &payload,
+            &caller,
+            &gas_token,
+            &Bytes::new(env),
+        );
+
+        gateway.call_contract(
+            &env.current_contract_address(),
+            &Self::its_hub_chain_name(env),
+            &destination_address,
+            &payload,
+        );
+
+        Ok(())
+    }
+
+    fn execute_message(
+        env: &Env,
+        source_chain: String,
+        _message_id: String,
+        _source_address: String,
+        payload: Bytes,
+    ) -> Result<(), ContractError> {
+        // TODO: Add ITS hub execute logic
+
+        let (original_source_chain, message) =
+            Self::get_execute_params(env, source_chain, &payload)?;
+
+        match message {
+            Message::InterchainTransfer(inner_message) => {
+                // TODO: transfer implementation
+
+                event::interchain_transfer_received(
+                    env,
+                    original_source_chain,
+                    inner_message.token_id,
+                    inner_message.source_address,
+                    inner_message.destination_address,
+                    inner_message.amount,
+                    inner_message.data,
+                );
+
+                Ok(())
+            }
+            Message::DeployInterchainToken(_) => {
+                // TODO
+                Ok(())
+            }
+        }
+    }
+
+    fn get_execute_params(
+        env: &Env,
+        source_chain: String,
+        payload: &Bytes,
+    ) -> Result<(String, Message), ContractError> {
+        let message_type = get_message_type(&payload.to_alloc_vec())?;
+
+        ensure!(
+            message_type == EncodedMessageType::ReceiveFromHub,
+            ContractError::InvalidMessageType
+        );
+
+        ensure!(
+            source_chain == Self::its_hub_chain_name(env),
+            ContractError::UntrustedChain
+        );
+
+        let decoded_message = HubMessage::abi_decode(env, payload)?;
+
+        let HubMessage::ReceiveFromHub {
+            source_chain: original_source_chain,
+            message: inner_message,
+        } = decoded_message
+        else {
+            return Err(ContractError::InvalidMessageType);
+        };
+
+        let trusted_address = Self::trusted_address(env, original_source_chain.clone());
+        let routing_identifier = Self::its_hub_routing_identifier(env);
+
+        ensure!(
+            trusted_address.is_some_and(|addr| addr == routing_identifier),
+            ContractError::UntrustedChain
+        );
+
+        Ok((original_source_chain, inner_message))
+    }
+
+    fn get_call_params(
+        env: &Env,
+        destination_chain: String,
+        message: Message,
+    ) -> Result<Bytes, ContractError> {
+        // Note: ITS Hub chain as the actual destination chain for the messsage isn't supported
+        ensure!(
+            destination_chain != Self::its_hub_chain_name(env),
+            ContractError::UntrustedChain
+        );
+
+        let Some(destination_address) = Self::trusted_address(env, destination_chain.clone())
+        else {
+            return Err(ContractError::UntrustedChain);
+        };
+
+        ensure!(
+            destination_address == Self::its_hub_routing_identifier(env),
+            ContractError::UntrustedChain
+        );
+
+        let payload = HubMessage::SendToHub {
+            destination_chain,
+            message,
+        }
+        .abi_encode(env)?;
+
+        Ok(payload)
+    }
 }
 
 #[contractimpl]
 impl MigratableInterface for InterchainTokenService {
     type MigrationData = ();
-    type Error = axelar_gateway::error::ContractError;
+    type Error = ContractError;
 
-    fn migrate(env: &Env, migration_data: ()) -> Result<(), axelar_gateway::error::ContractError> {
+    fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
         interfaces::migrate::<Self>(env, || Self::run_migration(env, migration_data))
-            .map_err(|_| axelar_gateway::error::ContractError::MigrationNotAllowed)
+            .map_err(|_| ContractError::MigrationNotAllowed)
     }
 }
 

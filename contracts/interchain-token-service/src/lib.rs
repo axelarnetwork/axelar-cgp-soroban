@@ -6,7 +6,7 @@ pub mod error;
 mod event;
 mod interface;
 mod storage_types;
-mod types;
+pub mod types;
 
 #[cfg(test)]
 extern crate std;
