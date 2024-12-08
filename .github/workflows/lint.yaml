@@ -1,9 +1,10 @@
-name: Linting
+name: Lint
 
 on:
   pull_request:
   push:
     branches:
+      - main
       - releases/**
 
 concurrency:
@@ -17,15 +18,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: 1.81.0
-          override: true
           components: rustfmt, clippy
 
-      - name: Cache build artifacts
+      - name: Rust Cache
         uses: useblacksmith/rust-cache@v3
         with:
           shared-key: "cache"
@@ -36,22 +35,13 @@ jobs:
           crate: cargo-sort
 
       - name: Run cargo fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+        run: cargo fmt --all -- --check
 
       - name: Run cargo sort
-        uses: actions-rs/cargo@v1
-        with:
-          command: sort
-          args: --workspace --check --check-format
+        run: cargo-sort --workspace --check --check-format
 
       - name: Run cargo clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
+        run: cargo clippy --workspace --all-targets --all-features --fix -- -D warnings
 
-      - name: Check Diff
-        # fails if any changes not committed
+      - name: Check for uncommitted changes
         run: git diff --exit-code
