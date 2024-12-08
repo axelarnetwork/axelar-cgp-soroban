@@ -20,7 +20,7 @@ macro_rules! ensure {
 /// the [`Result`] is an [`Err`] then the macro will [`panic`]
 /// with a message that includes the expression and the error.
 ///
-/// This function was vendored from: https://docs.rs/assert_ok/1.0.2/assert_ok/
+/// This function was vendored from [assert_ok](https://docs.rs/assert_ok/1.0.2/assert_ok/).
 #[macro_export]
 macro_rules! assert_ok {
     ( $x:expr ) => {

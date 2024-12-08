@@ -370,6 +370,7 @@ name = "axelar-gas-service"
 version = "0.1.0"
 dependencies = [
  "axelar-soroban-std",
+ "axelar-soroban-std-derive",
  "cfg-if",
  "soroban-sdk",
 ]
@@ -402,6 +403,17 @@ version = "0.1.0"
 dependencies = [
  "goldie",
  "soroban-sdk",
+]
+
+[[package]]
+name = "axelar-soroban-std-derive"
+version = "0.1.0"
+dependencies = [
+ "axelar-soroban-std",
+ "proc-macro2",
+ "quote",
+ "soroban-sdk",
+ "syn 2.0.87",
 ]
 
 [[package]]
