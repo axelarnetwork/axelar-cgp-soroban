@@ -6,7 +6,7 @@ This repo implements Axelar's [cross-chain gateway protocol](https://github.com/
 
 ## Docs
 
-Rustdocs for this workspace can be found [here](https://axelarnetwork.github.io/axelar-cgp-soroban).
+Rustdocs for this workspace can be found [here](https://axelarnetwork.github.io/axelar-cgp-soroban/).
 
 ## Install
 
