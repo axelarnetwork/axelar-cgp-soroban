@@ -24,9 +24,7 @@ impl Event for MigratedEvent {
         (Symbol::new(env, "migrated"),)
     }
 
-    fn data(&self, _env: &Env) -> impl IntoVal<Env, Val> + Debug {
-        ()
-    }
+    fn data(&self, _env: &Env) -> impl IntoVal<Env, Val> + Debug {}
 }
 
 #[contractimpl]

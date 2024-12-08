@@ -151,10 +151,10 @@ pub fn upgradable(attr: TokenStream, input: TokenStream) -> TokenStream {
         })
         .unwrap_or_else(|e| panic!("{}", e));
 
-    let migration_data = match &args.migration_data {
-        Some(ty) => quote! { #ty },
-        None => quote! { () },
-    };
+    let migration_data = args
+        .migration_data
+        .as_ref()
+        .map_or_else(|| quote! { () }, |ty| quote! { #ty });
 
     let ownable_impl = if args.ownable_impl {
         quote! { #[::axelar_soroban_std_derive::ownable] }
