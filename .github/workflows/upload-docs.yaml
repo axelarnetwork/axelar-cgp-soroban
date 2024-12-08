@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -29,17 +29,10 @@ jobs:
         with:
           toolchain: 1.81.0
 
-      - name: Setup cargo cache
-        uses: actions/cache@v3
+      - name: Rust Cache
+        uses: useblacksmith/rust-cache@v3
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-
+          shared-key: "cache"
 
       - name: Build Documentation
         run: |
