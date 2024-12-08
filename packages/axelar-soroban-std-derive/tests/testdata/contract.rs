@@ -1,7 +1,9 @@
 use axelar_soroban_std::events::Event;
-use soroban_sdk::{contract, contracterror, contractimpl, Address, Env, IntoVal, Symbol, Topics, Val};
 use axelar_soroban_std_derive::upgradable;
 use core::fmt::Debug;
+use soroban_sdk::{
+    contract, contracterror, contractimpl, Address, Env, IntoVal, Symbol, Topics, Val,
+};
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]

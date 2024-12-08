@@ -41,8 +41,8 @@ mod ownable {
 }
 
 mod upgradable {
-    use axelar_soroban_std_derive::upgradable;
     use axelar_soroban_std::assert_invoke_auth_ok;
+    use axelar_soroban_std_derive::upgradable;
     // use testdata::MigrationMsg;
 
     use super::*;
@@ -89,10 +89,7 @@ mod upgradable {
         let client = ContractClient::new(env, &contract_id);
         let new_wasm_hash = env.deployer().upload_contract_wasm(UPGRADED_WASM);
 
-        assert_invoke_auth_ok!(
-            owner,
-            client.try_upgrade(&new_wasm_hash)
-        );
+        assert_invoke_auth_ok!(owner, client.try_upgrade(&new_wasm_hash));
 
         let client = testdata::ContractClient::new(env, &contract_id);
         client.mock_all_auths().migrate(&());

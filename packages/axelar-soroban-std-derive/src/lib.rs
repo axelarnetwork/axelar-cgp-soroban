@@ -1,10 +1,29 @@
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
-    parse::Parse, parse::ParseStream, parse_macro_input,
-    DeriveInput, Error, Ident, Token, Type,
+    parse::Parse, parse::ParseStream, parse_macro_input, DeriveInput, Error, Ident, Token, Type,
 };
 
+/// Implements the Ownable interface for a Soroban contract.
+///
+/// # Example
+/// ```rust
+/// # mod test {
+/// # use soroban_sdk::{contract, contractimpl, Address, Env};
+/// use axelar_soroban_std_derive::ownable;
+///
+/// #[ownable]
+/// #[contract]
+/// pub struct Contract;
+///
+/// #[contractimpl]
+/// impl Contract {
+///     pub fn __constructor(env: &Env, owner: Address) {
+///         axelar_soroban_std::interfaces::set_owner(env, &owner);
+///     }
+/// }
+/// # }
+/// ```
 #[proc_macro_attribute]
 pub fn ownable(_attr: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -58,7 +77,12 @@ impl Parse for UpgradableArgs {
                 "ownable_impl" => {
                     ownable_impl = input.parse::<syn::LitBool>()?.value;
                 }
-                _ => return Err(Error::new(ident.span(), "expected `migration_data=..` or `ownable_impl=..`")),
+                _ => {
+                    return Err(Error::new(
+                        ident.span(),
+                        "expected `migration_data=..` or `ownable_impl=..`",
+                    ))
+                }
             }
 
             if !input.is_empty() {
@@ -73,11 +97,59 @@ impl Parse for UpgradableArgs {
     }
 }
 
+/// Implements the Upgradable and Migratable interfaces for a Soroban contract.
+///
+/// A `ContractError` error type must be defined in scope, and have a `MigrationNotAllowed` variant.
+///
+/// # Example
+/// ```rust
+/// # mod test {
+/// # use soroban_sdk::{contract, contractimpl, contracterror, Address, Env};
+/// use axelar_soroban_std_derive::upgradable;
+/// # #[contracterror]
+/// # #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+/// # #[repr(u32)]
+/// # pub enum ContractError {
+/// #     MigrationNotAllowed = 1,
+/// # }
+///
+/// #[upgradable]
+/// #[contract]
+/// pub struct Contract;
+///
+/// #[contractimpl]
+/// impl Contract {
+///     pub fn __constructor(env: &Env, owner: Address) {
+///         axelar_soroban_std::interfaces::set_owner(env, &owner);
+///     }
+/// }
+///
+/// impl Contract {
+///     fn run_migration(env: &Env, _migration_data: ()) {}
+/// }
+/// # }
+/// ```
 #[proc_macro_attribute]
 pub fn upgradable(attr: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(attr as UpgradableArgs);
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
+
+    syn::parse_str::<syn::Type>("ContractError")
+        .map_err(|_| {
+            syn::Error::new(
+                name.span(),
+                "ContractError must be defined in scope.\n\
+                 Hint: Add this to your code:\n\
+                 #[contracterror]\n\
+                 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]\n\
+                 #[repr(u32)]\n\
+                 pub enum ContractError {\n    \
+                     MigrationNotAllowed = 1,\n\
+                 }",
+            )
+        })
+        .unwrap_or_else(|e| panic!("{}", e));
 
     let migration_data = match &args.migration_data {
         Some(ty) => quote! { #ty },
