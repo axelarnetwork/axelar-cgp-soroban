@@ -1,8 +1,8 @@
-use soroban_sdk::{contract, contractimpl, contracterror, Address, testutils::Address as _, Env};
+use soroban_sdk::{contract, contracterror, contractimpl, testutils::Address as _, Address, Env};
 
 mod ownable {
+    use axelar_soroban_std::interfaces::OwnableClient;
     use axelar_soroban_std_derive::ownable;
-    use axelar_soroban_std::interfaces::{OwnableClient};
 
     use super::*;
 
@@ -35,10 +35,9 @@ mod ownable {
     }
 }
 
-
 mod upgradable {
+    use axelar_soroban_std::interfaces::UpgradableClient;
     use axelar_soroban_std_derive::upgradable;
-    use axelar_soroban_std::interfaces::{UpgradableClient};
 
     use super::*;
 

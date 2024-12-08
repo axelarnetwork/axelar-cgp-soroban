@@ -1,8 +1,9 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, DeriveInput, parse::Parse, parse::ParseStream, Token, punctuated::Punctuated,
-    Type, Ident, parenthesized, Error};
-
+use syn::{
+    parenthesized, parse::Parse, parse::ParseStream, parse_macro_input, punctuated::Punctuated,
+    DeriveInput, Error, Ident, Token, Type,
+};
 
 #[proc_macro_attribute]
 pub fn ownable(_attr: TokenStream, input: TokenStream) -> TokenStream {
@@ -36,7 +37,9 @@ struct UpgradableArgs {
 impl Parse for UpgradableArgs {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         if input.is_empty() {
-            return Ok(Self { migrate_types: vec![] });
+            return Ok(Self {
+                migrate_types: vec![],
+            });
         }
 
         let ident: Ident = input.parse()?;
