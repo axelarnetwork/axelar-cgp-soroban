@@ -43,7 +43,6 @@ mod ownable {
 mod upgradable {
     use axelar_soroban_std::assert_invoke_auth_ok;
     use axelar_soroban_std_derive::upgradable;
-    // use testdata::MigrationMsg;
 
     use super::*;
 
