@@ -92,6 +92,6 @@ mod upgradable {
         assert_invoke_auth_ok!(owner, client.try_upgrade(&new_wasm_hash));
 
         let client = testdata::ContractClient::new(env, &contract_id);
-        client.mock_all_auths().migrate(&());
+        assert_invoke_auth_ok!(owner, client.try_migrate(&()));
     }
 }
