@@ -2,7 +2,7 @@ use crate::ensure;
 use crate::events::Event;
 #[cfg(any(test, feature = "testutils"))]
 use crate::impl_event_testutils;
-use crate::interfaces::OwnableInterface;
+use crate::interfaces::{storage, OwnableInterface};
 use core::fmt::Debug;
 use soroban_sdk::{
     contractclient, symbol_short, BytesN, Env, FromVal, IntoVal, String, Topics, Val,
@@ -62,14 +62,14 @@ pub fn migrate<T: UpgradableInterface>(
 fn start_migration(env: &Env) {
     env.storage()
         .instance()
-        .set(&storage::DataKey::Interfaces_Migrating, &());
+        .set(&storage::migrating::DataKey::Interfaces_Migrating, &());
 }
 
 fn ensure_is_migrating(env: &Env) -> Result<(), MigrationError> {
     ensure!(
         env.storage()
             .instance()
-            .has(&storage::DataKey::Interfaces_Migrating),
+            .has(&storage::migrating::DataKey::Interfaces_Migrating),
         MigrationError::NotAllowed
     );
 
@@ -79,7 +79,7 @@ fn ensure_is_migrating(env: &Env) -> Result<(), MigrationError> {
 fn complete_migration(env: &Env) {
     env.storage()
         .instance()
-        .remove(&storage::DataKey::Interfaces_Migrating);
+        .remove(&storage::migrating::DataKey::Interfaces_Migrating);
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -99,23 +99,6 @@ impl Event for UpgradedEvent {
 
 #[cfg(any(test, feature = "testutils"))]
 impl_event_testutils!(UpgradedEvent, (soroban_sdk::Symbol), (String));
-
-// submodule to encapsulate the disabled linting
-mod storage {
-    // linting is disabled for the enum variant names on purpose, so we can define names that would otherwise be invalid.
-    // This way, if a contract that implements a shared interface defines a variant with the same name, the linter will
-    // complain about it.
-    #![allow(non_camel_case_types)]
-
-    use soroban_sdk::contracttype;
-
-    #[contracttype]
-    /// Variants do not follow the naming convention of other variants to let the linter help to avoid
-    /// collisions with contract types defined in other contracts that implement a shared interface.
-    pub enum DataKey {
-        Interfaces_Migrating,
-    }
-}
 
 pub enum MigrationError {
     NotAllowed,

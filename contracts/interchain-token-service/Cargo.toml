@@ -28,8 +28,5 @@ hex = "0.4"
 interchain-token = { workspace = true, features = ["testutils"] }
 soroban-sdk = { workspace = true, features = ["testutils", "alloc"] }
 
-[features]
-testutils = ["soroban-sdk/testutils", "axelar-soroban-std/testutils"]
-
 [lints]
 workspace = true

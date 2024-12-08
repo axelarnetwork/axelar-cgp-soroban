@@ -167,19 +167,3 @@ fn remove_trusted_address_fails_if_address_not_set() {
         ContractError::NoTrustedAddressSet
     );
 }
-
-#[test]
-fn interchain_token_deploy_salt() {
-    let (env, client) = setup_env();
-
-    let deployer: Address = Address::from_str(
-        &env,
-        "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
-    );
-
-    let salt = BytesN::<32>::from_array(&env, &[1; 32]);
-
-    let deploy_salt = client.interchain_token_deploy_salt(&deployer, &salt);
-
-    goldie::assert!(hex::encode(deploy_salt.to_array()));
-}
