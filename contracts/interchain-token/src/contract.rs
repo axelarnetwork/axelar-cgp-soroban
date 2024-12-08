@@ -25,7 +25,7 @@ impl InterchainToken {
     pub fn __constructor(
         env: Env,
         owner: Address,
-        minter: Address,
+        minter: Option<Address>,
         interchain_token_service: Address,
         token_id: BytesN<32>,
         token_meta_data: TokenMetadata,
@@ -37,7 +37,13 @@ impl InterchainToken {
         Self::write_metadata(&env, token_meta_data);
 
         env.storage().instance().set(&DataKey::TokenId, &token_id);
-        env.storage().instance().set(&DataKey::Minter(minter), &());
+
+        if let Some(minter_address) = minter {
+            env.storage()
+                .instance()
+                .set(&DataKey::Minter(minter_address), &());
+        }
+
         env.storage()
             .instance()
             .set(&DataKey::Minter(interchain_token_service.clone()), &());

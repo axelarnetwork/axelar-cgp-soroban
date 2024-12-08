@@ -2,6 +2,7 @@ use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::{executable::AxelarExecutableInterface, AxelarGatewayMessagingClient};
 use axelar_soroban_std::interfaces::{MigratableInterface, OwnableInterface, UpgradableInterface};
 use axelar_soroban_std::{ensure, interfaces, types::Token};
+use interchain_token::InterchainTokenClient;
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String};
 use soroban_token_sdk::metadata::TokenMetadata;
@@ -29,7 +30,7 @@ impl InterchainTokenService {
         gateway: Address,
         gas_service: Address,
         chain_name: String,
-        _interchain_token_wasm_hash: BytesN<32>,
+        interchain_token_wasm_hash: BytesN<32>,
     ) {
         interfaces::set_owner(&env, &owner);
         env.storage().instance().set(&DataKey::Gateway, &gateway);
@@ -39,6 +40,10 @@ impl InterchainTokenService {
         env.storage()
             .instance()
             .set(&DataKey::ChainName, &chain_name);
+        env.storage().instance().set(
+            &DataKey::InterchainTokenWasmHash,
+            &interchain_token_wasm_hash,
+        );
     }
 }
 
@@ -50,6 +55,13 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
 
     fn gas_service(env: &Env) -> Address {
         env.storage().instance().get(&DataKey::GasService).unwrap()
+    }
+
+    fn interchain_token_wasm_hash(env: &Env) -> BytesN<32> {
+        env.storage()
+            .instance()
+            .get(&DataKey::InterchainTokenWasmHash)
+            .expect("interchain token wasm hash not found")
     }
 
     fn its_hub_routing_identifier(env: &Env) -> String {
@@ -122,15 +134,59 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     }
 
     fn deploy_interchain_token(
-        _env: &Env,
-        _caller: Address,
-        _salt: BytesN<32>,
-        _destination_chain: String,
-        _token_metadata: TokenMetadata,
-        _minter: Option<Bytes>,
-        _gas_token: Token,
-    ) -> Result<BytesN<32>, ContractError> {
-        todo!()
+        env: &Env,
+        caller: Address,
+        salt: BytesN<32>,
+        token_meta_data: TokenMetadata,
+        initial_supply: i128,
+        minter: Option<Address>,
+    ) -> Result<Address, ContractError> {
+        caller.require_auth();
+
+        let mut initial_minter: Option<Address> = None;
+
+        if initial_supply > 0 {
+            initial_minter = Some(env.current_contract_address());
+        } else if let Some(ref minter_addr) = minter {
+            ensure!(
+                *minter_addr != env.current_contract_address(),
+                ContractError::InvalidMinter
+            );
+            initial_minter = minter.clone();
+        }
+
+        let deploy_salt = Self::interchain_token_deploy_salt(env, caller.clone(), salt.clone());
+        let token_id = Self::interchain_token_id(env, caller.clone(), salt);
+
+        let deployed_address = env
+            .deployer()
+            .with_address(caller.clone(), deploy_salt)
+            .deploy_v2(
+                Self::interchain_token_wasm_hash(env),
+                (
+                    env.current_contract_address(),
+                    initial_minter,
+                    env.current_contract_address(),
+                    token_id,
+                    token_meta_data,
+                ),
+            );
+
+        if initial_supply > 0 {
+            let token = InterchainTokenClient::new(env, &deployed_address);
+
+            // TODO: tokenManager, registeredTokenAddress, deployedTokenManager, removeFlowLimiter, addFlowLimiter
+            token.mint(&env.current_contract_address(), &caller, &initial_supply);
+
+            if let Some(minter_addr) = minter {
+                token.remove_minter(&env.current_contract_address());
+                token.add_minter(&minter_addr);
+            }
+        }
+
+        // TODO: Temporarily returning the deployed interchain token address.
+        // This should return token_id: BytesN<32> once the token_manager is ready.
+        Ok(deployed_address)
     }
 
     fn deploy_remote_interchain_token(
