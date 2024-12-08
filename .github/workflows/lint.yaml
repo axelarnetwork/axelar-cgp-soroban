@@ -40,8 +40,11 @@ jobs:
       - name: Run cargo sort
         run: cargo-sort --workspace --check --check-format
 
-      - name: Run cargo clippy
-        run: cargo clippy --workspace --all-targets --all-features --fix -- -D warnings
+      - name: Run cargo clippy (no features)
+        run: cargo clippy --workspace --no-default-features --fix -- -D warnings
+
+      - name: Run cargo clippy (all features)
+        run: cargo clippy --workspace --all-features --fix -- -D warnings
 
       - name: Check for uncommitted changes
         run: git diff --exit-code
