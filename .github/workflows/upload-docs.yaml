@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - docs/gh-pages
 
 permissions:
   contents: read
