@@ -13,7 +13,7 @@ const HUB_ADDRESS: &str = "hub_address";
 
 fn setup_gas_service<'a>(env: &Env) -> AxelarGasServiceClient<'a> {
     let owner: Address = Address::generate(env);
-    let gas_collector: Address = Address::generate(&env);
+    let gas_collector: Address = Address::generate(env);
     let gas_service_id = env.register(AxelarGasService, (&owner, &gas_collector));
     let gas_service_client = AxelarGasServiceClient::new(env, &gas_service_id);
 
@@ -39,7 +39,7 @@ fn setup_its<'a>(
         ),
     );
 
-    InterchainTokenServiceClient::new(&env, &contract_id)
+    InterchainTokenServiceClient::new(env, &contract_id)
 }
 
 pub fn setup_env<'a>() -> (
@@ -58,28 +58,28 @@ pub fn setup_env<'a>() -> (
 }
 
 pub fn setup_gas_token(env: &Env, sender: &Address) -> Token {
-    let asset = &env.register_stellar_asset_contract_v2(Address::generate(&env));
+    let asset = &env.register_stellar_asset_contract_v2(Address::generate(env));
     let gas_amount: i128 = 1;
     let gas_token = Token {
         address: asset.address(),
         amount: gas_amount,
     };
 
-    StellarAssetClient::new(&env, &asset.address())
+    StellarAssetClient::new(env, &asset.address())
         .mock_all_auths()
-        .mint(&sender, &gas_amount);
+        .mint(sender, &gas_amount);
 
     gas_token
 }
 
 pub fn register_chains(env: &Env, client: &InterchainTokenServiceClient) {
-    let chain = String::from_str(&env, HUB_CHAIN);
+    let chain = String::from_str(env, HUB_CHAIN);
     client
         .mock_all_auths()
         .set_trusted_address(&chain, &client.its_hub_routing_identifier());
 
     let chain = client.its_hub_chain_name();
-    let addr = String::from_str(&env, HUB_ADDRESS);
+    let addr = String::from_str(env, HUB_ADDRESS);
     client.mock_all_auths().set_trusted_address(&chain, &addr);
 }
 
