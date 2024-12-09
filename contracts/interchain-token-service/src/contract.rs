@@ -157,8 +157,8 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
             None
         };
 
-        let deploy_salt = Self::interchain_token_deploy_salt(env, caller.clone(), salt.clone());
-        let token_id = Self::interchain_token_id(env, None, deploy_salt.clone());
+        let deploy_salt = Self::interchain_token_deploy_salt(env, caller.clone(), salt);
+        let token_id = Self::interchain_token_id(env, None, deploy_salt);
 
         let deployed_address = env
             .deployer()
