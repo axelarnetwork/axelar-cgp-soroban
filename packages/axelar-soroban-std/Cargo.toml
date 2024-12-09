@@ -10,6 +10,7 @@ publish = true
 crate-type = ["rlib"]
 
 [dependencies]
+hex = { version = "0.4", optional = true }
 soroban-sdk = { workspace = true }
 
 [dev-dependencies]
@@ -17,7 +18,7 @@ goldie = { workspace = true }
 soroban-sdk = { workspace = true, features = ["testutils"] }
 
 [features]
-testutils = ["soroban-sdk/testutils"]
+testutils = ["soroban-sdk/testutils", "hex"]
 
 [lints]
 workspace = true
