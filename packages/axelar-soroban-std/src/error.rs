@@ -105,23 +105,22 @@ macro_rules! assert_some {
     };
 }
 
+/// Call a method on a contract client while mocking auths
 #[macro_export]
 macro_rules! invoke_auth {
     ($caller:expr, $client:ident . $method:ident ( $($arg:expr),* $(,)? )) => {{
-        use soroban_sdk::{IntoVal};
+        use soroban_sdk::IntoVal;
 
-        let call_result = $client
+        $client
             .mock_auths($crate::mock_auth!($caller, $client, $method, $($arg),*))
-            .$method($($arg),*);
-
-        call_result
+            .$method($($arg),*)
     }};
 }
 
 #[macro_export]
 macro_rules! assert_invoke_auth_ok {
     ($caller:expr, $client:ident . $method:ident ( $($arg:expr),* $(,)? )) => {{
-        use soroban_sdk::{IntoVal};
+        use soroban_sdk::IntoVal;
 
         let call_result = $client
             .mock_auths($crate::mock_auth!($caller, $client, $method, $($arg),*))
