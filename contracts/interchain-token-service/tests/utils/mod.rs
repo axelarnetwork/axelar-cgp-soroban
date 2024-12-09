@@ -26,8 +26,8 @@ fn setup_its<'a>(
     gateway: &AxelarGatewayClient,
     gas_service: &AxelarGasServiceClient,
 ) -> InterchainTokenServiceClient<'a> {
-    let owner = Address::generate(&env);
-    let chain_name = String::from_str(&env, "chain_name");
+    let owner = Address::generate(env);
+    let chain_name = String::from_str(env, "chain_name");
     let interchain_token_wasm_hash = env
         .deployer()
         .upload_contract_wasm(INTERCHAIN_TOKEN_WASM_HASH);
