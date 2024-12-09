@@ -2,7 +2,7 @@ use axelar_gateway::error::ContractError;
 use axelar_gateway::testutils::{generate_proof, generate_signers_set, randint};
 use axelar_gateway::types::{ProofSignature, ProofSigner, WeightedSigner, WeightedSigners};
 use axelar_gateway::AxelarGateway;
-use axelar_soroban_std::{assert_contract_err, invoke_auth};
+use axelar_soroban_std::{assert_contract_err, assert_invoke_auth_ok, invoke_auth};
 use soroban_sdk::{
     testutils::{Address as _, BytesN as _},
     Address, BytesN, Env, Vec,
@@ -293,9 +293,9 @@ fn rotate_signers_fail_duplicated_signers() {
 
     let data_hash = new_signers.signers.signers_rotation_hash(&env);
     let proof = generate_proof(&env, data_hash.clone(), signers);
-    invoke_auth!(
+    assert_invoke_auth_ok!(
         client.operator(),
-        client.rotate_signers(&new_signers.signers, &proof, &true)
+        client.try_rotate_signers(&new_signers.signers, &proof, &true)
     );
 
     let proof = generate_proof(&env, data_hash, new_signers);
@@ -324,9 +324,9 @@ fn rotate_signers_panics_on_outdated_signer_set() {
         );
         let data_hash = new_signers.signers.signers_rotation_hash(&env);
         let proof = generate_proof(&env, data_hash, original_signers.clone());
-        invoke_auth!(
+        assert_invoke_auth_ok!(
             client.operator(),
-            client.rotate_signers(&new_signers.signers, &proof, &true)
+            client.try_rotate_signers(&new_signers.signers, &proof, &true)
         );
     }
 
@@ -360,9 +360,9 @@ fn multi_rotate_signers() {
 
         let data_hash = new_signers.signers.signers_rotation_hash(&env);
         let proof = generate_proof(&env, data_hash.clone(), original_signers.clone());
-        invoke_auth!(
+        assert_invoke_auth_ok!(
             client.operator(),
-            client.rotate_signers(&new_signers.signers, &proof, &true)
+            client.try_rotate_signers(&new_signers.signers, &proof, &true)
         );
 
         let proof = generate_proof(&env, msg_hash.clone(), new_signers.clone());
