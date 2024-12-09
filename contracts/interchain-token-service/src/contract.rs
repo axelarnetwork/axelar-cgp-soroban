@@ -177,7 +177,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         if initial_supply > 0 {
             let token = InterchainTokenClient::new(env, &deployed_address);
 
-            // TODO: the tokenManager related logic needs to be implemented here. Please refer to AXE-6858
+            // AXE-6858: the tokenManager related logic needs to be implemented here.
             token.mint(&env.current_contract_address(), &caller, &initial_supply);
 
             if let Some(minter) = minter {
