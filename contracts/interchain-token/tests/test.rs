@@ -12,16 +12,20 @@ use soroban_sdk::{
 };
 use soroban_token_sdk::metadata::TokenMetadata;
 
+fn setup_token_metadata(env: &Env, name: &str, symbol: &str, decimal: u32) -> TokenMetadata {
+    TokenMetadata {
+        decimal,
+        name: name.into_val(env),
+        symbol: symbol.into_val(env),
+    }
+}
+
 fn setup_token<'a>(env: &Env) -> (InterchainTokenClient<'a>, Address, Address) {
     let owner = Address::generate(env);
     let minter = Address::generate(env);
     let interchain_token_service = Address::generate(env);
     let token_id: BytesN<32> = BytesN::<32>::random(env);
-    let token_meta_data = TokenMetadata {
-        decimal: 6,
-        name: "name".into_val(env),
-        symbol: "symbol".into_val(env),
-    };
+    let token_meta_data = setup_token_metadata(env, "name", "symbol", 6);
 
     let contract_id = env.register(
         InterchainToken,
@@ -46,11 +50,7 @@ fn register_token_with_invalid_decimals_fails() {
     let minter = Address::generate(&env);
     let interchain_token_service = Address::generate(&env);
     let token_id: BytesN<32> = BytesN::<32>::random(&env);
-    let token_meta_data = TokenMetadata {
-        decimal: (u32::from(u8::MAX) + 1),
-        name: "name".into_val(&env),
-        symbol: "symbol".into_val(&env),
-    };
+    let token_meta_data = setup_token_metadata(&env, "name", "symbol", u32::from(u8::MAX) + 1);
 
     env.register(
         InterchainToken,
@@ -72,11 +72,7 @@ fn register_token_with_invalid_name_fails() {
     let minter = Address::generate(&env);
     let interchain_token_service = Address::generate(&env);
     let token_id: BytesN<32> = BytesN::<32>::random(&env);
-    let token_meta_data = TokenMetadata {
-        decimal: 1,
-        name: "".into_val(&env),
-        symbol: "symbol".into_val(&env),
-    };
+    let token_meta_data = setup_token_metadata(&env, "", "symbol", 1);
 
     env.register(
         InterchainToken,
@@ -98,11 +94,7 @@ fn register_token_with_invalid_symbol_fails() {
     let minter = Address::generate(&env);
     let interchain_token_service = Address::generate(&env);
     let token_id: BytesN<32> = BytesN::<32>::random(&env);
-    let token_meta_data = TokenMetadata {
-        decimal: 1,
-        name: "name".into_val(&env),
-        symbol: "".into_val(&env),
-    };
+    let token_meta_data = setup_token_metadata(&env, "name", "", 1);
 
     env.register(
         InterchainToken,
@@ -125,6 +117,34 @@ fn register_interchain_token() {
     assert_eq!(token.owner(), owner);
     assert!(!token.is_minter(&owner));
     assert!(token.is_minter(&minter));
+}
+
+#[test]
+fn register_interchain_token_without_minter() {
+    let env = Env::default();
+
+    let owner = Address::generate(&env);
+    let interchain_token_service = Address::generate(&env);
+    let token_id: BytesN<32> = BytesN::<32>::random(&env);
+    let token_meta_data = setup_token_metadata(&env, "name", "symbol", 6);
+    let minter: Option<Address> = None;
+
+    let contract_id = env.register(
+        InterchainToken,
+        (
+            owner.clone(),
+            minter,
+            &interchain_token_service,
+            &token_id,
+            token_meta_data,
+        ),
+    );
+
+    let token = InterchainTokenClient::new(&env, &contract_id);
+
+    assert_eq!(token.owner(), owner);
+    assert!(token.is_minter(&interchain_token_service));
+    assert!(!token.is_minter(&owner));
 }
 
 #[test]
