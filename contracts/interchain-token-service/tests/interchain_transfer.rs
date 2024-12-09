@@ -30,7 +30,7 @@ fn interchain_transfer_send() {
 
     let expected_payload = assert_ok!(HubMessage::SendToHub {
         destination_chain: String::from_str(&env, HUB_CHAIN),
-        message: msg.clone()
+        message: msg
     }
     .abi_encode(&env));
 
@@ -84,7 +84,7 @@ fn interchain_transfer_receive() {
             token_id: token_id.clone(),
             source_address: sender.clone(),
             destination_address: recipient.clone(),
-            amount: amount.clone(),
+            amount,
             data: data.clone(),
         }),
     };
