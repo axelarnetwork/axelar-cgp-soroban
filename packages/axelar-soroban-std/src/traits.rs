@@ -35,7 +35,7 @@ mod testutils {
     impl BytesExt for Bytes {
         fn from_hex(env: &Env, hex_string: &str) -> Bytes {
             let bytes_vec: StdVec<u8> = hex::decode(hex_string).unwrap();
-            Bytes::from_slice(env, &bytes_vec)
+            Self::from_slice(env, &bytes_vec)
         }
     }
 }
