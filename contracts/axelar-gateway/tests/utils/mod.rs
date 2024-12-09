@@ -9,7 +9,6 @@ pub fn setup_env<'a>(
     num_signers: u32,
 ) -> (Env, TestSignerSet, AxelarGatewayClient<'a>) {
     let env = Env::default();
-    env.mock_all_auths();
     let (signers, client) = setup_gateway(&env, previous_signers_retention, num_signers);
 
     (env, signers, client)

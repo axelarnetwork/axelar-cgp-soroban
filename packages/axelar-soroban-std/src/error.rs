@@ -106,6 +106,19 @@ macro_rules! assert_some {
 }
 
 #[macro_export]
+macro_rules! invoke_auth {
+    ($caller:expr, $client:ident . $method:ident ( $($arg:expr),* $(,)? )) => {{
+        use soroban_sdk::{IntoVal};
+
+        let call_result = $client
+            .mock_auths($crate::mock_auth!($caller, $client, $method, $($arg),*))
+            .$method($($arg),*);
+
+        call_result
+    }};
+}
+
+#[macro_export]
 macro_rules! assert_invoke_auth_ok {
     ($caller:expr, $client:ident . $method:ident ( $($arg:expr),* $(,)? )) => {{
         use soroban_sdk::{IntoVal};

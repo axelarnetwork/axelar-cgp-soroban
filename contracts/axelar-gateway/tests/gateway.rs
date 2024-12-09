@@ -6,7 +6,7 @@ use axelar_gateway::testutils::{
 use axelar_gateway::types::Message;
 use axelar_soroban_std::{
     assert_contract_err, assert_invocation, assert_invoke_auth_err, assert_invoke_auth_ok,
-    assert_last_emitted_event,
+    assert_last_emitted_event, invoke_auth,
 };
 use soroban_sdk::{
     bytes,
@@ -29,7 +29,10 @@ fn call_contract() {
     let destination_address = String::from_str(&env, DESTINATION_ADDRESS);
     let payload = bytes!(&env, 0x1234);
 
-    client.call_contract(&user, &destination_chain, &destination_address, &payload);
+    assert_invoke_auth_ok!(
+        user,
+        client.try_call_contract(&user, &destination_chain, &destination_address, &payload)
+    );
 
     assert_invocation(
         &env,
@@ -75,12 +78,15 @@ fn validate_message() {
 
     let prev_event_count = env.events().all().len();
 
-    let approved = client.validate_message(
-        &contract_address,
-        &source_chain,
-        &message_id,
-        &source_address,
-        &payload_hash,
+    let approved = invoke_auth!(
+        contract_address,
+        client.validate_message(
+            &contract_address,
+            &source_chain,
+            &message_id,
+            &source_address,
+            &payload_hash,
+        )
     );
     assert!(!approved);
 
@@ -116,6 +122,7 @@ fn approve_message() {
     let messages = vec![&env, message.clone()];
     let data_hash = get_approve_hash(&env, messages.clone());
     let proof = generate_proof(&env, data_hash, signers);
+
     client.approve_messages(&messages, &proof);
 
     assert_last_emitted_event(
@@ -134,12 +141,15 @@ fn approve_message() {
     );
     assert!(is_approved);
 
-    let approved = client.validate_message(
-        &contract_address,
-        &source_chain,
-        &message_id,
-        &source_address,
-        &payload_hash,
+    let approved = invoke_auth!(
+        contract_address,
+        client.validate_message(
+            &contract_address,
+            &source_chain,
+            &message_id,
+            &source_address,
+            &payload_hash,
+        )
     );
     assert!(approved);
 
@@ -419,7 +429,7 @@ fn upgrade_invalid_wasm_hash() {
     let (env, _, client) = setup_env(1, randint(1, 10));
 
     let new_wasm_hash = BytesN::<32>::from_array(&env, &[0; 32]);
-    client.upgrade(&new_wasm_hash);
+    invoke_auth!(client.owner(), client.upgrade(&new_wasm_hash));
 }
 
 #[test]
