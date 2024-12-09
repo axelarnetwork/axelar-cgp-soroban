@@ -2,16 +2,17 @@ use axelar_gas_service::{AxelarGasService, AxelarGasServiceClient};
 use axelar_gateway::testutils::{setup_gateway, TestSignerSet};
 use axelar_gateway::AxelarGatewayClient;
 use axelar_soroban_std::types::Token;
-// #[cfg(any(test, feature = "testutils"))]
-// use interchain_token_service::testutils::setup_its;
 use interchain_token_service::{InterchainTokenService, InterchainTokenServiceClient};
+use soroban_sdk::Bytes;
 use soroban_sdk::{testutils::Address as _, token::StellarAssetClient, Address, Env, String};
-use soroban_sdk::{Bytes, BytesN};
 
 pub const HUB_CHAIN: &str = "hub_chain";
 const HUB_ADDRESS: &str = "hub_address";
 
-fn setup_gas_service<'a>(env: &Env) -> AxelarGasServiceClient<'a> {
+const INTERCHAIN_TOKEN_WASM_HASH: &[u8] =
+    include_bytes!("../../../../target/wasm32-unknown-unknown/release/interchain_token.wasm");
+
+pub fn setup_gas_service<'a>(env: &Env) -> AxelarGasServiceClient<'a> {
     let owner: Address = Address::generate(env);
     let gas_collector: Address = Address::generate(&env);
     let gas_service_id = env.register(AxelarGasService, (&owner, &gas_collector));
@@ -27,7 +28,10 @@ fn setup_its<'a>(
 ) -> InterchainTokenServiceClient<'a> {
     let owner = Address::generate(&env);
     let chain_name = String::from_str(&env, "chain_name");
-    let interchain_token_wasm_hash = BytesN::<32>::from_array(&env, &[1; 32]);
+    let interchain_token_wasm_hash = env
+        .deployer()
+        .upload_contract_wasm(INTERCHAIN_TOKEN_WASM_HASH);
+
     let contract_id = env.register(
         InterchainTokenService,
         (
@@ -52,11 +56,13 @@ pub fn setup_env<'a>() -> (
 
     let (signers, gateway_client) = setup_gateway(&env, 0, 5);
     let gas_service_client = setup_gas_service(&env);
+
     let client = setup_its(&env, &gateway_client, &gas_service_client);
 
     (env, client, gateway_client, signers)
 }
 
+#[allow(dead_code)]
 pub fn setup_gas_token(env: &Env, sender: &Address) -> Token {
     let asset = &env.register_stellar_asset_contract_v2(Address::generate(&env));
     let gas_amount: i128 = 1;
@@ -72,6 +78,7 @@ pub fn setup_gas_token(env: &Env, sender: &Address) -> Token {
     gas_token
 }
 
+#[allow(dead_code)]
 pub fn register_chains(env: &Env, client: &InterchainTokenServiceClient) {
     let chain = String::from_str(&env, HUB_CHAIN);
     client
@@ -83,6 +90,7 @@ pub fn register_chains(env: &Env, client: &InterchainTokenServiceClient) {
     client.mock_all_auths().set_trusted_address(&chain, &addr);
 }
 
+#[allow(dead_code)]
 pub fn bytes_from_hex(env: &Env, hex_string: &str) -> Bytes {
     let bytes_vec: Vec<u8> = hex::decode(hex_string).unwrap();
     Bytes::from_slice(env, &bytes_vec)

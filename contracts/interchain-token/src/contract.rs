@@ -38,10 +38,8 @@ impl InterchainToken {
 
         env.storage().instance().set(&DataKey::TokenId, &token_id);
 
-        if let Some(minter_address) = minter {
-            env.storage()
-                .instance()
-                .set(&DataKey::Minter(minter_address), &());
+        if let Some(minter) = minter {
+            env.storage().instance().set(&DataKey::Minter(minter), &());
         }
 
         env.storage()

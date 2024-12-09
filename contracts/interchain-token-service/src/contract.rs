@@ -127,10 +127,12 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
             .into()
     }
 
-    fn interchain_token_id(env: &Env, sender: Address, salt: BytesN<32>) -> BytesN<32> {
-        env.crypto()
-            .keccak256(&(PREFIX_INTERCHAIN_TOKEN_ID, sender, salt).to_xdr(env))
-            .into()
+    fn interchain_token_id(env: &Env, sender: Option<Address>, salt: BytesN<32>) -> BytesN<32> {
+        let value = match sender {
+            Some(sender) => (PREFIX_INTERCHAIN_TOKEN_ID, sender, salt).to_xdr(env),
+            None => (salt).to_xdr(env),
+        };
+        env.crypto().keccak256(&value).into()
     }
 
     fn deploy_interchain_token(
@@ -140,34 +142,34 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         token_meta_data: TokenMetadata,
         initial_supply: i128,
         minter: Option<Address>,
-    ) -> Result<Address, ContractError> {
+    ) -> Result<(Address, BytesN<32>), ContractError> {
         caller.require_auth();
 
-        let mut initial_minter: Option<Address> = None;
-
-        if initial_supply > 0 {
-            initial_minter = Some(env.current_contract_address());
-        } else if let Some(ref minter_addr) = minter {
+        let initial_minter = if initial_supply > 0 {
+            Some(env.current_contract_address())
+        } else if let Some(ref minter) = minter {
             ensure!(
-                *minter_addr != env.current_contract_address(),
+                *minter != env.current_contract_address(),
                 ContractError::InvalidMinter
             );
-            initial_minter = minter.clone();
-        }
+            Some(minter.clone())
+        } else {
+            None
+        };
 
         let deploy_salt = Self::interchain_token_deploy_salt(env, caller.clone(), salt.clone());
-        let token_id = Self::interchain_token_id(env, caller.clone(), salt);
+        let token_id = Self::interchain_token_id(env, None, deploy_salt.clone());
 
         let deployed_address = env
             .deployer()
-            .with_address(caller.clone(), deploy_salt)
+            .with_address(env.current_contract_address(), token_id.clone())
             .deploy_v2(
                 Self::interchain_token_wasm_hash(env),
                 (
                     env.current_contract_address(),
                     initial_minter,
                     env.current_contract_address(),
-                    token_id,
+                    token_id.clone(),
                     token_meta_data,
                 ),
             );
@@ -175,18 +177,16 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         if initial_supply > 0 {
             let token = InterchainTokenClient::new(env, &deployed_address);
 
-            // TODO: tokenManager, registeredTokenAddress, deployedTokenManager, removeFlowLimiter, addFlowLimiter
+            // TODO: the tokenManager related logic needs to be implemented here. Please refer to AXE-6858
             token.mint(&env.current_contract_address(), &caller, &initial_supply);
 
-            if let Some(minter_addr) = minter {
+            if let Some(minter) = minter {
                 token.remove_minter(&env.current_contract_address());
-                token.add_minter(&minter_addr);
+                token.add_minter(&minter);
             }
         }
 
-        // TODO: Temporarily returning the deployed interchain token address.
-        // This should return token_id: BytesN<32> once the token_manager is ready.
-        Ok(deployed_address)
+        Ok((deployed_address, token_id))
     }
 
     fn deploy_remote_interchain_token(
