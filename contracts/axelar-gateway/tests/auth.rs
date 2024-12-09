@@ -2,7 +2,7 @@ use axelar_gateway::error::ContractError;
 use axelar_gateway::testutils::{generate_proof, generate_signers_set, randint};
 use axelar_gateway::types::{ProofSignature, ProofSigner, WeightedSigner, WeightedSigners};
 use axelar_gateway::AxelarGateway;
-use axelar_soroban_std::assert_contract_err;
+use axelar_soroban_std::{assert_contract_err, invoke_auth};
 use soroban_sdk::{
     testutils::{Address as _, BytesN as _},
     Address, BytesN, Env, Vec,
@@ -149,7 +149,10 @@ fn rotate_signers_fail_empty_signers() {
     let proof = generate_proof(&env, data_hash, signers);
 
     assert_contract_err!(
-        client.try_rotate_signers(&empty_signers, &proof, &true),
+        invoke_auth!(
+            client.operator(),
+            client.try_rotate_signers(&empty_signers, &proof, &true)
+        ),
         ContractError::InvalidSigners
     );
 }
@@ -170,7 +173,10 @@ fn rotate_signers_fail_zero_weight() {
     let proof = generate_proof(&env, data_hash, signers);
 
     assert_contract_err!(
-        client.try_rotate_signers(&new_signers.signers, &proof, &true),
+        invoke_auth!(
+            client.operator(),
+            client.try_rotate_signers(&new_signers.signers, &proof, &true)
+        ),
         ContractError::InvalidWeight
     );
 }
@@ -191,9 +197,12 @@ fn rotate_signers_fail_weight_overflow() {
     let proof = generate_proof(&env, data_hash, signers);
 
     assert_contract_err!(
-        client.try_rotate_signers(&new_signers.signers, &proof, &true),
+        invoke_auth!(
+            client.operator(),
+            client.try_rotate_signers(&new_signers.signers, &proof, &true)
+        ),
         ContractError::WeightOverflow
-    )
+    );
 }
 
 #[test]
@@ -207,7 +216,10 @@ fn rotate_signers_fail_zero_threshold() {
     let proof = generate_proof(&env, data_hash, signers);
 
     assert_contract_err!(
-        client.try_rotate_signers(&new_signers.signers, &proof, &true),
+        invoke_auth!(
+            client.operator(),
+            client.try_rotate_signers(&new_signers.signers, &proof, &true)
+        ),
         ContractError::InvalidThreshold
     );
 }
@@ -233,9 +245,12 @@ fn rotate_signers_fail_low_total_weight() {
     let proof = generate_proof(&env, data_hash, signers);
 
     assert_contract_err!(
-        client.try_rotate_signers(&new_signers.signers, &proof, &true),
+        invoke_auth!(
+            client.operator(),
+            client.try_rotate_signers(&new_signers.signers, &proof, &true)
+        ),
         ContractError::InvalidThreshold
-    )
+    );
 }
 
 #[test]
@@ -261,7 +276,10 @@ fn rotate_signers_fail_wrong_signer_order() {
     let proof = generate_proof(&env, data_hash, signers);
 
     assert_contract_err!(
-        client.try_rotate_signers(&new_signers.signers, &proof, &true),
+        invoke_auth!(
+            client.operator(),
+            client.try_rotate_signers(&new_signers.signers, &proof, &true)
+        ),
         ContractError::InvalidSigners
     )
 }
@@ -270,18 +288,23 @@ fn rotate_signers_fail_wrong_signer_order() {
 fn rotate_signers_fail_duplicated_signers() {
     let (env, signers, client) = setup_env(1, randint(1, 10));
 
-    // let msg_hash = BytesN::random(&env);
     let new_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator.clone());
     let duplicated_signers = new_signers.clone();
 
     let data_hash = new_signers.signers.signers_rotation_hash(&env);
     let proof = generate_proof(&env, data_hash.clone(), signers);
-    client.rotate_signers(&new_signers.signers, &proof, &true);
+    invoke_auth!(
+        client.operator(),
+        client.rotate_signers(&new_signers.signers, &proof, &true)
+    );
 
     let proof = generate_proof(&env, data_hash, new_signers);
 
     assert_contract_err!(
-        client.try_rotate_signers(&duplicated_signers.signers, &proof, &true),
+        invoke_auth!(
+            client.operator(),
+            client.try_rotate_signers(&duplicated_signers.signers, &proof, &true)
+        ),
         ContractError::DuplicateSigners
     );
 }
@@ -301,14 +324,20 @@ fn rotate_signers_panics_on_outdated_signer_set() {
         );
         let data_hash = new_signers.signers.signers_rotation_hash(&env);
         let proof = generate_proof(&env, data_hash, original_signers.clone());
-        client.rotate_signers(&new_signers.signers, &proof, &true);
+        invoke_auth!(
+            client.operator(),
+            client.rotate_signers(&new_signers.signers, &proof, &true)
+        );
     }
 
     // Proof from the first signer set should fail
     let proof = generate_proof(&env, msg_hash.clone(), original_signers.clone());
 
     assert_contract_err!(
-        client.try_rotate_signers(&original_signers.signers, &proof, &true),
+        invoke_auth!(
+            client.operator(),
+            client.try_rotate_signers(&original_signers.signers, &proof, &true)
+        ),
         ContractError::InvalidSigners
     );
 }
@@ -331,7 +360,10 @@ fn multi_rotate_signers() {
 
         let data_hash = new_signers.signers.signers_rotation_hash(&env);
         let proof = generate_proof(&env, data_hash.clone(), original_signers.clone());
-        client.rotate_signers(&new_signers.signers, &proof, &true);
+        invoke_auth!(
+            client.operator(),
+            client.rotate_signers(&new_signers.signers, &proof, &true)
+        );
 
         let proof = generate_proof(&env, msg_hash.clone(), new_signers.clone());
         client.validate_proof(&msg_hash, &proof);
