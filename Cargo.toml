@@ -7,8 +7,8 @@ edition = "2021"
 rust-version = "1.81.0"
 
 [workspace.dependencies]
-soroban-sdk = { version = "22.0.0" }
-soroban-token-sdk = { version = "22.0.0" }
+soroban-sdk = { version = "22.0.1" }
+soroban-token-sdk = { version = "22.0.1" }
 cfg-if = { version = "1.0" }
 axelar-soroban-std = { version = "^0.1.0", path = "packages/axelar-soroban-std", features = ["derive"] }
 axelar-soroban-std-derive = { version = "^0.1.0", path = "packages/axelar-soroban-std-derive" }

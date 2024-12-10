@@ -5,51 +5,16 @@ use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::types::{CommandType, Message, Proof, WeightedSigners};
 use crate::{auth, event};
 use axelar_soroban_std::interfaces::{
-    migrate, MigratableInterface, OperatableInterface, OwnableInterface, UpgradableInterface,
+    OperatableInterface,
 };
 use axelar_soroban_std::ttl::{INSTANCE_TTL_EXTEND_TO, INSTANCE_TTL_THRESHOLD};
-use axelar_soroban_std::{ensure, interfaces};
+use axelar_soroban_std::{ensure, interfaces, Ownable, Upgradable};
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
 
-const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
 #[contract]
+#[derive(Ownable, Upgradable)]
 pub struct AxelarGateway;
-
-#[contractimpl]
-impl MigratableInterface for AxelarGateway {
-    type MigrationData = ();
-    type Error = ContractError;
-
-    fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
-        migrate::<Self>(env, || Self::run_migration(env, migration_data))
-            .map_err(|_| ContractError::MigrationNotAllowed)
-    }
-}
-
-#[contractimpl]
-impl UpgradableInterface for AxelarGateway {
-    fn version(env: &Env) -> String {
-        String::from_str(env, CONTRACT_VERSION)
-    }
-
-    // boilerplate necessary for the contractimpl macro to include function in the generated client
-    fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
-        interfaces::upgrade::<Self>(env, new_wasm_hash);
-    }
-}
-
-#[contractimpl]
-impl OwnableInterface for AxelarGateway {
-    fn owner(env: &Env) -> Address {
-        interfaces::owner(env)
-    }
-
-    fn transfer_ownership(env: &Env, new_owner: Address) {
-        interfaces::transfer_ownership::<Self>(env, new_owner);
-    }
-}
 
 #[contractimpl]
 impl OperatableInterface for AxelarGateway {
