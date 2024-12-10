@@ -8,9 +8,8 @@ pub trait AddressExt {
 
 impl AddressExt for Address {
     /// Returns Stellar's "dead" address, represented by the constant `ZERO_ADDRESS`.
-    ///
     /// # Reference
-    /// - Stellar GitHub: https://github.com/stellar/js-stellar-base/blob/master/test/unit/address_test.js
+    /// - Stellar [GitHub](https://github.com/stellar/js-stellar-base/blob/master/test/unit/address_test.js)
     fn zero(env: &Env) -> Address {
         Self::from_string(&String::from_str(env, ZERO_ADDRESS))
     }
