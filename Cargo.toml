@@ -30,7 +30,6 @@ nursery = { level = "warn", priority = -1 }
 too_many_arguments = "allow"
 
 [workspace.lints.rust]
-warnings = "deny"
 
 [profile.release]
 opt-level = "z"

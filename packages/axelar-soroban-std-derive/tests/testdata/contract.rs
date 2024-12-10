@@ -14,7 +14,7 @@ pub enum ContractError {
 
 #[contract]
 #[derive(Ownable, Upgradable)]
-#[upgradable(migration_data = ())]
+#[migratable(with_type = ())]
 pub struct Contract;
 
 #[derive(Debug, PartialEq, Eq)]

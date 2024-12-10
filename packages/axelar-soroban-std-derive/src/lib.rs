@@ -89,11 +89,11 @@ pub fn derive_ownable(input: TokenStream) -> TokenStream {
 }
 
 #[derive(Debug, Default)]
-struct UpgradableArgs {
+struct MigrationArgs {
     migration_data: Option<Type>,
 }
 
-impl Parse for UpgradableArgs {
+impl Parse for MigrationArgs {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         if input.is_empty() {
             return Ok(Self::default());
@@ -109,11 +109,11 @@ impl Parse for UpgradableArgs {
     }
 }
 
-impl UpgradableArgs {
+impl MigrationArgs {
     fn parse_migration_data(input: ParseStream) -> syn::Result<Type> {
         let ident = input.parse::<Ident>()?;
-        if ident != "migration_data" {
-            return Err(Error::new(ident.span(), "expected `migration_data=..`"));
+        if ident != "with_type" {
+            return Err(Error::new(ident.span(), "expected `with_type = ...`"));
         }
 
         input.parse::<Token![=]>()?;
@@ -139,7 +139,7 @@ impl UpgradableArgs {
 ///
 /// #[contract]
 /// #[derive(Ownable, Upgradable)]
-/// #[upgradable(migration_data = ())]
+/// #[migratable(with_type = Address)]
 /// pub struct Contract;
 ///
 /// #[contractimpl]
@@ -150,11 +150,13 @@ impl UpgradableArgs {
 /// }
 ///
 /// impl Contract {
-///     fn run_migration(env: &Env, _migration_data: ()) {}
+///     fn run_migration(env: &Env, new_owner: Address) {
+///         Self::transfer_ownership(env, new_owner);
+///     }
 /// }
 /// # }
 /// ```
-#[proc_macro_derive(Upgradable, attributes(upgradable))]
+#[proc_macro_derive(Upgradable, attributes(migratable))]
 pub fn derive_upgradable(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
@@ -162,17 +164,15 @@ pub fn derive_upgradable(input: TokenStream) -> TokenStream {
     let args = input
         .attrs
         .iter()
-        .find(|attr| attr.path().is_ident("upgradable"))
-        .map(|attr| attr.parse_args::<UpgradableArgs>())
+        .find(|attr| attr.path().is_ident("migratable"))
+        .map(|attr| attr.parse_args::<MigrationArgs>())
         .transpose()
         .unwrap_or_else(|e| panic!("{}", e))
-        .unwrap_or_else(|| UpgradableArgs {
-            migration_data: None,
-        });
-
-    syn::parse_str::<syn::Type>("ContractError")
-        .map_err(|_| {
-            syn::Error::new(
+        .unwrap_or_else(MigrationArgs::default);
+    
+    syn::parse_str::<Type>("ContractError")
+        .expect(
+            &Error::new(
                 name.span(),
                 "ContractError must be defined in scope.\n\
                  Hint: Add this to your code:\n\
@@ -183,10 +183,9 @@ pub fn derive_upgradable(input: TokenStream) -> TokenStream {
                      MigrationNotAllowed = 1,\n\
                      ...\n
                  }",
-            )
-        })
-        .unwrap_or_else(|e| panic!("{}", e));
-
+            ).to_string()
+        );
+    
     let migration_data = args
         .migration_data
         .as_ref()
