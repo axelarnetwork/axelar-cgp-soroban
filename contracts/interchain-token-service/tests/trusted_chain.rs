@@ -22,7 +22,7 @@ fn set_trusted_address() {
         (),
     );
 
-    assert_eq!(client.trusted_chain(&chain), true);
+    assert!(client.trusted_chain(&chain));
 }
 
 #[test]
@@ -70,7 +70,7 @@ fn remove_trusted_chain() {
         (),
     );
 
-    assert_eq!(client.trusted_chain(&chain), false);
+    assert!(!client.trusted_chain(&chain));
 }
 
 #[test]
@@ -80,7 +80,7 @@ fn remove_trusted_chain_fails_if_not_set() {
 
     let chain = String::from_str(&env, "chain");
 
-    assert_eq!(client.trusted_chain(&chain), false);
+    assert!(!client.trusted_chain(&chain));
 
     assert_contract_err!(
         client.try_remove_trusted_chain(&chain),
