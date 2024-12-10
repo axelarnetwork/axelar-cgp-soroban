@@ -12,6 +12,8 @@ pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
 
     fn gas_service(env: &Env) -> Address;
 
+    fn interchain_token_wasm_hash(env: &Env) -> BytesN<32>;
+
     fn its_hub_routing_identifier(env: &Env) -> String;
 
     fn its_hub_chain_name(env: &Env) -> String;
@@ -24,15 +26,16 @@ pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
 
     fn interchain_token_deploy_salt(env: &Env, deployer: Address, salt: BytesN<32>) -> BytesN<32>;
 
+    fn interchain_token_id(env: &Env, sender: Address, salt: BytesN<32>) -> BytesN<32>;
+
     fn deploy_interchain_token(
-        _env: &Env,
-        _caller: Address,
-        _salt: BytesN<32>,
-        _destination_chain: String,
-        _token_metadata: TokenMetadata,
-        _minter: Option<Bytes>,
-        _gas_token: Token,
-    ) -> Result<BytesN<32>, ContractError>;
+        env: &Env,
+        deployer: Address,
+        salt: BytesN<32>,
+        token_meta_data: TokenMetadata,
+        initial_supply: i128,
+        minter: Option<Address>,
+    ) -> Result<(Address, BytesN<32>), ContractError>;
 
     fn deploy_remote_interchain_token(
         _env: &Env,
