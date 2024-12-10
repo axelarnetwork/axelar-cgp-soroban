@@ -34,9 +34,7 @@ impl AxelarGateway {
             minimum_rotation_delay,
             previous_signers_retention,
             initial_signers,
-        )?;
-
-        Ok(())
+        )
     }
 }
 
@@ -204,6 +202,14 @@ impl AxelarGatewayInterface for AxelarGateway {
 
     fn signers_hash_by_epoch(env: &Env, epoch: u64) -> Result<BytesN<32>, ContractError> {
         auth::signers_hash_by_epoch(env, epoch)
+    }
+
+    fn validate_proof(
+        env: &Env,
+        data_hash: BytesN<32>,
+        proof: Proof,
+    ) -> Result<bool, ContractError> {
+        auth::validate_proof(env, &data_hash, proof)
     }
 }
 
