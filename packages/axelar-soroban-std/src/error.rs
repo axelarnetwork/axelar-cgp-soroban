@@ -118,10 +118,10 @@ macro_rules! assert_invoke_auth_ok {
             Ok(outer) => {
                 match outer {
                     Ok(inner) => {inner},
-                    Err(err) => panic!("Expected Ok result, but got an error {}", err),
+                    Err(err) => panic!("Expected Ok result, but got an error {:?}", err),
                 }
             }
-            Err(err) => panic!("Expected Ok result, but got an error {}", err),
+            Err(err) => panic!("Expected Ok result, but got an error {:?}", err),
         }
     }};
 }
