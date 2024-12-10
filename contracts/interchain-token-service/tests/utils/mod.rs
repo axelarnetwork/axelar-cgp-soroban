@@ -3,7 +3,6 @@ use axelar_gateway::testutils::{setup_gateway, TestSignerSet};
 use axelar_gateway::AxelarGatewayClient;
 use axelar_soroban_std::types::Token;
 use interchain_token_service::{InterchainTokenService, InterchainTokenServiceClient};
-use soroban_sdk::Bytes;
 use soroban_sdk::{testutils::Address as _, token::StellarAssetClient, Address, Env, String};
 
 pub const HUB_CHAIN: &str = "hub_chain";
@@ -88,10 +87,4 @@ pub fn register_chains(env: &Env, client: &InterchainTokenServiceClient) {
     let chain = client.its_hub_chain_name();
     let addr = String::from_str(env, HUB_ADDRESS);
     client.mock_all_auths().set_trusted_address(&chain, &addr);
-}
-
-#[allow(dead_code)]
-pub fn bytes_from_hex(env: &Env, hex_string: &str) -> Bytes {
-    let bytes_vec: Vec<u8> = hex::decode(hex_string).unwrap();
-    Bytes::from_slice(env, &bytes_vec)
 }

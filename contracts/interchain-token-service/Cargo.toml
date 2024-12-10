@@ -24,7 +24,7 @@ axelar-gas-service = { workspace = true, features = ["testutils"] }
 axelar-gateway = { workspace = true, features = ["testutils"] }
 axelar-soroban-std = { workspace = true, features = ["testutils"] }
 goldie = { workspace = true }
-hex = "0.4"
+hex = { workspace = true }
 interchain-token = { workspace = true, features = ["testutils"] }
 soroban-sdk = { workspace = true, features = ["testutils", "alloc"] }
 
