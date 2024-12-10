@@ -1,14 +1,15 @@
 mod utils;
 
+use axelar_soroban_std::address::AddressExt;
 use axelar_soroban_std::assert_contract_err;
 use axelar_soroban_std::assert_invoke_auth_err;
-use axelar_soroban_std::types::zero_address;
 use interchain_token::InterchainTokenClient;
 use interchain_token_service::error::ContractError;
 
+use soroban_sdk::Address;
 use soroban_sdk::BytesN;
 use soroban_sdk::IntoVal;
-use soroban_sdk::{testutils::Address as _, Address, Env};
+use soroban_sdk::{testutils::Address as _, Env};
 use soroban_token_sdk::metadata::TokenMetadata;
 use utils::setup_env;
 
@@ -76,7 +77,7 @@ fn deploy_interchain_token_check_token_id() {
     let initial_supply = 100;
 
     let deploy_salt = client.interchain_token_deploy_salt(&sender, &salt);
-    let expected_token_id = client.interchain_token_id(&zero_address(&env), &deploy_salt);
+    let expected_token_id = client.interchain_token_id(&Address::zero(&env), &deploy_salt);
 
     let (_deployed_address, token_id) =
         client.deploy_interchain_token(&sender, &salt, &token_meta_data, &initial_supply, &minter);

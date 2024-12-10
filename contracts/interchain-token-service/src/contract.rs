@@ -1,7 +1,7 @@
 use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::{executable::AxelarExecutableInterface, AxelarGatewayMessagingClient};
+use axelar_soroban_std::address::AddressExt;
 use axelar_soroban_std::interfaces::{MigratableInterface, OwnableInterface, UpgradableInterface};
-use axelar_soroban_std::types::zero_address;
 use axelar_soroban_std::{ensure, interfaces, types::Token};
 use interchain_token::InterchainTokenClient;
 use soroban_sdk::xdr::ToXdr;
@@ -129,13 +129,9 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     }
 
     fn interchain_token_id(env: &Env, sender: Address, salt: BytesN<32>) -> BytesN<32> {
-        let value = if sender == zero_address(env) {
-            (sender, salt).to_xdr(env)
-        } else {
-            (PREFIX_INTERCHAIN_TOKEN_ID, sender, salt).to_xdr(env)
-        };
-
-        env.crypto().keccak256(&value).into()
+        env.crypto()
+            .keccak256(&(PREFIX_INTERCHAIN_TOKEN_ID, sender, salt).to_xdr(env))
+            .into()
     }
 
     fn deploy_interchain_token(
@@ -161,7 +157,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         };
 
         let deploy_salt = Self::interchain_token_deploy_salt(env, caller.clone(), salt);
-        let token_id = Self::interchain_token_id(env, zero_address(env), deploy_salt);
+        let token_id = Self::interchain_token_id(env, Address::zero(env), deploy_salt);
 
         let deployed_address = env
             .deployer()
