@@ -60,10 +60,7 @@ impl Parse for UpgradableArgs {
 
         let ident: Ident = input.parse()?;
         if ident != "migration_data" {
-            return Err(Error::new(
-                ident.span(),
-                "expected `migration_data=..`",
-            ));
+            return Err(Error::new(ident.span(), "expected `migration_data=..`"));
         }
 
         input.parse::<Token![=]>()?;
@@ -73,9 +70,7 @@ impl Parse for UpgradableArgs {
             input.parse::<Token![,]>()?;
         }
 
-        Ok(Self {
-            migration_data,
-        })
+        Ok(Self { migration_data })
     }
 }
 
