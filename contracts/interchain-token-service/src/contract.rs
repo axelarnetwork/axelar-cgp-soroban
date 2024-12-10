@@ -160,9 +160,8 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
             None
         };
 
-        let zero_address = zero_address(env);
         let deploy_salt = Self::interchain_token_deploy_salt(env, caller.clone(), salt);
-        let token_id = Self::interchain_token_id(env, zero_address, deploy_salt);
+        let token_id = Self::interchain_token_id(env, zero_address(env), deploy_salt);
 
         let deployed_address = env
             .deployer()

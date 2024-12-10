@@ -75,9 +75,8 @@ fn deploy_interchain_token_check_token_id() {
     let token_meta_data = setup_token_metadata(&env, "name", "symbol", 6);
     let initial_supply = 100;
 
-    let zero_address = zero_address(&env);
     let deploy_salt = client.interchain_token_deploy_salt(&sender, &salt);
-    let expected_token_id = client.interchain_token_id(&zero_address, &deploy_salt);
+    let expected_token_id = client.interchain_token_id(&zero_address(&env), &deploy_salt);
 
     let (_deployed_address, token_id) =
         client.deploy_interchain_token(&sender, &salt, &token_meta_data, &initial_supply, &minter);
