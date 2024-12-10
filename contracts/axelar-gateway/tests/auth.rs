@@ -12,7 +12,7 @@ mod utils;
 use utils::setup_env;
 
 #[test]
-#[should_panic(expected = "Error(Contract, #4)")] // ContractError::InvalidSigners
+#[should_panic(expected = "Error(Contract, #13)")] // ContractError::InvalidSigners
 fn fail_initialization_with_empty_signer_set() {
     let env = Env::default();
     let owner = Address::generate(&env);
@@ -152,7 +152,7 @@ fn rotate_signers_fail_empty_signers() {
         client
             .mock_all_auths()
             .try_rotate_signers(&empty_signers, &proof, &true),
-        ContractError::InvalidSigners
+        ContractError::EmptySigners
     );
 }
 
@@ -330,7 +330,7 @@ fn rotate_signers_panics_on_outdated_signer_set() {
         client
             .mock_all_auths()
             .try_rotate_signers(&original_signers.signers, &proof, &true),
-        ContractError::InvalidSigners
+        ContractError::OutdatedSigners
     );
 }
 
