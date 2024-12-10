@@ -402,6 +402,7 @@ version = "0.1.0"
 dependencies = [
  "axelar-soroban-std-derive",
  "goldie",
+ "hex",
  "soroban-sdk",
 ]
 

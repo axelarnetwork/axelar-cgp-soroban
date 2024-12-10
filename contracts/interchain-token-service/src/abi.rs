@@ -246,14 +246,9 @@ impl From<MessageType> for U256 {
 mod tests {
     use super::*;
     use alloc::vec;
-    use axelar_soroban_std::assert_ok;
+    use axelar_soroban_std::{assert_ok, traits::BytesExt};
     use soroban_sdk::{Bytes, BytesN, Env, String};
     use std::vec::Vec;
-
-    pub fn bytes_from_hex(env: &Env, hex_string: &str) -> Bytes {
-        let bytes_vec: Vec<u8> = hex::decode(hex_string).unwrap();
-        Bytes::from_slice(env, &bytes_vec)
-    }
 
     #[test]
     fn soroban_str_to_std_string() {
@@ -361,8 +356,8 @@ mod tests {
                 destination_chain: remote_chain.clone(),
                 message: types::Message::InterchainTransfer(types::InterchainTransfer {
                     token_id: BytesN::from_array(&env, &[0u8; 32]),
-                    source_address: bytes_from_hex(&env, "00"),
-                    destination_address: bytes_from_hex(&env, "00"),
+                    source_address: Bytes::from_hex(&env, "00"),
+                    destination_address: Bytes::from_hex(&env, "00"),
                     amount: 1u64.into(),
                     data: None,
                 }),
@@ -371,24 +366,24 @@ mod tests {
                 destination_chain: remote_chain.clone(),
                 message: types::Message::InterchainTransfer(types::InterchainTransfer {
                     token_id: BytesN::from_array(&env, &[255u8; 32]),
-                    source_address: bytes_from_hex(
+                    source_address: Bytes::from_hex(
                         &env,
                         "4F4495243837681061C4743b74B3eEdf548D56A5",
                     ),
-                    destination_address: bytes_from_hex(
+                    destination_address: Bytes::from_hex(
                         &env,
                         "4F4495243837681061C4743b74B3eEdf548D56A5",
                     ),
                     amount: i128::MAX,
-                    data: Some(bytes_from_hex(&env, "abcd")),
+                    data: Some(Bytes::from_hex(&env, "abcd")),
                 }),
             },
             types::HubMessage::ReceiveFromHub {
                 source_chain: remote_chain.clone(),
                 message: types::Message::InterchainTransfer(types::InterchainTransfer {
                     token_id: BytesN::from_array(&env, &[0u8; 32]),
-                    source_address: bytes_from_hex(&env, "00"),
-                    destination_address: bytes_from_hex(&env, "00"),
+                    source_address: Bytes::from_hex(&env, "00"),
+                    destination_address: Bytes::from_hex(&env, "00"),
                     amount: 1u64.into(),
                     data: None,
                 }),
@@ -397,16 +392,16 @@ mod tests {
                 source_chain: remote_chain,
                 message: types::Message::InterchainTransfer(types::InterchainTransfer {
                     token_id: BytesN::from_array(&env, &[255u8; 32]),
-                    source_address: bytes_from_hex(
+                    source_address: Bytes::from_hex(
                         &env,
                         "4F4495243837681061C4743b74B3eEdf548D56A5",
                     ),
-                    destination_address: bytes_from_hex(
+                    destination_address: Bytes::from_hex(
                         &env,
                         "4F4495243837681061C4743b74B3eEdf548D56A5",
                     ),
                     amount: i128::MAX,
-                    data: Some(bytes_from_hex(&env, "abcd")),
+                    data: Some(Bytes::from_hex(&env, "abcd")),
                 }),
             },
         ];
@@ -454,7 +449,7 @@ mod tests {
                     name: String::from_str(&env, "Test Token"),
                     symbol: String::from_str(&env, "TST"),
                     decimals: 18,
-                    minter: Some(bytes_from_hex(&env, "1234")),
+                    minter: Some(Bytes::from_hex(&env, "1234")),
                 }),
             },
             types::HubMessage::SendToHub {
@@ -464,7 +459,7 @@ mod tests {
                     name: String::from_str(&env, "Unicode Token 🪙"),
                     symbol: String::from_str(&env, "UNI🔣"),
                     decimals: 255,
-                    minter: Some(bytes_from_hex(&env, "abcd")),
+                    minter: Some(Bytes::from_hex(&env, "abcd")),
                 }),
             },
             types::HubMessage::ReceiveFromHub {
@@ -484,7 +479,7 @@ mod tests {
                     name: String::from_str(&env, "Test Token"),
                     symbol: String::from_str(&env, "TST"),
                     decimals: 18,
-                    minter: Some(bytes_from_hex(&env, "1234")),
+                    minter: Some(Bytes::from_hex(&env, "1234")),
                 }),
             },
             types::HubMessage::ReceiveFromHub {
@@ -494,7 +489,7 @@ mod tests {
                     name: String::from_str(&env, "Unicode Token 🪙"),
                     symbol: String::from_str(&env, "UNI🔣"),
                     decimals: 255,
-                    minter: Some(bytes_from_hex(&env, "abcd")),
+                    minter: Some(Bytes::from_hex(&env, "abcd")),
                 }),
             },
         ];
@@ -531,8 +526,8 @@ mod tests {
         let invalid_hub_message_type = assert_ok!(types::Message::InterchainTransfer(
             types::InterchainTransfer {
                 token_id: BytesN::from_array(&env, &[0u8; 32]),
-                source_address: bytes_from_hex(&env, "00"),
-                destination_address: bytes_from_hex(&env, "00"),
+                source_address: Bytes::from_hex(&env, "00"),
+                destination_address: Bytes::from_hex(&env, "00"),
                 amount: 1u64.into(),
                 data: None,
             }
