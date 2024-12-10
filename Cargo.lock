@@ -400,9 +400,21 @@ dependencies = [
 name = "axelar-soroban-std"
 version = "0.1.0"
 dependencies = [
+ "axelar-soroban-std-derive",
  "goldie",
  "hex",
  "soroban-sdk",
+]
+
+[[package]]
+name = "axelar-soroban-std-derive"
+version = "0.1.0"
+dependencies = [
+ "axelar-soroban-std",
+ "proc-macro2",
+ "quote",
+ "soroban-sdk",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -1913,9 +1925,9 @@ dependencies = [
 
 [[package]]
 name = "soroban-ledger-snapshot"
-version = "22.0.0"
+version = "22.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "552563fd7b7e6e69c2b56b73c8e81febea1ba647b82e88034bb33e4fe3c4928a"
+checksum = "8e8c348b829dbd5b1c4a9d9858ddf5c793c24ca94373feb82290cdf9746b1fa5"
 dependencies = [
  "serde",
  "serde_json",
@@ -1927,9 +1939,9 @@ dependencies = [
 
 [[package]]
 name = "soroban-sdk"
-version = "22.0.0"
+version = "22.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1cc7f941162a765de4762987de60d6168ae7c92b42037212918818dfe9d6b242"
+checksum = "686982e1358a954c23032c51e15c70829abc1cffe7c7c0a7a21047a2267f97dc"
 dependencies = [
  "arbitrary",
  "bytes-lit",
@@ -1949,9 +1961,9 @@ dependencies = [
 
 [[package]]
 name = "soroban-sdk-macros"
-version = "22.0.0"
+version = "22.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b2e33f6e0156b4dbb8b8d5fe5c74f506567c508900ab87c06f5a6dd8127c551"
+checksum = "ad3dcc9d5fd9ddf5c8b5c9cdcf3807ccc127bfaef1be23fc4a5d51ad167381f7"
 dependencies = [
  "crate-git-revision",
  "darling",
@@ -1969,9 +1981,9 @@ dependencies = [
 
 [[package]]
 name = "soroban-spec"
-version = "22.0.0"
+version = "22.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c585ae254ca9e871984e45160643b8d6d9acd14b16ead730fbb2b05509f69377"
+checksum = "343672b1374951b1f601c07eca944db2c4f0d5c47e94b29d8fb2d42af1215f30"
 dependencies = [
  "base64 0.13.1",
  "stellar-xdr",
@@ -1981,9 +1993,9 @@ dependencies = [
 
 [[package]]
 name = "soroban-spec-rust"
-version = "22.0.0"
+version = "22.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a5b11da50096efbbe0701b60a93851197a3158642fb3afbc8efade2c6dda2ee"
+checksum = "47205064fcd8fefe5dba103612cabb448dac64829a3e7bbcca221550a22f59df"
 dependencies = [
  "prettyplease",
  "proc-macro2",
@@ -1997,9 +2009,9 @@ dependencies = [
 
 [[package]]
 name = "soroban-token-sdk"
-version = "22.0.0"
+version = "22.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d5fd75cbcb1315a1103b3a3d877c3f679531c6aa85db9165a57e0e8a26c7447"
+checksum = "8783237676bc8a5eb155299af14165f2792e719e967aaf52546428247843a107"
 dependencies = [
  "soroban-sdk",
 ]
