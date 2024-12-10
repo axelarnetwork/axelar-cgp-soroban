@@ -1,6 +1,8 @@
 use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::{executable::AxelarExecutableInterface, AxelarGatewayMessagingClient};
-use axelar_soroban_std::{address::AddressExt, ensure, interfaces, types::Token, Ownable, Upgradable};
+use axelar_soroban_std::{
+    address::AddressExt, ensure, interfaces, types::Token, Ownable, Upgradable,
+};
 use interchain_token::InterchainTokenClient;
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String};
