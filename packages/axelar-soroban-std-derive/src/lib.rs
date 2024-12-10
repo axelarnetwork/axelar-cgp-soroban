@@ -98,13 +98,13 @@ impl Parse for MigrationArgs {
         if input.is_empty() {
             return Ok(Self::default());
         }
-        
+
         let migration_data = Some(Self::parse_migration_data(input)?);
 
         if !input.is_empty() {
             input.parse::<Token![,]>()?;
         }
-        
+
         Ok(Self { migration_data })
     }
 }
@@ -169,12 +169,11 @@ pub fn derive_upgradable(input: TokenStream) -> TokenStream {
         .transpose()
         .unwrap_or_else(|e| panic!("{}", e))
         .unwrap_or_else(MigrationArgs::default);
-    
-    syn::parse_str::<Type>("ContractError")
-        .expect(
-            &Error::new(
-                name.span(),
-                "ContractError must be defined in scope.\n\
+
+    syn::parse_str::<Type>("ContractError").expect(
+        &Error::new(
+            name.span(),
+            "ContractError must be defined in scope.\n\
                  Hint: Add this to your code:\n\
                  #[contracterror]\n\
                  #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]\n\
@@ -183,9 +182,10 @@ pub fn derive_upgradable(input: TokenStream) -> TokenStream {
                      MigrationNotAllowed = 1,\n\
                      ...\n
                  }",
-            ).to_string()
-        );
-    
+        )
+        .to_string(),
+    );
+
     let migration_data = args
         .migration_data
         .as_ref()
