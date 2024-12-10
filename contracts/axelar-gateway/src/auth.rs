@@ -331,7 +331,7 @@ mod tests {
         let (env, signers, client) = setup_env(randint(0, 10), randint(1, 10));
 
         let msg_hash: BytesN<32> = BytesN::random(&env);
-        let proof = generate_proof(&env, msg_hash.clone(), signers);
+        let proof = generate_proof(&env, msg_hash, signers);
 
         let different_msg_hash: BytesN<32> = BytesN::random(&env);
 
@@ -595,16 +595,15 @@ mod tests {
         let previous_signer_retention = randint(1, 5);
         let (env, original_signers, client) = setup_env(previous_signer_retention, randint(1, 10));
 
+        // Proof from the first signer set should still be valid
         let msg_hash: BytesN<32> = BytesN::random(&env);
+        let proof = generate_proof(&env, msg_hash.clone(), original_signers.clone());
+        let domain_separator = original_signers.domain_separator.clone();
 
-        let mut previous_signers = original_signers.clone();
+        let mut previous_signers = original_signers;
 
         for _ in 0..previous_signer_retention {
-            let new_signers = generate_signers_set(
-                &env,
-                randint(1, 10),
-                original_signers.domain_separator.clone(),
-            );
+            let new_signers = generate_signers_set(&env, randint(1, 10), domain_separator.clone());
 
             testutils::rotate_signers(&env, &client.address, new_signers.clone());
 
@@ -623,8 +622,6 @@ mod tests {
             previous_signers = new_signers;
         }
 
-        // Proof from the first signer set should still be valid
-        let proof = generate_proof(&env, msg_hash.clone(), original_signers.clone());
         env.as_contract(&client.address, || {
             assert!(!assert_ok!(auth::validate_proof(&env, &msg_hash, proof)));
         })
@@ -647,7 +644,7 @@ mod tests {
         }
 
         // Proof from the first signer set should fail
-        let proof = generate_proof(&env, msg_hash.clone(), original_signers.clone());
+        let proof = generate_proof(&env, msg_hash.clone(), original_signers);
 
         env.as_contract(&client.address, || {
             assert_err!(

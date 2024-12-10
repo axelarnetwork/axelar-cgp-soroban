@@ -49,19 +49,24 @@ fn deploy_interchain_token_with_initial_supply_valid_minter() {
     env.mock_all_auths();
 
     let sender = Address::generate(&env);
-    let minter: Option<Address> = Some(Address::generate(&env));
+    let minter = Address::generate(&env);
     let salt = BytesN::<32>::from_array(&env, &[1; 32]);
     let token_meta_data = setup_token_metadata(&env, "name", "symbol", 6);
     let initial_supply = 100;
 
-    let (deployed_address, _token_id) =
-        client.deploy_interchain_token(&sender, &salt, &token_meta_data, &initial_supply, &minter);
+    let (deployed_address, _token_id) = client.deploy_interchain_token(
+        &sender,
+        &salt,
+        &token_meta_data,
+        &initial_supply,
+        &Some(minter.clone()),
+    );
 
     let token = InterchainTokenClient::new(&env, &deployed_address);
 
     assert_eq!(token.owner(), client.address);
     assert!(!token.is_minter(&client.address));
-    assert!(token.is_minter(&minter.unwrap()));
+    assert!(token.is_minter(&minter));
     assert_eq!(token.balance(&sender), initial_supply);
 }
 
@@ -71,7 +76,7 @@ fn deploy_interchain_token_check_token_id() {
     env.mock_all_auths();
 
     let sender = Address::generate(&env);
-    let minter: Option<Address> = Some(Address::generate(&env));
+    let minter = Address::generate(&env);
     let salt = BytesN::<32>::from_array(&env, &[1; 32]);
     let token_meta_data = setup_token_metadata(&env, "name", "symbol", 6);
     let initial_supply = 100;
@@ -79,8 +84,13 @@ fn deploy_interchain_token_check_token_id() {
     let deploy_salt = client.interchain_token_deploy_salt(&sender, &salt);
     let expected_token_id = client.interchain_token_id(&Address::zero(&env), &deploy_salt);
 
-    let (_deployed_address, token_id) =
-        client.deploy_interchain_token(&sender, &salt, &token_meta_data, &initial_supply, &minter);
+    let (_deployed_address, token_id) = client.deploy_interchain_token(
+        &sender,
+        &salt,
+        &token_meta_data,
+        &initial_supply,
+        &Some(minter),
+    );
 
     assert_eq!(token_id, expected_token_id);
 }
@@ -91,20 +101,25 @@ fn deploy_interchain_token_zero_initial_supply_and_valid_minter() {
     env.mock_all_auths();
 
     let sender = Address::generate(&env);
-    let minter: Option<Address> = Some(Address::generate(&env));
+    let minter = Address::generate(&env);
     let salt = BytesN::<32>::from_array(&env, &[1; 32]);
     let token_meta_data = setup_token_metadata(&env, "name", "symbol", 6);
     let initial_supply = 0;
 
-    let (deployed_address, _token_id) =
-        client.deploy_interchain_token(&sender, &salt, &token_meta_data, &initial_supply, &minter);
+    let (deployed_address, _token_id) = client.deploy_interchain_token(
+        &sender,
+        &salt,
+        &token_meta_data,
+        &initial_supply,
+        &Some(minter.clone()),
+    );
 
     let token = InterchainTokenClient::new(&env, &deployed_address);
 
     assert_eq!(token.owner(), client.address);
     assert!(token.is_minter(&client.address));
     assert!(!token.is_minter(&sender));
-    assert!(token.is_minter(&minter.unwrap()));
+    assert!(token.is_minter(&minter));
     assert_eq!(token.balance(&sender), initial_supply);
 }
 

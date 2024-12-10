@@ -1,8 +1,8 @@
 use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::{executable::AxelarExecutableInterface, AxelarGatewayMessagingClient};
-use axelar_soroban_std::address::AddressExt;
-use axelar_soroban_std::interfaces::{MigratableInterface, OwnableInterface, UpgradableInterface};
-use axelar_soroban_std::{ensure, interfaces, types::Token};
+use axelar_soroban_std::{
+    address::AddressExt, ensure, interfaces, types::Token, Ownable, Upgradable,
+};
 use interchain_token::InterchainTokenClient;
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String};
@@ -21,6 +21,7 @@ const PREFIX_INTERCHAIN_TOKEN_ID: &str = "its-interchain-token-id";
 const PREFIX_INTERCHAIN_TOKEN_SALT: &str = "interchain-token-salt";
 
 #[contract]
+#[derive(Ownable, Upgradable)]
 pub struct InterchainTokenService;
 
 #[contractimpl]
@@ -398,38 +399,5 @@ impl InterchainTokenService {
         .abi_encode(env)?;
 
         Ok(payload)
-    }
-}
-
-#[contractimpl]
-impl MigratableInterface for InterchainTokenService {
-    type MigrationData = ();
-    type Error = ContractError;
-
-    fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
-        interfaces::migrate::<Self>(env, || Self::run_migration(env, migration_data))
-            .map_err(|_| ContractError::MigrationNotAllowed)
-    }
-}
-
-#[contractimpl]
-impl UpgradableInterface for InterchainTokenService {
-    fn version(env: &Env) -> String {
-        String::from_str(env, env!("CARGO_PKG_VERSION"))
-    }
-
-    fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
-        interfaces::upgrade::<Self>(env, new_wasm_hash);
-    }
-}
-
-#[contractimpl]
-impl OwnableInterface for InterchainTokenService {
-    fn owner(env: &Env) -> Address {
-        interfaces::owner(env)
-    }
-
-    fn transfer_ownership(env: &Env, new_owner: Address) {
-        interfaces::transfer_ownership::<Self>(env, new_owner);
     }
 }
