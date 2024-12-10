@@ -105,18 +105,6 @@ macro_rules! assert_some {
     };
 }
 
-/// Call a method on a contract client while mocking auths
-#[macro_export]
-macro_rules! invoke_auth {
-    ($caller:expr, $client:ident . $method:ident ( $($arg:expr),* $(,)? )) => {{
-        use soroban_sdk::IntoVal;
-
-        $client
-            .mock_auths($crate::mock_auth!($caller, $client, $method, $($arg),*))
-            .$method($($arg),*)
-    }};
-}
-
 #[macro_export]
 macro_rules! assert_invoke_auth_ok {
     ($caller:expr, $client:ident . $method:ident ( $($arg:expr),* $(,)? )) => {{
@@ -127,7 +115,12 @@ macro_rules! assert_invoke_auth_ok {
             .$method($($arg),*);
 
         match call_result {
-            Ok(_) => {}
+            Ok(outer) => {
+                match outer {
+                    Ok(inner) => {inner},
+                    Err(_) => panic!("Expected Ok result, but got an error."),
+                }
+            }
             Err(_) => panic!("Expected Ok result, but got an error."),
         }
     }};

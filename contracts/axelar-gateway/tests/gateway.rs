@@ -6,7 +6,7 @@ use axelar_gateway::testutils::{
 use axelar_gateway::types::Message;
 use axelar_soroban_std::{
     assert_contract_err, assert_invocation, assert_invoke_auth_err, assert_invoke_auth_ok,
-    assert_last_emitted_event, invoke_auth,
+    assert_last_emitted_event,
 };
 use soroban_sdk::{
     bytes,
@@ -78,9 +78,9 @@ fn validate_message() {
 
     let prev_event_count = env.events().all().len();
 
-    let approved = invoke_auth!(
+    let approved = assert_invoke_auth_ok!(
         contract_address,
-        client.validate_message(
+        client.try_validate_message(
             &contract_address,
             &source_chain,
             &message_id,
@@ -141,9 +141,9 @@ fn approve_message() {
     );
     assert!(is_approved);
 
-    let approved = invoke_auth!(
+    let approved = assert_invoke_auth_ok!(
         contract_address,
-        client.validate_message(
+        client.try_validate_message(
             &contract_address,
             &source_chain,
             &message_id,
@@ -429,7 +429,7 @@ fn upgrade_invalid_wasm_hash() {
     let (env, _, client) = setup_env(1, randint(1, 10));
 
     let new_wasm_hash = BytesN::<32>::from_array(&env, &[0; 32]);
-    invoke_auth!(client.owner(), client.upgrade(&new_wasm_hash));
+    client.mock_all_auths().upgrade(&new_wasm_hash);
 }
 
 #[test]
