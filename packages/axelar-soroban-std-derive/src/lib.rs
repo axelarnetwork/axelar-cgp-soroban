@@ -88,6 +88,7 @@ pub fn derive_ownable(input: TokenStream) -> TokenStream {
     .into()
 }
 
+#[derive(Debug, Default)]
 struct UpgradableArgs {
     migration_data: Option<Type>,
 }
@@ -95,24 +96,28 @@ struct UpgradableArgs {
 impl Parse for UpgradableArgs {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         if input.is_empty() {
-            return Ok(Self {
-                migration_data: None,
-            });
+            return Ok(Self::default());
         }
+        
+        let migration_data = Some(Self::parse_migration_data(input)?);
 
-        let ident: Ident = input.parse()?;
+        if !input.is_empty() {
+            input.parse::<Token![,]>()?;
+        }
+        
+        Ok(Self { migration_data })
+    }
+}
+
+impl UpgradableArgs {
+    fn parse_migration_data(input: ParseStream) -> syn::Result<Type> {
+        let ident = input.parse::<Ident>()?;
         if ident != "migration_data" {
             return Err(Error::new(ident.span(), "expected `migration_data=..`"));
         }
 
         input.parse::<Token![=]>()?;
-        let migration_data = Some(input.parse::<Type>()?);
-
-        if !input.is_empty() {
-            input.parse::<Token![,]>()?;
-        }
-
-        Ok(Self { migration_data })
+        input.parse::<Type>()
     }
 }
 
