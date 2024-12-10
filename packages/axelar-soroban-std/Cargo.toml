@@ -10,8 +10,8 @@ publish = true
 crate-type = ["rlib"]
 
 [dependencies]
-soroban-sdk = { workspace = true }
 axelar-soroban-std-derive = { workspace = true, optional = true }
+soroban-sdk = { workspace = true }
 
 [dev-dependencies]
 goldie = { workspace = true }
