@@ -42,7 +42,8 @@ pub fn derive_operatable(input: TokenStream) -> TokenStream {
                 axelar_soroban_std::interfaces::transfer_operatorship::<Self>(env, new_operator);
             }
         }
-    }.into()
+    }
+    .into()
 }
 
 /// Implements the Ownable interface for a Soroban contract.
@@ -83,7 +84,8 @@ pub fn derive_ownable(input: TokenStream) -> TokenStream {
                 axelar_soroban_std::interfaces::transfer_ownership::<Self>(env, new_owner);
             }
         }
-    }.into()
+    }
+    .into()
 }
 
 struct UpgradableArgs {
