@@ -10,6 +10,7 @@ publish = true
 crate-type = ["rlib"]
 
 [dependencies]
+axelar-soroban-std-derive = { workspace = true, optional = true }
 hex = { workspace = true, optional = true }
 soroban-sdk = { workspace = true }
 
@@ -19,6 +20,7 @@ soroban-sdk = { workspace = true, features = ["testutils"] }
 
 [features]
 testutils = ["soroban-sdk/testutils", "hex"]
+derive = ["dep:axelar-soroban-std-derive"]
 
 [lints]
 workspace = true

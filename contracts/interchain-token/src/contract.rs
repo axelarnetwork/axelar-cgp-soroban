@@ -10,14 +10,15 @@ use crate::storage_types::DataKey;
 
 use crate::interface::InterchainTokenInterface;
 use crate::storage_types::{AllowanceDataKey, AllowanceValue};
-use axelar_soroban_std::interfaces::{MigratableInterface, OwnableInterface, UpgradableInterface};
-use axelar_soroban_std::{ensure, interfaces};
+use axelar_soroban_std::interfaces::OwnableInterface;
+use axelar_soroban_std::{ensure, interfaces, Upgradable};
 use soroban_sdk::token::TokenInterface;
 
 use soroban_sdk::{assert_with_error, contract, contractimpl, token, Address, BytesN, Env, String};
 use soroban_token_sdk::event::Events as TokenEvents;
 
 #[contract]
+#[derive(Upgradable)]
 pub struct InterchainToken;
 
 #[contractimpl]
@@ -344,28 +345,6 @@ impl InterchainToken {
         let key = DataKey::Balance(addr);
         env.storage().persistent().set(&key, &amount);
         Self::extend_balance_ttl(env, &key);
-    }
-}
-
-#[contractimpl]
-impl MigratableInterface for InterchainToken {
-    type MigrationData = ();
-    type Error = ContractError;
-
-    fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
-        interfaces::migrate::<Self>(env, || Self::run_migration(env, migration_data))
-            .map_err(|_| ContractError::MigrationNotAllowed)
-    }
-}
-
-#[contractimpl]
-impl UpgradableInterface for InterchainToken {
-    fn version(env: &Env) -> String {
-        String::from_str(env, env!("CARGO_PKG_VERSION"))
-    }
-
-    fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
-        interfaces::upgrade::<Self>(env, new_wasm_hash);
     }
 }
 

@@ -20,6 +20,14 @@ cargo install --locked stellar-cli --features opt
 
 ```bash
 cargo build
+```
+
+## Build wasm
+
+```bash
+cargo wasm
+
+# OR
 
 stellar contract build
 ```
