@@ -8,7 +8,6 @@ use soroban_sdk::{testutils::Address as _, token::StellarAssetClient, Address, E
 pub const HUB_CHAIN: &str = "hub_chain";
 const HUB_ADDRESS: &str = "hub_address";
 
-// AXE-6867: Make interchain token wasm hash file maintanable
 const INTERCHAIN_TOKEN_WASM_HASH: &[u8] = include_bytes!("../testdata/interchain_token.wasm");
 
 pub fn setup_gas_service<'a>(env: &Env) -> AxelarGasServiceClient<'a> {

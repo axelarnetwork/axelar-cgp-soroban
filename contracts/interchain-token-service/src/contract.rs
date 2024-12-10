@@ -1,6 +1,7 @@
 use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::{executable::AxelarExecutableInterface, AxelarGatewayMessagingClient};
 use axelar_soroban_std::interfaces::{MigratableInterface, OwnableInterface, UpgradableInterface};
+use axelar_soroban_std::types::zero_adress;
 use axelar_soroban_std::{ensure, interfaces, types::Token};
 use interchain_token::InterchainTokenClient;
 use soroban_sdk::xdr::ToXdr;
@@ -130,7 +131,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     fn interchain_token_id(env: &Env, sender: Option<Address>, salt: BytesN<32>) -> BytesN<32> {
         let value = match sender {
             Some(sender) => (PREFIX_INTERCHAIN_TOKEN_ID, sender, salt).to_xdr(env),
-            None => (salt).to_xdr(env),
+            None => (zero_adress(env), salt).to_xdr(env),
         };
         env.crypto().keccak256(&value).into()
     }
@@ -177,7 +178,6 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         if initial_supply > 0 {
             let token = InterchainTokenClient::new(env, &deployed_address);
 
-            // AXE-6858: the tokenManager related logic needs to be implemented here.
             token.mint(&env.current_contract_address(), &caller, &initial_supply);
 
             if let Some(minter) = minter {
