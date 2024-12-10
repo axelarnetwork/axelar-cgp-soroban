@@ -4,28 +4,14 @@ use crate::messaging_interface::AxelarGatewayMessagingInterface;
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::types::{CommandType, Message, Proof, WeightedSigners};
 use crate::{auth, event};
-use axelar_soroban_std::interfaces::{
-    OperatableInterface,
-};
 use axelar_soroban_std::ttl::{INSTANCE_TTL_EXTEND_TO, INSTANCE_TTL_THRESHOLD};
-use axelar_soroban_std::{ensure, interfaces, Ownable, Upgradable};
+use axelar_soroban_std::{ensure, interfaces, Ownable, Upgradable, Operatable};
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
 
 #[contract]
-#[derive(Ownable, Upgradable)]
+#[derive(Ownable, Upgradable, Operatable)]
 pub struct AxelarGateway;
-
-#[contractimpl]
-impl OperatableInterface for AxelarGateway {
-    fn operator(env: &Env) -> Address {
-        interfaces::operator(env)
-    }
-
-    fn transfer_operatorship(env: &Env, new_operator: Address) {
-        interfaces::transfer_operatorship::<Self>(env, new_operator);
-    }
-}
 
 #[contractimpl]
 impl AxelarGateway {
