@@ -19,7 +19,7 @@ pub enum ContractError {
     InvalidSignersHash = 11,
     InvalidEpoch = 12,
     EmptySigners = 13,
-    InvalidSignersEpoch = 14,
+    OutdatedSigners = 14,
     /// Messages
     EmptyMessages = 15,
 }

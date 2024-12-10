@@ -62,7 +62,7 @@ pub fn validate_proof(
 
     ensure!(
         current_epoch - signers_epoch <= previous_signers_retention,
-        ContractError::InvalidSignersEpoch
+        ContractError::OutdatedSigners
     );
 
     let msg_hash = message_hash_to_sign(env, signers_hash, data_hash);
@@ -652,7 +652,7 @@ mod tests {
         env.as_contract(&client.address, || {
             assert_err!(
                 auth::validate_proof(&env, &msg_hash, proof),
-                ContractError::InvalidSignersEpoch
+                ContractError::OutdatedSigners
             )
         });
     }
