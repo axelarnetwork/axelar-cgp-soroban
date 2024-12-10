@@ -84,6 +84,7 @@ pub enum DataKey {
 }
 
 #[contracterror]
+#[derive(Debug)]
 pub enum ContractError {
     SomeFailure = 1,
 }

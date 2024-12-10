@@ -108,15 +108,20 @@ macro_rules! assert_some {
 #[macro_export]
 macro_rules! assert_invoke_auth_ok {
     ($caller:expr, $client:ident . $method:ident ( $($arg:expr),* $(,)? )) => {{
-        use soroban_sdk::{IntoVal};
+        use soroban_sdk::IntoVal;
 
         let call_result = $client
             .mock_auths($crate::mock_auth!($caller, $client, $method, $($arg),*))
             .$method($($arg),*);
 
         match call_result {
-            Ok(_) => {}
-            Err(_) => panic!("Expected Ok result, but got an error."),
+            Ok(outer) => {
+                match outer {
+                    Ok(inner) => {inner},
+                    Err(err) => panic!("Expected Ok result, but got an error {:?}", err),
+                }
+            }
+            Err(err) => panic!("Expected Ok result, but got an error {:?}", err),
         }
     }};
 }
