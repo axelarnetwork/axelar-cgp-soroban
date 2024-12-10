@@ -5,10 +5,10 @@ use crate::event;
 use crate::interface::AxelarGasServiceInterface;
 use crate::storage_types::DataKey;
 use axelar_soroban_std::{ensure, interfaces, types::Token};
-use axelar_soroban_std_derive::upgradable;
+use axelar_soroban_std_derive::{Ownable, Upgradable};
 
-#[upgradable]
 #[contract]
+#[derive(Ownable, Upgradable)]
 pub struct AxelarGasService;
 
 #[contractimpl]

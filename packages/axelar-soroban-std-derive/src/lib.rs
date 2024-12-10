@@ -10,10 +10,10 @@ use syn::{
 /// ```rust
 /// # mod test {
 /// # use soroban_sdk::{contract, contractimpl, Address, Env};
-/// use axelar_soroban_std_derive::ownable;
+/// use axelar_soroban_std_derive::Ownable;
 ///
-/// #[ownable]
 /// #[contract]
+/// #[derive(Ownable)]
 /// pub struct Contract;
 ///
 /// #[contractimpl]
@@ -24,15 +24,13 @@ use syn::{
 /// }
 /// # }
 /// ```
-#[proc_macro_attribute]
-pub fn ownable(_attr: TokenStream, input: TokenStream) -> TokenStream {
+#[proc_macro_derive(Ownable)]
+pub fn derive_ownable(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
 
     let expanded = quote! {
         use ::axelar_soroban_std::interfaces::OwnableInterface;
-
-        #input
 
         #[::soroban_sdk::contractimpl]
         impl ::axelar_soroban_std::interfaces::OwnableInterface for #name {
@@ -45,13 +43,11 @@ pub fn ownable(_attr: TokenStream, input: TokenStream) -> TokenStream {
             }
         }
     };
-
     TokenStream::from(expanded)
 }
 
 struct UpgradableArgs {
     migration_data: Option<Type>,
-    ownable_impl: bool,
 }
 
 impl Parse for UpgradableArgs {
@@ -59,40 +55,26 @@ impl Parse for UpgradableArgs {
         if input.is_empty() {
             return Ok(Self {
                 migration_data: None,
-                ownable_impl: true,
             });
         }
 
-        let mut migration_data = None;
-        let mut ownable_impl = true;
+        let ident: Ident = input.parse()?;
+        if ident != "migration_data" {
+            return Err(Error::new(
+                ident.span(),
+                "expected `migration_data=..`",
+            ));
+        }
 
-        while !input.is_empty() {
-            let ident: Ident = input.parse()?;
-            input.parse::<Token![=]>()?;
+        input.parse::<Token![=]>()?;
+        let migration_data = Some(input.parse::<Type>()?);
 
-            match ident.to_string().as_str() {
-                "migration_data" => {
-                    migration_data = Some(input.parse::<Type>()?);
-                }
-                "ownable_impl" => {
-                    ownable_impl = input.parse::<syn::LitBool>()?.value;
-                }
-                _ => {
-                    return Err(Error::new(
-                        ident.span(),
-                        "expected `migration_data=..` or `ownable_impl=..`",
-                    ))
-                }
-            }
-
-            if !input.is_empty() {
-                input.parse::<Token![,]>()?;
-            }
+        if !input.is_empty() {
+            input.parse::<Token![,]>()?;
         }
 
         Ok(Self {
             migration_data,
-            ownable_impl,
         })
     }
 }
@@ -105,7 +87,7 @@ impl Parse for UpgradableArgs {
 /// ```rust
 /// # mod test {
 /// # use soroban_sdk::{contract, contractimpl, contracterror, Address, Env};
-/// use axelar_soroban_std_derive::upgradable;
+/// use axelar_soroban_std_derive::{Ownable, Upgradable};
 /// # #[contracterror]
 /// # #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 /// # #[repr(u32)]
@@ -113,8 +95,9 @@ impl Parse for UpgradableArgs {
 /// #     MigrationNotAllowed = 1,
 /// # }
 ///
-/// #[upgradable]
 /// #[contract]
+/// #[derive(Ownable, Upgradable)]
+/// #[upgradable(migration_data = ())]
 /// pub struct Contract;
 ///
 /// #[contractimpl]
@@ -129,11 +112,21 @@ impl Parse for UpgradableArgs {
 /// }
 /// # }
 /// ```
-#[proc_macro_attribute]
-pub fn upgradable(attr: TokenStream, input: TokenStream) -> TokenStream {
-    let args = parse_macro_input!(attr as UpgradableArgs);
+#[proc_macro_derive(Upgradable, attributes(upgradable))]
+pub fn derive_upgradable(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
+
+    let args = input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("upgradable"))
+        .map(|attr| attr.parse_args::<UpgradableArgs>())
+        .transpose()
+        .unwrap_or_else(|e| panic!("{}", e))
+        .unwrap_or_else(|| UpgradableArgs {
+            migration_data: None,
+        });
 
     syn::parse_str::<syn::Type>("ContractError")
         .map_err(|_| {
@@ -146,6 +139,7 @@ pub fn upgradable(attr: TokenStream, input: TokenStream) -> TokenStream {
                  #[repr(u32)]\n\
                  pub enum ContractError {\n    \
                      MigrationNotAllowed = 1,\n\
+                     ...\n
                  }",
             )
         })
@@ -156,23 +150,15 @@ pub fn upgradable(attr: TokenStream, input: TokenStream) -> TokenStream {
         .as_ref()
         .map_or_else(|| quote! { () }, |ty| quote! { #ty });
 
-    let ownable_impl = if args.ownable_impl {
-        quote! { #[::axelar_soroban_std_derive::ownable] }
-    } else {
-        quote! {}
-    };
-
     let expanded = quote! {
         use ::axelar_soroban_std::interfaces::{UpgradableInterface, MigratableInterface};
-
-        #ownable_impl
-        #input
 
         #[::soroban_sdk::contractimpl]
         impl ::axelar_soroban_std::interfaces::UpgradableInterface for #name {
             fn version(env: &Env) -> ::soroban_sdk::String {
                 ::soroban_sdk::String::from_str(env, env!("CARGO_PKG_VERSION"))
             }
+
             fn upgrade(env: &Env, new_wasm_hash: ::soroban_sdk::BytesN<32>) {
                 ::axelar_soroban_std::interfaces::upgrade::<Self>(env, new_wasm_hash);
             }

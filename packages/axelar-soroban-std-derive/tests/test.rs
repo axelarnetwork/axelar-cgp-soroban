@@ -4,7 +4,7 @@ mod testdata;
 
 mod ownable {
     use axelar_soroban_std::{assert_invoke_auth_ok, interfaces::OwnableClient};
-    use axelar_soroban_std_derive::ownable;
+    use axelar_soroban_std_derive::Ownable;
 
     use super::*;
 
@@ -15,8 +15,8 @@ mod ownable {
         MigrationNotAllowed = 1,
     }
 
-    #[ownable]
     #[contract]
+    #[derive(Ownable)]
     pub struct Contract;
 
     #[contractimpl]
@@ -42,7 +42,7 @@ mod ownable {
 
 mod upgradable {
     use axelar_soroban_std::assert_invoke_auth_ok;
-    use axelar_soroban_std_derive::upgradable;
+    use axelar_soroban_std_derive::{Ownable, Upgradable};
 
     use super::*;
 
@@ -53,8 +53,8 @@ mod upgradable {
         MigrationNotAllowed = 1,
     }
 
-    #[upgradable]
     #[contract]
+    #[derive(Ownable, Upgradable)]
     pub struct Contract;
 
     #[contractimpl]

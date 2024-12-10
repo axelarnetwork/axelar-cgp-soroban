@@ -1,5 +1,5 @@
 use axelar_soroban_std::events::Event;
-use axelar_soroban_std_derive::{ownable, upgradable};
+use axelar_soroban_std_derive::{Ownable, Upgradable};
 use core::fmt::Debug;
 use soroban_sdk::{
     contract, contracterror, contractimpl, Address, Env, IntoVal, Symbol, Topics, Val,
@@ -12,9 +12,9 @@ pub enum ContractError {
     MigrationNotAllowed = 1,
 }
 
-#[upgradable(migration_data=(), ownable_impl=false)]
-#[ownable]
 #[contract]
+#[derive(Ownable, Upgradable)]
+#[upgradable(migration_data = ())]
 pub struct Contract;
 
 #[derive(Debug, PartialEq, Eq)]
