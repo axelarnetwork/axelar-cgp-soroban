@@ -4,6 +4,47 @@ use syn::{
     parse::Parse, parse::ParseStream, parse_macro_input, DeriveInput, Error, Ident, Token, Type,
 };
 
+/// Implements the Operatable interface for a Soroban contract.
+///
+/// # Example
+/// ```rust
+/// # mod test {
+/// # use soroban_sdk::{contract, contractimpl, Address, Env};
+/// use axelar_soroban_std_derive::Operatable;
+///
+/// #[contract]
+/// #[derive(Operatable)]
+/// pub struct Contract;
+///
+/// #[contractimpl]
+/// impl Contract {
+///     pub fn __constructor(env: &Env, owner: Address) {
+///         axelar_soroban_std::interfaces::set_operator(env, &owner);
+///     }
+/// }
+/// # }
+/// ```
+#[proc_macro_derive(Operatable)]
+pub fn derive_operatable(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let name = &input.ident;
+
+    quote! {
+        use axelar_soroban_std::interfaces::OperatableInterface;
+
+        #[soroban_sdk::contractimpl]
+        impl axelar_soroban_std::interfaces::OperatableInterface for #name {
+            fn operator(env: &Env) -> soroban_sdk::Address {
+                axelar_soroban_std::interfaces::operator(env)
+            }
+
+            fn transfer_operatorship(env: &Env, new_operator: soroban_sdk::Address) {
+                axelar_soroban_std::interfaces::transfer_operatorship::<Self>(env, new_operator);
+            }
+        }
+    }.into()
+}
+
 /// Implements the Ownable interface for a Soroban contract.
 ///
 /// # Example
@@ -29,7 +70,7 @@ pub fn derive_ownable(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
 
-    let expanded = quote! {
+    quote! {
         use axelar_soroban_std::interfaces::OwnableInterface;
 
         #[soroban_sdk::contractimpl]
@@ -42,8 +83,7 @@ pub fn derive_ownable(input: TokenStream) -> TokenStream {
                 axelar_soroban_std::interfaces::transfer_ownership::<Self>(env, new_owner);
             }
         }
-    };
-    TokenStream::from(expanded)
+    }.into()
 }
 
 struct UpgradableArgs {
@@ -145,7 +185,7 @@ pub fn derive_upgradable(input: TokenStream) -> TokenStream {
         .as_ref()
         .map_or_else(|| quote! { () }, |ty| quote! { #ty });
 
-    let expanded = quote! {
+    quote! {
         use axelar_soroban_std::interfaces::{UpgradableInterface, MigratableInterface};
 
         #[soroban_sdk::contractimpl]
@@ -169,6 +209,5 @@ pub fn derive_upgradable(input: TokenStream) -> TokenStream {
                     .map_err(|_| ContractError::MigrationNotAllowed)
             }
         }
-    };
-    TokenStream::from(expanded)
+    }.into()
 }

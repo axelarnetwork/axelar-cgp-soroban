@@ -1,6 +1,43 @@
 use soroban_sdk::{contract, contracterror, contractimpl, testutils::Address as _, Address, Env};
 
 mod testdata;
+mod operatable {
+    use axelar_soroban_std::{assert_invoke_auth_ok, interfaces::OperatableClient};
+    use axelar_soroban_std_derive::Operatable;
+
+    use super::*;
+
+    #[contracterror]
+    #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+    #[repr(u32)]
+    enum ContractError {
+        MigrationNotAllowed = 1,
+    }
+
+    #[contract]
+    #[derive(Operatable)]
+    pub struct Contract;
+
+    #[contractimpl]
+    impl Contract {
+        pub fn __constructor(env: &Env, operator: Address) {
+            axelar_soroban_std::interfaces::set_operator(env, &operator);
+        }
+    }
+
+    #[test]
+    fn contract_operatorship_transfer_succeeds() {
+        let env = Env::default();
+        let operator = Address::generate(&env);
+        let contract_id = env.register(Contract, (operator.clone(),));
+        let client = OperatableClient::new(&env, &contract_id);
+        assert_eq!(operator, client.operator());
+
+        let new_operator = Address::generate(&env);
+        assert_invoke_auth_ok!(operator, client.try_transfer_operatorship(&new_operator));
+        assert_eq!(new_operator, client.operator());
+    }
+}
 
 mod ownable {
     use axelar_soroban_std::{assert_invoke_auth_ok, interfaces::OwnableClient};
