@@ -26,7 +26,7 @@ pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
 
     fn interchain_token_deploy_salt(env: &Env, deployer: Address, salt: BytesN<32>) -> BytesN<32>;
 
-    fn interchain_token_id(env: &Env, sender: Option<Address>, salt: BytesN<32>) -> BytesN<32>;
+    fn interchain_token_id(env: &Env, sender: Address, salt: BytesN<32>) -> BytesN<32>;
 
     fn deploy_interchain_token(
         env: &Env,

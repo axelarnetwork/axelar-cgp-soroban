@@ -2,6 +2,7 @@ mod utils;
 
 use axelar_soroban_std::assert_contract_err;
 use axelar_soroban_std::assert_invoke_auth_err;
+use axelar_soroban_std::types::zero_address;
 use interchain_token::InterchainTokenClient;
 use interchain_token_service::error::ContractError;
 
@@ -74,8 +75,9 @@ fn deploy_interchain_token_check_token_id() {
     let token_meta_data = setup_token_metadata(&env, "name", "symbol", 6);
     let initial_supply = 100;
 
+    let zero_address = zero_address(&env);
     let deploy_salt = client.interchain_token_deploy_salt(&sender, &salt);
-    let expected_token_id = client.interchain_token_id(&None, &deploy_salt);
+    let expected_token_id = client.interchain_token_id(&zero_address, &deploy_salt);
 
     let (_deployed_address, token_id) =
         client.deploy_interchain_token(&sender, &salt, &token_meta_data, &initial_supply, &minter);

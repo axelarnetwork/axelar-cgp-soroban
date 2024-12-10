@@ -7,8 +7,12 @@ pub struct Token {
     pub amount: i128,
 }
 
-const ZERO_ADDRESS: &str = "0";
+const ZERO_ADDRESS: &str = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
 
-pub fn zero_adress(env: &Env) -> String {
-    String::from_str(env, ZERO_ADDRESS)
+/// Returns Stellar's "dead" address, represented by the constant `ZERO_ADDRESS`.
+///
+/// # Reference
+/// - Stellar GitHub: https://github.com/stellar/js-stellar-base/blob/master/test/unit/address_test.js
+pub fn zero_address(env: &Env) -> Address {
+    Address::from_string(&String::from_str(env, ZERO_ADDRESS))
 }
