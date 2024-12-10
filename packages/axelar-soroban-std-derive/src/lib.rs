@@ -170,9 +170,12 @@ pub fn derive_upgradable(input: TokenStream) -> TokenStream {
         .unwrap_or_else(|e| panic!("{}", e))
         .unwrap_or_else(MigrationArgs::default);
 
-    syn::parse_str::<Type>("ContractError").unwrap_or_else(|_| { panic!("{}", Error::new(
-            name.span(),
-            "ContractError must be defined in scope.\n\
+    syn::parse_str::<Type>("ContractError").unwrap_or_else(|_| {
+        panic!(
+            "{}",
+            Error::new(
+                name.span(),
+                "ContractError must be defined in scope.\n\
                  Hint: Add this to your code:\n\
                  #[contracterror]\n\
                  #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]\n\
@@ -181,8 +184,10 @@ pub fn derive_upgradable(input: TokenStream) -> TokenStream {
                      MigrationNotAllowed = 1,\n\
                      ...\n
                  }",
+            )
+            .to_string()
         )
-        .to_string()) });
+    });
 
     let migration_data = args
         .migration_data
