@@ -1,11 +1,12 @@
 mod utils;
 use axelar_gateway::testutils::{generate_proof, get_approve_hash};
 use axelar_gateway::types::Message as GatewayMessage;
+use axelar_soroban_std::traits::BytesExt;
 use axelar_soroban_std::{assert_emitted_event, assert_last_emitted_event, assert_ok};
 use interchain_token_service::types::{HubMessage, InterchainTransfer, Message};
 use soroban_sdk::xdr::ToXdr;
-use soroban_sdk::{testutils::Address as _, vec, Address, BytesN, String, Symbol};
-use utils::{bytes_from_hex, register_chains, setup_env, setup_gas_token, HUB_CHAIN};
+use soroban_sdk::{testutils::Address as _, vec, Address, Bytes, BytesN, String, Symbol};
+use utils::{register_chains, setup_env, setup_gas_token, HUB_CHAIN};
 
 #[test]
 fn interchain_transfer_send() {
@@ -16,9 +17,9 @@ fn interchain_transfer_send() {
 
     let token_id = BytesN::from_array(&env, &[255u8; 32]);
     let destination_chain = String::from_str(&env, HUB_CHAIN);
-    let destination_address = bytes_from_hex(&env, "4F4495243837681061C4743b74B3eEdf548D56A5");
+    let destination_address = Bytes::from_hex(&env, "4F4495243837681061C4743b74B3eEdf548D56A5");
     let amount = i128::MAX;
-    let data = Some(bytes_from_hex(&env, "abcd"));
+    let data = Some(Bytes::from_hex(&env, "abcd"));
 
     let msg = Message::InterchainTransfer(InterchainTransfer {
         token_id: token_id.clone(),
@@ -76,7 +77,7 @@ fn interchain_transfer_receive() {
 
     let token_id = BytesN::from_array(&env, &[255u8; 32]);
     let amount = i128::MAX;
-    let data = Some(bytes_from_hex(&env, "abcd"));
+    let data = Some(Bytes::from_hex(&env, "abcd"));
 
     let msg = HubMessage::ReceiveFromHub {
         source_chain: String::from_str(&env, HUB_CHAIN),
