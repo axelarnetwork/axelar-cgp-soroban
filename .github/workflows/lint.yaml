@@ -46,5 +46,8 @@ jobs:
       - name: Run cargo clippy (all features)
         run: cargo clippy --workspace --all-features --fix -- -D warnings
 
+      - name: Run cargo doc
+        run: cargo doc --no-deps --workspace
+
       - name: Check for uncommitted changes
         run: git diff --exit-code
