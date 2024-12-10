@@ -2,7 +2,7 @@ use axelar_gateway::error::ContractError;
 use axelar_gateway::testutils::{generate_proof, generate_signers_set, randint};
 use axelar_gateway::types::{ProofSignature, ProofSigner, WeightedSigner, WeightedSigners};
 use axelar_gateway::AxelarGateway;
-use axelar_soroban_std::{assert_contract_err, assert_invoke_auth_ok, invoke_auth};
+use axelar_soroban_std::{assert_contract_err, assert_invoke_auth_ok};
 use soroban_sdk::{
     testutils::{Address as _, BytesN as _},
     Address, BytesN, Env, Vec,
@@ -149,10 +149,9 @@ fn rotate_signers_fail_empty_signers() {
     let proof = generate_proof(&env, data_hash, signers);
 
     assert_contract_err!(
-        invoke_auth!(
-            client.operator(),
-            client.try_rotate_signers(&empty_signers, &proof, &true)
-        ),
+        client
+            .mock_all_auths()
+            .try_rotate_signers(&empty_signers, &proof, &true),
         ContractError::InvalidSigners
     );
 }
@@ -173,10 +172,9 @@ fn rotate_signers_fail_zero_weight() {
     let proof = generate_proof(&env, data_hash, signers);
 
     assert_contract_err!(
-        invoke_auth!(
-            client.operator(),
-            client.try_rotate_signers(&new_signers.signers, &proof, &true)
-        ),
+        client
+            .mock_all_auths()
+            .try_rotate_signers(&new_signers.signers, &proof, &true),
         ContractError::InvalidWeight
     );
 }
@@ -197,10 +195,9 @@ fn rotate_signers_fail_weight_overflow() {
     let proof = generate_proof(&env, data_hash, signers);
 
     assert_contract_err!(
-        invoke_auth!(
-            client.operator(),
-            client.try_rotate_signers(&new_signers.signers, &proof, &true)
-        ),
+        client
+            .mock_all_auths()
+            .try_rotate_signers(&new_signers.signers, &proof, &true),
         ContractError::WeightOverflow
     );
 }
@@ -216,10 +213,9 @@ fn rotate_signers_fail_zero_threshold() {
     let proof = generate_proof(&env, data_hash, signers);
 
     assert_contract_err!(
-        invoke_auth!(
-            client.operator(),
-            client.try_rotate_signers(&new_signers.signers, &proof, &true)
-        ),
+        client
+            .mock_all_auths()
+            .try_rotate_signers(&new_signers.signers, &proof, &true),
         ContractError::InvalidThreshold
     );
 }
@@ -245,10 +241,9 @@ fn rotate_signers_fail_low_total_weight() {
     let proof = generate_proof(&env, data_hash, signers);
 
     assert_contract_err!(
-        invoke_auth!(
-            client.operator(),
-            client.try_rotate_signers(&new_signers.signers, &proof, &true)
-        ),
+        client
+            .mock_all_auths()
+            .try_rotate_signers(&new_signers.signers, &proof, &true),
         ContractError::InvalidThreshold
     );
 }
@@ -276,10 +271,9 @@ fn rotate_signers_fail_wrong_signer_order() {
     let proof = generate_proof(&env, data_hash, signers);
 
     assert_contract_err!(
-        invoke_auth!(
-            client.operator(),
-            client.try_rotate_signers(&new_signers.signers, &proof, &true)
-        ),
+        client
+            .mock_all_auths()
+            .try_rotate_signers(&new_signers.signers, &proof, &true),
         ContractError::InvalidSigners
     )
 }
@@ -301,10 +295,9 @@ fn rotate_signers_fail_duplicated_signers() {
     let proof = generate_proof(&env, data_hash, new_signers);
 
     assert_contract_err!(
-        invoke_auth!(
-            client.operator(),
-            client.try_rotate_signers(&duplicated_signers.signers, &proof, &true)
-        ),
+        client
+            .mock_all_auths()
+            .try_rotate_signers(&duplicated_signers.signers, &proof, &true),
         ContractError::DuplicateSigners
     );
 }
@@ -334,10 +327,9 @@ fn rotate_signers_panics_on_outdated_signer_set() {
     let proof = generate_proof(&env, msg_hash.clone(), original_signers.clone());
 
     assert_contract_err!(
-        invoke_auth!(
-            client.operator(),
-            client.try_rotate_signers(&original_signers.signers, &proof, &true)
-        ),
+        client
+            .mock_all_auths()
+            .try_rotate_signers(&original_signers.signers, &proof, &true),
         ContractError::InvalidSigners
     );
 }
