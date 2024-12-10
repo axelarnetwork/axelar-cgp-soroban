@@ -11,6 +11,7 @@ crate-type = ["rlib"]
 
 [dependencies]
 soroban-sdk = { workspace = true }
+axelar-soroban-std-derive = { workspace = true, optional = true }
 
 [dev-dependencies]
 goldie = { workspace = true }
@@ -18,6 +19,7 @@ soroban-sdk = { workspace = true, features = ["testutils"] }
 
 [features]
 testutils = ["soroban-sdk/testutils"]
+derive = ["dep:axelar-soroban-std-derive"]
 
 [lints]
 workspace = true

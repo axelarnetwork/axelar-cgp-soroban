@@ -21,3 +21,6 @@ pub mod ttl;
 pub mod events;
 
 pub mod interfaces;
+
+#[cfg(feature = "derive")]
+pub use axelar_soroban_std_derive::*;

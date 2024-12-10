@@ -11,7 +11,6 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 axelar-soroban-std = { workspace = true }
-axelar-soroban-std-derive = { workspace = true }
 cfg-if = { workspace = true }
 soroban-sdk = { workspace = true }
 

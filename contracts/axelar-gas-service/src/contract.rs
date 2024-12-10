@@ -5,7 +5,7 @@ use crate::event;
 use crate::interface::AxelarGasServiceInterface;
 use crate::storage_types::DataKey;
 use axelar_soroban_std::{ensure, interfaces, types::Token};
-use axelar_soroban_std_derive::{Ownable, Upgradable};
+use axelar_soroban_std::{Ownable, Upgradable};
 
 #[contract]
 #[derive(Ownable, Upgradable)]
