@@ -15,4 +15,5 @@ pub enum ContractError {
     AbiDecodeFailed = 9,
     InvalidAmount = 10,
     InvalidUtf8 = 11,
+    InvalidMinter = 12,
 }
