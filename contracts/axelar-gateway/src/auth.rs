@@ -30,7 +30,7 @@ pub fn initialize_auth(
         .instance()
         .set(&DataKey::MinimumRotationDelay, &minimum_rotation_delay);
 
-    ensure!(!initial_signers.is_empty(), ContractError::InvalidSigners);
+    ensure!(!initial_signers.is_empty(), ContractError::EmptySigners);
 
     for signers in initial_signers.into_iter() {
         rotate_signers(&env, &signers, false)?;
@@ -62,7 +62,7 @@ pub fn validate_proof(
 
     ensure!(
         current_epoch - signers_epoch <= previous_signers_retention,
-        ContractError::InvalidSigners
+        ContractError::InvalidSignersEpoch
     );
 
     let msg_hash = message_hash_to_sign(env, signers_hash, data_hash);
@@ -206,7 +206,7 @@ fn validate_signatures(env: &Env, msg_hash: Hash<32>, proof: Proof) -> bool {
 fn validate_signers(env: &Env, weighted_signers: &WeightedSigners) -> Result<(), ContractError> {
     ensure!(
         !weighted_signers.signers.is_empty(),
-        ContractError::InvalidSigners
+        ContractError::EmptySigners
     );
 
     // TODO: what's the min address/hash?
@@ -289,7 +289,7 @@ mod tests {
                     previous_signer_retention,
                     initial_signers,
                 ),
-                ContractError::InvalidSigners
+                ContractError::EmptySigners
             );
         })
     }
@@ -477,7 +477,7 @@ mod tests {
         // should throw an error, empty signer set
         assert_err!(
             auth::rotate_signers(&env, &empty_signers, false),
-            ContractError::InvalidSigners
+            ContractError::EmptySigners
         );
     }
 
@@ -652,7 +652,7 @@ mod tests {
         env.as_contract(&client.address, || {
             assert_err!(
                 auth::validate_proof(&env, &msg_hash, proof),
-                ContractError::InvalidSigners
+                ContractError::InvalidSignersEpoch
             )
         });
     }
