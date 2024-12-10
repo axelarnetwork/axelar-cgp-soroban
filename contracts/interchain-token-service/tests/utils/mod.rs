@@ -8,7 +8,6 @@ use interchain_token_service::{InterchainTokenService, InterchainTokenServiceCli
 use soroban_sdk::{testutils::Address as _, token::StellarAssetClient, Address, Env, String};
 
 pub const HUB_CHAIN: &str = "hub_chain";
-const HUB_ADDRESS: &str = "hub_address";
 
 fn setup_gas_service<'a>(env: &Env) -> AxelarGasServiceClient<'a> {
     let owner: Address = Address::generate(env);
@@ -25,10 +24,17 @@ fn setup_its<'a>(
     gas_service: &AxelarGasServiceClient,
 ) -> InterchainTokenServiceClient<'a> {
     let owner = Address::generate(env);
+    let its_hub_address = String::from_str(env, "its_hub_address");
     let chain_name = String::from_str(env, "chain_name");
     let contract_id = env.register(
         InterchainTokenService,
-        (&owner, &gateway.address, &gas_service.address, chain_name),
+        (
+            &owner,
+            &gateway.address,
+            &gas_service.address,
+            its_hub_address,
+            chain_name,
+        ),
     );
 
     InterchainTokenServiceClient::new(env, &contract_id)
@@ -66,11 +72,5 @@ pub fn setup_gas_token(env: &Env, sender: &Address) -> Token {
 
 pub fn register_chains(env: &Env, client: &InterchainTokenServiceClient) {
     let chain = String::from_str(env, HUB_CHAIN);
-    client
-        .mock_all_auths()
-        .set_trusted_address(&chain, &client.its_hub_routing_identifier());
-
-    let chain = client.its_hub_chain_name();
-    let addr = String::from_str(env, HUB_ADDRESS);
-    client.mock_all_auths().set_trusted_address(&chain, &addr);
+    client.mock_all_auths().set_trusted_chain(&chain);
 }

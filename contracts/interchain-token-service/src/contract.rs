@@ -14,7 +14,6 @@ use crate::storage_types::DataKey;
 use crate::types::{HubMessage, InterchainTransfer, Message};
 
 const ITS_HUB_CHAIN_NAME: &str = "axelar";
-const ITS_HUB_ROUTING_IDENTIFIER: &str = "hub";
 const PREFIX_INTERCHAIN_TOKEN_SALT: &str = "interchain-token-salt";
 
 #[contract]
@@ -27,6 +26,7 @@ impl InterchainTokenService {
         owner: Address,
         gateway: Address,
         gas_service: Address,
+        its_hub_address: String,
         chain_name: String,
     ) {
         interfaces::set_owner(&env, &owner);
@@ -34,6 +34,9 @@ impl InterchainTokenService {
         env.storage()
             .instance()
             .set(&DataKey::GasService, &gas_service);
+        env.storage()
+            .instance()
+            .set(&DataKey::ItsHub, &its_hub_address);
         env.storage()
             .instance()
             .set(&DataKey::ChainName, &chain_name);
@@ -50,49 +53,50 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         env.storage().instance().get(&DataKey::GasService).unwrap()
     }
 
-    fn its_hub_routing_identifier(env: &Env) -> String {
-        String::from_str(env, ITS_HUB_ROUTING_IDENTIFIER)
+    fn its_hub_address(env: &Env) -> String {
+        env.storage().instance().get(&DataKey::ItsHub).unwrap()
     }
 
     fn its_hub_chain_name(env: &Env) -> String {
         String::from_str(env, ITS_HUB_CHAIN_NAME)
     }
 
-    fn trusted_address(env: &Env, chain: String) -> Option<String> {
+    fn trusted_chain(env: &Env, chain: String) -> bool {
         env.storage()
             .persistent()
-            .get(&DataKey::TrustedAddress(chain))
+            .has(&DataKey::TrustedChain(chain))
     }
 
-    fn set_trusted_address(env: &Env, chain: String, address: String) -> Result<(), ContractError> {
+    fn set_trusted_chain(env: &Env, chain: String) -> Result<(), ContractError> {
         Self::owner(env).require_auth();
 
-        let key = DataKey::TrustedAddress(chain.clone());
+        let key = DataKey::TrustedChain(chain.clone());
 
         ensure!(
             !env.storage().persistent().has(&key),
-            ContractError::TrustedAddressAlreadySet
+            ContractError::TrustedChainAlreadySet
         );
 
-        env.storage().persistent().set(&key, &address);
+        env.storage().persistent().set(&key, &true);
 
-        event::set_trusted_address(env, chain, address);
+        event::set_trusted_chain(env, chain);
 
         Ok(())
     }
 
-    fn remove_trusted_address(env: &Env, chain: String) -> Result<(), ContractError> {
+    fn remove_trusted_chain(env: &Env, chain: String) -> Result<(), ContractError> {
         Self::owner(env).require_auth();
 
-        let Some(trusted_address) = Self::trusted_address(env, chain.clone()) else {
-            return Err(ContractError::NoTrustedAddressSet);
-        };
+        let key = DataKey::TrustedChain(chain.clone());
 
-        env.storage()
-            .persistent()
-            .remove(&DataKey::TrustedAddress(chain.clone()));
+        ensure!(
+            env.storage().persistent().has(&key),
+            ContractError::TrustedChainNotSet
+        );
 
-        event::remove_trusted_address(env, chain, trusted_address);
+        env.storage().persistent().remove(&key);
+
+        event::remove_trusted_chain(env, chain);
 
         Ok(())
     }
@@ -210,15 +214,17 @@ impl InterchainTokenService {
         let gateway = AxelarGatewayMessagingClient::new(env, &Self::gateway(env));
         let gas_service = AxelarGasServiceClient::new(env, &Self::gas_service(env));
 
-        let payload = Self::get_call_params(env, destination_chain, message)?;
+        let payload = Self::get_call_params(env, destination_chain.clone(), message)?;
 
-        let destination_address = Self::trusted_address(env, Self::its_hub_chain_name(env))
-            .ok_or(ContractError::NoTrustedAddressSet)?;
+        ensure!(
+            Self::trusted_chain(env, destination_chain),
+            ContractError::UntrustedChain
+        );
 
         gas_service.pay_gas(
             &env.current_contract_address(),
             &Self::its_hub_chain_name(env),
-            &destination_address,
+            &Self::its_hub_address(env),
             &payload,
             &caller,
             &gas_token,
@@ -228,7 +234,7 @@ impl InterchainTokenService {
         gateway.call_contract(
             &env.current_contract_address(),
             &Self::its_hub_chain_name(env),
-            &destination_address,
+            &Self::its_hub_address(env),
             &payload,
         );
 
@@ -297,11 +303,8 @@ impl InterchainTokenService {
             return Err(ContractError::InvalidMessageType);
         };
 
-        let trusted_address = Self::trusted_address(env, original_source_chain.clone());
-        let routing_identifier = Self::its_hub_routing_identifier(env);
-
         ensure!(
-            trusted_address.is_some_and(|addr| addr == routing_identifier),
+            Self::trusted_chain(env, original_source_chain.clone()),
             ContractError::UntrustedChain
         );
 
@@ -315,17 +318,7 @@ impl InterchainTokenService {
     ) -> Result<Bytes, ContractError> {
         // Note: ITS Hub chain as the actual destination chain for the messsage isn't supported
         ensure!(
-            destination_chain != Self::its_hub_chain_name(env),
-            ContractError::UntrustedChain
-        );
-
-        let Some(destination_address) = Self::trusted_address(env, destination_chain.clone())
-        else {
-            return Err(ContractError::UntrustedChain);
-        };
-
-        ensure!(
-            destination_address == Self::its_hub_routing_identifier(env),
+            Self::trusted_chain(env, destination_chain.clone()),
             ContractError::UntrustedChain
         );
 
