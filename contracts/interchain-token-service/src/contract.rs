@@ -13,7 +13,7 @@ use crate::error::ContractError;
 use crate::event;
 use crate::interface::InterchainTokenServiceInterface;
 use crate::storage_types::DataKey;
-use crate::types::{HubMessage, InterchainTransfer, Message};
+use crate::types::{HubMessage, InterchainTransfer, Message, TokenData, TokenManagerType};
 
 const ITS_HUB_CHAIN_NAME: &str = "axelar";
 const PREFIX_INTERCHAIN_TOKEN_ID: &str = "its-interchain-token-id";
@@ -148,6 +148,13 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
             .into()
     }
 
+    fn token_data(env: &Env, token_id: BytesN<32>) -> TokenData {
+        env.storage()
+            .persistent()
+            .get(&DataKey::TokenId(token_id))
+            .expect("Token data not found")
+    }
+
     fn deploy_interchain_token(
         env: &Env,
         caller: Address,
@@ -155,7 +162,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         token_meta_data: TokenMetadata,
         initial_supply: i128,
         minter: Option<Address>,
-    ) -> Result<(Address, BytesN<32>), ContractError> {
+    ) -> Result<BytesN<32>, ContractError> {
         caller.require_auth();
 
         let initial_minter = if initial_supply > 0 {
@@ -198,7 +205,16 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
             }
         }
 
-        Ok((deployed_address, token_id))
+        let token_data = TokenData {
+            token_address: deployed_address,
+            token_manager_type: TokenManagerType::NativeInterchainToken,
+        };
+
+        env.storage()
+            .persistent()
+            .set(&DataKey::TokenId(token_id.clone()), &token_data);
+
+        Ok(token_id)
     }
 
     fn deploy_remote_interchain_token(

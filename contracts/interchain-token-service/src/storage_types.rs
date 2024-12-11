@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, String};
+use soroban_sdk::{contracttype, BytesN, String};
 
 #[contracttype]
 #[derive(Clone, Debug)]
@@ -9,4 +9,5 @@ pub enum DataKey {
     ItsHubAddress,
     ChainName,
     InterchainTokenWasmHash,
+    TokenId(BytesN<32>),
 }
