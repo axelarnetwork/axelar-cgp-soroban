@@ -1,20 +1,12 @@
 use soroban_sdk::{Bytes, BytesN, Env, String, Symbol};
 
-pub fn set_trusted_address(env: &Env, chain: String, trusted_address: String) {
-    let topics = (
-        Symbol::new(env, "trusted_address_set"),
-        chain,
-        trusted_address,
-    );
+pub fn set_trusted_chain(env: &Env, chain: String) {
+    let topics = (Symbol::new(env, "trusted_chain_set"), chain);
     env.events().publish(topics, ());
 }
 
-pub fn remove_trusted_address(env: &Env, chain: String, trusted_address: String) {
-    let topics = (
-        Symbol::new(env, "trusted_address_removed"),
-        chain,
-        trusted_address,
-    );
+pub fn remove_trusted_chain(env: &Env, chain: String) {
+    let topics = (Symbol::new(env, "trusted_chain_removed"), chain);
     env.events().publish(topics, ());
 }
 

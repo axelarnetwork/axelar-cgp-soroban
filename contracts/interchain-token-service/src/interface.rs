@@ -14,15 +14,15 @@ pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
 
     fn interchain_token_wasm_hash(env: &Env) -> BytesN<32>;
 
-    fn its_hub_routing_identifier(env: &Env) -> String;
+    fn its_hub_address(env: &Env) -> String;
 
     fn its_hub_chain_name(env: &Env) -> String;
 
-    fn trusted_address(env: &Env, chain: String) -> Option<String>;
+    fn is_trusted_chain(env: &Env, chain: String) -> bool;
 
-    fn set_trusted_address(env: &Env, chain: String, address: String) -> Result<(), ContractError>;
+    fn set_trusted_chain(env: &Env, chain: String) -> Result<(), ContractError>;
 
-    fn remove_trusted_address(env: &Env, chain: String) -> Result<(), ContractError>;
+    fn remove_trusted_chain(env: &Env, chain: String) -> Result<(), ContractError>;
 
     fn interchain_token_deploy_salt(env: &Env, deployer: Address, salt: BytesN<32>) -> BytesN<32>;
 

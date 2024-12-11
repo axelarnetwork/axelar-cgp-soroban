@@ -36,9 +36,7 @@ fn interchain_transfer_send() {
     .abi_encode(&env));
 
     let expected_destination_chain = client.its_hub_chain_name();
-    let expected_destination_address = client
-        .trusted_address(&client.its_hub_chain_name())
-        .unwrap();
+    let expected_destination_address = client.its_hub_address();
     let expected_payload_hash: BytesN<32> = env.crypto().keccak256(&expected_payload).into();
 
     client.mock_all_auths().interchain_transfer(
