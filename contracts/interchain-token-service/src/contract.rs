@@ -102,7 +102,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
             ContractError::TrustedChainAlreadySet
         );
 
-        env.storage().persistent().set(&key, &true);
+        env.storage().persistent().set(&key, &());
 
         event::set_trusted_chain(env, chain);
 
@@ -283,10 +283,21 @@ impl InterchainTokenService {
         message: Message,
         gas_token: Token,
     ) -> Result<(), ContractError> {
+        // Note: ITS Hub chain as the actual destination chain for the messsage isn't supported
+        ensure!(
+            Self::is_trusted_chain(env, destination_chain.clone()),
+            ContractError::UntrustedChain
+        );
+
         let gateway = AxelarGatewayMessagingClient::new(env, &Self::gateway(env));
         let gas_service = AxelarGasServiceClient::new(env, &Self::gas_service(env));
 
-        let payload = Self::get_call_params(env, destination_chain, message)?;
+        let payload = HubMessage::SendToHub {
+            destination_chain,
+            message,
+        }
+        .abi_encode(env)?;
+
         let hub_chain = Self::its_hub_chain_name(env);
         let hub_address = Self::its_hub_address(env);
 
@@ -378,25 +389,5 @@ impl InterchainTokenService {
         );
 
         Ok((original_source_chain, inner_message))
-    }
-
-    fn get_call_params(
-        env: &Env,
-        destination_chain: String,
-        message: Message,
-    ) -> Result<Bytes, ContractError> {
-        // Note: ITS Hub chain as the actual destination chain for the messsage isn't supported
-        ensure!(
-            Self::is_trusted_chain(env, destination_chain.clone()),
-            ContractError::UntrustedChain
-        );
-
-        let payload = HubMessage::SendToHub {
-            destination_chain,
-            message,
-        }
-        .abi_encode(env)?;
-
-        Ok(payload)
     }
 }
