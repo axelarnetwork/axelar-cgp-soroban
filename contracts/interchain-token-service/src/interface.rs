@@ -16,7 +16,7 @@ pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
 
     fn its_hub_chain_name(env: &Env) -> String;
 
-    fn trusted_chain(env: &Env, chain: String) -> bool;
+    fn is_trusted_chain(env: &Env, chain: String) -> bool;
 
     fn set_trusted_chain(env: &Env, chain: String) -> Result<(), ContractError>;
 
