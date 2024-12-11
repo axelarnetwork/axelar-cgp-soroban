@@ -16,7 +16,6 @@ use crate::storage_types::DataKey;
 use crate::types::{HubMessage, InterchainTransfer, Message};
 
 const ITS_HUB_CHAIN_NAME: &str = "axelar";
-const ITS_HUB_ROUTING_IDENTIFIER: &str = "hub";
 const PREFIX_INTERCHAIN_TOKEN_ID: &str = "its-interchain-token-id";
 const PREFIX_INTERCHAIN_TOKEN_SALT: &str = "interchain-token-salt";
 
@@ -31,6 +30,7 @@ impl InterchainTokenService {
         owner: Address,
         gateway: Address,
         gas_service: Address,
+        its_hub_address: String,
         chain_name: String,
         interchain_token_wasm_hash: BytesN<32>,
     ) {
@@ -39,6 +39,9 @@ impl InterchainTokenService {
         env.storage()
             .instance()
             .set(&DataKey::GasService, &gas_service);
+        env.storage()
+            .instance()
+            .set(&DataKey::ItsHubAddress, &its_hub_address);
         env.storage()
             .instance()
             .set(&DataKey::ChainName, &chain_name);
@@ -52,11 +55,17 @@ impl InterchainTokenService {
 #[contractimpl]
 impl InterchainTokenServiceInterface for InterchainTokenService {
     fn chain_name(env: &Env) -> String {
-        env.storage().instance().get(&DataKey::ChainName).unwrap()
+        env.storage()
+            .instance()
+            .get(&DataKey::ChainName)
+            .expect("chain name not found")
     }
 
     fn gas_service(env: &Env) -> Address {
-        env.storage().instance().get(&DataKey::GasService).unwrap()
+        env.storage()
+            .instance()
+            .get(&DataKey::GasService)
+            .expect("gas service not found")
     }
 
     fn interchain_token_wasm_hash(env: &Env) -> BytesN<32> {
@@ -66,49 +75,53 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
             .expect("interchain token wasm hash not found")
     }
 
-    fn its_hub_routing_identifier(env: &Env) -> String {
-        String::from_str(env, ITS_HUB_ROUTING_IDENTIFIER)
+    fn its_hub_address(env: &Env) -> String {
+        env.storage()
+            .instance()
+            .get(&DataKey::ItsHubAddress)
+            .expect("its hub address not found")
     }
 
     fn its_hub_chain_name(env: &Env) -> String {
         String::from_str(env, ITS_HUB_CHAIN_NAME)
     }
 
-    fn trusted_address(env: &Env, chain: String) -> Option<String> {
+    fn is_trusted_chain(env: &Env, chain: String) -> bool {
         env.storage()
             .persistent()
-            .get(&DataKey::TrustedAddress(chain))
+            .has(&DataKey::TrustedChain(chain))
     }
 
-    fn set_trusted_address(env: &Env, chain: String, address: String) -> Result<(), ContractError> {
+    fn set_trusted_chain(env: &Env, chain: String) -> Result<(), ContractError> {
         Self::owner(env).require_auth();
 
-        let key = DataKey::TrustedAddress(chain.clone());
+        let key = DataKey::TrustedChain(chain.clone());
 
         ensure!(
             !env.storage().persistent().has(&key),
-            ContractError::TrustedAddressAlreadySet
+            ContractError::TrustedChainAlreadySet
         );
 
-        env.storage().persistent().set(&key, &address);
+        env.storage().persistent().set(&key, &());
 
-        event::set_trusted_address(env, chain, address);
+        event::set_trusted_chain(env, chain);
 
         Ok(())
     }
 
-    fn remove_trusted_address(env: &Env, chain: String) -> Result<(), ContractError> {
+    fn remove_trusted_chain(env: &Env, chain: String) -> Result<(), ContractError> {
         Self::owner(env).require_auth();
 
-        let Some(trusted_address) = Self::trusted_address(env, chain.clone()) else {
-            return Err(ContractError::NoTrustedAddressSet);
-        };
+        let key = DataKey::TrustedChain(chain.clone());
 
-        env.storage()
-            .persistent()
-            .remove(&DataKey::TrustedAddress(chain.clone()));
+        ensure!(
+            env.storage().persistent().has(&key),
+            ContractError::TrustedChainNotSet
+        );
 
-        event::remove_trusted_address(env, chain, trusted_address);
+        env.storage().persistent().remove(&key);
+
+        event::remove_trusted_chain(env, chain);
 
         Ok(())
     }
@@ -270,18 +283,28 @@ impl InterchainTokenService {
         message: Message,
         gas_token: Token,
     ) -> Result<(), ContractError> {
+        // Note: ITS Hub chain as the actual destination chain for the messsage isn't supported
+        ensure!(
+            Self::is_trusted_chain(env, destination_chain.clone()),
+            ContractError::UntrustedChain
+        );
+
         let gateway = AxelarGatewayMessagingClient::new(env, &Self::gateway(env));
         let gas_service = AxelarGasServiceClient::new(env, &Self::gas_service(env));
 
-        let payload = Self::get_call_params(env, destination_chain, message)?;
+        let payload = HubMessage::SendToHub {
+            destination_chain,
+            message,
+        }
+        .abi_encode(env)?;
 
-        let destination_address = Self::trusted_address(env, Self::its_hub_chain_name(env))
-            .ok_or(ContractError::NoTrustedAddressSet)?;
+        let hub_chain = Self::its_hub_chain_name(env);
+        let hub_address = Self::its_hub_address(env);
 
         gas_service.pay_gas(
             &env.current_contract_address(),
-            &Self::its_hub_chain_name(env),
-            &destination_address,
+            &hub_chain,
+            &hub_address,
             &payload,
             &caller,
             &gas_token,
@@ -290,8 +313,8 @@ impl InterchainTokenService {
 
         gateway.call_contract(
             &env.current_contract_address(),
-            &Self::its_hub_chain_name(env),
-            &destination_address,
+            &hub_chain,
+            &hub_address,
             &payload,
         );
 
@@ -360,44 +383,11 @@ impl InterchainTokenService {
             return Err(ContractError::InvalidMessageType);
         };
 
-        let trusted_address = Self::trusted_address(env, original_source_chain.clone());
-        let routing_identifier = Self::its_hub_routing_identifier(env);
-
         ensure!(
-            trusted_address.is_some_and(|addr| addr == routing_identifier),
+            Self::is_trusted_chain(env, original_source_chain.clone()),
             ContractError::UntrustedChain
         );
 
         Ok((original_source_chain, inner_message))
-    }
-
-    fn get_call_params(
-        env: &Env,
-        destination_chain: String,
-        message: Message,
-    ) -> Result<Bytes, ContractError> {
-        // Note: ITS Hub chain as the actual destination chain for the messsage isn't supported
-        ensure!(
-            destination_chain != Self::its_hub_chain_name(env),
-            ContractError::UntrustedChain
-        );
-
-        let Some(destination_address) = Self::trusted_address(env, destination_chain.clone())
-        else {
-            return Err(ContractError::UntrustedChain);
-        };
-
-        ensure!(
-            destination_address == Self::its_hub_routing_identifier(env),
-            ContractError::UntrustedChain
-        );
-
-        let payload = HubMessage::SendToHub {
-            destination_chain,
-            message,
-        }
-        .abi_encode(env)?;
-
-        Ok(payload)
     }
 }
