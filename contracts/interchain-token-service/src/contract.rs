@@ -152,7 +152,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         env.storage()
             .persistent()
             .get(&DataKey::TokenId(token_id))
-            .expect("Token data not found")
+            .expect("token data not found")
     }
 
     fn deploy_interchain_token(
