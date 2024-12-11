@@ -2,34 +2,23 @@ use axelar_gateway::error::ContractError;
 #[cfg(any(test, feature = "testutils"))]
 use axelar_gateway::testutils::{
     generate_proof, generate_signers_set, generate_test_message, get_approve_hash, randint,
-    setup_gateway, TestSignerSet,
 };
 use axelar_gateway::types::Message;
-use axelar_gateway::AxelarGatewayClient;
 use axelar_soroban_std::{
     assert_contract_err, assert_invocation, assert_invoke_auth_err, assert_invoke_auth_ok,
     assert_last_emitted_event,
 };
-use soroban_sdk::Symbol;
 use soroban_sdk::{
     bytes,
     testutils::{Address as _, Events},
-    vec, Address, BytesN, Env, String,
+    vec, Address, BytesN, String, Symbol,
 };
+
+mod utils;
+use utils::setup_env;
 
 const DESTINATION_CHAIN: &str = "ethereum";
 const DESTINATION_ADDRESS: &str = "0x4EFE356BEDeCC817cb89B4E9b796dB8bC188DC59";
-
-fn setup_env<'a>(
-    previous_signers_retention: u32,
-    num_signers: u32,
-) -> (Env, TestSignerSet, AxelarGatewayClient<'a>) {
-    let env = Env::default();
-    env.mock_all_auths();
-    let (signers, client) = setup_gateway(&env, previous_signers_retention, num_signers);
-
-    (env, signers, client)
-}
 
 #[test]
 fn call_contract() {
@@ -40,7 +29,10 @@ fn call_contract() {
     let destination_address = String::from_str(&env, DESTINATION_ADDRESS);
     let payload = bytes!(&env, 0x1234);
 
-    client.call_contract(&user, &destination_chain, &destination_address, &payload);
+    assert_invoke_auth_ok!(
+        user,
+        client.try_call_contract(&user, &destination_chain, &destination_address, &payload)
+    );
 
     assert_invocation(
         &env,
@@ -84,12 +76,17 @@ fn validate_message() {
         _,
     ) = generate_test_message(&env);
 
-    let approved = client.validate_message(
-        &contract_address,
-        &source_chain,
-        &message_id,
-        &source_address,
-        &payload_hash,
+    let prev_event_count = env.events().all().len();
+
+    let approved = assert_invoke_auth_ok!(
+        contract_address,
+        client.try_validate_message(
+            &contract_address,
+            &source_chain,
+            &message_id,
+            &source_address,
+            &payload_hash,
+        )
     );
     assert!(!approved);
 
@@ -107,8 +104,7 @@ fn validate_message() {
         ),
     );
 
-    // there is an event emitted when initializing, ensure that no more are emitted
-    assert_eq!(env.events().all().len(), 1);
+    assert_eq!(env.events().all().len(), prev_event_count);
 }
 
 #[test]
@@ -126,6 +122,7 @@ fn approve_message() {
     let messages = vec![&env, message.clone()];
     let data_hash = get_approve_hash(&env, messages.clone());
     let proof = generate_proof(&env, data_hash, signers);
+
     client.approve_messages(&messages, &proof);
 
     assert_last_emitted_event(
@@ -144,12 +141,15 @@ fn approve_message() {
     );
     assert!(is_approved);
 
-    let approved = client.validate_message(
-        &contract_address,
-        &source_chain,
-        &message_id,
-        &source_address,
-        &payload_hash,
+    let approved = assert_invoke_auth_ok!(
+        contract_address,
+        client.try_validate_message(
+            &contract_address,
+            &source_chain,
+            &message_id,
+            &source_address,
+            &payload_hash,
+        )
     );
     assert!(approved);
 
@@ -214,12 +214,10 @@ fn approve_messages_skip_duplicate_message() {
     let proof = generate_proof(&env, data_hash, signers);
     client.approve_messages(&messages, &proof);
 
-    // should not throw an error, should just skip
-    let res = client.try_approve_messages(&messages, &proof);
-    assert!(res.is_ok());
+    let prev_event_count = env.events().all().len();
+    assert!(client.try_approve_messages(&messages, &proof).is_ok());
 
-    // should not emit any more events (2 total because of rotate signers in auth)
-    assert_eq!(env.events().all().len(), 2);
+    assert_eq!(env.events().all().len(), prev_event_count);
 }
 
 #[test]
@@ -245,7 +243,6 @@ fn rotate_signers() {
         (),
     );
 
-    // test approve with new signer set
     let (message, _) = generate_test_message(&env);
     let messages = vec![&env, message.clone()];
     let data_hash = get_approve_hash(&env, messages.clone());
@@ -432,8 +429,7 @@ fn upgrade_invalid_wasm_hash() {
     let (env, _, client) = setup_env(1, randint(1, 10));
 
     let new_wasm_hash = BytesN::<32>::from_array(&env, &[0; 32]);
-    // Should panic with invalid wasm hash
-    client.upgrade(&new_wasm_hash);
+    client.mock_all_auths().upgrade(&new_wasm_hash);
 }
 
 #[test]

@@ -4,63 +4,14 @@ use crate::messaging_interface::AxelarGatewayMessagingInterface;
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::types::{CommandType, Message, Proof, WeightedSigners};
 use crate::{auth, event};
-use axelar_soroban_std::interfaces::{
-    migrate, MigratableInterface, OperatableInterface, OwnableInterface, UpgradableInterface,
-};
 use axelar_soroban_std::ttl::{INSTANCE_TTL_EXTEND_TO, INSTANCE_TTL_THRESHOLD};
-use axelar_soroban_std::{ensure, interfaces};
+use axelar_soroban_std::{ensure, interfaces, Operatable, Ownable, Upgradable};
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
 
-const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
 #[contract]
+#[derive(Ownable, Upgradable, Operatable)]
 pub struct AxelarGateway;
-
-#[contractimpl]
-impl MigratableInterface for AxelarGateway {
-    type MigrationData = ();
-    type Error = ContractError;
-
-    fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
-        migrate::<Self>(env, || Self::run_migration(env, migration_data))
-            .map_err(|_| ContractError::MigrationNotAllowed)
-    }
-}
-
-#[contractimpl]
-impl UpgradableInterface for AxelarGateway {
-    fn version(env: &Env) -> String {
-        String::from_str(env, CONTRACT_VERSION)
-    }
-
-    // boilerplate necessary for the contractimpl macro to include function in the generated client
-    fn upgrade(env: &Env, new_wasm_hash: BytesN<32>) {
-        interfaces::upgrade::<Self>(env, new_wasm_hash);
-    }
-}
-
-#[contractimpl]
-impl OwnableInterface for AxelarGateway {
-    fn owner(env: &Env) -> Address {
-        interfaces::owner(env)
-    }
-
-    fn transfer_ownership(env: &Env, new_owner: Address) {
-        interfaces::transfer_ownership::<Self>(env, new_owner);
-    }
-}
-
-#[contractimpl]
-impl OperatableInterface for AxelarGateway {
-    fn operator(env: &Env) -> Address {
-        interfaces::operator(env)
-    }
-
-    fn transfer_operatorship(env: &Env, new_operator: Address) {
-        interfaces::transfer_operatorship::<Self>(env, new_operator);
-    }
-}
 
 #[contractimpl]
 impl AxelarGateway {
@@ -83,9 +34,7 @@ impl AxelarGateway {
             minimum_rotation_delay,
             previous_signers_retention,
             initial_signers,
-        )?;
-
-        Ok(())
+        )
     }
 }
 
@@ -253,6 +202,14 @@ impl AxelarGatewayInterface for AxelarGateway {
 
     fn signers_hash_by_epoch(env: &Env, epoch: u64) -> Result<BytesN<32>, ContractError> {
         auth::signers_hash_by_epoch(env, epoch)
+    }
+
+    fn validate_proof(
+        env: &Env,
+        data_hash: BytesN<32>,
+        proof: Proof,
+    ) -> Result<bool, ContractError> {
+        auth::validate_proof(env, &data_hash, proof)
     }
 }
 

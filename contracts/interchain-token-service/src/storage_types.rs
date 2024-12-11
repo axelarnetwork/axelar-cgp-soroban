@@ -8,4 +8,5 @@ pub enum DataKey {
     GasService,
     ItsHubAddress,
     ChainName,
+    InterchainTokenWasmHash,
 }
