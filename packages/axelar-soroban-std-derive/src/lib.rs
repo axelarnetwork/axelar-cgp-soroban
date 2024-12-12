@@ -30,7 +30,7 @@ pub fn derive_operatable(input: TokenStream) -> TokenStream {
     let name = &input.ident;
 
     quote! {
-        use axelar_soroban_std::interfaces::OperatableInterface;
+        use axelar_soroban_std::interfaces::OperatableInterface as _;
 
         #[soroban_sdk::contractimpl]
         impl axelar_soroban_std::interfaces::OperatableInterface for #name {
@@ -72,7 +72,7 @@ pub fn derive_ownable(input: TokenStream) -> TokenStream {
     let name = &input.ident;
 
     quote! {
-        use axelar_soroban_std::interfaces::OwnableInterface;
+        use axelar_soroban_std::interfaces::OwnableInterface as _;
 
         #[soroban_sdk::contractimpl]
         impl axelar_soroban_std::interfaces::OwnableInterface for #name {
@@ -195,7 +195,7 @@ pub fn derive_upgradable(input: TokenStream) -> TokenStream {
         .map_or_else(|| quote! { () }, |ty| quote! { #ty });
 
     quote! {
-        use axelar_soroban_std::interfaces::{UpgradableInterface, MigratableInterface};
+        use axelar_soroban_std::interfaces::{UpgradableInterface as _, MigratableInterface as _};
 
         #[soroban_sdk::contractimpl]
         impl axelar_soroban_std::interfaces::UpgradableInterface for #name {

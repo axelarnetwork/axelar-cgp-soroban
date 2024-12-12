@@ -36,11 +36,11 @@ impl Contract {
 #[contractimpl]
 impl MigratableInterface for Contract {
     type MigrationData = ();
-    type Error = ContractError;
+    type Error = TrivialContractError;
 
-    fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
+    fn migrate(env: &Env, migration_data: ()) -> Result<(), TrivialContractError> {
         upgradable::migrate::<Self>(env, || Self::run_migration(env, migration_data))
-            .map_err(|_| ContractError::SomeFailure)
+            .map_err(|_| TrivialContractError::SomeFailure)
     }
 }
 
@@ -85,7 +85,7 @@ pub enum DataKey {
 
 #[contracterror]
 #[derive(Debug)]
-pub enum ContractError {
+pub enum TrivialContractError {
     SomeFailure = 1,
 }
 
