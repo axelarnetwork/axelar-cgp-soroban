@@ -109,12 +109,13 @@ mod test {
     use crate::interfaces::upgradable::UpgradedEvent;
     use crate::{assert_invoke_auth_err, assert_invoke_auth_ok, events};
 
-    use crate::interfaces::testdata::ContractClient;
+    use crate::interfaces::testdata::{ContractClient, ContractNonTrivialClient, MigrationData};
     use crate::interfaces::{testdata, upgradable};
     use soroban_sdk::testutils::Address as _;
     use soroban_sdk::{Address, BytesN, Env, String};
 
-    const WASM: &[u8] = include_bytes!("testdata/contract.wasm");
+    const WASM: &[u8] = include_bytes!("testdata/contract_trivial_migration.wasm");
+    const WASM_NON_TRIVIAL: &[u8] = include_bytes!("testdata/contract_non_trivial_migration.wasm");
 
     fn prepare_client_and_bytecode(
         env: &Env,
@@ -192,7 +193,7 @@ mod test {
     }
 
     #[test]
-    fn migrate_succeeds_if_owner_is_authenticated_and_called_after_upgrade() {
+    fn trivial_migrate_succeeds_if_owner_is_authenticated_and_called_after_upgrade() {
         let env = Env::default();
         let owner = Address::generate(&env);
         let (client, hash) = prepare_client_and_bytecode(&env, Some(owner.clone()));
@@ -207,6 +208,32 @@ mod test {
             client.migration_data(),
             Some(String::from_str(&env, "migrated"))
         );
+
+        goldie::assert!(events::fmt_last_emitted_event::<UpgradedEvent>(&env))
+    }
+
+    #[test]
+    fn non_trivial_migrate_succeeds_if_owner_is_authenticated_and_called_after_upgrade() {
+        let env = Env::default();
+        let owner = Address::generate(&env);
+        let operator = Address::generate(&env);
+        let contract_id = env.register(testdata::Contract, (owner.clone(), operator));
+        let hash = env.deployer().upload_contract_wasm(WASM_NON_TRIVIAL);
+        let client = ContractNonTrivialClient::new(&env, &contract_id);
+
+        assert_invoke_auth_ok!(owner, client.try_upgrade(&hash));
+
+        assert!(client.migration_data().is_none());
+
+        let data = MigrationData {
+            data1: String::from_str(&env, "migrated_non_trivial"),
+            data2: true,
+            data3: 42,
+        };
+
+        assert_invoke_auth_ok!(owner, client.try_migrate(&data));
+
+        assert_eq!(client.migration_data(), Some(data.data1));
 
         goldie::assert!(events::fmt_last_emitted_event::<UpgradedEvent>(&env))
     }
