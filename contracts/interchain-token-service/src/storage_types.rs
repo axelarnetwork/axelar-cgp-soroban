@@ -11,12 +11,12 @@ pub enum DataKey {
     ItsHubAddress,
     ChainName,
     InterchainTokenWasmHash,
-    TokenId(BytesN<32>),
+    TokenIdConfigKey(BytesN<32>),
 }
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TokenIdConfig {
+pub struct TokenIdConfigValue {
     pub token_address: Address,
     pub token_manager_type: TokenManagerType,
 }

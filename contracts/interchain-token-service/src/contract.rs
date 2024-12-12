@@ -12,7 +12,7 @@ use crate::abi::{get_message_type, MessageType as EncodedMessageType};
 use crate::error::ContractError;
 use crate::event;
 use crate::interface::InterchainTokenServiceInterface;
-use crate::storage_types::{DataKey, TokenIdConfig};
+use crate::storage_types::{DataKey, TokenIdConfigValue};
 use crate::types::{HubMessage, InterchainTransfer, Message, TokenManagerType};
 
 const ITS_HUB_CHAIN_NAME: &str = "axelar";
@@ -49,19 +49,6 @@ impl InterchainTokenService {
             &DataKey::InterchainTokenWasmHash,
             &interchain_token_wasm_hash,
         );
-    }
-
-    fn set_token_id_config(env: &Env, token_id: BytesN<32>, token_data: TokenIdConfig) {
-        env.storage()
-            .persistent()
-            .set(&DataKey::TokenId(token_id), &token_data);
-    }
-
-    fn token_id_config(env: &Env, token_id: BytesN<32>) -> TokenIdConfig {
-        env.storage()
-            .persistent()
-            .get(&DataKey::TokenId(token_id))
-            .expect("token data not found")
     }
 }
 
@@ -161,10 +148,26 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
             .into()
     }
 
+    /// Retrieves the address of the token associated with the specified token ID.
+    ///
+    /// # Arguments
+    /// * `env` - A reference to the environment in which the function operates.
+    /// * `token_id` - A 32-byte identifier for the token.
+    ///
+    /// # Returns
+    /// * `Address` - The address of the token associated with the given token ID.
     fn token_address(env: &Env, token_id: BytesN<32>) -> Address {
         Self::token_id_config(env, token_id).token_address
     }
 
+    /// Retrieves the type of the token manager type associated with the specified token ID.
+    ///
+    /// # Arguments
+    /// * `env` - A reference to the environment in which the function operates.
+    /// * `token_id` - A 32-byte identifier for the token.
+    ///
+    /// # Returns
+    /// * `TokenManagerType` - The type of the token manager associated with the given token ID.
     fn token_manager_type(env: &Env, token_id: BytesN<32>) -> TokenManagerType {
         Self::token_id_config(env, token_id).token_manager_type
     }
@@ -222,7 +225,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         Self::set_token_id_config(
             env,
             token_id.clone(),
-            TokenIdConfig {
+            TokenIdConfigValue {
                 token_address: deployed_address,
                 token_manager_type: TokenManagerType::NativeInterchainToken,
             },
@@ -419,5 +422,18 @@ impl InterchainTokenService {
         );
 
         Ok((original_source_chain, inner_message))
+    }
+
+    fn set_token_id_config(env: &Env, token_id: BytesN<32>, token_data: TokenIdConfigValue) {
+        env.storage()
+            .persistent()
+            .set(&DataKey::TokenIdConfigKey(token_id), &token_data);
+    }
+
+    fn token_id_config(env: &Env, token_id: BytesN<32>) -> TokenIdConfigValue {
+        env.storage()
+            .persistent()
+            .get(&DataKey::TokenIdConfigKey(token_id))
+            .expect("token id config not found")
     }
 }
