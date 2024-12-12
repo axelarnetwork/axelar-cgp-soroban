@@ -9,9 +9,7 @@ use interchain_token_service::event::InterchainTransferReceivedEvent;
 use interchain_token_service::types::{HubMessage, InterchainTransfer, Message};
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{testutils::Address as _, vec, Address, Bytes, BytesN, String, Symbol};
-use utils::{
-    register_chains, setup_env, setup_gas_token, HUB_CHAIN,
-};
+use utils::{register_chains, setup_env, setup_gas_token, HUB_CHAIN};
 
 #[test]
 fn interchain_transfer_send() {
@@ -114,5 +112,7 @@ fn interchain_transfer_receive() {
 
     client.execute(&source_chain, &message_id, &source_address, &payload);
 
-    goldie::assert!(events::fmt_last_emitted_event::<InterchainTransferReceivedEvent>(&env));
+    goldie::assert!(events::fmt_last_emitted_event::<
+        InterchainTransferReceivedEvent,
+    >(&env));
 }

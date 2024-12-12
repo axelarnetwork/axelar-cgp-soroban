@@ -2,7 +2,7 @@ use axelar_soroban_std::events::Event;
 #[cfg(any(test, feature = "testutils"))]
 use axelar_soroban_std::impl_event_testutils;
 use core::fmt::Debug;
-use soroban_sdk::{Bytes, BytesN, Env, IntoVal, String, Topics, Symbol, Val};
+use soroban_sdk::{Bytes, BytesN, Env, IntoVal, String, Symbol, Topics, Val};
 
 pub fn set_trusted_chain(env: &Env, chain: String) {
     let topics = (Symbol::new(env, "trusted_chain_set"), chain);
