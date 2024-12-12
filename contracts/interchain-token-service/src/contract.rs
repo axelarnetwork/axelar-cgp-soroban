@@ -260,7 +260,7 @@ impl AxelarExecutableInterface for InterchainTokenService {
     ) {
         let _ = Self::validate_message(&env, &source_chain, &message_id, &source_address, &payload);
 
-        let _ = Self::execute_message(
+        event::executed(
             &env,
             source_chain.clone(),
             message_id.clone(),
@@ -268,7 +268,7 @@ impl AxelarExecutableInterface for InterchainTokenService {
             payload.clone(),
         );
 
-        event::executed(&env, source_chain, message_id, source_address, payload);
+        let _ = Self::execute_message(&env, source_chain, message_id, source_address, payload);
     }
 }
 

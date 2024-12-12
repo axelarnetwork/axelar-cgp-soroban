@@ -1,13 +1,55 @@
+use std::fmt::Debug;
+
 use axelar_gas_service::{AxelarGasService, AxelarGasServiceClient};
 use axelar_gateway::testutils::{setup_gateway, TestSignerSet};
 use axelar_gateway::AxelarGatewayClient;
+use axelar_soroban_std::events::Event;
+use axelar_soroban_std::impl_event_testutils;
 use axelar_soroban_std::types::Token;
 use interchain_token_service::{InterchainTokenService, InterchainTokenServiceClient};
-use soroban_sdk::{testutils::Address as _, token::StellarAssetClient, Address, Env, String};
+use soroban_sdk::Topics;
+use soroban_sdk::{
+    testutils::Address as _, token::StellarAssetClient, Address, Bytes, BytesN, Env, IntoVal,
+    String, Symbol, Val,
+};
 
 pub const HUB_CHAIN: &str = "hub_chain";
 
 const INTERCHAIN_TOKEN_WASM_HASH: &[u8] = include_bytes!("../testdata/interchain_token.wasm");
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct InterchainTransferReceivedEvent {
+    pub topic1: Symbol,
+    pub topic2: String,
+    pub topic3: BytesN<32>,
+    pub topic4: Bytes,
+    pub topic5: Bytes,
+    pub topic6: i128,
+    pub data1: Option<Bytes>,
+}
+
+impl Event for InterchainTransferReceivedEvent {
+    fn topics(&self, _env: &Env) -> impl Topics + Debug {
+        (
+            self.topic1.to_val(),
+            self.topic2.to_val(),
+            self.topic3.to_val(),
+            self.topic4.to_val(),
+            self.topic5.to_val(),
+            self.topic6,
+        )
+    }
+
+    fn data(&self, _env: &Env) -> impl IntoVal<Env, Val> + Debug {
+        (self.data1.clone(),)
+    }
+}
+
+impl_event_testutils!(
+    InterchainTransferReceivedEvent,
+    (Symbol, String, BytesN<32>, Bytes, Bytes, i128),
+    (Option<Bytes>)
+);
 
 pub fn setup_gas_service<'a>(env: &Env) -> AxelarGasServiceClient<'a> {
     let owner: Address = Address::generate(env);
