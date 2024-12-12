@@ -4,13 +4,13 @@ use axelar_gateway::testutils::{generate_proof, get_approve_hash};
 use axelar_gateway::types::Message as GatewayMessage;
 use axelar_soroban_std::events::EventTestutils;
 use axelar_soroban_std::traits::BytesExt;
-use axelar_soroban_std::{assert_last_emitted_event, assert_ok};
+use axelar_soroban_std::{assert_last_emitted_event, assert_ok, events};
+use interchain_token_service::event::InterchainTransferReceivedEvent;
 use interchain_token_service::types::{HubMessage, InterchainTransfer, Message};
-use soroban_sdk::testutils::{Address as _, Events};
 use soroban_sdk::xdr::ToXdr;
-use soroban_sdk::{vec, Address, Bytes, BytesN, String, Symbol};
+use soroban_sdk::{testutils::Address as _, vec, Address, Bytes, BytesN, String, Symbol};
 use utils::{
-    register_chains, setup_env, setup_gas_token, InterchainTransferReceivedEvent, HUB_CHAIN,
+    register_chains, setup_env, setup_gas_token, HUB_CHAIN,
 };
 
 #[test]
@@ -112,17 +112,7 @@ fn interchain_transfer_receive() {
 
     gateway_client.approve_messages(&messages, &proof);
 
-    let expected_event = InterchainTransferReceivedEvent {
-        topic1: Symbol::new(&env, "interchain_transfer_received"),
-        topic2: String::from_str(&env, HUB_CHAIN),
-        topic3: token_id,
-        topic4: sender,
-        topic5: recipient,
-        topic6: amount,
-        data1: data,
-    };
-
     client.execute(&source_chain, &message_id, &source_address, &payload);
 
-    assert!(expected_event.matches(&env, &env.events().all().last().unwrap()));
+    goldie::assert!(events::fmt_last_emitted_event::<InterchainTransferReceivedEvent>(&env));
 }

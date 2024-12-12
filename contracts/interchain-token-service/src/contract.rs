@@ -1,5 +1,6 @@
 use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::{executable::AxelarExecutableInterface, AxelarGatewayMessagingClient};
+use axelar_soroban_std::events::Event;
 use axelar_soroban_std::{
     address::AddressExt, ensure, interfaces, types::Token, Ownable, Upgradable,
 };
@@ -10,7 +11,7 @@ use soroban_token_sdk::metadata::TokenMetadata;
 
 use crate::abi::{get_message_type, MessageType as EncodedMessageType};
 use crate::error::ContractError;
-use crate::event;
+use crate::event::{self, InterchainTransferReceivedEvent};
 use crate::interface::InterchainTokenServiceInterface;
 use crate::storage_types::DataKey;
 use crate::types::{HubMessage, InterchainTransfer, Message};
@@ -260,14 +261,6 @@ impl AxelarExecutableInterface for InterchainTokenService {
     ) {
         let _ = Self::validate_message(&env, &source_chain, &message_id, &source_address, &payload);
 
-        event::executed(
-            &env,
-            source_chain.clone(),
-            message_id.clone(),
-            source_address.clone(),
-            payload.clone(),
-        );
-
         let _ = Self::execute_message(&env, source_chain, message_id, source_address, payload);
     }
 }
@@ -337,15 +330,24 @@ impl InterchainTokenService {
             Message::InterchainTransfer(inner_message) => {
                 // TODO: transfer implementation
 
-                event::interchain_transfer_received(
-                    env,
+                // event::interchain_transfer_received(
+                //     env,
+                //     original_source_chain,
+                //     inner_message.token_id,
+                //     inner_message.source_address,
+                //     inner_message.destination_address,
+                //     inner_message.amount,
+                //     inner_message.data,
+                // );
+                InterchainTransferReceivedEvent {
                     original_source_chain,
-                    inner_message.token_id,
-                    inner_message.source_address,
-                    inner_message.destination_address,
-                    inner_message.amount,
-                    inner_message.data,
-                );
+                    token_id: inner_message.token_id,
+                    source_address: inner_message.source_address,
+                    destination_address: inner_message.destination_address,
+                    amount: inner_message.amount,
+                    data: inner_message.data,
+                }
+                .emit(env);
 
                 Ok(())
             }
