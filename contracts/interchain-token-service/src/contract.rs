@@ -54,7 +54,7 @@ impl InterchainTokenService {
     fn set_token_id_config(env: &Env, token_id: BytesN<32>, token_data: TokenIdConfig) {
         env.storage()
             .persistent()
-            .set(&DataKey::TokenId(token_id.clone()), &token_data);
+            .set(&DataKey::TokenId(token_id), &token_data);
     }
 
     fn token_id_config(env: &Env, token_id: BytesN<32>) -> TokenIdConfig {
