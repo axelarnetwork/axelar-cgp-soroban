@@ -12,8 +12,8 @@ use crate::abi::{get_message_type, MessageType as EncodedMessageType};
 use crate::error::ContractError;
 use crate::event;
 use crate::interface::InterchainTokenServiceInterface;
-use crate::storage_types::DataKey;
-use crate::types::{HubMessage, InterchainTransfer, Message, TokenData, TokenManagerType};
+use crate::storage_types::{DataKey, TokenIdConfig};
+use crate::types::{HubMessage, InterchainTransfer, Message, TokenManagerType};
 
 const ITS_HUB_CHAIN_NAME: &str = "axelar";
 const PREFIX_INTERCHAIN_TOKEN_ID: &str = "its-interchain-token-id";
@@ -49,6 +49,19 @@ impl InterchainTokenService {
             &DataKey::InterchainTokenWasmHash,
             &interchain_token_wasm_hash,
         );
+    }
+
+    fn set_token_id_config(env: &Env, token_id: BytesN<32>, token_data: TokenIdConfig) {
+        env.storage()
+            .persistent()
+            .set(&DataKey::TokenId(token_id.clone()), &token_data);
+    }
+
+    fn token_id_config(env: &Env, token_id: BytesN<32>) -> TokenIdConfig {
+        env.storage()
+            .persistent()
+            .get(&DataKey::TokenId(token_id))
+            .expect("token data not found")
     }
 }
 
@@ -148,11 +161,12 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
             .into()
     }
 
-    fn token_data(env: &Env, token_id: BytesN<32>) -> TokenData {
-        env.storage()
-            .persistent()
-            .get(&DataKey::TokenId(token_id))
-            .expect("token data not found")
+    fn token_address(env: &Env, token_id: BytesN<32>) -> Address {
+        Self::token_id_config(env, token_id).token_address
+    }
+
+    fn token_manager_type(env: &Env, token_id: BytesN<32>) -> TokenManagerType {
+        Self::token_id_config(env, token_id).token_manager_type
     }
 
     fn deploy_interchain_token(
@@ -205,14 +219,14 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
             }
         }
 
-        let token_data = TokenData {
-            token_address: deployed_address,
-            token_manager_type: TokenManagerType::NativeInterchainToken,
-        };
-
-        env.storage()
-            .persistent()
-            .set(&DataKey::TokenId(token_id.clone()), &token_data);
+        Self::set_token_id_config(
+            env,
+            token_id.clone(),
+            TokenIdConfig {
+                token_address: deployed_address,
+                token_manager_type: TokenManagerType::NativeInterchainToken,
+            },
+        );
 
         Ok(token_id)
     }

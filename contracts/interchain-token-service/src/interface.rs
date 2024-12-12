@@ -3,7 +3,7 @@ use axelar_soroban_std::types::Token;
 use soroban_sdk::{contractclient, Address, Bytes, BytesN, Env, String};
 use soroban_token_sdk::metadata::TokenMetadata;
 
-use crate::{error::ContractError, types::TokenData};
+use crate::{error::ContractError, types::TokenManagerType};
 
 #[allow(dead_code)]
 #[contractclient(name = "InterchainTokenServiceClient")]
@@ -28,7 +28,9 @@ pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
 
     fn interchain_token_id(env: &Env, sender: Address, salt: BytesN<32>) -> BytesN<32>;
 
-    fn token_data(env: &Env, token_id: BytesN<32>) -> TokenData;
+    fn token_address(env: &Env, token_id: BytesN<32>) -> Address;
+
+    fn token_manager_type(env: &Env, token_id: BytesN<32>) -> TokenManagerType;
 
     fn deploy_interchain_token(
         env: &Env,

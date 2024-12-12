@@ -6,6 +6,7 @@ use axelar_soroban_std::assert_invoke_auth_err;
 use interchain_token::InterchainTokenClient;
 use interchain_token_service::error::ContractError;
 
+use interchain_token_service::types::TokenManagerType;
 use soroban_sdk::Address;
 use soroban_sdk::BytesN;
 use soroban_sdk::IntoVal;
@@ -34,8 +35,8 @@ fn deploy_interchain_token_with_initial_supply_no_minter() {
 
     let token_id =
         client.deploy_interchain_token(&sender, &salt, &token_meta_data, &initial_supply, &minter);
-    let token_data = client.token_data(&token_id);
-    let token = InterchainTokenClient::new(&env, &token_data.token_address);
+    let token_address = client.token_address(&token_id);
+    let token = InterchainTokenClient::new(&env, &token_address);
 
     assert_eq!(token.owner(), client.address);
     assert!(token.is_minter(&client.address));
@@ -62,8 +63,8 @@ fn deploy_interchain_token_with_initial_supply_valid_minter() {
         &Some(minter.clone()),
     );
 
-    let token_data = client.token_data(&token_id);
-    let token = InterchainTokenClient::new(&env, &token_data.token_address);
+    let token_address = client.token_address(&token_id);
+    let token = InterchainTokenClient::new(&env, &token_address);
 
     assert_eq!(token.owner(), client.address);
     assert!(!token.is_minter(&client.address));
@@ -72,7 +73,7 @@ fn deploy_interchain_token_with_initial_supply_valid_minter() {
 }
 
 #[test]
-fn deploy_interchain_token_check_token_id() {
+fn deploy_interchain_token_check_token_id_and_token_manager_type() {
     let (env, client, _, _) = setup_env();
     env.mock_all_auths();
 
@@ -94,6 +95,10 @@ fn deploy_interchain_token_check_token_id() {
     );
 
     assert_eq!(token_id, expected_token_id);
+    assert_eq!(
+        client.token_manager_type(&token_id),
+        TokenManagerType::NativeInterchainToken
+    );
 }
 
 #[test]
@@ -115,8 +120,8 @@ fn deploy_interchain_token_zero_initial_supply_and_valid_minter() {
         &Some(minter.clone()),
     );
 
-    let token_data = client.token_data(&token_id);
-    let token = InterchainTokenClient::new(&env, &token_data.token_address);
+    let token_address = client.token_address(&token_id);
+    let token = InterchainTokenClient::new(&env, &token_address);
 
     assert_eq!(token.owner(), client.address);
     assert!(token.is_minter(&client.address));
@@ -162,8 +167,8 @@ fn deploy_interchain_token_zero_initial_supply_no_minter() {
     let token_id =
         client.deploy_interchain_token(&sender, &salt, &token_meta_data, &initial_supply, &minter);
 
-    let token_data = client.token_data(&token_id);
-    let token = InterchainTokenClient::new(&env, &token_data.token_address);
+    let token_address = client.token_address(&token_id);
+    let token = InterchainTokenClient::new(&env, &token_address);
 
     assert_eq!(token.owner(), client.address);
     assert!(token.is_minter(&client.address));

@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, Address, Bytes, BytesN, String};
+use soroban_sdk::{contracttype, Bytes, BytesN, String};
 
 #[contracttype]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -56,11 +56,4 @@ pub enum TokenManagerType {
     LockUnlock = 2,
     LockUnlockFee = 3,
     MintBurn = 4,
-}
-
-#[contracttype]
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TokenData {
-    pub token_address: Address,
-    pub token_manager_type: TokenManagerType,
 }
