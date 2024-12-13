@@ -6,7 +6,7 @@ use axelar_soroban_std::{
 };
 use interchain_token::InterchainTokenClient;
 use soroban_sdk::xdr::ToXdr;
-use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String};
+use soroban_sdk::{contract, contractimpl, token, Address, Bytes, BytesN, Env, String};
 use soroban_token_sdk::metadata::TokenMetadata;
 
 use crate::abi::{get_message_type, MessageType as EncodedMessageType};
@@ -16,7 +16,9 @@ use crate::event::{
 };
 use crate::interface::InterchainTokenServiceInterface;
 use crate::storage_types::{DataKey, TokenIdConfigValue};
-use crate::types::{HubMessage, InterchainTransfer, Message, TokenManagerType};
+use crate::types::{
+    DeployInterchainToken, HubMessage, InterchainTransfer, Message, TokenManagerType,
+};
 
 const ITS_HUB_CHAIN_NAME: &str = "axelar";
 const PREFIX_INTERCHAIN_TOKEN_ID: &str = "its-interchain-token-id";
@@ -238,16 +240,47 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     }
 
     fn deploy_remote_interchain_token(
-        _env: &Env,
-        _caller: Address,
-        _salt: BytesN<32>,
-        _minter: Option<Bytes>,
-        _destination_chain: String,
-        _gas_token: Token,
+        env: &Env,
+        caller: Address,
+        salt: BytesN<32>,
+        minter: Option<Address>,
+        destination_chain: String,
     ) -> Result<BytesN<32>, ContractError> {
-        // TODO: implementation
+        caller.require_auth();
 
-        todo!()
+        let deploy_salt = Self::interchain_token_deploy_salt(env, caller, salt);
+        let token_id = Self::interchain_token_id(env, Address::zero(env), deploy_salt.clone());
+
+        if let Some(ref minter) = minter {
+            ensure!(
+                Self::check_token_minter(env, token_id.clone(), minter.clone()),
+                ContractError::InvalidMinter
+            );
+        }
+        let registered_token_address = Self::token_id_config(env, token_id.clone()).token_address;
+        let token = token::Client::new(env, &registered_token_address);
+
+        let message = Message::DeployInterchainToken(DeployInterchainToken {
+            token_id: token_id.clone(),
+            name: token.name(),
+            symbol: token.symbol(),
+            decimals: token.decimals() as u8,
+            minter: Some(minter.unwrap().to_xdr(env)),
+        });
+
+        let payload = Self::get_call_params(env, destination_chain, message)?;
+        let hub_chain = Self::its_hub_chain_name(env);
+        let hub_address = Self::its_hub_address(env);
+        let gateway = AxelarGatewayMessagingClient::new(env, &Self::gateway(env));
+
+        gateway.call_contract(
+            &env.current_contract_address(),
+            &hub_chain,
+            &hub_address,
+            &payload,
+        );
+
+        Ok(token_id)
     }
 
     fn interchain_transfer(
@@ -311,21 +344,10 @@ impl InterchainTokenService {
         message: Message,
         gas_token: Token,
     ) -> Result<(), ContractError> {
-        // Note: ITS Hub chain as the actual destination chain for the messsage isn't supported
-        ensure!(
-            Self::is_trusted_chain(env, destination_chain.clone()),
-            ContractError::UntrustedChain
-        );
-
         let gateway = AxelarGatewayMessagingClient::new(env, &Self::gateway(env));
         let gas_service = AxelarGasServiceClient::new(env, &Self::gas_service(env));
 
-        let payload = HubMessage::SendToHub {
-            destination_chain,
-            message,
-        }
-        .abi_encode(env)?;
-
+        let payload = Self::get_call_params(env, destination_chain, message)?;
         let hub_chain = Self::its_hub_chain_name(env);
         let hub_address = Self::its_hub_address(env);
 
@@ -419,6 +441,26 @@ impl InterchainTokenService {
         Ok((original_source_chain, inner_message))
     }
 
+    fn get_call_params(
+        env: &Env,
+        destination_chain: String,
+        message: Message,
+    ) -> Result<Bytes, ContractError> {
+        // Note: ITS Hub chain as the actual destination chain for the messsage isn't supported
+        ensure!(
+            Self::is_trusted_chain(env, destination_chain.clone()),
+            ContractError::UntrustedChain
+        );
+
+        let payload = HubMessage::SendToHub {
+            destination_chain,
+            message,
+        }
+        .abi_encode(env)?;
+
+        Ok(payload)
+    }
+
     fn set_token_id_config(env: &Env, token_id: BytesN<32>, token_data: TokenIdConfigValue) {
         env.storage()
             .persistent()
@@ -430,5 +472,12 @@ impl InterchainTokenService {
             .persistent()
             .get(&DataKey::TokenIdConfigKey(token_id))
             .expect("token id config not found")
+    }
+
+    fn check_token_minter(env: &Env, token_id: BytesN<32>, minter: Address) -> bool {
+        let deployed_address = Self::token_id_config(env, token_id).token_address;
+        let token = InterchainTokenClient::new(env, &deployed_address);
+
+        token.is_minter(&minter) && minter != env.current_contract_address()
     }
 }
