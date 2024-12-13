@@ -249,7 +249,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         caller.require_auth();
 
         let deploy_salt = Self::interchain_token_deploy_salt(env, caller, salt);
-        let token_id = Self::interchain_token_id(env, Address::zero(env), deploy_salt.clone());
+        let token_id = Self::interchain_token_id(env, Address::zero(env), deploy_salt);
 
         if let Some(ref minter) = minter {
             ensure!(
