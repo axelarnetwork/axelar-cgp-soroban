@@ -10,22 +10,6 @@ pub fn remove_trusted_chain(env: &Env, chain: String) {
     env.events().publish(topics, ());
 }
 
-pub fn executed(
-    env: &Env,
-    source_chain: String,
-    message_id: String,
-    source_address: String,
-    payload: Bytes,
-) {
-    let topics = (
-        Symbol::new(env, "executed"),
-        source_chain,
-        message_id,
-        source_address,
-    );
-    env.events().publish(topics, (payload,));
-}
-
 pub fn interchain_transfer_received(
     env: &Env,
     original_source_chain: String,

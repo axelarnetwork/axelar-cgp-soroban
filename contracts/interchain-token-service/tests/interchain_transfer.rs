@@ -111,7 +111,7 @@ fn interchain_transfer_receive() {
 
     assert_emitted_event(
         &env,
-        -2,
+        -1,
         &client.address,
         (
             Symbol::new(&env, "interchain_transfer_received"),
