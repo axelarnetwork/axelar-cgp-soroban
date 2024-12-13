@@ -2,7 +2,7 @@ use axelar_soroban_std::events::Event;
 #[cfg(any(test, feature = "testutils"))]
 use axelar_soroban_std::impl_event_testutils;
 use core::fmt::Debug;
-use soroban_sdk::{Bytes, BytesN, Env, IntoVal, String, Symbol, Topics, Val, Vec};
+use soroban_sdk::{Address, Bytes, BytesN, Env, IntoVal, String, Symbol, Topics, Val, Vec};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct TrustedChainSetEvent {
@@ -12,6 +12,13 @@ pub struct TrustedChainSetEvent {
 #[derive(Debug, PartialEq, Eq)]
 pub struct TrustedChainRemovedEvent {
     pub chain: String,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct InterchainTokenIdClaimed {
+    pub token_id: BytesN<32>,
+    pub deployer: Address,
+    pub salt: BytesN<32>
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -47,6 +54,21 @@ impl Event for TrustedChainRemovedEvent {
     }
 }
 
+impl Event for InterchainTokenIdClaimed {
+    fn topics(&self, env: &Env) -> impl Topics + Debug {
+        (
+            Symbol::new(env, "interchain_token_id_claimed"),
+            self.token_id.to_val(),
+            self.deployer.to_val(),
+            self.salt.to_val(),
+        )
+    }
+
+    fn data(&self, env: &Env) -> impl IntoVal<Env, Val> + Debug {
+        Vec::<Val>::new(env)
+    }
+}
+
 impl Event for InterchainTransferReceivedEvent {
     fn topics(&self, env: &Env) -> impl Topics + Debug {
         (
@@ -69,6 +91,9 @@ impl_event_testutils!(TrustedChainSetEvent, (Symbol, String), ());
 
 #[cfg(any(test, feature = "testutils"))]
 impl_event_testutils!(TrustedChainRemovedEvent, (Symbol, String), ());
+
+#[cfg(any(test, feature = "testutils"))]
+impl_event_testutils!(InterchainTokenIdClaimed, (Symbol, BytesN<32>, Address, BytesN<32>), ());
 
 #[cfg(any(test, feature = "testutils"))]
 impl_event_testutils!(
