@@ -257,6 +257,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
                 ContractError::InvalidMinter
             );
         }
+
         let registered_token_address = Self::token_id_config(env, token_id.clone()).token_address;
         let token = token::Client::new(env, &registered_token_address);
 
