@@ -1,3 +1,4 @@
+use interchain_token::InterchainTokenClient;
 use soroban_sdk::{Env, Address};
 use soroban_sdk::token::{StellarAssetClient, TokenClient};
 
@@ -20,7 +21,7 @@ pub fn take_token(env: &Env, sender: Address, TokenIdConfigValue { token_address
 
 pub fn give_token(env: &Env, recipient: Address, TokenIdConfigValue { token_address, token_manager_type }: TokenIdConfigValue, amount: i128) -> Result<(), ContractError> {
     match token_manager_type {
-        TokenManagerType::NativeInterchainToken => StellarAssetClient::new(env, &token_address).mint(&recipient, &amount),
+        TokenManagerType::NativeInterchainToken => InterchainTokenClient::new(env, &token_address).mint(&env.current_contract_address(), &recipient, &amount),
         TokenManagerType::LockUnlock => TokenClient::new(env, &token_address).transfer(&env.current_contract_address(), &recipient, &amount),
     }
 

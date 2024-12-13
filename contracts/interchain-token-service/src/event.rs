@@ -1,13 +1,15 @@
 use core::fmt::Debug;
 
 use axelar_soroban_std::events::Event;
-use soroban_sdk::{contracttype, Bytes, BytesN, Env, IntoVal, String, Symbol, Topics, Val};
+#[cfg(any(test, feature = "testutils"))]
+use axelar_soroban_std::impl_event_testutils;
+use soroban_sdk::{contracttype, Address, Bytes, BytesN, Env, IntoVal, String, Symbol, Topics, Val};
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InterchainTransferSent {
     pub token_id: BytesN<32>,
-    pub source_address: Bytes,
+    pub source_address: Address,
     pub destination_address: Bytes,
     pub amount: i128,
     pub data: Option<Bytes>,
@@ -23,6 +25,9 @@ impl Event for InterchainTransferSent {
         (data_hash,)
     }
 }
+
+#[cfg(any(test, feature = "testutils"))]
+impl_event_testutils!(InterchainTransferSent, (Symbol, BytesN<32>, Bytes, Address, i128), (BytesN<32>));
 
 pub fn set_trusted_chain(env: &Env, chain: String) {
     let topics = (Symbol::new(env, "trusted_chain_set"), chain);

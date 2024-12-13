@@ -6,6 +6,7 @@ use axelar_soroban_std::{assert_emitted_event, assert_last_emitted_event, assert
 use interchain_token_service::types::{HubMessage, InterchainTransfer, Message};
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{testutils::Address as _, vec, Address, Bytes, BytesN, String, Symbol};
+use soroban_token_sdk::metadata::TokenMetadata;
 use utils::{register_chains, setup_env, setup_gas_token, HUB_CHAIN};
 
 #[test]
@@ -14,11 +15,24 @@ fn interchain_transfer_send() {
     register_chains(&env, &client);
     let sender: Address = Address::generate(&env);
     let gas_token = setup_gas_token(&env, &sender);
+    let salt = BytesN::from_array(&env, &[1u8; 32]);
+    let amount = i128::MAX;
+    let token_meta_data = TokenMetadata {
+        name: String::from_str(&env, "Test"),
+        symbol: String::from_str(&env, "TEST"),
+        decimal: 18,
+    };
 
-    let token_id = BytesN::from_array(&env, &[255u8; 32]);
+    let token_id = client.mock_all_auths().deploy_interchain_token(
+        &sender,
+        &salt,
+        &token_meta_data,
+        &amount,
+        &None,
+    );
+
     let destination_chain = String::from_str(&env, HUB_CHAIN);
     let destination_address = Bytes::from_hex(&env, "4F4495243837681061C4743b74B3eEdf548D56A5");
-    let amount = i128::MAX;
     let data = Some(Bytes::from_hex(&env, "abcd"));
 
     let msg = Message::InterchainTransfer(InterchainTransfer {
@@ -73,8 +87,25 @@ fn interchain_transfer_receive() {
     let source_chain = client.its_hub_chain_name();
     let source_address = Address::generate(&env).to_string();
 
-    let token_id = BytesN::from_array(&env, &[255u8; 32]);
-    let amount = i128::MAX;
+    let salt = BytesN::from_array(&env, &[2u8; 32]);
+    let amount = 1000;
+    let token_meta_data = TokenMetadata {
+        name: String::from_str(&env, "Test"),
+        symbol: String::from_str(&env, "TEST"),
+        decimal: 18,
+    };
+
+    let deployer = Address::generate(&env);
+    println!("deployer: {:?}", deployer);
+    println!("deployer: {:?} {:?}", deployer.clone().to_xdr(&env), deployer.clone().to_xdr(&env).len());
+
+    let token_id = client.mock_all_auths().deploy_interchain_token(
+        &deployer,
+        &salt,
+        &token_meta_data,
+        &amount,
+        &None,
+    );
     let data = Some(Bytes::from_hex(&env, "abcd"));
 
     let msg = HubMessage::ReceiveFromHub {
@@ -107,7 +138,7 @@ fn interchain_transfer_receive() {
 
     gateway_client.approve_messages(&messages, &proof);
 
-    client.execute(&source_chain, &message_id, &source_address, &payload);
+    client.mock_all_auths().execute(&source_chain, &message_id, &source_address, &payload);
 
     assert_emitted_event(
         &env,

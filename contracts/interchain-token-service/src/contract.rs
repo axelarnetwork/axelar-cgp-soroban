@@ -265,7 +265,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
 
         InterchainTransferSent {
             token_id: token_id.clone(),
-            source_address: caller.clone().to_xdr(env),
+            source_address: caller.clone(),
             destination_address: destination_address.clone(),
             amount,
             data: data.clone(),
