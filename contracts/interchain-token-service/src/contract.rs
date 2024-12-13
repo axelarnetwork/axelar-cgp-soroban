@@ -15,8 +15,8 @@ use crate::event::{
     InterchainTransferReceivedEvent, TrustedChainRemovedEvent, TrustedChainSetEvent,
 };
 use crate::interface::InterchainTokenServiceInterface;
-use crate::storage_types::DataKey;
-use crate::types::{HubMessage, InterchainTransfer, Message};
+use crate::storage_types::{DataKey, TokenIdConfigValue};
+use crate::types::{HubMessage, InterchainTransfer, Message, TokenManagerType};
 
 const ITS_HUB_CHAIN_NAME: &str = "axelar";
 const PREFIX_INTERCHAIN_TOKEN_ID: &str = "its-interchain-token-id";
@@ -151,6 +151,30 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
             .into()
     }
 
+    /// Retrieves the address of the token associated with the specified token ID.
+    ///
+    /// # Arguments
+    /// * `env` - A reference to the environment in which the function operates.
+    /// * `token_id` - A 32-byte identifier for the token.
+    ///
+    /// # Returns
+    /// * `Address` - The address of the token associated with the given token ID.
+    fn token_address(env: &Env, token_id: BytesN<32>) -> Address {
+        Self::token_id_config(env, token_id).token_address
+    }
+
+    /// Retrieves the type of the token manager type associated with the specified token ID.
+    ///
+    /// # Arguments
+    /// * `env` - A reference to the environment in which the function operates.
+    /// * `token_id` - A 32-byte identifier for the token.
+    ///
+    /// # Returns
+    /// * `TokenManagerType` - The type of the token manager associated with the given token ID.
+    fn token_manager_type(env: &Env, token_id: BytesN<32>) -> TokenManagerType {
+        Self::token_id_config(env, token_id).token_manager_type
+    }
+
     fn deploy_interchain_token(
         env: &Env,
         caller: Address,
@@ -158,7 +182,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         token_meta_data: TokenMetadata,
         initial_supply: i128,
         minter: Option<Address>,
-    ) -> Result<(Address, BytesN<32>), ContractError> {
+    ) -> Result<BytesN<32>, ContractError> {
         caller.require_auth();
 
         let initial_minter = if initial_supply > 0 {
@@ -201,7 +225,16 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
             }
         }
 
-        Ok((deployed_address, token_id))
+        Self::set_token_id_config(
+            env,
+            token_id.clone(),
+            TokenIdConfigValue {
+                token_address: deployed_address,
+                token_manager_type: TokenManagerType::NativeInterchainToken,
+            },
+        );
+
+        Ok(token_id)
     }
 
     fn deploy_remote_interchain_token(
@@ -384,5 +417,18 @@ impl InterchainTokenService {
         );
 
         Ok((original_source_chain, inner_message))
+    }
+
+    fn set_token_id_config(env: &Env, token_id: BytesN<32>, token_data: TokenIdConfigValue) {
+        env.storage()
+            .persistent()
+            .set(&DataKey::TokenIdConfigKey(token_id), &token_data);
+    }
+
+    fn token_id_config(env: &Env, token_id: BytesN<32>) -> TokenIdConfigValue {
+        env.storage()
+            .persistent()
+            .get(&DataKey::TokenIdConfigKey(token_id))
+            .expect("token id config not found")
     }
 }
