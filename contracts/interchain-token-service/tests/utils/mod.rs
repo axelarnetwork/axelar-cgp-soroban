@@ -26,6 +26,9 @@ fn setup_its<'a>(
     let owner = Address::generate(env);
     let its_hub_address = String::from_str(env, "its_hub_address");
     let chain_name = String::from_str(env, "chain_name");
+
+    // Note: On changes to `interchain-token` crate, recompile it via `stellar contract build && ./optimize.sh`
+    // and copy the built wasm to ../testdata.
     let interchain_token_wasm_hash = env
         .deployer()
         .upload_contract_wasm(INTERCHAIN_TOKEN_WASM_HASH);
