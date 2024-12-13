@@ -26,7 +26,11 @@ axelar-soroban-std = { workspace = true, features = ["testutils"] }
 goldie = { workspace = true }
 hex = { workspace = true }
 interchain-token = { workspace = true, features = ["testutils"] }
+interchain-token-service = { workspace = true, features = ["testutils"] }
 soroban-sdk = { workspace = true, features = ["testutils", "alloc"] }
+
+[features]
+testutils = ["soroban-sdk/testutils"]
 
 [lints]
 workspace = true
