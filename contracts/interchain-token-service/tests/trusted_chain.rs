@@ -1,13 +1,14 @@
 #[allow(dead_code)]
 mod utils;
+use interchain_token_service::event::{TrustedChainRemovedEvent, TrustedChainSetEvent};
 use utils::setup_env;
 
 use axelar_soroban_std::{
-    assert_contract_err, assert_invoke_auth_err, assert_invoke_auth_ok, assert_last_emitted_event,
+    assert_contract_err, assert_invoke_auth_err, assert_invoke_auth_ok, events,
 };
 use interchain_token_service::error::ContractError;
 use soroban_sdk::testutils::Address as _;
-use soroban_sdk::{Address, String, Symbol};
+use soroban_sdk::{Address, String};
 
 #[test]
 fn set_trusted_address() {
@@ -17,12 +18,7 @@ fn set_trusted_address() {
 
     assert_invoke_auth_ok!(client.owner(), client.try_set_trusted_chain(&chain));
 
-    assert_last_emitted_event(
-        &env,
-        &client.address,
-        (Symbol::new(&env, "trusted_chain_set"), chain.clone()),
-        (),
-    );
+    goldie::assert!(events::fmt_last_emitted_event::<TrustedChainSetEvent>(&env));
 
     assert!(client.is_trusted_chain(&chain));
 }
@@ -61,12 +57,9 @@ fn remove_trusted_chain() {
 
     assert_invoke_auth_ok!(client.owner(), client.try_remove_trusted_chain(&chain));
 
-    assert_last_emitted_event(
-        &env,
-        &client.address,
-        (Symbol::new(&env, "trusted_chain_removed"), chain.clone()),
-        (),
-    );
+    goldie::assert!(events::fmt_last_emitted_event::<TrustedChainRemovedEvent>(
+        &env
+    ));
 
     assert!(!client.is_trusted_chain(&chain));
 }

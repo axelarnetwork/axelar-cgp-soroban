@@ -1,5 +1,6 @@
 use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::{executable::AxelarExecutableInterface, AxelarGatewayMessagingClient};
+use axelar_soroban_std::events::Event;
 use axelar_soroban_std::{
     address::AddressExt, ensure, interfaces, types::Token, Ownable, Upgradable,
 };
@@ -10,7 +11,9 @@ use soroban_token_sdk::metadata::TokenMetadata;
 
 use crate::abi::{get_message_type, MessageType as EncodedMessageType};
 use crate::error::ContractError;
-use crate::event;
+use crate::event::{
+    InterchainTransferReceivedEvent, TrustedChainRemovedEvent, TrustedChainSetEvent,
+};
 use crate::interface::InterchainTokenServiceInterface;
 use crate::storage_types::{DataKey, TokenIdConfigValue};
 use crate::types::{HubMessage, InterchainTransfer, Message, TokenManagerType};
@@ -104,7 +107,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
 
         env.storage().persistent().set(&key, &());
 
-        event::set_trusted_chain(env, chain);
+        TrustedChainSetEvent { chain }.emit(env);
 
         Ok(())
     }
@@ -121,7 +124,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
 
         env.storage().persistent().remove(&key);
 
-        event::remove_trusted_chain(env, chain);
+        TrustedChainRemovedEvent { chain }.emit(env);
 
         Ok(())
     }
@@ -293,15 +296,7 @@ impl AxelarExecutableInterface for InterchainTokenService {
     ) {
         let _ = Self::validate_message(&env, &source_chain, &message_id, &source_address, &payload);
 
-        let _ = Self::execute_message(
-            &env,
-            source_chain.clone(),
-            message_id.clone(),
-            source_address.clone(),
-            payload.clone(),
-        );
-
-        event::executed(&env, source_chain, message_id, source_address, payload);
+        let _ = Self::execute_message(&env, source_chain, message_id, source_address, payload);
     }
 }
 
@@ -370,15 +365,15 @@ impl InterchainTokenService {
             Message::InterchainTransfer(inner_message) => {
                 // TODO: transfer implementation
 
-                event::interchain_transfer_received(
-                    env,
-                    original_source_chain,
-                    inner_message.token_id,
-                    inner_message.source_address,
-                    inner_message.destination_address,
-                    inner_message.amount,
-                    inner_message.data,
-                );
+                InterchainTransferReceivedEvent {
+                    source_chain: original_source_chain,
+                    token_id: inner_message.token_id,
+                    source_address: inner_message.source_address,
+                    destination_address: inner_message.destination_address,
+                    amount: inner_message.amount,
+                    data: inner_message.data,
+                }
+                .emit(env);
 
                 Ok(())
             }

@@ -1,8 +1,10 @@
 mod utils;
+
 use axelar_gateway::testutils::{generate_proof, get_approve_hash};
 use axelar_gateway::types::Message as GatewayMessage;
 use axelar_soroban_std::traits::BytesExt;
-use axelar_soroban_std::{assert_emitted_event, assert_last_emitted_event, assert_ok};
+use axelar_soroban_std::{assert_last_emitted_event, assert_ok, events};
+use interchain_token_service::event::InterchainTransferReceivedEvent;
 use interchain_token_service::types::{HubMessage, InterchainTransfer, Message};
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{testutils::Address as _, vec, Address, Bytes, BytesN, String, Symbol};
@@ -80,11 +82,11 @@ fn interchain_transfer_receive() {
     let msg = HubMessage::ReceiveFromHub {
         source_chain: String::from_str(&env, HUB_CHAIN),
         message: Message::InterchainTransfer(InterchainTransfer {
-            token_id: token_id.clone(),
-            source_address: sender.clone(),
-            destination_address: recipient.clone(),
+            token_id,
+            source_address: sender,
+            destination_address: recipient,
             amount,
-            data: data.clone(),
+            data,
         }),
     };
     let payload = msg.abi_encode(&env).unwrap();
@@ -109,18 +111,7 @@ fn interchain_transfer_receive() {
 
     client.execute(&source_chain, &message_id, &source_address, &payload);
 
-    assert_emitted_event(
-        &env,
-        -2,
-        &client.address,
-        (
-            Symbol::new(&env, "interchain_transfer_received"),
-            String::from_str(&env, HUB_CHAIN),
-            token_id,
-            sender,
-            recipient,
-            amount,
-        ),
-        (data,),
-    );
+    goldie::assert!(events::fmt_last_emitted_event::<
+        InterchainTransferReceivedEvent,
+    >(&env));
 }

@@ -1172,6 +1172,7 @@ dependencies = [
  "goldie",
  "hex",
  "interchain-token",
+ "interchain-token-service",
  "soroban-sdk",
  "soroban-token-sdk",
 ]

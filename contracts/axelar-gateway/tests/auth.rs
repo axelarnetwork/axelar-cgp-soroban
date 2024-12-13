@@ -55,7 +55,7 @@ fn fail_validate_proof_empty_signatures() {
     let (env, signers, client) = setup_env(randint(0, 10), randint(1, 10));
 
     let msg_hash: BytesN<32> = BytesN::random(&env);
-    let mut proof = generate_proof(&env, msg_hash.clone(), signers.clone());
+    let mut proof = generate_proof(&env, msg_hash.clone(), signers);
 
     let mut new_signers = Vec::new(&env);
     for signer in proof.signers.iter() {
@@ -105,10 +105,10 @@ fn fail_validate_proof_threshold_not_met() {
 fn fail_validate_proof_invalid_signer_set() {
     let (env, signers, client) = setup_env(randint(0, 10), randint(1, 10));
 
-    let new_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator.clone());
+    let new_signers = generate_signers_set(&env, randint(1, 10), signers.domain_separator);
 
     let msg_hash: BytesN<32> = BytesN::random(&env);
-    let invalid_proof = generate_proof(&env, msg_hash.clone(), new_signers.clone());
+    let invalid_proof = generate_proof(&env, msg_hash.clone(), new_signers);
     assert_contract_err!(
         client.try_validate_proof(&msg_hash, &invalid_proof),
         ContractError::InvalidSignersHash
@@ -324,7 +324,7 @@ fn rotate_signers_panics_on_outdated_signer_set() {
     }
 
     // Proof from the first signer set should fail
-    let proof = generate_proof(&env, msg_hash.clone(), original_signers.clone());
+    let proof = generate_proof(&env, msg_hash, original_signers.clone());
 
     assert_contract_err!(
         client
@@ -367,6 +367,6 @@ fn multi_rotate_signers() {
     }
 
     // Proof from the first signer set should still be valid
-    let proof = generate_proof(&env, msg_hash.clone(), original_signers.clone());
+    let proof = generate_proof(&env, msg_hash.clone(), original_signers);
     client.validate_proof(&msg_hash, &proof);
 }
