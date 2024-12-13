@@ -46,3 +46,14 @@ pub enum HubMessage {
         message: Message,
     },
 }
+
+#[contracttype]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u32)]
+pub enum TokenManagerType {
+    NativeInterchainToken = 0,
+    MintBurnFrom = 1,
+    LockUnlock = 2,
+    LockUnlockFee = 3,
+    MintBurn = 4,
+}
