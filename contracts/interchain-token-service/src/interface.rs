@@ -47,6 +47,7 @@ pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
         salt: BytesN<32>,
         minter: Option<Address>,
         destination_chain: String,
+        gas_token: Token,
     ) -> Result<BytesN<32>, ContractError>;
 
     fn interchain_transfer(
