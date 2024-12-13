@@ -2,16 +2,16 @@ use axelar_soroban_std::events::Event;
 #[cfg(any(test, feature = "testutils"))]
 use axelar_soroban_std::impl_event_testutils;
 use core::fmt::Debug;
-use soroban_sdk::{Bytes, BytesN, Env, IntoVal, String, Symbol, Topics, Val};
+use soroban_sdk::{Bytes, BytesN, Env, IntoVal, String, Symbol, Topics, Val, Vec};
 
-pub fn set_trusted_chain(env: &Env, chain: String) {
-    let topics = (Symbol::new(env, "trusted_chain_set"), chain);
-    env.events().publish(topics, ());
+#[derive(Debug, PartialEq, Eq)]
+pub struct TrustedChainSetEvent {
+    pub chain: String,
 }
 
-pub fn remove_trusted_chain(env: &Env, chain: String) {
-    let topics = (Symbol::new(env, "trusted_chain_removed"), chain);
-    env.events().publish(topics, ());
+#[derive(Debug, PartialEq, Eq)]
+pub struct TrustedChainRemovedEvent {
+    pub chain: String,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -22,6 +22,29 @@ pub struct InterchainTransferReceivedEvent {
     pub destination_address: Bytes,
     pub amount: i128,
     pub data: Option<Bytes>,
+}
+
+impl Event for TrustedChainSetEvent {
+    fn topics(&self, env: &Env) -> impl Topics + Debug {
+        (Symbol::new(env, "trusted_chain_set"), self.chain.to_val())
+    }
+
+    fn data(&self, env: &Env) -> impl IntoVal<Env, Val> + Debug {
+        Vec::<Val>::new(env)
+    }
+}
+
+impl Event for TrustedChainRemovedEvent {
+    fn topics(&self, env: &Env) -> impl Topics + Debug {
+        (
+            Symbol::new(env, "trusted_chain_removed"),
+            self.chain.to_val(),
+        )
+    }
+
+    fn data(&self, env: &Env) -> impl IntoVal<Env, Val> + Debug {
+        Vec::<Val>::new(env)
+    }
 }
 
 impl Event for InterchainTransferReceivedEvent {
@@ -42,28 +65,14 @@ impl Event for InterchainTransferReceivedEvent {
 }
 
 #[cfg(any(test, feature = "testutils"))]
+impl_event_testutils!(TrustedChainSetEvent, (Symbol, String), ());
+
+#[cfg(any(test, feature = "testutils"))]
+impl_event_testutils!(TrustedChainRemovedEvent, (Symbol, String), ());
+
+#[cfg(any(test, feature = "testutils"))]
 impl_event_testutils!(
     InterchainTransferReceivedEvent,
     (Symbol, String, BytesN<32>, Bytes, Bytes, i128),
     (Option<Bytes>)
 );
-
-// pub fn interchain_transfer_received(
-//     env: &Env,
-//     original_source_chain: String,
-//     token_id: BytesN<32>,
-//     source_address: Bytes,
-//     destination_address: Bytes,
-//     amount: i128,
-//     data: Option<Bytes>,
-// ) {
-//     let topics = (
-//         Symbol::new(env, "interchain_transfer_received"),
-//         original_source_chain,
-//         token_id,
-//         source_address,
-//         destination_address,
-//         amount,
-//     );
-//     env.events().publish(topics, (data,));
-// }

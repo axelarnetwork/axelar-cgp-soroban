@@ -11,7 +11,9 @@ use soroban_token_sdk::metadata::TokenMetadata;
 
 use crate::abi::{get_message_type, MessageType as EncodedMessageType};
 use crate::error::ContractError;
-use crate::event::{self, InterchainTransferReceivedEvent};
+use crate::event::{
+    InterchainTransferReceivedEvent, TrustedChainRemovedEvent, TrustedChainSetEvent,
+};
 use crate::interface::InterchainTokenServiceInterface;
 use crate::storage_types::DataKey;
 use crate::types::{HubMessage, InterchainTransfer, Message};
@@ -105,7 +107,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
 
         env.storage().persistent().set(&key, &());
 
-        event::set_trusted_chain(env, chain);
+        TrustedChainSetEvent { chain }.emit(env);
 
         Ok(())
     }
@@ -122,7 +124,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
 
         env.storage().persistent().remove(&key);
 
-        event::remove_trusted_chain(env, chain);
+        TrustedChainRemovedEvent { chain }.emit(env);
 
         Ok(())
     }
@@ -330,15 +332,6 @@ impl InterchainTokenService {
             Message::InterchainTransfer(inner_message) => {
                 // TODO: transfer implementation
 
-                // event::interchain_transfer_received(
-                //     env,
-                //     original_source_chain,
-                //     inner_message.token_id,
-                //     inner_message.source_address,
-                //     inner_message.destination_address,
-                //     inner_message.amount,
-                //     inner_message.data,
-                // );
                 InterchainTransferReceivedEvent {
                     original_source_chain,
                     token_id: inner_message.token_id,

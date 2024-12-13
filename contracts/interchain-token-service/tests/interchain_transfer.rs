@@ -2,7 +2,6 @@ mod utils;
 
 use axelar_gateway::testutils::{generate_proof, get_approve_hash};
 use axelar_gateway::types::Message as GatewayMessage;
-use axelar_soroban_std::events::EventTestutils;
 use axelar_soroban_std::traits::BytesExt;
 use axelar_soroban_std::{assert_last_emitted_event, assert_ok, events};
 use interchain_token_service::event::InterchainTransferReceivedEvent;
