@@ -366,7 +366,7 @@ impl InterchainTokenService {
                 // TODO: transfer implementation
 
                 InterchainTransferReceivedEvent {
-                    original_source_chain,
+                    source_chain: original_source_chain,
                     token_id: inner_message.token_id,
                     source_address: inner_message.source_address,
                     destination_address: inner_message.destination_address,

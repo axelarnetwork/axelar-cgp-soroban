@@ -16,7 +16,7 @@ pub struct TrustedChainRemovedEvent {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct InterchainTransferReceivedEvent {
-    pub original_source_chain: String,
+    pub source_chain: String,
     pub token_id: BytesN<32>,
     pub source_address: Bytes,
     pub destination_address: Bytes,
@@ -51,7 +51,7 @@ impl Event for InterchainTransferReceivedEvent {
     fn topics(&self, env: &Env) -> impl Topics + Debug {
         (
             Symbol::new(env, "interchain_transfer_received"),
-            self.original_source_chain.as_val(),
+            self.source_chain.as_val(),
             self.token_id.to_val(),
             self.source_address.to_val(),
             self.destination_address.to_val(),

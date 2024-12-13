@@ -1,21 +1,13 @@
 use axelar_gas_service::{AxelarGasService, AxelarGasServiceClient};
 use axelar_gateway::testutils::{setup_gateway, TestSignerSet};
 use axelar_gateway::AxelarGatewayClient;
-// use axelar_soroban_std::impl_event_testutils;
 use axelar_soroban_std::types::Token;
-// use interchain_token_service::event::InterchainTransferReceivedEvent;
 use interchain_token_service::{InterchainTokenService, InterchainTokenServiceClient};
 use soroban_sdk::{testutils::Address as _, token::StellarAssetClient, Address, Env, String};
 
 pub const HUB_CHAIN: &str = "hub_chain";
 
 const INTERCHAIN_TOKEN_WASM_HASH: &[u8] = include_bytes!("../testdata/interchain_token.wasm");
-
-// impl_event_testutils!(
-//     InterchainTransferReceivedEvent,
-//     (Symbol, String, BytesN<32>, Bytes, Bytes, i128),
-//     (Option<Bytes>)
-// );
 
 pub fn setup_gas_service<'a>(env: &Env) -> AxelarGasServiceClient<'a> {
     let owner: Address = Address::generate(env);
