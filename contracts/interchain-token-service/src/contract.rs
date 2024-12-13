@@ -13,10 +13,10 @@ use soroban_token_sdk::metadata::TokenMetadata;
 use crate::abi::{get_message_type, MessageType as EncodedMessageType};
 use crate::error::ContractError;
 use crate::event::InterchainTransferSent;
-use crate::{event, token_handler};
 use crate::interface::InterchainTokenServiceInterface;
 use crate::storage_types::{DataKey, TokenIdConfigValue};
 use crate::types::{HubMessage, InterchainTransfer, Message, TokenManagerType};
+use crate::{event, token_handler};
 
 const ITS_HUB_CHAIN_NAME: &str = "axelar";
 const PREFIX_INTERCHAIN_TOKEN_ID: &str = "its-interchain-token-id";
@@ -260,7 +260,12 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     ) -> Result<(), ContractError> {
         ensure!(amount > 0, ContractError::InvalidAmount);
 
-        token_handler::take_token(env, caller.clone(), Self::token_id_config(env, token_id.clone()), amount)?;
+        token_handler::take_token(
+            env,
+            caller.clone(),
+            Self::token_id_config(env, token_id.clone()),
+            amount,
+        )?;
 
         InterchainTransferSent {
             token_id: token_id.clone(),
@@ -268,7 +273,8 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
             destination_address: destination_address.clone(),
             amount,
             data: data.clone(),
-        }.emit(env);
+        }
+        .emit(env);
 
         let message = Message::InterchainTransfer(InterchainTransfer {
             token_id,
@@ -370,14 +376,25 @@ impl InterchainTokenService {
         _source_address: String,
         payload: Bytes,
     ) -> Result<(), ContractError> {
-        let (source_chain, message) =
-            Self::get_execute_params(env, source_chain, &payload)?;
+        let (source_chain, message) = Self::get_execute_params(env, source_chain, &payload)?;
 
         match message {
-            Message::InterchainTransfer(InterchainTransfer { token_id, source_address, destination_address, amount, data }) => {
-                let recipient = Address::from_xdr(env, &destination_address).map_err(|_| ContractError::InvalidDestinationAddress)?;
+            Message::InterchainTransfer(InterchainTransfer {
+                token_id,
+                source_address,
+                destination_address,
+                amount,
+                data,
+            }) => {
+                let recipient = Address::from_xdr(env, &destination_address)
+                    .map_err(|_| ContractError::InvalidDestinationAddress)?;
 
-                token_handler::give_token(env, recipient, Self::token_id_config(env, token_id.clone()), amount)?;
+                token_handler::give_token(
+                    env,
+                    recipient,
+                    Self::token_id_config(env, token_id.clone()),
+                    amount,
+                )?;
 
                 event::interchain_transfer_received(
                     env,

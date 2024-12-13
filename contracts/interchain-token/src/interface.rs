@@ -1,4 +1,8 @@
-use soroban_sdk::{contractclient, token::{self, StellarAssetInterface}, Address, BytesN, Env};
+use soroban_sdk::{
+    contractclient,
+    token::{self, StellarAssetInterface},
+    Address, BytesN, Env,
+};
 
 use crate::error::ContractError;
 
@@ -8,7 +12,12 @@ pub trait InterchainTokenInterface: token::Interface + StellarAssetInterface {
     fn token_id(env: &Env) -> BytesN<32>;
 
     fn is_minter(env: &Env, minter: Address) -> bool;
-    fn mint_from(env: &Env, minter: Address, to: Address, amount: i128) -> Result<(), ContractError>;
+    fn mint_from(
+        env: &Env,
+        minter: Address,
+        to: Address,
+        amount: i128,
+    ) -> Result<(), ContractError>;
     fn add_minter(env: &Env, minter: Address);
     fn remove_minter(env: &Env, minter: Address);
 }

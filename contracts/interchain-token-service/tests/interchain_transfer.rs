@@ -97,7 +97,11 @@ fn interchain_transfer_receive() {
 
     let deployer = Address::generate(&env);
     println!("deployer: {:?}", deployer);
-    println!("deployer: {:?} {:?}", deployer.clone().to_xdr(&env), deployer.clone().to_xdr(&env).len());
+    println!(
+        "deployer: {:?} {:?}",
+        deployer.clone().to_xdr(&env),
+        deployer.clone().to_xdr(&env).len()
+    );
 
     let token_id = client.mock_all_auths().deploy_interchain_token(
         &deployer,
@@ -138,7 +142,9 @@ fn interchain_transfer_receive() {
 
     gateway_client.approve_messages(&messages, &proof);
 
-    client.mock_all_auths().execute(&source_chain, &message_id, &source_address, &payload);
+    client
+        .mock_all_auths()
+        .execute(&source_chain, &message_id, &source_address, &payload);
 
     assert_emitted_event(
         &env,

@@ -3,7 +3,9 @@ use core::fmt::Debug;
 use axelar_soroban_std::events::Event;
 #[cfg(any(test, feature = "testutils"))]
 use axelar_soroban_std::impl_event_testutils;
-use soroban_sdk::{contracttype, Address, Bytes, BytesN, Env, IntoVal, String, Symbol, Topics, Val};
+use soroban_sdk::{
+    contracttype, Address, Bytes, BytesN, Env, IntoVal, String, Symbol, Topics, Val,
+};
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -17,17 +19,30 @@ pub struct InterchainTransferSent {
 
 impl Event for InterchainTransferSent {
     fn topics(&self, env: &Env) -> impl Topics + Debug {
-        (Symbol::new(env, "interchain_transfer_sent"), self.token_id.to_val(), self.source_address.to_val(), self.destination_address.to_val(), self.amount)
+        (
+            Symbol::new(env, "interchain_transfer_sent"),
+            self.token_id.to_val(),
+            self.source_address.to_val(),
+            self.destination_address.to_val(),
+            self.amount,
+        )
     }
 
     fn data(&self, env: &Env) -> impl IntoVal<Env, Val> + Debug {
-        let data_hash = self.data.clone().map_or_else(|| BytesN::<32>::from_array(env, &[0; 32]), |data| { env.crypto().keccak256(&data).into() });
+        let data_hash = self.data.clone().map_or_else(
+            || BytesN::<32>::from_array(env, &[0; 32]),
+            |data| env.crypto().keccak256(&data).into(),
+        );
         (data_hash,)
     }
 }
 
 #[cfg(any(test, feature = "testutils"))]
-impl_event_testutils!(InterchainTransferSent, (Symbol, BytesN<32>, Bytes, Address, i128), (BytesN<32>));
+impl_event_testutils!(
+    InterchainTransferSent,
+    (Symbol, BytesN<32>, Bytes, Address, i128),
+    (BytesN<32>)
+);
 
 pub fn set_trusted_chain(env: &Env, chain: String) {
     let topics = (Symbol::new(env, "trusted_chain_set"), chain);

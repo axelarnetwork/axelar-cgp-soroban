@@ -28,12 +28,7 @@ fn setup_token<'a>(env: &Env) -> (InterchainTokenClient<'a>, Address, Address) {
 
     let contract_id = env.register(
         InterchainToken,
-        (
-            owner.clone(),
-            minter.clone(),
-            &token_id,
-            token_meta_data,
-        ),
+        (owner.clone(), minter.clone(), &token_id, token_meta_data),
     );
 
     let token = InterchainTokenClient::new(env, &contract_id);
@@ -49,15 +44,7 @@ fn register_token_with_invalid_decimals_fails() {
     let token_id: BytesN<32> = BytesN::<32>::random(&env);
     let token_meta_data = setup_token_metadata(&env, "name", "symbol", u32::from(u8::MAX) + 1);
 
-    env.register(
-        InterchainToken,
-        (
-            owner,
-            minter,
-            &token_id,
-            token_meta_data,
-        ),
-    );
+    env.register(InterchainToken, (owner, minter, &token_id, token_meta_data));
 }
 
 #[test]
@@ -69,15 +56,7 @@ fn register_token_with_invalid_name_fails() {
     let token_id: BytesN<32> = BytesN::<32>::random(&env);
     let token_meta_data = setup_token_metadata(&env, "", "symbol", 1);
 
-    env.register(
-        InterchainToken,
-        (
-            owner,
-            minter,
-            &token_id,
-            token_meta_data,
-        ),
-    );
+    env.register(InterchainToken, (owner, minter, &token_id, token_meta_data));
 }
 
 #[test]
@@ -89,15 +68,7 @@ fn register_token_with_invalid_symbol_fails() {
     let token_id: BytesN<32> = BytesN::<32>::random(&env);
     let token_meta_data = setup_token_metadata(&env, "name", "", 1);
 
-    env.register(
-        InterchainToken,
-        (
-            owner,
-            minter,
-            &token_id,
-            token_meta_data,
-        ),
-    );
+    env.register(InterchainToken, (owner, minter, &token_id, token_meta_data));
 }
 
 #[test]
@@ -122,12 +93,7 @@ fn register_interchain_token_without_minter() {
 
     let contract_id = env.register(
         InterchainToken,
-        (
-            owner.clone(),
-            minter,
-            &token_id,
-            token_meta_data,
-        ),
+        (owner.clone(), minter, &token_id, token_meta_data),
     );
 
     let token = InterchainTokenClient::new(&env, &contract_id);

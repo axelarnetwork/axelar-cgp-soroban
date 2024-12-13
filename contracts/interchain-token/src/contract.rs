@@ -14,7 +14,10 @@ use axelar_soroban_std::interfaces::OwnableInterface;
 use axelar_soroban_std::{ensure, interfaces, Upgradable};
 use soroban_sdk::token::{StellarAssetInterface, TokenInterface};
 
-use soroban_sdk::{assert_with_error, contract, contractimpl, panic_with_error, token, Address, BytesN, Env, String};
+use soroban_sdk::{
+    assert_with_error, contract, contractimpl, panic_with_error, token, Address, BytesN, Env,
+    String,
+};
 use soroban_token_sdk::event::Events as TokenEvents;
 
 #[contract]
@@ -29,24 +32,22 @@ impl InterchainToken {
         minter: Option<Address>,
         token_id: BytesN<32>,
         token_meta_data: TokenMetadata,
-    ) -> Result<(), ContractError> {
+    ) {
         interfaces::set_owner(&env, &owner);
 
-        Self::validate_token_metadata(token_meta_data.clone())?;
+        if let Err(err) = Self::validate_token_metadata(token_meta_data.clone()) {
+            panic_with_error!(env, err);
+        }
 
         Self::write_metadata(&env, token_meta_data);
 
         env.storage().instance().set(&DataKey::TokenId, &token_id);
 
-        env.storage()
-            .instance()
-            .set(&DataKey::Minter(owner), &());
+        env.storage().instance().set(&DataKey::Minter(owner), &());
 
         if let Some(minter) = minter {
             env.storage().instance().set(&DataKey::Minter(minter), &());
         }
-
-        Ok(())
     }
 }
 
@@ -92,7 +93,12 @@ impl InterchainTokenInterface for InterchainToken {
         env.storage().instance().has(&DataKey::Minter(minter))
     }
 
-    fn mint_from(env: &Env, minter: Address, to: Address, amount: i128) -> Result<(), ContractError> {
+    fn mint_from(
+        env: &Env,
+        minter: Address,
+        to: Address,
+        amount: i128,
+    ) -> Result<(), ContractError> {
         minter.require_auth();
 
         ensure!(
