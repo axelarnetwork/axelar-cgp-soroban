@@ -6,6 +6,7 @@ pub mod error;
 mod event;
 mod interface;
 mod storage_types;
+mod token_handler;
 pub mod types;
 
 #[cfg(test)]

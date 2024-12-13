@@ -1,16 +1,18 @@
 use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::{executable::AxelarExecutableInterface, AxelarGatewayMessagingClient};
+use axelar_soroban_std::events::Event;
 use axelar_soroban_std::{
     address::AddressExt, ensure, interfaces, types::Token, Ownable, Upgradable,
 };
 use interchain_token::InterchainTokenClient;
-use soroban_sdk::xdr::ToXdr;
+use soroban_sdk::xdr::{FromXdr, ToXdr};
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String};
 use soroban_token_sdk::metadata::TokenMetadata;
 
 use crate::abi::{get_message_type, MessageType as EncodedMessageType};
 use crate::error::ContractError;
-use crate::event;
+use crate::event::InterchainTransferSent;
+use crate::{event, token_handler};
 use crate::interface::InterchainTokenServiceInterface;
 use crate::storage_types::{DataKey, TokenIdConfigValue};
 use crate::types::{HubMessage, InterchainTransfer, Message, TokenManagerType};
@@ -254,19 +256,27 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         destination_chain: String,
         destination_address: Bytes,
         amount: i128,
-        metadata: Option<Bytes>,
+        data: Option<Bytes>,
         gas_token: Token,
     ) -> Result<(), ContractError> {
-        caller.require_auth();
+        ensure!(amount > 0, ContractError::InvalidAmount);
 
-        // TODO: implementation
+        token_handler::take_token(env, caller.clone(), Self::token_id_config(env, token_id.clone()), amount)?;
+
+        InterchainTransferSent {
+            token_id: token_id.clone(),
+            source_address: caller.clone().to_xdr(env),
+            destination_address: destination_address.clone(),
+            amount,
+            data: data.clone(),
+        }.emit(env);
 
         let message = Message::InterchainTransfer(InterchainTransfer {
             token_id,
             source_address: caller.clone().to_xdr(env),
             destination_address,
             amount,
-            data: metadata,
+            data,
         });
 
         Self::pay_gas_and_call_contract(env, caller, destination_chain, message, gas_token)?;
@@ -361,23 +371,23 @@ impl InterchainTokenService {
         _source_address: String,
         payload: Bytes,
     ) -> Result<(), ContractError> {
-        // TODO: Add ITS hub execute logic
-
-        let (original_source_chain, message) =
+        let (source_chain, message) =
             Self::get_execute_params(env, source_chain, &payload)?;
 
         match message {
-            Message::InterchainTransfer(inner_message) => {
-                // TODO: transfer implementation
+            Message::InterchainTransfer(InterchainTransfer { token_id, source_address, destination_address, amount, data }) => {
+                let recipient = Address::from_xdr(env, &destination_address).map_err(|_| ContractError::InvalidDestinationAddress)?;
+
+                token_handler::give_token(env, recipient, Self::token_id_config(env, token_id.clone()), amount)?;
 
                 event::interchain_transfer_received(
                     env,
-                    original_source_chain,
-                    inner_message.token_id,
-                    inner_message.source_address,
-                    inner_message.destination_address,
-                    inner_message.amount,
-                    inner_message.data,
+                    source_chain,
+                    token_id,
+                    source_address,
+                    destination_address,
+                    amount,
+                    data,
                 );
 
                 Ok(())
