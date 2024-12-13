@@ -82,11 +82,11 @@ fn interchain_transfer_receive() {
     let msg = HubMessage::ReceiveFromHub {
         source_chain: String::from_str(&env, HUB_CHAIN),
         message: Message::InterchainTransfer(InterchainTransfer {
-            token_id: token_id.clone(),
-            source_address: sender.clone(),
-            destination_address: recipient.clone(),
+            token_id: token_id,
+            source_address: sender,
+            destination_address: recipient,
             amount,
-            data: data.clone(),
+            data: data,
         }),
     };
     let payload = msg.abi_encode(&env).unwrap();
