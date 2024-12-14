@@ -3,7 +3,9 @@ use axelar_gateway::testutils::{setup_gateway, TestSignerSet};
 use axelar_gateway::AxelarGatewayClient;
 use axelar_soroban_std::types::Token;
 use interchain_token_service::{InterchainTokenService, InterchainTokenServiceClient};
+use soroban_sdk::BytesN;
 use soroban_sdk::{testutils::Address as _, token::StellarAssetClient, Address, Env, String};
+use soroban_token_sdk::metadata::TokenMetadata;
 
 pub const HUB_CHAIN: &str = "hub_chain";
 
@@ -78,6 +80,31 @@ pub fn setup_gas_token(env: &Env, sender: &Address) -> Token {
         .mint(sender, &gas_amount);
 
     gas_token
+}
+
+#[allow(dead_code)]
+pub fn setup_its_token(
+    env: &Env,
+    client: &InterchainTokenServiceClient,
+    sender: &Address,
+    supply: i128,
+) -> BytesN<32> {
+    let salt = BytesN::from_array(env, &[1u8; 32]);
+    let token_meta_data = TokenMetadata {
+        name: String::from_str(env, "Test"),
+        symbol: String::from_str(env, "TEST"),
+        decimal: 18,
+    };
+
+    let token_id = client.mock_all_auths().deploy_interchain_token(
+        sender,
+        &salt,
+        &token_meta_data,
+        &supply,
+        &None,
+    );
+
+    token_id
 }
 
 #[allow(dead_code)]

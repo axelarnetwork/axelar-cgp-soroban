@@ -429,7 +429,7 @@ impl InterchainTokenService {
 
         ensure!(
             source_chain == Self::its_hub_chain_name(env),
-            ContractError::UntrustedChain
+            ContractError::InvalidHubChain
         );
 
         let decoded_message = HubMessage::abi_decode(env, payload)?;
