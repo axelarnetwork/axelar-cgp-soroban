@@ -295,10 +295,10 @@ impl AxelarExecutableInterface for InterchainTokenService {
         payload: Bytes,
     ) {
         Self::validate_message(&env, &source_chain, &message_id, &source_address, &payload)
-            .unwrap_or_else(|e| panic_with_error!(env, e));
+            .unwrap_or_else(|err| panic_with_error!(env, err));
 
         Self::execute_message(&env, source_chain, message_id, source_address, payload)
-            .unwrap_or_else(|e| panic_with_error!(env, e));
+            .unwrap_or_else(|err| panic_with_error!(env, err));
     }
 }
 

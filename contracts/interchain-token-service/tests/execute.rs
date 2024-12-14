@@ -20,7 +20,7 @@ fn execute_fails_without_gateway_approval() {
 
 #[test]
 #[should_panic(expected = "Error(Contract, #8)")] // ContractError::InsufficientMessageLength
-fn test_execute_fails_with_invalid_message() {
+fn execute_fails_with_invalid_message() {
     let (env, client, gateway_client, signers) = setup_env();
 
     let source_chain = client.its_hub_chain_name();
