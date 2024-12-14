@@ -18,7 +18,7 @@ pub struct TrustedChainRemovedEvent {
 pub struct InterchainTokenIdClaimed {
     pub token_id: BytesN<32>,
     pub deployer: Address,
-    pub salt: BytesN<32>
+    pub salt: BytesN<32>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -73,7 +73,7 @@ impl Event for InterchainTransferReceivedEvent {
     fn topics(&self, env: &Env) -> impl Topics + Debug {
         (
             Symbol::new(env, "interchain_transfer_received"),
-            self.source_chain.as_val(),
+            self.source_chain.to_val(),
             self.token_id.to_val(),
             self.source_address.to_val(),
             self.destination_address.to_val(),
@@ -93,7 +93,11 @@ impl_event_testutils!(TrustedChainSetEvent, (Symbol, String), ());
 impl_event_testutils!(TrustedChainRemovedEvent, (Symbol, String), ());
 
 #[cfg(any(test, feature = "testutils"))]
-impl_event_testutils!(InterchainTokenIdClaimed, (Symbol, BytesN<32>, Address, BytesN<32>), ());
+impl_event_testutils!(
+    InterchainTokenIdClaimed,
+    (Symbol, BytesN<32>, Address, BytesN<32>),
+    ()
+);
 
 #[cfg(any(test, feature = "testutils"))]
 impl_event_testutils!(

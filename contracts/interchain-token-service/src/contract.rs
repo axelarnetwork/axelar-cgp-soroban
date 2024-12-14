@@ -12,7 +12,8 @@ use soroban_token_sdk::metadata::TokenMetadata;
 use crate::abi::{get_message_type, MessageType as EncodedMessageType};
 use crate::error::ContractError;
 use crate::event::{
-    InterchainTokenIdClaimed, InterchainTransferReceivedEvent, TrustedChainRemovedEvent, TrustedChainSetEvent
+    InterchainTokenIdClaimed, InterchainTransferReceivedEvent, TrustedChainRemovedEvent,
+    TrustedChainSetEvent,
 };
 use crate::interface::InterchainTokenServiceInterface;
 use crate::storage_types::{DataKey, TokenIdConfigValue};
@@ -131,8 +132,6 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     }
 
     fn interchain_token_deploy_salt(env: &Env, deployer: Address, salt: BytesN<32>) -> BytesN<32> {
-        // let chain_name = Self::chain_name(env);
-        // let chain_name_hash: BytesN<32> = env.crypto().keccak256(&(chain_name).to_xdr(env)).into();
         let chain_name_hash = Self::chain_name_hash(env);
         env.crypto()
             .keccak256(
@@ -150,14 +149,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     fn canonical_token_deploy_salt(env: &Env, token_address: Address) -> BytesN<32> {
         let chain_name_hash = Self::chain_name_hash(env);
         env.crypto()
-            .keccak256(
-                &(
-                    PREFIX_CANONICAL_TOKEN_SALT,
-                    chain_name_hash,
-                    token_address
-                )
-                    .to_xdr(env),   
-            )
+            .keccak256(&(PREFIX_CANONICAL_TOKEN_SALT, chain_name_hash, token_address).to_xdr(env))
             .into()
     }
 
@@ -300,20 +292,20 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         let deploy_salt = Self::canonical_token_deploy_salt(env, token_address.clone());
         let token_id = Self::interchain_token_id(env, Address::zero(env), deploy_salt.clone());
 
-        let key = DataKey::TokenIdConfigKey(token_id.clone());
-
         ensure!(
-            !env.storage().persistent().has(&key),
+            !env.storage()
+                .persistent()
+                .has(&DataKey::TokenIdConfigKey(token_id.clone())),
             ContractError::TokenAlreadyRegistered
         );
 
-        InterchainTokenIdClaimed { 
-            token_id: token_id.clone(), 
-            deployer: Address::zero(env), 
-            salt: deploy_salt 
+        InterchainTokenIdClaimed {
+            token_id: token_id.clone(),
+            deployer: Address::zero(env),
+            salt: deploy_salt,
         }
         .emit(env);
-            
+
         Self::set_token_id_config(
             env,
             token_id.clone(),
