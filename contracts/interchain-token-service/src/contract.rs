@@ -5,9 +5,8 @@ use axelar_soroban_std::{
     address::AddressExt, ensure, interfaces, types::Token, Ownable, Upgradable,
 };
 use interchain_token::InterchainTokenClient;
-use soroban_sdk::token::StellarAssetClient;
-use soroban_sdk::xdr::{FromXdr, ToXdr};
-use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String};
+use soroban_sdk::xdr::ToXdr;
+use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, String};
 use soroban_token_sdk::metadata::TokenMetadata;
 
 use crate::abi::{get_message_type, MessageType as EncodedMessageType};
@@ -309,9 +308,11 @@ impl AxelarExecutableInterface for InterchainTokenService {
         source_address: String,
         payload: Bytes,
     ) {
-        let _ = Self::validate_message(&env, &source_chain, &message_id, &source_address, &payload);
+        Self::validate_message(&env, &source_chain, &message_id, &source_address, &payload)
+            .unwrap_or_else(|err| panic_with_error!(env, err));
 
-        let _ = Self::execute_message(&env, source_chain, message_id, source_address, payload);
+        Self::execute_message(&env, source_chain, message_id, source_address, payload)
+            .unwrap_or_else(|err| panic_with_error!(env, err));
     }
 }
 
