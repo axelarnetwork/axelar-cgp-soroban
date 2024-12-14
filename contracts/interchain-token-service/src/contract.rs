@@ -5,7 +5,8 @@ use axelar_soroban_std::{
     address::AddressExt, ensure, interfaces, types::Token, Ownable, Upgradable,
 };
 use interchain_token::InterchainTokenClient;
-use soroban_sdk::xdr::ToXdr;
+use soroban_sdk::token::StellarAssetClient;
+use soroban_sdk::xdr::{FromXdr, ToXdr};
 use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, String};
 use soroban_token_sdk::metadata::TokenMetadata;
 
