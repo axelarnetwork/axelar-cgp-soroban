@@ -24,7 +24,7 @@ fn send_directly_to_hub_chain_fails() {
             &None,
             &gas_token,
         ),
-        ContractError::InvalidHubChain
+        ContractError::UntrustedChain
     );
 }
 
