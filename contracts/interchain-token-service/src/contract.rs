@@ -13,12 +13,13 @@ use soroban_token_sdk::metadata::TokenMetadata;
 use crate::abi::{get_message_type, MessageType as EncodedMessageType};
 use crate::error::ContractError;
 use crate::event::{
-    InterchainTransferSentEvent, InterchainTransferReceivedEvent, TrustedChainRemovedEvent, TrustedChainSetEvent,
+    InterchainTransferReceivedEvent, InterchainTransferSentEvent, TrustedChainRemovedEvent,
+    TrustedChainSetEvent,
 };
 use crate::interface::InterchainTokenServiceInterface;
 use crate::storage_types::{DataKey, TokenIdConfigValue};
-use crate::types::{HubMessage, InterchainTransfer, Message, TokenManagerType};
 use crate::token_handler;
+use crate::types::{HubMessage, InterchainTransfer, Message, TokenManagerType};
 
 const ITS_HUB_CHAIN_NAME: &str = "axelar";
 const PREFIX_INTERCHAIN_TOKEN_ID: &str = "its-interchain-token-id";
