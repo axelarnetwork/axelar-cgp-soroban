@@ -12,7 +12,7 @@ fn register_canonical_token_succeeds() {
     let (env, client, _, _) = setup_env();
     let token_address = Address::generate(&env);
 
-    let expected_deploy_salt = client.canonical_token_deploy_salt(&token_address.clone());
+    let expected_deploy_salt = client.canonical_token_deploy_salt(&token_address);
     let expected_id = client.interchain_token_id(&Address::zero(&env), &expected_deploy_salt);
 
     assert_eq!(client.register_canonical_token(&token_address), expected_id);
