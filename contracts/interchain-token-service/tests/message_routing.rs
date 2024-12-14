@@ -19,7 +19,7 @@ fn send_directly_to_hub_chain_fails() {
             &sender,
             &token_id,
             &client.its_hub_chain_name(),
-            &Bytes::from_hex(&env, "0x1234"),
+            &Bytes::from_hex(&env, "1234"),
             &amount,
             &None,
             &gas_token,

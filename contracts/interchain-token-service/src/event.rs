@@ -4,7 +4,7 @@ use axelar_soroban_std::events::Event;
 #[cfg(any(test, feature = "testutils"))]
 use axelar_soroban_std::impl_event_testutils;
 use soroban_sdk::{
-    contracttype, Address, Bytes, BytesN, Env, IntoVal, String, Symbol, Topics, Val,
+    contracttype, Address, Bytes, BytesN, Env, IntoVal, String, Symbol, Topics, Val, Vec,
 };
 
 #[contracttype]

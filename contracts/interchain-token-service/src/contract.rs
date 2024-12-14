@@ -391,15 +391,14 @@ impl InterchainTokenService {
                     amount,
                 )?;
 
-                InterchainTransferReceivedEvent(
-                    env,
+                InterchainTransferReceivedEvent {
                     source_chain,
                     token_id,
                     source_address,
                     destination_address,
                     amount,
                     data,
-                )
+                }
                 .emit(env);
 
                 Ok(())
