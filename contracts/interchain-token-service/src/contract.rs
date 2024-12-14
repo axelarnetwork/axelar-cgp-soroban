@@ -146,13 +146,6 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
             .into()
     }
 
-    fn canonical_token_deploy_salt(env: &Env, token_address: Address) -> BytesN<32> {
-        let chain_name_hash = Self::chain_name_hash(env);
-        env.crypto()
-            .keccak256(&(PREFIX_CANONICAL_TOKEN_SALT, chain_name_hash, token_address).to_xdr(env))
-            .into()
-    }
-
     fn interchain_token_id(env: &Env, sender: Address, salt: BytesN<32>) -> BytesN<32> {
         env.crypto()
             .keccak256(&(PREFIX_INTERCHAIN_TOKEN_ID, sender, salt).to_xdr(env))
@@ -476,5 +469,12 @@ impl InterchainTokenService {
     fn chain_name_hash(env: &Env) -> BytesN<32> {
         let chain_name = Self::chain_name(env);
         env.crypto().keccak256(&(chain_name).to_xdr(env)).into()
+    }
+
+    fn canonical_token_deploy_salt(env: &Env, token_address: Address) -> BytesN<32> {
+        let chain_name_hash = Self::chain_name_hash(env);
+        env.crypto()
+            .keccak256(&(PREFIX_CANONICAL_TOKEN_SALT, chain_name_hash, token_address).to_xdr(env))
+            .into()
     }
 }
