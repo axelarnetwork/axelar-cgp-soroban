@@ -12,11 +12,13 @@ use soroban_token_sdk::metadata::TokenMetadata;
 
 use crate::abi::{get_message_type, MessageType as EncodedMessageType};
 use crate::error::ContractError;
-use crate::event::InterchainTransferSent;
+use crate::event::{
+    InterchainTransferSentEvent, InterchainTransferReceivedEvent, TrustedChainRemovedEvent, TrustedChainSetEvent,
+};
 use crate::interface::InterchainTokenServiceInterface;
 use crate::storage_types::{DataKey, TokenIdConfigValue};
 use crate::types::{HubMessage, InterchainTransfer, Message, TokenManagerType};
-use crate::{event, token_handler};
+use crate::token_handler;
 
 const ITS_HUB_CHAIN_NAME: &str = "axelar";
 const PREFIX_INTERCHAIN_TOKEN_ID: &str = "its-interchain-token-id";
@@ -107,7 +109,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
 
         env.storage().persistent().set(&key, &());
 
-        event::set_trusted_chain(env, chain);
+        TrustedChainSetEvent { chain }.emit(env);
 
         Ok(())
     }
@@ -124,7 +126,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
 
         env.storage().persistent().remove(&key);
 
-        event::remove_trusted_chain(env, chain);
+        TrustedChainRemovedEvent { chain }.emit(env);
 
         Ok(())
     }
@@ -267,7 +269,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
             amount,
         )?;
 
-        InterchainTransferSent {
+        InterchainTransferSentEvent {
             token_id: token_id.clone(),
             source_address: caller.clone(),
             destination_address: destination_address.clone(),
@@ -308,15 +310,7 @@ impl AxelarExecutableInterface for InterchainTokenService {
     ) {
         let _ = Self::validate_message(&env, &source_chain, &message_id, &source_address, &payload);
 
-        let _ = Self::execute_message(
-            &env,
-            source_chain.clone(),
-            message_id.clone(),
-            source_address.clone(),
-            payload.clone(),
-        );
-
-        event::executed(&env, source_chain, message_id, source_address, payload);
+        let _ = Self::execute_message(&env, source_chain, message_id, source_address, payload);
     }
 }
 
@@ -396,7 +390,7 @@ impl InterchainTokenService {
                     amount,
                 )?;
 
-                event::interchain_transfer_received(
+                InterchainTransferReceivedEvent(
                     env,
                     source_chain,
                     token_id,
@@ -404,7 +398,8 @@ impl InterchainTokenService {
                     destination_address,
                     amount,
                     data,
-                );
+                )
+                .emit(env);
 
                 Ok(())
             }

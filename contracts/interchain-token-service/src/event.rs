@@ -9,7 +9,7 @@ use soroban_sdk::{
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct InterchainTransferSent {
+pub struct InterchainTransferSentEvent {
     pub token_id: BytesN<32>,
     pub source_address: Address,
     pub destination_address: Bytes,
@@ -17,7 +17,7 @@ pub struct InterchainTransferSent {
     pub data: Option<Bytes>,
 }
 
-impl Event for InterchainTransferSent {
+impl Event for InterchainTransferSentEvent {
     fn topics(&self, env: &Env) -> impl Topics + Debug {
         (
             Symbol::new(env, "interchain_transfer_sent"),
@@ -39,53 +39,80 @@ impl Event for InterchainTransferSent {
 
 #[cfg(any(test, feature = "testutils"))]
 impl_event_testutils!(
-    InterchainTransferSent,
+    InterchainTransferSentEvent,
     (Symbol, BytesN<32>, Bytes, Address, i128),
     (BytesN<32>)
 );
 
-pub fn set_trusted_chain(env: &Env, chain: String) {
-    let topics = (Symbol::new(env, "trusted_chain_set"), chain);
-    env.events().publish(topics, ());
+#[derive(Debug, PartialEq, Eq)]
+pub struct TrustedChainSetEvent {
+    pub chain: String,
 }
 
-pub fn remove_trusted_chain(env: &Env, chain: String) {
-    let topics = (Symbol::new(env, "trusted_chain_removed"), chain);
-    env.events().publish(topics, ());
+#[derive(Debug, PartialEq, Eq)]
+pub struct TrustedChainRemovedEvent {
+    pub chain: String,
 }
 
-pub fn executed(
-    env: &Env,
-    source_chain: String,
-    message_id: String,
-    source_address: String,
-    payload: Bytes,
-) {
-    let topics = (
-        Symbol::new(env, "executed"),
-        source_chain,
-        message_id,
-        source_address,
-    );
-    env.events().publish(topics, (payload,));
+#[derive(Debug, PartialEq, Eq)]
+pub struct InterchainTransferReceivedEvent {
+    pub source_chain: String,
+    pub token_id: BytesN<32>,
+    pub source_address: Bytes,
+    pub destination_address: Bytes,
+    pub amount: i128,
+    pub data: Option<Bytes>,
 }
 
-pub fn interchain_transfer_received(
-    env: &Env,
-    original_source_chain: String,
-    token_id: BytesN<32>,
-    source_address: Bytes,
-    destination_address: Bytes,
-    amount: i128,
-    data: Option<Bytes>,
-) {
-    let topics = (
-        Symbol::new(env, "interchain_transfer_received"),
-        original_source_chain,
-        token_id,
-        source_address,
-        destination_address,
-        amount,
-    );
-    env.events().publish(topics, (data,));
+impl Event for TrustedChainSetEvent {
+    fn topics(&self, env: &Env) -> impl Topics + Debug {
+        (Symbol::new(env, "trusted_chain_set"), self.chain.to_val())
+    }
+
+    fn data(&self, env: &Env) -> impl IntoVal<Env, Val> + Debug {
+        Vec::<Val>::new(env)
+    }
 }
+
+impl Event for TrustedChainRemovedEvent {
+    fn topics(&self, env: &Env) -> impl Topics + Debug {
+        (
+            Symbol::new(env, "trusted_chain_removed"),
+            self.chain.to_val(),
+        )
+    }
+
+    fn data(&self, env: &Env) -> impl IntoVal<Env, Val> + Debug {
+        Vec::<Val>::new(env)
+    }
+}
+
+impl Event for InterchainTransferReceivedEvent {
+    fn topics(&self, env: &Env) -> impl Topics + Debug {
+        (
+            Symbol::new(env, "interchain_transfer_received"),
+            self.source_chain.as_val(),
+            self.token_id.to_val(),
+            self.source_address.to_val(),
+            self.destination_address.to_val(),
+            self.amount,
+        )
+    }
+
+    fn data(&self, _env: &Env) -> impl IntoVal<Env, Val> + Debug {
+        (self.data.clone(),)
+    }
+}
+
+#[cfg(any(test, feature = "testutils"))]
+impl_event_testutils!(TrustedChainSetEvent, (Symbol, String), ());
+
+#[cfg(any(test, feature = "testutils"))]
+impl_event_testutils!(TrustedChainRemovedEvent, (Symbol, String), ());
+
+#[cfg(any(test, feature = "testutils"))]
+impl_event_testutils!(
+    InterchainTransferReceivedEvent,
+    (Symbol, String, BytesN<32>, Bytes, Bytes, i128),
+    (Option<Bytes>)
+);
