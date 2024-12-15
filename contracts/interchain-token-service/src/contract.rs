@@ -5,20 +5,21 @@ use axelar_soroban_std::{
     address::AddressExt, ensure, interfaces, types::Token, Ownable, Upgradable,
 };
 use interchain_token::InterchainTokenClient;
-use soroban_sdk::xdr::ToXdr;
-use soroban_sdk::{contract, contractimpl, token, Address, Bytes, BytesN, Env, String};
+use soroban_sdk::token::StellarAssetClient;
+use soroban_sdk::xdr::{FromXdr, ToXdr};
+use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, String};
 use soroban_token_sdk::metadata::TokenMetadata;
 
 use crate::abi::{get_message_type, MessageType as EncodedMessageType};
 use crate::error::ContractError;
 use crate::event::{
-    InterchainTransferReceivedEvent, TrustedChainRemovedEvent, TrustedChainSetEvent,
+    InterchainTransferReceivedEvent, InterchainTransferSentEvent, TrustedChainRemovedEvent,
+    TrustedChainSetEvent,
 };
 use crate::interface::InterchainTokenServiceInterface;
 use crate::storage_types::{DataKey, TokenIdConfigValue};
-use crate::types::{
-    DeployInterchainToken, HubMessage, InterchainTransfer, Message, TokenManagerType,
-};
+use crate::token_handler;
+use crate::types::{HubMessage, InterchainTransfer, Message, TokenManagerType};
 
 const ITS_HUB_CHAIN_NAME: &str = "axelar";
 const PREFIX_INTERCHAIN_TOKEN_ID: &str = "its-interchain-token-id";
@@ -210,18 +211,16 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
                 (
                     env.current_contract_address(),
                     initial_minter,
-                    env.current_contract_address(),
                     token_id.clone(),
                     token_meta_data,
                 ),
             );
 
         if initial_supply > 0 {
-            let token = InterchainTokenClient::new(env, &deployed_address);
-
-            token.mint(&env.current_contract_address(), &caller, &initial_supply);
+            StellarAssetClient::new(env, &deployed_address).mint(&caller, &initial_supply);
 
             if let Some(minter) = minter {
+                let token = InterchainTokenClient::new(env, &deployed_address);
                 token.remove_minter(&env.current_contract_address());
                 token.add_minter(&minter);
             }
@@ -282,19 +281,36 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         destination_chain: String,
         destination_address: Bytes,
         amount: i128,
-        metadata: Option<Bytes>,
+        data: Option<Bytes>,
         gas_token: Token,
     ) -> Result<(), ContractError> {
+        ensure!(amount > 0, ContractError::InvalidAmount);
+
         caller.require_auth();
 
-        // TODO: implementation
+        token_handler::take_token(
+            env,
+            caller.clone(),
+            Self::token_id_config(env, token_id.clone()),
+            amount,
+        )?;
+
+        InterchainTransferSentEvent {
+            token_id: token_id.clone(),
+            source_address: caller.clone(),
+            destination_chain: destination_chain.clone(),
+            destination_address: destination_address.clone(),
+            amount,
+            data: data.clone(),
+        }
+        .emit(env);
 
         let message = Message::InterchainTransfer(InterchainTransfer {
             token_id,
             source_address: caller.clone().to_xdr(env),
             destination_address,
             amount,
-            data: metadata,
+            data,
         });
 
         Self::pay_gas_and_call_contract(env, caller, destination_chain, message, gas_token)?;
@@ -319,9 +335,11 @@ impl AxelarExecutableInterface for InterchainTokenService {
         source_address: String,
         payload: Bytes,
     ) {
-        let _ = Self::validate_message(&env, &source_chain, &message_id, &source_address, &payload);
+        Self::validate_message(&env, &source_chain, &message_id, &source_address, &payload)
+            .unwrap_or_else(|err| panic_with_error!(env, err));
 
-        let _ = Self::execute_message(&env, source_chain, message_id, source_address, payload);
+        Self::execute_message(&env, source_chain, message_id, source_address, payload)
+            .unwrap_or_else(|err| panic_with_error!(env, err));
     }
 }
 
@@ -381,22 +399,33 @@ impl InterchainTokenService {
         _source_address: String,
         payload: Bytes,
     ) -> Result<(), ContractError> {
-        // TODO: Add ITS hub execute logic
-
-        let (original_source_chain, message) =
-            Self::get_execute_params(env, source_chain, &payload)?;
+        let (source_chain, message) = Self::get_execute_params(env, source_chain, &payload)?;
 
         match message {
-            Message::InterchainTransfer(inner_message) => {
-                // TODO: transfer implementation
+            Message::InterchainTransfer(InterchainTransfer {
+                token_id,
+                source_address,
+                destination_address,
+                amount,
+                data,
+            }) => {
+                let recipient = Address::from_xdr(env, &destination_address)
+                    .map_err(|_| ContractError::InvalidDestinationAddress)?;
+
+                token_handler::give_token(
+                    env,
+                    recipient,
+                    Self::token_id_config(env, token_id.clone()),
+                    amount,
+                )?;
 
                 InterchainTransferReceivedEvent {
-                    source_chain: original_source_chain,
-                    token_id: inner_message.token_id,
-                    source_address: inner_message.source_address,
-                    destination_address: inner_message.destination_address,
-                    amount: inner_message.amount,
-                    data: inner_message.data,
+                    source_chain,
+                    token_id,
+                    source_address,
+                    destination_address,
+                    amount,
+                    data,
                 }
                 .emit(env);
 
@@ -423,7 +452,7 @@ impl InterchainTokenService {
 
         ensure!(
             source_chain == Self::its_hub_chain_name(env),
-            ContractError::UntrustedChain
+            ContractError::InvalidHubChain
         );
 
         let decoded_message = HubMessage::abi_decode(env, payload)?;

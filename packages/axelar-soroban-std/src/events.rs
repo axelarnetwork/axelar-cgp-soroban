@@ -37,14 +37,18 @@ mod testutils {
         E::standardized_fmt(env, &event)
     }
 
-    pub fn fmt_emitted_event_at_idx<E>(env: &Env, idx: u32) -> std::string::String
+    pub fn fmt_emitted_event_at_idx<E>(env: &Env, mut idx: i32) -> std::string::String
     where
         E: EventTestutils,
     {
+        if idx < 0 {
+            idx += env.events().all().len() as i32;
+        }
+
         let event = env
             .events()
             .all()
-            .get(idx)
+            .get(idx as u32)
             .expect("no event found at the given index");
         E::standardized_fmt(env, &event)
     }

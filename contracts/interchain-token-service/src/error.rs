@@ -16,4 +16,6 @@ pub enum ContractError {
     InvalidAmount = 10,
     InvalidUtf8 = 11,
     InvalidMinter = 12,
+    InvalidDestinationAddress = 13,
+    InvalidHubChain = 14,
 }
