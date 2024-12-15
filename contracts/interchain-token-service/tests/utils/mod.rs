@@ -7,7 +7,7 @@ use soroban_sdk::BytesN;
 use soroban_sdk::{testutils::Address as _, token::StellarAssetClient, Address, Env, String};
 use soroban_token_sdk::metadata::TokenMetadata;
 
-pub const HUB_CHAIN: &str = "hub_chain";
+pub const HUB_CHAIN: &str = "axelar";
 
 const INTERCHAIN_TOKEN_WASM_HASH: &[u8] = include_bytes!("../testdata/interchain_token.wasm");
 

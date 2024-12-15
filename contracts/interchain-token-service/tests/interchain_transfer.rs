@@ -2,44 +2,32 @@ mod utils;
 
 use axelar_gateway::testutils::{generate_proof, get_approve_hash};
 use axelar_gateway::types::Message as GatewayMessage;
+use axelar_soroban_std::events;
 use axelar_soroban_std::traits::BytesExt;
-use axelar_soroban_std::{assert_last_emitted_event, assert_ok, events};
-use interchain_token_service::event::InterchainTransferReceivedEvent;
+use interchain_token_service::event::{
+    InterchainTransferReceivedEvent, InterchainTransferSentEvent,
+};
 use interchain_token_service::types::{HubMessage, InterchainTransfer, Message};
 use soroban_sdk::xdr::ToXdr;
-use soroban_sdk::{testutils::Address as _, vec, Address, Bytes, BytesN, String, Symbol};
+use soroban_sdk::{testutils::Address as _, vec, Address, Bytes, BytesN, String};
 use utils::{register_chains, setup_env, setup_gas_token, setup_its_token, HUB_CHAIN};
 
 #[test]
-fn interchain_transfer_send() {
-    let (env, client, gateway_client, _) = setup_env();
-    register_chains(&env, &client);
+fn interchain_transfer_send_succeeds() {
+    let (env, client, _, _) = setup_env();
+
     let sender: Address = Address::generate(&env);
     let gas_token = setup_gas_token(&env, &sender);
     let amount = 1000;
     let token_id = setup_its_token(&env, &client, &sender, amount);
 
-    let destination_chain = String::from_str(&env, HUB_CHAIN);
+    let destination_chain = String::from_str(&env, "ethereum");
     let destination_address = Bytes::from_hex(&env, "4F4495243837681061C4743b74B3eEdf548D56A5");
     let data = Some(Bytes::from_hex(&env, "abcd"));
 
-    let msg = Message::InterchainTransfer(InterchainTransfer {
-        token_id: token_id.clone(),
-        source_address: sender.clone().to_xdr(&env),
-        destination_address: destination_address.clone(),
-        amount,
-        data: data.clone(),
-    });
-
-    let expected_payload = assert_ok!(HubMessage::SendToHub {
-        destination_chain: String::from_str(&env, HUB_CHAIN),
-        message: msg
-    }
-    .abi_encode(&env));
-
-    let expected_destination_chain = client.its_hub_chain_name();
-    let expected_destination_address = client.its_hub_address();
-    let expected_payload_hash: BytesN<32> = env.crypto().keccak256(&expected_payload).into();
+    client
+        .mock_all_auths()
+        .set_trusted_chain(&destination_chain);
 
     client.mock_all_auths().interchain_transfer(
         &sender,
@@ -51,22 +39,39 @@ fn interchain_transfer_send() {
         &gas_token,
     );
 
-    assert_last_emitted_event(
-        &env,
-        &gateway_client.address,
-        (
-            Symbol::new(&env, "contract_called"),
-            client.address,
-            expected_destination_chain,
-            expected_destination_address,
-            expected_payload_hash,
-        ),
-        expected_payload,
+    goldie::assert!(events::fmt_emitted_event_at_idx::<
+        InterchainTransferSentEvent,
+    >(&env, -4));
+}
+
+#[test]
+#[should_panic(expected = "burn, Error(Contract, #9)")]
+fn interchain_transfer_send_fails_on_insufficient_balance() {
+    let (env, client, _, _) = setup_env();
+    register_chains(&env, &client);
+
+    let sender: Address = Address::generate(&env);
+    let gas_token = setup_gas_token(&env, &sender);
+    let amount = 1000;
+    let token_id = setup_its_token(&env, &client, &sender, amount);
+
+    let destination_chain = client.its_hub_chain_name();
+    let destination_address = Bytes::from_hex(&env, "4F4495243837681061C4743b74B3eEdf548D56A5");
+    let data = Some(Bytes::from_hex(&env, "abcd"));
+
+    client.mock_all_auths().interchain_transfer(
+        &sender,
+        &token_id,
+        &destination_chain,
+        &destination_address,
+        &(amount + 1),
+        &data,
+        &gas_token,
     );
 }
 
 #[test]
-fn interchain_transfer_receive() {
+fn interchain_transfer_receive_succeeds() {
     let (env, client, gateway_client, signers) = setup_env();
     register_chains(&env, &client);
 
@@ -111,9 +116,7 @@ fn interchain_transfer_receive() {
 
     gateway_client.approve_messages(&messages, &proof);
 
-    client
-        .mock_all_auths()
-        .execute(&source_chain, &message_id, &source_address, &payload);
+    client.execute(&source_chain, &message_id, &source_address, &payload);
 
     goldie::assert!(events::fmt_last_emitted_event::<
         InterchainTransferReceivedEvent,

@@ -14,8 +14,6 @@ pub fn take_token(
     }: TokenIdConfigValue,
     amount: i128,
 ) -> Result<(), ContractError> {
-    sender.require_auth();
-
     let token = TokenClient::new(env, &token_address);
 
     match token_manager_type {

@@ -263,6 +263,8 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     ) -> Result<(), ContractError> {
         ensure!(amount > 0, ContractError::InvalidAmount);
 
+        caller.require_auth();
+
         token_handler::take_token(
             env,
             caller.clone(),
@@ -273,6 +275,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         InterchainTransferSentEvent {
             token_id: token_id.clone(),
             source_address: caller.clone(),
+            destination_chain: destination_chain.clone(),
             destination_address: destination_address.clone(),
             amount,
             data: data.clone(),
