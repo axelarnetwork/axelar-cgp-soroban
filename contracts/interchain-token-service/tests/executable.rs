@@ -2,14 +2,13 @@ mod utils;
 
 use axelar_gateway::testutils::{generate_proof, get_approve_hash};
 use axelar_gateway::types::Message as GatewayMessage;
-use axelar_soroban_std::events;
 use axelar_soroban_std::traits::BytesExt;
-use interchain_token_service::event::InterchainTransferReceivedEvent;
+use axelar_soroban_std::{assert_invoke_auth_err, events};
 use interchain_token_service::types::{HubMessage, InterchainTransfer, Message};
 use soroban_sdk::token;
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{testutils::Address as _, vec, Address, Bytes, BytesN, String};
-use utils::{register_chains, setup_env, setup_gas_token, setup_its_token, HUB_CHAIN};
+use utils::{register_chains, setup_env, setup_its_token, HUB_CHAIN};
 
 mod test {
     use axelar_soroban_std::{events::Event, impl_event_testutils};
@@ -172,4 +171,33 @@ fn interchain_transfer_execute_succeeds() {
 
     let executable_client = test::ExecutableContractClient::new(&env, &executable_id);
     assert_eq!(executable_client.message(), Some(data));
+}
+
+#[test]
+fn executable_fails_if_not_executed_from_its() {
+    let (env, client, _, _) = setup_env();
+
+    let executable_id = env.register(test::ExecutableContract, (client.address.clone(),));
+    let executable_client = test::ExecutableContractClient::new(&env, &executable_id);
+
+    let source_chain = client.its_hub_chain_name();
+    let source_address = Address::generate(&env).to_xdr(&env);
+    let amount = 1000;
+    let token_id = BytesN::<32>::from_array(&env, &[1; 32]);
+    let token_address = Address::generate(&env);
+    let message_id = String::from_str(&env, "test");
+    let payload = Bytes::from_hex(&env, "dead");
+
+    assert_invoke_auth_err!(
+        Address::generate(&env),
+        executable_client.try_execute_with_interchain_token(
+            &source_chain,
+            &message_id,
+            &source_address,
+            &payload,
+            &token_id,
+            &token_address,
+            &amount,
+        )
+    );
 }
