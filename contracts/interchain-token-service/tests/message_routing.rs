@@ -7,7 +7,6 @@ use utils::{register_chains, setup_env, setup_gas_token, setup_its_token};
 #[test]
 fn send_directly_to_hub_chain_fails() {
     let (env, client, _gateway_client, _) = setup_env();
-    register_chains(&env, &client);
 
     let sender: Address = Address::generate(&env);
     let amount = 1;
