@@ -3,9 +3,11 @@ mod utils;
 use axelar_soroban_std::address::AddressExt;
 use axelar_soroban_std::assert_contract_err;
 use axelar_soroban_std::assert_invoke_auth_err;
+use axelar_soroban_std::events;
 use interchain_token::InterchainTokenClient;
 use interchain_token_service::error::ContractError;
 
+use interchain_token_service::event::InterchainTokenDeployedEvent;
 use interchain_token_service::types::TokenManagerType;
 use soroban_sdk::Address;
 use soroban_sdk::BytesN;
@@ -23,9 +25,8 @@ fn setup_token_metadata(env: &Env, name: &str, symbol: &str, decimal: u32) -> To
 }
 
 #[test]
-fn deploy_interchain_token_with_initial_supply_no_minter() {
+fn deploy_interchain_token_succeeds() {
     let (env, client, _, _) = setup_env();
-    env.mock_all_auths();
 
     let sender = Address::generate(&env);
     let minter: Option<Address> = None;
@@ -33,8 +34,36 @@ fn deploy_interchain_token_with_initial_supply_no_minter() {
     let token_meta_data = setup_token_metadata(&env, "name", "symbol", 6);
     let initial_supply = 100;
 
-    let token_id =
-        client.deploy_interchain_token(&sender, &salt, &token_meta_data, &initial_supply, &minter);
+    client.mock_all_auths().deploy_interchain_token(
+        &sender,
+        &salt,
+        &token_meta_data,
+        &initial_supply,
+        &minter,
+    );
+
+    goldie::assert!(events::fmt_emitted_event_at_idx::<
+        InterchainTokenDeployedEvent,
+    >(&env, -2));
+}
+
+#[test]
+fn deploy_interchain_token_with_initial_supply_no_minter() {
+    let (env, client, _, _) = setup_env();
+
+    let sender = Address::generate(&env);
+    let minter: Option<Address> = None;
+    let salt = BytesN::<32>::from_array(&env, &[1; 32]);
+    let token_meta_data = setup_token_metadata(&env, "name", "symbol", 6);
+    let initial_supply = 100;
+
+    let token_id = client.mock_all_auths().deploy_interchain_token(
+        &sender,
+        &salt,
+        &token_meta_data,
+        &initial_supply,
+        &minter,
+    );
     let token_address = client.token_address(&token_id);
     let token = InterchainTokenClient::new(&env, &token_address);
 
@@ -174,6 +203,22 @@ fn deploy_interchain_token_zero_initial_supply_no_minter() {
     assert!(token.is_minter(&client.address));
     assert!(!token.is_minter(&sender));
     assert_eq!(token.balance(&sender), initial_supply);
+}
+
+#[test]
+#[should_panic(expected = "HostError: Error(Context, InvalidAction)")]
+fn deploy_interchain_token_fails_with_invalid_decimals() {
+    let (env, client, _, _) = setup_env();
+    env.mock_all_auths();
+
+    let sender = Address::generate(&env);
+    let minter: Option<Address> = None;
+    let salt = BytesN::<32>::from_array(&env, &[1; 32]);
+    let invalid_decimals = (u8::MAX) as u32 + 1;
+    let token_meta_data = setup_token_metadata(&env, "name", "symbol", invalid_decimals);
+    let initial_supply = 0;
+
+    client.deploy_interchain_token(&sender, &salt, &token_meta_data, &initial_supply, &minter);
 }
 
 #[test]

@@ -45,7 +45,6 @@ pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
         env: &Env,
         caller: Address,
         salt: BytesN<32>,
-        minter: Option<Address>,
         destination_chain: String,
         gas_token: Token,
     ) -> Result<BytesN<32>, ContractError>;
