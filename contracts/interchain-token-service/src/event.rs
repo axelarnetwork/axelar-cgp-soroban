@@ -1,8 +1,7 @@
-use axelar_soroban_std::events::Event;
-#[cfg(any(test, feature = "testutils"))]
-use axelar_soroban_std::impl_event_testutils;
 use core::fmt::Debug;
-use soroban_sdk::{Bytes, BytesN, Env, IntoVal, String, Symbol, Topics, Val, Vec};
+
+use axelar_soroban_std::events::Event;
+use soroban_sdk::{Address, Bytes, BytesN, Env, IntoVal, String, Symbol, Topics, Val, Vec};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct TrustedChainSetEvent {
@@ -12,6 +11,16 @@ pub struct TrustedChainSetEvent {
 #[derive(Debug, PartialEq, Eq)]
 pub struct TrustedChainRemovedEvent {
     pub chain: String,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct InterchainTransferSentEvent {
+    pub token_id: BytesN<32>,
+    pub source_address: Address,
+    pub destination_chain: String,
+    pub destination_address: Bytes,
+    pub amount: i128,
+    pub data: Option<Bytes>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -47,6 +56,23 @@ impl Event for TrustedChainRemovedEvent {
     }
 }
 
+impl Event for InterchainTransferSentEvent {
+    fn topics(&self, env: &Env) -> impl Topics + Debug {
+        (
+            Symbol::new(env, "interchain_transfer_sent"),
+            self.token_id.to_val(),
+            self.source_address.to_val(),
+            self.destination_chain.to_val(),
+            self.destination_address.to_val(),
+            self.amount,
+        )
+    }
+
+    fn data(&self, _env: &Env) -> impl IntoVal<Env, Val> + Debug {
+        (self.data.clone(),)
+    }
+}
+
 impl Event for InterchainTransferReceivedEvent {
     fn topics(&self, env: &Env) -> impl Topics + Debug {
         (
@@ -65,10 +91,20 @@ impl Event for InterchainTransferReceivedEvent {
 }
 
 #[cfg(any(test, feature = "testutils"))]
+use axelar_soroban_std::impl_event_testutils;
+
+#[cfg(any(test, feature = "testutils"))]
 impl_event_testutils!(TrustedChainSetEvent, (Symbol, String), ());
 
 #[cfg(any(test, feature = "testutils"))]
 impl_event_testutils!(TrustedChainRemovedEvent, (Symbol, String), ());
+
+#[cfg(any(test, feature = "testutils"))]
+impl_event_testutils!(
+    InterchainTransferSentEvent,
+    (Symbol, BytesN<32>, Address, String, Bytes, i128),
+    (Option<Bytes>)
+);
 
 #[cfg(any(test, feature = "testutils"))]
 impl_event_testutils!(

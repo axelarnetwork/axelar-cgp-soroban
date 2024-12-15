@@ -23,19 +23,12 @@ fn setup_token_metadata(env: &Env, name: &str, symbol: &str, decimal: u32) -> To
 fn setup_token<'a>(env: &Env) -> (InterchainTokenClient<'a>, Address, Address) {
     let owner = Address::generate(env);
     let minter = Address::generate(env);
-    let interchain_token_service = Address::generate(env);
     let token_id: BytesN<32> = BytesN::<32>::random(env);
     let token_meta_data = setup_token_metadata(env, "name", "symbol", 6);
 
     let contract_id = env.register(
         InterchainToken,
-        (
-            owner.clone(),
-            minter.clone(),
-            &interchain_token_service,
-            &token_id,
-            token_meta_data,
-        ),
+        (owner.clone(), minter.clone(), &token_id, token_meta_data),
     );
 
     let token = InterchainTokenClient::new(env, &contract_id);
@@ -48,20 +41,10 @@ fn register_token_with_invalid_decimals_fails() {
     let env = Env::default();
     let owner = Address::generate(&env);
     let minter = Address::generate(&env);
-    let interchain_token_service = Address::generate(&env);
     let token_id: BytesN<32> = BytesN::<32>::random(&env);
     let token_meta_data = setup_token_metadata(&env, "name", "symbol", u32::from(u8::MAX) + 1);
 
-    env.register(
-        InterchainToken,
-        (
-            owner,
-            minter,
-            &interchain_token_service,
-            &token_id,
-            token_meta_data,
-        ),
-    );
+    env.register(InterchainToken, (owner, minter, &token_id, token_meta_data));
 }
 
 #[test]
@@ -70,20 +53,10 @@ fn register_token_with_invalid_name_fails() {
     let env = Env::default();
     let owner = Address::generate(&env);
     let minter = Address::generate(&env);
-    let interchain_token_service = Address::generate(&env);
     let token_id: BytesN<32> = BytesN::<32>::random(&env);
     let token_meta_data = setup_token_metadata(&env, "", "symbol", 1);
 
-    env.register(
-        InterchainToken,
-        (
-            owner,
-            minter,
-            &interchain_token_service,
-            &token_id,
-            token_meta_data,
-        ),
-    );
+    env.register(InterchainToken, (owner, minter, &token_id, token_meta_data));
 }
 
 #[test]
@@ -92,20 +65,10 @@ fn register_token_with_invalid_symbol_fails() {
     let env = Env::default();
     let owner = Address::generate(&env);
     let minter = Address::generate(&env);
-    let interchain_token_service = Address::generate(&env);
     let token_id: BytesN<32> = BytesN::<32>::random(&env);
     let token_meta_data = setup_token_metadata(&env, "name", "", 1);
 
-    env.register(
-        InterchainToken,
-        (
-            owner,
-            minter,
-            &interchain_token_service,
-            &token_id,
-            token_meta_data,
-        ),
-    );
+    env.register(InterchainToken, (owner, minter, &token_id, token_meta_data));
 }
 
 #[test]
@@ -115,7 +78,7 @@ fn register_interchain_token() {
     let (token, owner, minter) = setup_token(&env);
 
     assert_eq!(token.owner(), owner);
-    assert!(!token.is_minter(&owner));
+    assert!(token.is_minter(&owner));
     assert!(token.is_minter(&minter));
 }
 
@@ -124,27 +87,19 @@ fn register_interchain_token_without_minter() {
     let env = Env::default();
 
     let owner = Address::generate(&env);
-    let interchain_token_service = Address::generate(&env);
     let token_id: BytesN<32> = BytesN::<32>::random(&env);
     let token_meta_data = setup_token_metadata(&env, "name", "symbol", 6);
     let minter: Option<Address> = None;
 
     let contract_id = env.register(
         InterchainToken,
-        (
-            owner.clone(),
-            minter,
-            &interchain_token_service,
-            &token_id,
-            token_meta_data,
-        ),
+        (owner.clone(), minter, &token_id, token_meta_data),
     );
 
     let token = InterchainTokenClient::new(&env, &contract_id);
 
     assert_eq!(token.owner(), owner);
-    assert!(token.is_minter(&interchain_token_service));
-    assert!(!token.is_minter(&owner));
+    assert!(token.is_minter(&owner));
 }
 
 #[test]
@@ -213,7 +168,7 @@ fn transfer() {
 
     let (token, _owner, minter) = setup_token(&env);
 
-    assert_invoke_auth_ok!(minter, token.try_mint(&minter, &user1, &amount));
+    assert_invoke_auth_ok!(minter, token.try_mint_from(&minter, &user1, &amount));
     assert_eq!(token.balance(&user1), amount);
 
     assert_invoke_auth_ok!(user1, token.try_transfer(&user1, &user2, &600_i128));
@@ -234,7 +189,7 @@ fn fail_transfer_from_with_negative_amount() {
 
     let (token, _owner, minter) = setup_token(&env);
 
-    assert_invoke_auth_ok!(minter, token.try_mint(&minter, &user1, &1000_i128));
+    assert_invoke_auth_ok!(minter, token.try_mint_from(&minter, &user1, &1000_i128));
     assert_eq!(token.balance(&user1), 1000_i128);
 
     let expiration_ledger = 200;
@@ -260,7 +215,7 @@ fn fail_transfer_from_without_approval() {
 
     let (token, _owner, minter) = setup_token(&env);
 
-    assert_invoke_auth_ok!(minter, token.try_mint(&minter, &user1, &1000_i128));
+    assert_invoke_auth_ok!(minter, token.try_mint_from(&minter, &user1, &1000_i128));
     assert_eq!(token.balance(&user1), 1000_i128);
 
     token.transfer_from(&user2, &user1, &user3, &400_i128);
@@ -278,7 +233,7 @@ fn fail_transfer_from_with_insufficient_allowance() {
 
     let (token, _owner, minter) = setup_token(&env);
 
-    assert_invoke_auth_ok!(minter, token.try_mint(&minter, &user1, &1000_i128));
+    assert_invoke_auth_ok!(minter, token.try_mint_from(&minter, &user1, &1000_i128));
     assert_eq!(token.balance(&user1), 1000_i128);
 
     let expiration_ledger = 200;
@@ -302,7 +257,7 @@ fn transfer_from() {
 
     let (token, _owner, minter) = setup_token(&env);
 
-    assert_invoke_auth_ok!(minter, token.try_mint(&minter, &user1, &1000_i128));
+    assert_invoke_auth_ok!(minter, token.try_mint_from(&minter, &user1, &1000_i128));
     assert_eq!(token.balance(&user1), 1000_i128);
 
     let expiration_ledger = 200;
@@ -332,8 +287,9 @@ fn fail_mint_from_invalid_minter() {
 
     let (token, owner, minter) = setup_token(&env);
 
-    assert_invoke_auth_err!(owner, token.try_mint(&minter, &user, &amount));
-    assert_invoke_auth_err!(user, token.try_mint(&minter, &user, &amount));
+    assert_invoke_auth_err!(owner, token.try_mint_from(&minter, &user, &amount));
+    assert_invoke_auth_err!(user, token.try_mint_from(&minter, &user, &amount));
+    assert_invoke_auth_err!(user, token.try_mint(&user, &amount));
 }
 
 #[test]
@@ -343,10 +299,13 @@ fn mint_from_minter_succeeds() {
     let amount = 1000;
     let user = Address::generate(&env);
 
-    let (token, _owner, minter) = setup_token(&env);
+    let (token, owner, minter) = setup_token(&env);
 
-    assert_invoke_auth_ok!(minter, token.try_mint(&minter, &user, &amount));
+    assert_invoke_auth_ok!(minter, token.try_mint_from(&minter, &user, &amount));
     assert_eq!(token.balance(&user), amount);
+
+    assert_invoke_auth_ok!(owner, token.try_mint(&user, &amount));
+    assert_eq!(token.balance(&user), amount * 2);
 }
 
 #[test]
@@ -380,7 +339,7 @@ fn add_minter_succeeds() {
         (),
     );
 
-    assert_invoke_auth_ok!(minter2, token.try_mint(&minter2, &user, &amount));
+    assert_invoke_auth_ok!(minter2, token.try_mint_from(&minter2, &user, &amount));
     assert_eq!(token.balance(&user), amount);
 }
 
@@ -415,7 +374,7 @@ fn remove_minter() {
         (),
     );
 
-    assert_invoke_auth_err!(minter1, token.try_mint(&minter1, &user, &amount));
+    assert_invoke_auth_err!(minter1, token.try_mint_from(&minter1, &user, &amount));
 }
 
 #[test]
@@ -429,7 +388,7 @@ fn fail_burn_with_negative_amount() {
     let (token, _owner, minter) = setup_token(&env);
     let amount = 1000;
 
-    assert_invoke_auth_ok!(minter, token.try_mint(&minter, &user, &amount));
+    assert_invoke_auth_ok!(minter, token.try_mint_from(&minter, &user, &amount));
     assert_eq!(token.balance(&user), amount);
 
     let burn_amount = -1;
@@ -448,7 +407,7 @@ fn fail_burn_with_insufficient_balance() {
     let (token, _owner, minter) = setup_token(&env);
     let amount = 1000;
 
-    assert_invoke_auth_ok!(minter, token.try_mint(&minter, &user, &amount));
+    assert_invoke_auth_ok!(minter, token.try_mint_from(&minter, &user, &amount));
     assert_eq!(token.balance(&user), amount);
 
     let burn_amount = 2000;
@@ -465,7 +424,7 @@ fn burn_succeeds() {
     let (token, _owner, minter) = setup_token(&env);
     let amount = 1000;
 
-    assert_invoke_auth_ok!(minter, token.try_mint(&minter, &user, &amount));
+    assert_invoke_auth_ok!(minter, token.try_mint_from(&minter, &user, &amount));
     assert_eq!(token.balance(&user), amount);
 
     assert_invoke_auth_ok!(user, token.try_burn(&user, &amount));
@@ -498,7 +457,7 @@ fn fail_burn_from_without_approval() {
     let (token, _owner, minter) = setup_token(&env);
     let amount = 1000;
 
-    assert_invoke_auth_ok!(minter, token.try_mint(&minter, &user1, &amount));
+    assert_invoke_auth_ok!(minter, token.try_mint_from(&minter, &user1, &amount));
     assert_eq!(token.balance(&user1), amount);
 
     let burn_amount = 500;
@@ -515,7 +474,7 @@ fn burn_from_succeeds() {
     let (token, _owner, minter) = setup_token(&env);
     let amount = 1000;
 
-    assert_invoke_auth_ok!(minter, token.try_mint(&minter, &user1, &amount));
+    assert_invoke_auth_ok!(minter, token.try_mint_from(&minter, &user1, &amount));
     assert_eq!(token.balance(&user1), amount);
 
     let expiration_ledger = 200;
