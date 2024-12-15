@@ -268,6 +268,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         let token_name = token.name();
         let token_symbol = token.symbol();
         let token_decimals = token.decimals();
+
         ensure!(
             token_decimals <= u8::MAX as u32,
             ContractError::InvalidDecimals
