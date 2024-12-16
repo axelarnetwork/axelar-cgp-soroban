@@ -8,7 +8,7 @@ use utils::setup_env;
 #[test]
 #[should_panic(expected = "Error(Contract, #1)")] // ExecutableError::NotApproved
 fn execute_fails_without_gateway_approval() {
-    let (env, client, _, _) = setup_env();
+    let (env, client, _, _, _) = setup_env();
 
     let source_chain = String::from_str(&env, "chain");
     let message_id = String::from_str(&env, "test");
@@ -21,7 +21,7 @@ fn execute_fails_without_gateway_approval() {
 #[test]
 #[should_panic(expected = "Error(Contract, #8)")] // ContractError::InsufficientMessageLength
 fn execute_fails_with_invalid_message() {
-    let (env, client, gateway_client, signers) = setup_env();
+    let (env, client, gateway_client, _, signers) = setup_env();
 
     let source_chain = client.its_hub_chain_name();
     let message_id = String::from_str(&env, "test");

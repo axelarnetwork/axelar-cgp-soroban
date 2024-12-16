@@ -3,8 +3,8 @@ use axelar_gateway::testutils::{setup_gateway, TestSignerSet};
 use axelar_gateway::AxelarGatewayClient;
 use axelar_soroban_std::types::Token;
 use interchain_token_service::{InterchainTokenService, InterchainTokenServiceClient};
-use soroban_sdk::BytesN;
 use soroban_sdk::{testutils::Address as _, token::StellarAssetClient, Address, Env, String};
+use soroban_sdk::{BytesN, IntoVal};
 use soroban_token_sdk::metadata::TokenMetadata;
 
 pub const HUB_CHAIN: &str = "axelar";
@@ -54,16 +54,17 @@ pub fn setup_env<'a>() -> (
     Env,
     InterchainTokenServiceClient<'a>,
     AxelarGatewayClient<'a>,
+    AxelarGasServiceClient<'a>,
     TestSignerSet,
 ) {
     let env = Env::default();
 
     let (signers, gateway_client) = setup_gateway(&env, 0, 5);
-    let gas_service_client = setup_gas_service(&env);
+    let gas_service_client: AxelarGasServiceClient<'_> = setup_gas_service(&env);
 
     let client = setup_its(&env, &gateway_client, &gas_service_client);
 
-    (env, client, gateway_client, signers)
+    (env, client, gateway_client, gas_service_client, signers)
 }
 
 #[allow(dead_code)]
@@ -90,7 +91,7 @@ pub fn setup_its_token(
     supply: i128,
 ) -> BytesN<32> {
     let salt = BytesN::from_array(env, &[1u8; 32]);
-    let token_meta_data = TokenMetadata {
+    let token_metadata = TokenMetadata {
         name: String::from_str(env, "Test"),
         symbol: String::from_str(env, "TEST"),
         decimal: 18,
@@ -99,7 +100,7 @@ pub fn setup_its_token(
     let token_id = client.mock_all_auths().deploy_interchain_token(
         sender,
         &salt,
-        &token_meta_data,
+        &token_metadata,
         &supply,
         &None,
     );
@@ -111,4 +112,19 @@ pub fn setup_its_token(
 pub fn register_chains(env: &Env, client: &InterchainTokenServiceClient) {
     let chain = String::from_str(env, HUB_CHAIN);
     client.mock_all_auths().set_trusted_chain(&chain);
+}
+
+#[allow(dead_code)]
+pub trait TokenMetadataExt {
+    fn new(env: &Env, name: &str, symbol: &str, decimal: u32) -> Self;
+}
+
+impl TokenMetadataExt for TokenMetadata {
+    fn new(env: &Env, name: &str, symbol: &str, decimal: u32) -> Self {
+        Self {
+            decimal,
+            name: name.into_val(env),
+            symbol: symbol.into_val(env),
+        }
+    }
 }

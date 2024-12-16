@@ -12,7 +12,7 @@ use soroban_sdk::{Address, String};
 
 #[test]
 fn set_trusted_address() {
-    let (env, client, _, _) = setup_env();
+    let (env, client, _, _, _) = setup_env();
 
     let chain = String::from_str(&env, "chain");
 
@@ -25,7 +25,7 @@ fn set_trusted_address() {
 
 #[test]
 fn set_trusted_chain_fails_if_not_owner() {
-    let (env, client, _, _) = setup_env();
+    let (env, client, _, _, _) = setup_env();
 
     let not_owner = Address::generate(&env);
     let chain = String::from_str(&env, "chain");
@@ -35,7 +35,7 @@ fn set_trusted_chain_fails_if_not_owner() {
 
 #[test]
 fn set_trusted_chain_fails_if_already_set() {
-    let (env, client, _, _) = setup_env();
+    let (env, client, _, _, _) = setup_env();
     env.mock_all_auths();
 
     let chain = String::from_str(&env, "chain");
@@ -49,7 +49,7 @@ fn set_trusted_chain_fails_if_already_set() {
 
 #[test]
 fn remove_trusted_chain() {
-    let (env, client, _, _) = setup_env();
+    let (env, client, _, _, _) = setup_env();
 
     let chain = String::from_str(&env, "chain");
 
@@ -66,7 +66,7 @@ fn remove_trusted_chain() {
 
 #[test]
 fn remove_trusted_chain_fails_if_not_set() {
-    let (env, client, _, _) = setup_env();
+    let (env, client, _, _, _) = setup_env();
     env.mock_all_auths();
 
     let chain = String::from_str(&env, "chain");

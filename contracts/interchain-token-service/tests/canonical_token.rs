@@ -11,7 +11,7 @@ const PREFIX_CANONICAL_TOKEN_SALT: &str = "canonical-token-salt";
 
 #[test]
 fn register_canonical_token_succeeds() {
-    let (env, client, _, _) = setup_env();
+    let (env, client, _, _, _) = setup_env();
     let token_address = Address::generate(&env);
 
     let chain_name = client.chain_name();
@@ -45,7 +45,7 @@ fn register_canonical_token_succeeds() {
 
 #[test]
 fn register_canonical_token_fails_if_already_registered() {
-    let (env, client, _, _) = setup_env();
+    let (env, client, _, _, _) = setup_env();
     let token_address = Address::generate(&env);
 
     client.register_canonical_token(&token_address);
@@ -58,7 +58,7 @@ fn register_canonical_token_fails_if_already_registered() {
 
 #[test]
 fn canonical_token_id_derivation() {
-    let (env, client, _, _) = setup_env();
+    let (env, client, _, _, _) = setup_env();
     let token_address = Address::generate(&env);
 
     let chain_name = client.chain_name();
