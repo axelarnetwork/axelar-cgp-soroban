@@ -16,6 +16,7 @@ use crate::event::{
     InterchainTransferReceivedEvent, InterchainTransferSentEvent, TrustedChainRemovedEvent,
     TrustedChainSetEvent,
 };
+use crate::executable::InterchainTokenExecutableClient;
 use crate::interface::InterchainTokenServiceInterface;
 use crate::storage_types::{DataKey, TokenIdConfigValue};
 use crate::token_handler;
@@ -267,7 +268,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
 
         token_handler::take_token(
             env,
-            caller.clone(),
+            &caller,
             Self::token_id_config(env, token_id.clone()),
             amount,
         )?;
@@ -372,7 +373,7 @@ impl InterchainTokenService {
     fn execute_message(
         env: &Env,
         source_chain: String,
-        _message_id: String,
+        message_id: String,
         _source_address: String,
         payload: Bytes,
     ) -> Result<(), ContractError> {
@@ -386,33 +387,48 @@ impl InterchainTokenService {
                 amount,
                 data,
             }) => {
-                let recipient = Address::from_xdr(env, &destination_address)
+                let destination_address = Address::from_xdr(env, &destination_address)
                     .map_err(|_| ContractError::InvalidDestinationAddress)?;
 
                 token_handler::give_token(
                     env,
-                    recipient,
+                    &destination_address,
                     Self::token_id_config(env, token_id.clone()),
                     amount,
                 )?;
 
+                let token_address = Self::token_address(env, token_id.clone());
+
                 InterchainTransferReceivedEvent {
-                    source_chain,
-                    token_id,
-                    source_address,
-                    destination_address,
+                    source_chain: source_chain.clone(),
+                    token_id: token_id.clone(),
+                    source_address: source_address.clone(),
+                    destination_address: destination_address.clone(),
                     amount,
-                    data,
+                    data: data.clone(),
                 }
                 .emit(env);
 
-                Ok(())
+                if let Some(payload) = data {
+                    let executable =
+                        InterchainTokenExecutableClient::new(env, &destination_address);
+                    executable.execute_with_interchain_token(
+                        &source_chain,
+                        &message_id,
+                        &source_address,
+                        &payload,
+                        &token_id,
+                        &token_address,
+                        &amount,
+                    );
+                }
             }
             Message::DeployInterchainToken(_) => {
-                // TODO
-                Ok(())
+                todo!()
             }
-        }
+        };
+
+        Ok(())
     }
 
     fn get_execute_params(

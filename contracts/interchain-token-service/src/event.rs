@@ -28,7 +28,7 @@ pub struct InterchainTransferReceivedEvent {
     pub source_chain: String,
     pub token_id: BytesN<32>,
     pub source_address: Bytes,
-    pub destination_address: Bytes,
+    pub destination_address: Address,
     pub amount: i128,
     pub data: Option<Bytes>,
 }
@@ -109,6 +109,6 @@ impl_event_testutils!(
 #[cfg(any(test, feature = "testutils"))]
 impl_event_testutils!(
     InterchainTransferReceivedEvent,
-    (Symbol, String, BytesN<32>, Bytes, Bytes, i128),
+    (Symbol, String, BytesN<32>, Bytes, Address, i128),
     (Option<Bytes>)
 );
