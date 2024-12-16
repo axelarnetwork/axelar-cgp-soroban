@@ -60,4 +60,9 @@ pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
         metadata: Option<Bytes>,
         gas_token: Token,
     ) -> Result<(), ContractError>;
+
+    fn register_canonical_token(
+        env: &Env,
+        token_address: Address,
+    ) -> Result<BytesN<32>, ContractError>;
 }
