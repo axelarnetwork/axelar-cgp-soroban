@@ -13,9 +13,9 @@ use soroban_token_sdk::metadata::TokenMetadata;
 use crate::abi::{get_message_type, MessageType as EncodedMessageType};
 use crate::error::ContractError;
 use crate::event::{
-    InterchainTokenIdClaimedEvent, InterchainTokenDeployedEvent, InterchainTokenDeploymentStartedEvent,
-    InterchainTransferReceivedEvent, InterchainTransferSentEvent, TrustedChainRemovedEvent,
-    TrustedChainSetEvent
+    InterchainTokenDeployedEvent, InterchainTokenDeploymentStartedEvent,
+    InterchainTokenIdClaimedEvent, InterchainTransferReceivedEvent, InterchainTransferSentEvent,
+    TrustedChainRemovedEvent, TrustedChainSetEvent,
 };
 use crate::executable::InterchainTokenExecutableClient;
 use crate::interface::InterchainTokenServiceInterface;
