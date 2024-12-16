@@ -24,11 +24,11 @@ fn setup_token<'a>(env: &Env) -> (InterchainTokenClient<'a>, Address, Address) {
     let owner = Address::generate(env);
     let minter = Address::generate(env);
     let token_id: BytesN<32> = BytesN::<32>::random(env);
-    let token_meta_data = setup_token_metadata(env, "name", "symbol", 6);
+    let token_metadata = setup_token_metadata(env, "name", "symbol", 6);
 
     let contract_id = env.register(
         InterchainToken,
-        (owner.clone(), minter.clone(), &token_id, token_meta_data),
+        (owner.clone(), minter.clone(), &token_id, token_metadata),
     );
 
     let token = InterchainTokenClient::new(env, &contract_id);
@@ -42,9 +42,9 @@ fn register_token_with_invalid_decimals_fails() {
     let owner = Address::generate(&env);
     let minter = Address::generate(&env);
     let token_id: BytesN<32> = BytesN::<32>::random(&env);
-    let token_meta_data = setup_token_metadata(&env, "name", "symbol", u32::from(u8::MAX) + 1);
+    let token_metadata = setup_token_metadata(&env, "name", "symbol", u32::from(u8::MAX) + 1);
 
-    env.register(InterchainToken, (owner, minter, &token_id, token_meta_data));
+    env.register(InterchainToken, (owner, minter, &token_id, token_metadata));
 }
 
 #[test]
@@ -54,9 +54,9 @@ fn register_token_with_invalid_name_fails() {
     let owner = Address::generate(&env);
     let minter = Address::generate(&env);
     let token_id: BytesN<32> = BytesN::<32>::random(&env);
-    let token_meta_data = setup_token_metadata(&env, "", "symbol", 1);
+    let token_metadata = setup_token_metadata(&env, "", "symbol", 1);
 
-    env.register(InterchainToken, (owner, minter, &token_id, token_meta_data));
+    env.register(InterchainToken, (owner, minter, &token_id, token_metadata));
 }
 
 #[test]
@@ -66,9 +66,9 @@ fn register_token_with_invalid_symbol_fails() {
     let owner = Address::generate(&env);
     let minter = Address::generate(&env);
     let token_id: BytesN<32> = BytesN::<32>::random(&env);
-    let token_meta_data = setup_token_metadata(&env, "name", "", 1);
+    let token_metadata = setup_token_metadata(&env, "name", "", 1);
 
-    env.register(InterchainToken, (owner, minter, &token_id, token_meta_data));
+    env.register(InterchainToken, (owner, minter, &token_id, token_metadata));
 }
 
 #[test]
@@ -88,12 +88,12 @@ fn register_interchain_token_without_minter() {
 
     let owner = Address::generate(&env);
     let token_id: BytesN<32> = BytesN::<32>::random(&env);
-    let token_meta_data = setup_token_metadata(&env, "name", "symbol", 6);
+    let token_metadata = setup_token_metadata(&env, "name", "symbol", 6);
     let minter: Option<Address> = None;
 
     let contract_id = env.register(
         InterchainToken,
-        (owner.clone(), minter, &token_id, token_meta_data),
+        (owner.clone(), minter, &token_id, token_metadata),
     );
 
     let token = InterchainTokenClient::new(&env, &contract_id);

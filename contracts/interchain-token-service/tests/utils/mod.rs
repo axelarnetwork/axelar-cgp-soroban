@@ -91,7 +91,7 @@ pub fn setup_its_token(
     supply: i128,
 ) -> BytesN<32> {
     let salt = BytesN::from_array(env, &[1u8; 32]);
-    let token_meta_data = TokenMetadata {
+    let token_metadata = TokenMetadata {
         name: String::from_str(env, "Test"),
         symbol: String::from_str(env, "TEST"),
         decimal: 18,
@@ -100,7 +100,7 @@ pub fn setup_its_token(
     let token_id = client.mock_all_auths().deploy_interchain_token(
         sender,
         &salt,
-        &token_meta_data,
+        &token_metadata,
         &supply,
         &None,
     );

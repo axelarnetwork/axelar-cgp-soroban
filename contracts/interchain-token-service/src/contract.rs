@@ -1,6 +1,8 @@
 use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::{executable::AxelarExecutableInterface, AxelarGatewayMessagingClient};
+use axelar_soroban_std::assert_ok;
 use axelar_soroban_std::events::Event;
+use axelar_soroban_std::token::validate_token_metadata;
 use axelar_soroban_std::{
     address::AddressExt, ensure, interfaces, types::Token, Ownable, Upgradable,
 };
@@ -186,7 +188,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         env: &Env,
         caller: Address,
         salt: BytesN<32>,
-        token_meta_data: TokenMetadata,
+        token_metadata: TokenMetadata,
         initial_supply: i128,
         minter: Option<Address>,
     ) -> Result<BytesN<32>, ContractError> {
@@ -216,16 +218,16 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
                     env.current_contract_address(),
                     initial_minter.clone(),
                     token_id.clone(),
-                    token_meta_data.clone(),
+                    token_metadata.clone(),
                 ),
             );
 
         InterchainTokenDeployedEvent {
             token_id: token_id.clone(),
             token_address: deployed_address.clone(),
-            name: token_meta_data.name,
-            symbol: token_meta_data.symbol,
-            decimals: token_meta_data.decimal,
+            name: token_metadata.name,
+            symbol: token_metadata.symbol,
+            decimals: token_metadata.decimal,
             minter: initial_minter,
         }
         .emit(env);
@@ -286,29 +288,26 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
 
         let deploy_salt = Self::interchain_token_deploy_salt(env, caller.clone(), salt);
         let token_id = Self::interchain_token_id(env, Address::zero(env), deploy_salt);
-
-        ensure!(
-            env.storage()
-                .persistent()
-                .has(&DataKey::TokenIdConfigKey(token_id.clone())),
-            ContractError::InvalidTokenId
-        );
-
-        let token_address = Self::token_address(env, token_id.clone());
+        let token_address = env
+            .storage()
+            .persistent()
+            .get::<_, TokenIdConfigValue>(&DataKey::TokenIdConfigKey(token_id.clone()))
+            .ok_or(ContractError::InvalidTokenId)?
+            .token_address;
         let token = token::Client::new(env, &token_address);
-        let token_meta_data = TokenMetadata {
+        let token_metadata = TokenMetadata {
             name: token.name(),
             decimal: token.decimals(),
             symbol: token.symbol(),
         };
 
-        InterchainTokenClient::new(env, &token_address).validate_token_metadata(&token_meta_data);
+        assert_ok!(validate_token_metadata(token_metadata.clone()));
 
         let message = Message::DeployInterchainToken(DeployInterchainToken {
             token_id: token_id.clone(),
-            name: token_meta_data.name.clone(),
-            symbol: token_meta_data.symbol.clone(),
-            decimals: token_meta_data.decimal as u8,
+            name: token_metadata.name.clone(),
+            symbol: token_metadata.symbol.clone(),
+            decimals: token_metadata.decimal as u8,
             minter: None,
         });
 
@@ -316,9 +315,9 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
             token_id: token_id.clone(),
             token_address,
             destination_chain: destination_chain.clone(),
-            name: token_meta_data.name,
-            symbol: token_meta_data.symbol,
-            decimals: token_meta_data.decimal,
+            name: token_metadata.name,
+            symbol: token_metadata.symbol,
+            decimals: token_metadata.decimal,
             minter: None,
         }
         .emit(env);

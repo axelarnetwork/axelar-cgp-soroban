@@ -36,7 +36,7 @@ pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
         env: &Env,
         deployer: Address,
         salt: BytesN<32>,
-        token_meta_data: TokenMetadata,
+        token_metadata: TokenMetadata,
         initial_supply: i128,
         minter: Option<Address>,
     ) -> Result<BytesN<32>, ContractError>;

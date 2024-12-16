@@ -27,13 +27,13 @@ fn deploy_remote_interchain_token_succeeds() {
     let gas_token = setup_gas_token(&env, &sender);
     let minter: Option<Address> = None;
     let salt = BytesN::<32>::from_array(&env, &[1; 32]);
-    let token_meta_data = TokenMetadata::new(&env, "name", "symbol", 6);
+    let token_metadata = TokenMetadata::new(&env, "name", "symbol", 6);
     let initial_supply = 1;
 
     let token_id = client.mock_all_auths().deploy_interchain_token(
         &sender,
         &salt,
-        &token_meta_data,
+        &token_metadata,
         &initial_supply,
         &minter,
     );
@@ -64,13 +64,13 @@ fn deploy_remote_interchain_token_auth_test() {
     let gas_token = setup_gas_token(&env, &sender);
     let minter: Option<Address> = None;
     let salt = BytesN::<32>::from_array(&env, &[1; 32]);
-    let token_meta_data = TokenMetadata::new(&env, "name", "symbol", 6);
+    let token_metadata = TokenMetadata::new(&env, "name", "symbol", 6);
     let initial_supply = 1;
 
     let token_id = client.mock_all_auths().deploy_interchain_token(
         &sender,
         &salt,
-        &token_meta_data,
+        &token_metadata,
         &initial_supply,
         &minter,
     );
@@ -93,9 +93,9 @@ fn deploy_remote_interchain_token_auth_test() {
 
     let message = Message::DeployInterchainToken(DeployInterchainToken {
         token_id,
-        name: token_meta_data.name.clone(),
-        symbol: token_meta_data.symbol.clone(),
-        decimals: token_meta_data.decimal as u8,
+        name: token_metadata.name.clone(),
+        symbol: token_metadata.symbol.clone(),
+        decimals: token_metadata.decimal as u8,
         minter: None,
     });
 
@@ -154,13 +154,13 @@ fn deploy_remote_interchain_token_fails_untrusted_chain() {
     let gas_token = setup_gas_token(&env, &sender);
     let minter: Option<Address> = None;
     let salt = BytesN::<32>::from_array(&env, &[1; 32]);
-    let token_meta_data = TokenMetadata::new(&env, "name", "symbol", 6);
+    let token_metadata = TokenMetadata::new(&env, "name", "symbol", 6);
     let initial_supply = 1;
 
     client.mock_all_auths().deploy_interchain_token(
         &sender,
         &salt,
-        &token_meta_data,
+        &token_metadata,
         &initial_supply,
         &minter,
     );
