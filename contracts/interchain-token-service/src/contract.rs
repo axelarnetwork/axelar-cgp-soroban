@@ -278,6 +278,17 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         Ok(())
     }
 
+    /// Registers a canonical token as an interchain token.
+    ///
+    /// # Arguments
+    /// * `env` - A reference to the environment in which the function operates.
+    /// * `token_address` - The address of the canonical token.
+    ///
+    /// # Returns
+    /// * `Result<BytesN<32>, ContractError>` - The token ID assigned to this canonical token if successful.
+    ///
+    /// # Errors
+    /// * `ContractError::TokenAlreadyRegistered` - If the token ID is already registered.
     fn register_canonical_token(
         env: &Env,
         token_address: Address,
@@ -468,7 +479,7 @@ impl InterchainTokenService {
 
     fn chain_name_hash(env: &Env) -> BytesN<32> {
         let chain_name = Self::chain_name(env);
-        env.crypto().keccak256(&(chain_name).to_xdr(env)).into()
+        env.crypto().keccak256(&chain_name.to_xdr(env)).into()
     }
 
     fn canonical_token_deploy_salt(env: &Env, token_address: Address) -> BytesN<32> {

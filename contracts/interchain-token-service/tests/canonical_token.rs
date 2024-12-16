@@ -55,3 +55,32 @@ fn register_canonical_token_fails_if_already_registered() {
         ContractError::TokenAlreadyRegistered
     );
 }
+
+#[test]
+fn canonical_token_id_derivation() {
+    let (env, client, _, _) = setup_env();
+    let token_address = Address::generate(&env);
+
+    let chain_name = client.chain_name();
+    let chain_name_hash: BytesN<32> = env.crypto().keccak256(&(chain_name).to_xdr(&env)).into();
+
+    let deploy_salt = env
+        .crypto()
+        .keccak256(
+            &(
+                PREFIX_CANONICAL_TOKEN_SALT,
+                chain_name_hash.clone(),
+                token_address.clone(),
+            )
+                .to_xdr(&env),
+        )
+        .into();
+
+    let token_id = client.interchain_token_id(&Address::zero(&env), &deploy_salt);
+
+    goldie::assert_json!(vec![
+        hex::encode(chain_name_hash.to_array()),
+        hex::encode(deploy_salt.to_array()),
+        hex::encode(token_id.to_array())
+    ]);
+}
