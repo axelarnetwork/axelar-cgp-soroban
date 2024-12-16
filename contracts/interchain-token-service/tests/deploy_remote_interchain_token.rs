@@ -76,7 +76,7 @@ fn deploy_remote_interchain_token_auth_test() {
     );
 
     let destination_chain = String::from_str(&env, "ethereum");
-    let its_hub_chain = String::from_str(&env, "ethereum");
+    let its_hub_chain = String::from_str(&env, "axelar");
     let its_hub_address = String::from_str(&env, "its_hub_address");
 
     client
