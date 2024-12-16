@@ -84,8 +84,6 @@ fn interchain_transfer_receive_succeeds() {
     let deployer = Address::generate(&env);
     let token_id = setup_its_token(&env, &client, &deployer, amount);
 
-    let data = Some(Bytes::from_hex(&env, "abcd"));
-
     let msg = HubMessage::ReceiveFromHub {
         source_chain: String::from_str(&env, HUB_CHAIN),
         message: Message::InterchainTransfer(InterchainTransfer {
@@ -93,7 +91,7 @@ fn interchain_transfer_receive_succeeds() {
             source_address: sender,
             destination_address: recipient,
             amount,
-            data,
+            data: None,
         }),
     };
     let payload = msg.abi_encode(&env).unwrap();

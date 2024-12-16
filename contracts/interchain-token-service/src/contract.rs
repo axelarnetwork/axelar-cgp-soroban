@@ -13,10 +13,11 @@ use soroban_token_sdk::metadata::TokenMetadata;
 use crate::abi::{get_message_type, MessageType as EncodedMessageType};
 use crate::error::ContractError;
 use crate::event::{
-    InterchainTokenDeployedEvent, InterchainTokenDeploymentStartedEvent,
+    InterchainTokenIdClaimedEvent, InterchainTokenDeployedEvent, InterchainTokenDeploymentStartedEvent,
     InterchainTransferReceivedEvent, InterchainTransferSentEvent, TrustedChainRemovedEvent,
-    TrustedChainSetEvent,
+    TrustedChainSetEvent
 };
+use crate::executable::InterchainTokenExecutableClient;
 use crate::interface::InterchainTokenServiceInterface;
 use crate::storage_types::{DataKey, TokenIdConfigValue};
 use crate::token_handler;
@@ -27,6 +28,7 @@ use crate::types::{
 const ITS_HUB_CHAIN_NAME: &str = "axelar";
 const PREFIX_INTERCHAIN_TOKEN_ID: &str = "its-interchain-token-id";
 const PREFIX_INTERCHAIN_TOKEN_SALT: &str = "interchain-token-salt";
+const PREFIX_CANONICAL_TOKEN_SALT: &str = "canonical-token-salt";
 
 #[contract]
 #[derive(Ownable, Upgradable)]
@@ -136,8 +138,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     }
 
     fn interchain_token_deploy_salt(env: &Env, deployer: Address, salt: BytesN<32>) -> BytesN<32> {
-        let chain_name = Self::chain_name(env);
-        let chain_name_hash: BytesN<32> = env.crypto().keccak256(&(chain_name).to_xdr(env)).into();
+        let chain_name_hash = Self::chain_name_hash(env);
         env.crypto()
             .keccak256(
                 &(
@@ -343,7 +344,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
 
         token_handler::take_token(
             env,
-            caller.clone(),
+            &caller,
             Self::token_id_config(env, token_id.clone()),
             amount,
         )?;
@@ -369,6 +370,50 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         Self::pay_gas_and_call_contract(env, caller, destination_chain, message, gas_token)?;
 
         Ok(())
+    }
+
+    /// Registers a canonical token as an interchain token.
+    ///
+    /// # Arguments
+    /// * `env` - A reference to the environment in which the function operates.
+    /// * `token_address` - The address of the canonical token.
+    ///
+    /// # Returns
+    /// * `Result<BytesN<32>, ContractError>` - The token ID assigned to this canonical token if successful.
+    ///
+    /// # Errors
+    /// * `ContractError::TokenAlreadyRegistered` - If the token ID is already registered.
+    fn register_canonical_token(
+        env: &Env,
+        token_address: Address,
+    ) -> Result<BytesN<32>, ContractError> {
+        let deploy_salt = Self::canonical_token_deploy_salt(env, token_address.clone());
+        let token_id = Self::interchain_token_id(env, Address::zero(env), deploy_salt.clone());
+
+        ensure!(
+            !env.storage()
+                .persistent()
+                .has(&DataKey::TokenIdConfigKey(token_id.clone())),
+            ContractError::TokenAlreadyRegistered
+        );
+
+        InterchainTokenIdClaimedEvent {
+            token_id: token_id.clone(),
+            deployer: Address::zero(env),
+            salt: deploy_salt,
+        }
+        .emit(env);
+
+        Self::set_token_id_config(
+            env,
+            token_id.clone(),
+            TokenIdConfigValue {
+                token_address,
+                token_manager_type: TokenManagerType::LockUnlock,
+            },
+        );
+
+        Ok(token_id)
     }
 }
 
@@ -448,7 +493,7 @@ impl InterchainTokenService {
     fn execute_message(
         env: &Env,
         source_chain: String,
-        _message_id: String,
+        message_id: String,
         _source_address: String,
         payload: Bytes,
     ) -> Result<(), ContractError> {
@@ -462,33 +507,48 @@ impl InterchainTokenService {
                 amount,
                 data,
             }) => {
-                let recipient = Address::from_xdr(env, &destination_address)
+                let destination_address = Address::from_xdr(env, &destination_address)
                     .map_err(|_| ContractError::InvalidDestinationAddress)?;
 
                 token_handler::give_token(
                     env,
-                    recipient,
+                    &destination_address,
                     Self::token_id_config(env, token_id.clone()),
                     amount,
                 )?;
 
+                let token_address = Self::token_address(env, token_id.clone());
+
                 InterchainTransferReceivedEvent {
-                    source_chain,
-                    token_id,
-                    source_address,
-                    destination_address,
+                    source_chain: source_chain.clone(),
+                    token_id: token_id.clone(),
+                    source_address: source_address.clone(),
+                    destination_address: destination_address.clone(),
                     amount,
-                    data,
+                    data: data.clone(),
                 }
                 .emit(env);
 
-                Ok(())
+                if let Some(payload) = data {
+                    let executable =
+                        InterchainTokenExecutableClient::new(env, &destination_address);
+                    executable.execute_with_interchain_token(
+                        &source_chain,
+                        &message_id,
+                        &source_address,
+                        &payload,
+                        &token_id,
+                        &token_address,
+                        &amount,
+                    );
+                }
             }
             Message::DeployInterchainToken(_) => {
-                // TODO
-                Ok(())
+                todo!()
             }
-        }
+        };
+
+        Ok(())
     }
 
     fn get_execute_params(
@@ -537,5 +597,17 @@ impl InterchainTokenService {
             .persistent()
             .get(&DataKey::TokenIdConfigKey(token_id))
             .expect("token id config not found")
+    }
+
+    fn chain_name_hash(env: &Env) -> BytesN<32> {
+        let chain_name = Self::chain_name(env);
+        env.crypto().keccak256(&chain_name.to_xdr(env)).into()
+    }
+
+    fn canonical_token_deploy_salt(env: &Env, token_address: Address) -> BytesN<32> {
+        let chain_name_hash = Self::chain_name_hash(env);
+        env.crypto()
+            .keccak256(&(PREFIX_CANONICAL_TOKEN_SALT, chain_name_hash, token_address).to_xdr(env))
+            .into()
     }
 }

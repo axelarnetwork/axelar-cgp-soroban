@@ -18,6 +18,7 @@ pub enum ContractError {
     InvalidMinter = 12,
     InvalidDestinationAddress = 13,
     InvalidHubChain = 14,
-    InvalidTokenMetaData = 15,
-    InvalidTokenId = 16,
+    TokenAlreadyRegistered = 15,
+    InvalidTokenMetaData = 16,
+    InvalidTokenId = 17,
 }

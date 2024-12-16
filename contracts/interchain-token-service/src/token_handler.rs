@@ -7,7 +7,7 @@ use crate::types::TokenManagerType;
 
 pub fn take_token(
     env: &Env,
-    sender: Address,
+    sender: &Address,
     TokenIdConfigValue {
         token_address,
         token_manager_type,
@@ -17,9 +17,9 @@ pub fn take_token(
     let token = TokenClient::new(env, &token_address);
 
     match token_manager_type {
-        TokenManagerType::NativeInterchainToken => token.burn(&sender, &amount),
+        TokenManagerType::NativeInterchainToken => token.burn(sender, &amount),
         TokenManagerType::LockUnlock => {
-            token.transfer(&sender, &env.current_contract_address(), &amount)
+            token.transfer(sender, &env.current_contract_address(), &amount)
         }
     }
 
@@ -28,7 +28,7 @@ pub fn take_token(
 
 pub fn give_token(
     env: &Env,
-    recipient: Address,
+    recipient: &Address,
     TokenIdConfigValue {
         token_address,
         token_manager_type,
@@ -37,11 +37,11 @@ pub fn give_token(
 ) -> Result<(), ContractError> {
     match token_manager_type {
         TokenManagerType::NativeInterchainToken => {
-            StellarAssetClient::new(env, &token_address).mint(&recipient, &amount)
+            StellarAssetClient::new(env, &token_address).mint(recipient, &amount)
         }
         TokenManagerType::LockUnlock => TokenClient::new(env, &token_address).transfer(
             &env.current_contract_address(),
-            &recipient,
+            recipient,
             &amount,
         ),
     }

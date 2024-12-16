@@ -34,6 +34,12 @@ pub struct InterchainTokenDeploymentStartedEvent {
     pub minter: Option<Address>,
 }
 
+pub struct InterchainTokenIdClaimedEvent {
+    pub token_id: BytesN<32>,
+    pub deployer: Address,
+    pub salt: BytesN<32>,
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct InterchainTransferSentEvent {
     pub token_id: BytesN<32>,
@@ -49,7 +55,7 @@ pub struct InterchainTransferReceivedEvent {
     pub source_chain: String,
     pub token_id: BytesN<32>,
     pub source_address: Bytes,
-    pub destination_address: Bytes,
+    pub destination_address: Address,
     pub amount: i128,
     pub data: Option<Bytes>,
 }
@@ -108,6 +114,21 @@ impl Event for InterchainTokenDeploymentStartedEvent {
             self.minter.clone(),
         )
     }
+  
+    fn data(&self, env: &Env) -> impl IntoVal<Env, Val> + Debug {
+        Vec::<Val>::new(env)
+    }
+}
+  
+impl Event for InterchainTokenIdClaimedEvent {
+    fn topics(&self, env: &Env) -> impl Topics + Debug {
+        (
+            Symbol::new(env, "interchain_token_id_claimed"),
+            self.token_id.to_val(),
+            self.deployer.to_val(),
+            self.salt.to_val(),
+        )
+    }
 
     fn data(&self, env: &Env) -> impl IntoVal<Env, Val> + Debug {
         Vec::<Val>::new(env)
@@ -135,7 +156,7 @@ impl Event for InterchainTransferReceivedEvent {
     fn topics(&self, env: &Env) -> impl Topics + Debug {
         (
             Symbol::new(env, "interchain_transfer_received"),
-            self.source_chain.as_val(),
+            self.source_chain.to_val(),
             self.token_id.to_val(),
             self.source_address.to_val(),
             self.destination_address.to_val(),
@@ -190,6 +211,13 @@ impl_event_testutils!(
 
 #[cfg(any(test, feature = "testutils"))]
 impl_event_testutils!(
+    InterchainTokenIdClaimedEvent,
+    (Symbol, BytesN<32>, Address, BytesN<32>),
+    ()
+);
+
+#[cfg(any(test, feature = "testutils"))]
+impl_event_testutils!(
     InterchainTransferSentEvent,
     (Symbol, BytesN<32>, Address, String, Bytes, i128),
     (Option<Bytes>)
@@ -198,6 +226,6 @@ impl_event_testutils!(
 #[cfg(any(test, feature = "testutils"))]
 impl_event_testutils!(
     InterchainTransferReceivedEvent,
-    (Symbol, String, BytesN<32>, Bytes, Bytes, i128),
+    (Symbol, String, BytesN<32>, Bytes, Address, i128),
     (Option<Bytes>)
 );
