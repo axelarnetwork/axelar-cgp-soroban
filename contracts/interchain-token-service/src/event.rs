@@ -105,7 +105,7 @@ impl Event for InterchainTokenDeployedEvent {
 impl Event for InterchainTokenDeploymentStartedEvent {
     fn topics(&self, env: &Env) -> impl Topics + Debug {
         (
-            String::from_str(env, "interchain_token_deployment_started"),
+            Symbol::new(env, "token_deployment_started"),
             self.token_id.to_val(),
             self.token_address.to_val(),
             self.destination_chain.to_val(),
@@ -198,7 +198,7 @@ impl_event_testutils!(
 impl_event_testutils!(
     InterchainTokenDeploymentStartedEvent,
     (
-        String,
+        Symbol,
         BytesN<32>,
         Address,
         String,
