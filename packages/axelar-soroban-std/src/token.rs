@@ -1,5 +1,15 @@
-use crate::{ensure, types::TokenError};
+use crate::ensure;
+use soroban_sdk::contracterror;
 use soroban_token_sdk::metadata::TokenMetadata;
+
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum TokenError {
+    InvalidDecimal = 0,
+    InvalidTokenName = 1,
+    InvalidTokenSymbol = 2,
+}
 
 pub fn validate_token_metadata(token_metadata: TokenMetadata) -> Result<(), TokenError> {
     ensure!(
