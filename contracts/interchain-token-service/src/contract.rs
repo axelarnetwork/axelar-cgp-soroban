@@ -260,7 +260,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     /// destination chain. It validates the token metadata, emits a deployment event,
     /// and triggers the necessary cross-chain call.
     ///
-    /// # Parameters
+    /// # Arguments
     /// - `env`: Reference to the contract environment.
     /// - `caller`: Address of the caller initiating the deployment. The caller must authenticate.
     /// - `salt`: A 32-byte unique salt used for token deployment.
@@ -274,9 +274,6 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     /// # Errors
     /// - `ContractError::InvalidTokenId`: If the token ID does not exist in the persistent storage.
     /// - Any error propagated from `pay_gas_and_call_contract`.
-    ///
-    /// # Events
-    /// Emits `InterchainTokenDeploymentStartedEvent` upon initiating the deployment process.
     fn deploy_remote_interchain_token(
         env: &Env,
         caller: Address,
