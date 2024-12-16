@@ -17,20 +17,21 @@ pub struct TrustedChainRemovedEvent {
 pub struct InterchainTokenDeployedEvent {
     pub token_id: BytesN<32>,
     pub token_address: Address,
-    pub minter: Option<Address>,
     pub name: String,
     pub symbol: String,
     pub decimals: u32,
+    pub minter: Option<Address>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct InterchainTokenDeploymentStartedEvent {
     pub token_id: BytesN<32>,
+    pub token_address: Address,
+    pub destination_chain: String,
     pub name: String,
     pub symbol: String,
     pub decimals: u32,
     pub minter: Option<Address>,
-    pub destination_chain: String,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -82,10 +83,10 @@ impl Event for InterchainTokenDeployedEvent {
             Symbol::new(env, "interchain_token_deployed"),
             self.token_id.to_val(),
             self.token_address.to_val(),
-            self.minter.clone(),
             self.name.to_val(),
             self.symbol.to_val(),
             self.decimals,
+            self.minter.clone(),
         )
     }
 
@@ -99,11 +100,12 @@ impl Event for InterchainTokenDeploymentStartedEvent {
         (
             String::from_str(env, "interchain_token_deployment_started"),
             self.token_id.to_val(),
+            self.token_address.to_val(),
+            self.destination_chain.to_val(),
             self.name.to_val(),
             self.symbol.to_val(),
             self.decimals,
             self.minter.clone(),
-            self.destination_chain.to_val(),
         )
     }
 
@@ -161,11 +163,11 @@ impl_event_testutils!(
     (
         Symbol,
         BytesN<32>,
-        Option<Address>,
         Address,
         String,
         String,
-        u32
+        u32,
+        Option<Address>
     ),
     ()
 );
@@ -176,11 +178,12 @@ impl_event_testutils!(
     (
         String,
         BytesN<32>,
+        Address,
+        String,
         String,
         String,
         u32,
-        Option<Address>,
-        String
+        Option<Address>
     ),
     ()
 );

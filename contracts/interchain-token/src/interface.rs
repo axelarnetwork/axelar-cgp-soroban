@@ -3,6 +3,7 @@ use soroban_sdk::{
     token::{self, StellarAssetInterface},
     Address, BytesN, Env,
 };
+use soroban_token_sdk::metadata::TokenMetadata;
 
 use crate::error::ContractError;
 
@@ -20,4 +21,5 @@ pub trait InterchainTokenInterface: token::Interface + StellarAssetInterface {
     ) -> Result<(), ContractError>;
     fn add_minter(env: &Env, minter: Address);
     fn remove_minter(env: &Env, minter: Address);
+    fn validate_token_metadata(token_metadata: TokenMetadata) -> Result<(), ContractError>;
 }

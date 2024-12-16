@@ -222,10 +222,10 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         InterchainTokenDeployedEvent {
             token_id: token_id.clone(),
             token_address: deployed_address.clone(),
-            minter: initial_minter,
             name: token_meta_data.name,
             symbol: token_meta_data.symbol,
             decimals: token_meta_data.decimal,
+            minter: initial_minter,
         }
         .emit(env);
 
@@ -251,6 +251,29 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         Ok(token_id)
     }
 
+    /// Deploys an interchain token to a remote chain.
+    ///
+    /// This function initiates the deployment of an interchain token to a specified
+    /// destination chain. It validates the token metadata, emits a deployment event,
+    /// and triggers the necessary cross-chain call.
+    ///
+    /// # Parameters
+    /// - `env`: Reference to the contract environment.
+    /// - `caller`: Address of the caller initiating the deployment. The caller must authenticate.
+    /// - `salt`: A 32-byte unique salt used for token deployment.
+    /// - `destination_chain`: The name of the destination chain where the token will be deployed.
+    /// - `gas_token`: The token used to pay for the gas cost of the cross-chain call.
+    ///
+    /// # Returns
+    /// - `Result<BytesN<32>, ContractError>`: On success, returns the token ID (`BytesN<32>`).
+    ///   On failure, returns a `ContractError`.
+    ///
+    /// # Errors
+    /// - `ContractError::InvalidTokenId`: If the token ID does not exist in the persistent storage.
+    /// - Any error propagated from `pay_gas_and_call_contract`.
+    ///
+    /// # Events
+    /// Emits `InterchainTokenDeploymentStartedEvent` upon initiating the deployment process.
     fn deploy_remote_interchain_token(
         env: &Env,
         caller: Address,
@@ -262,33 +285,40 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
 
         let deploy_salt = Self::interchain_token_deploy_salt(env, caller.clone(), salt);
         let token_id = Self::interchain_token_id(env, Address::zero(env), deploy_salt);
-        let registered_token_address = Self::token_address(env, token_id.clone());
-        let token = token::Client::new(env, &registered_token_address);
-
-        let token_name = token.name();
-        let token_symbol = token.symbol();
-        let token_decimals = token.decimals();
 
         ensure!(
-            token_decimals <= u8::MAX as u32,
-            ContractError::InvalidDecimals
+            env.storage()
+                .persistent()
+                .has(&DataKey::TokenIdConfigKey(token_id.clone())),
+            ContractError::InvalidTokenId
         );
+
+        let token_address = Self::token_address(env, token_id.clone());
+        let token = token::Client::new(&env, &token_address);
+        let token_meta_data = TokenMetadata {
+            name: token.name(),
+            decimal: token.decimals(),
+            symbol: token.symbol(),
+        };
+
+        InterchainTokenClient::new(env, &token_address).validate_token_metadata(&token_meta_data);
 
         let message = Message::DeployInterchainToken(DeployInterchainToken {
             token_id: token_id.clone(),
-            name: token_name.clone(),
-            symbol: token_symbol.clone(),
-            decimals: token_decimals as u8,
+            name: token_meta_data.name.clone(),
+            symbol: token_meta_data.symbol.clone(),
+            decimals: token_meta_data.decimal as u8,
             minter: None,
         });
 
         InterchainTokenDeploymentStartedEvent {
             token_id: token_id.clone(),
-            name: token_name,
-            symbol: token_symbol,
-            decimals: token_decimals,
-            minter: None,
+            token_address,
             destination_chain: destination_chain.clone(),
+            name: token_meta_data.name,
+            symbol: token_meta_data.symbol,
+            decimals: token_meta_data.decimal,
+            minter: None,
         }
         .emit(env);
 

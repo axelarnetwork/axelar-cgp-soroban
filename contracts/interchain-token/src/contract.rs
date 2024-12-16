@@ -136,6 +136,22 @@ impl InterchainTokenInterface for InterchainToken {
 
         event::remove_minter(env, minter);
     }
+
+    fn validate_token_metadata(token_metadata: TokenMetadata) -> Result<(), ContractError> {
+        ensure!(
+            token_metadata.decimal <= u8::MAX.into(),
+            ContractError::InvalidDecimal
+        );
+        ensure!(
+            !token_metadata.name.is_empty(),
+            ContractError::InvalidTokenName
+        );
+        ensure!(
+            !token_metadata.symbol.is_empty(),
+            ContractError::InvalidTokenSymbol
+        );
+        Ok(())
+    }
 }
 
 #[contractimpl]
@@ -232,19 +248,6 @@ impl InterchainToken {
 
     fn validate_amount(env: &Env, amount: i128) {
         assert_with_error!(env, amount >= 0, ContractError::InvalidAmount);
-    }
-
-    fn validate_token_metadata(
-        TokenMetadata {
-            decimal,
-            name,
-            symbol,
-        }: TokenMetadata,
-    ) -> Result<(), ContractError> {
-        ensure!(decimal <= u8::MAX.into(), ContractError::InvalidDecimal);
-        ensure!(!name.is_empty(), ContractError::InvalidTokenName);
-        ensure!(!symbol.is_empty(), ContractError::InvalidTokenSymbol);
-        Ok(())
     }
 
     fn extend_balance_ttl(env: &Env, key: &DataKey) {
