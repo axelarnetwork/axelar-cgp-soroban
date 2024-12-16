@@ -92,7 +92,7 @@ fn deploy_remote_interchain_token_auth_test() {
     assert_eq!(token_id, deployed_token_id);
 
     let message = Message::DeployInterchainToken(DeployInterchainToken {
-        token_id: token_id,
+        token_id,
         name: token_meta_data.name.clone(),
         symbol: token_meta_data.symbol.clone(),
         decimals: token_meta_data.decimal as u8,

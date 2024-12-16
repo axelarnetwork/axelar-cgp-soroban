@@ -118,7 +118,7 @@ mod test {
 
 #[test]
 fn interchain_transfer_execute_succeeds() {
-    let (env, client, gateway_client, signers) = setup_env();
+    let (env, client, gateway_client, _, signers) = setup_env();
     register_chains(&env, &client);
 
     let executable_id = env.register(test::ExecutableContract, (client.address.clone(),));
