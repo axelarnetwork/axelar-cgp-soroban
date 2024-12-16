@@ -121,7 +121,7 @@ pub trait TokenMetadataExt {
 
 impl TokenMetadataExt for TokenMetadata {
     fn new(env: &Env, name: &str, symbol: &str, decimal: u32) -> Self {
-        TokenMetadata {
+        Self {
             decimal,
             name: name.into_val(env),
             symbol: symbol.into_val(env),

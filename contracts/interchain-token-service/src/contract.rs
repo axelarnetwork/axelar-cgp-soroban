@@ -295,7 +295,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         );
 
         let token_address = Self::token_address(env, token_id.clone());
-        let token = token::Client::new(&env, &token_address);
+        let token = token::Client::new(env, &token_address);
         let token_meta_data = TokenMetadata {
             name: token.name(),
             decimal: token.decimals(),

@@ -87,12 +87,12 @@ fn deploy_remote_interchain_token_auth_test() {
         &sender,
         &salt,
         &destination_chain,
-        &gas_token.clone(),
+        &gas_token,
     );
     assert_eq!(token_id, deployed_token_id);
 
     let message = Message::DeployInterchainToken(DeployInterchainToken {
-        token_id: token_id.clone(),
+        token_id: token_id,
         name: token_meta_data.name.clone(),
         symbol: token_meta_data.symbol.clone(),
         decimals: token_meta_data.decimal as u8,
@@ -120,9 +120,9 @@ fn deploy_remote_interchain_token_auth_test() {
         gas_service.address =>
         (
             client.address.clone(),
-            its_hub_chain.clone(),
-            its_hub_address.clone(),
-            payload.clone(),
+            its_hub_chain,
+            its_hub_address,
+            payload,
             &sender,
             gas_token.clone(),
             &Bytes::new(&env)
@@ -133,7 +133,7 @@ fn deploy_remote_interchain_token_auth_test() {
     let deploy_remote_interchain_token_auth = auth_invocation!(&env,
         sender,
         "deploy_remote_interchain_token",
-        client.address.clone() =>
+        client.address =>
         (
             &sender,
             salt,

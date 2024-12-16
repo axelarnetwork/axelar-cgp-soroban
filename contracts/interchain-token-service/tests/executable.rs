@@ -175,7 +175,7 @@ fn interchain_transfer_execute_succeeds() {
 
 #[test]
 fn executable_fails_if_not_executed_from_its() {
-    let (env, client, _, _) = setup_env();
+    let (env, client, _, _, _) = setup_env();
 
     let executable_id = env.register(test::ExecutableContract, (client.address.clone(),));
     let executable_client = test::ExecutableContractClient::new(&env, &executable_id);
