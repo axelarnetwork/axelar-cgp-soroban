@@ -34,6 +34,7 @@ pub struct InterchainTokenDeploymentStartedEvent {
     pub minter: Option<Address>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct InterchainTokenIdClaimedEvent {
     pub token_id: BytesN<32>,
     pub deployer: Address,
@@ -114,12 +115,12 @@ impl Event for InterchainTokenDeploymentStartedEvent {
             self.minter.clone(),
         )
     }
-  
+
     fn data(&self, env: &Env) -> impl IntoVal<Env, Val> + Debug {
         Vec::<Val>::new(env)
     }
 }
-  
+
 impl Event for InterchainTokenIdClaimedEvent {
     fn topics(&self, env: &Env) -> impl Topics + Debug {
         (
