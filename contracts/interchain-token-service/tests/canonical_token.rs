@@ -70,7 +70,7 @@ fn canonical_token_id_derivation() {
             &(
                 PREFIX_CANONICAL_TOKEN_SALT,
                 chain_name_hash.clone(),
-                token_address.clone(),
+                token_address,
             )
                 .to_xdr(&env),
         )
