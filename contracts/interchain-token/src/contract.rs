@@ -12,9 +12,12 @@ use crate::interface::InterchainTokenInterface;
 use crate::storage_types::{AllowanceDataKey, AllowanceValue};
 use axelar_soroban_std::interfaces::OwnableInterface;
 use axelar_soroban_std::{ensure, interfaces, Upgradable};
-use soroban_sdk::token::TokenInterface;
+use soroban_sdk::token::{StellarAssetInterface, TokenInterface};
 
-use soroban_sdk::{assert_with_error, contract, contractimpl, token, Address, BytesN, Env, String};
+use soroban_sdk::{
+    assert_with_error, contract, contractimpl, panic_with_error, token, Address, BytesN, Env,
+    String,
+};
 use soroban_token_sdk::event::Events as TokenEvents;
 
 #[contract]
@@ -27,30 +30,53 @@ impl InterchainToken {
         env: Env,
         owner: Address,
         minter: Option<Address>,
-        interchain_token_service: Address,
         token_id: BytesN<32>,
         token_meta_data: TokenMetadata,
-    ) -> Result<(), ContractError> {
+    ) {
         interfaces::set_owner(&env, &owner);
 
-        Self::validate_token_metadata(token_meta_data.clone())?;
+        if let Err(err) = Self::validate_token_metadata(token_meta_data.clone()) {
+            panic_with_error!(env, err);
+        }
 
         Self::write_metadata(&env, token_meta_data);
 
         env.storage().instance().set(&DataKey::TokenId, &token_id);
 
+        env.storage().instance().set(&DataKey::Minter(owner), &());
+
         if let Some(minter) = minter {
             env.storage().instance().set(&DataKey::Minter(minter), &());
         }
+    }
+}
 
-        env.storage()
-            .instance()
-            .set(&DataKey::Minter(interchain_token_service.clone()), &());
-        env.storage()
-            .instance()
-            .set(&DataKey::InterchainTokenService, &interchain_token_service);
+#[contractimpl]
+impl StellarAssetInterface for InterchainToken {
+    fn set_admin(env: Env, admin: Address) {
+        Self::transfer_ownership(&env, admin);
+    }
 
-        Ok(())
+    fn admin(env: Env) -> Address {
+        Self::owner(&env)
+    }
+
+    fn set_authorized(_env: Env, _id: Address, _authorize: bool) {
+        todo!()
+    }
+
+    fn authorized(_env: Env, _id: Address) -> bool {
+        todo!()
+    }
+
+    fn mint(env: Env, to: Address, amount: i128) {
+        if let Err(err) = Self::mint_from(&env, Self::owner(&env), to, amount) {
+            panic_with_error!(env, err);
+        }
+    }
+
+    fn clawback(_env: Env, _from: Address, _amount: i128) {
+        todo!()
     }
 }
 
@@ -63,32 +89,30 @@ impl InterchainTokenInterface for InterchainToken {
             .expect("token id not found")
     }
 
-    fn interchain_token_service(env: &Env) -> Address {
-        env.storage()
-            .instance()
-            .get(&DataKey::InterchainTokenService)
-            .expect("interchain token service not found")
-    }
-
     fn is_minter(env: &Env, minter: Address) -> bool {
         env.storage().instance().has(&DataKey::Minter(minter))
     }
 
-    fn mint(env: Env, minter: Address, to: Address, amount: i128) -> Result<(), ContractError> {
+    fn mint_from(
+        env: &Env,
+        minter: Address,
+        to: Address,
+        amount: i128,
+    ) -> Result<(), ContractError> {
         minter.require_auth();
 
         ensure!(
-            Self::is_minter(&env, minter.clone()),
+            Self::is_minter(env, minter.clone()),
             ContractError::NotMinter
         );
 
-        Self::validate_amount(&env, amount);
+        Self::validate_amount(env, amount);
 
-        extend_instance_ttl(&env);
+        extend_instance_ttl(env);
 
-        Self::receive_balance(&env, to.clone(), amount);
+        Self::receive_balance(env, to.clone(), amount);
 
-        TokenUtils::new(&env).events().mint(minter, to, amount);
+        TokenUtils::new(env).events().mint(minter, to, amount);
 
         Ok(())
     }

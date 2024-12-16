@@ -8,6 +8,9 @@ pub mod error;
 pub mod event;
 mod interface;
 mod storage_types;
+mod token_handler;
 pub mod types;
+
+pub mod executable;
 
 pub use contract::{InterchainTokenService, InterchainTokenServiceClient};

@@ -2,7 +2,7 @@ mod utils;
 
 use axelar_soroban_std::{address::AddressExt, assert_contract_err, events};
 use interchain_token_service::{
-    error::ContractError, event::InterchainTokenIdClaimed, types::TokenManagerType,
+    error::ContractError, event::InterchainTokenIdClaimedEvent, types::TokenManagerType,
 };
 use soroban_sdk::{testutils::Address as _, xdr::ToXdr, Address, BytesN};
 use utils::setup_env;
@@ -38,9 +38,9 @@ fn register_canonical_token_succeeds() {
         TokenManagerType::LockUnlock
     );
 
-    goldie::assert!(events::fmt_last_emitted_event::<InterchainTokenIdClaimed>(
-        &env
-    ));
+    goldie::assert!(events::fmt_last_emitted_event::<
+        InterchainTokenIdClaimedEvent,
+    >(&env));
 }
 
 #[test]

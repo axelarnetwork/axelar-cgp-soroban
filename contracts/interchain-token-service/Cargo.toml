@@ -30,7 +30,7 @@ interchain-token-service = { workspace = true, features = ["testutils"] }
 soroban-sdk = { workspace = true, features = ["testutils", "alloc"] }
 
 [features]
-testutils = ["soroban-sdk/testutils"]
+testutils = ["axelar-soroban-std/testutils"]
 
 [lints]
 workspace = true
