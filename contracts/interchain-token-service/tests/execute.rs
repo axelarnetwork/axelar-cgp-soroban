@@ -188,7 +188,7 @@ fn deploy_interchain_token_message_execute_fails_empty_token_name() {
     let msg_empty_name = HubMessage::ReceiveFromHub {
         source_chain: String::from_str(&env, HUB_CHAIN),
         message: Message::DeployInterchainToken(DeployInterchainToken {
-            token_id: token_id.clone(),
+            token_id,
             name: String::from_str(&env, ""),
             symbol: String::from_str(&env, "TEST"),
             decimals: 18,
@@ -238,7 +238,7 @@ fn deploy_interchain_token_message_execute_fails_empty_token_symbol() {
     let msg_empty_symbol = HubMessage::ReceiveFromHub {
         source_chain: String::from_str(&env, HUB_CHAIN),
         message: Message::DeployInterchainToken(DeployInterchainToken {
-            token_id: token_id.clone(),
+            token_id,
             name: String::from_str(&env, "test"),
             symbol: String::from_str(&env, ""),
             decimals: 18,
@@ -287,7 +287,7 @@ fn deploy_interchain_token_message_execute_fails_its_as_minter() {
     let msg_invalid_minter = HubMessage::ReceiveFromHub {
         source_chain: String::from_str(&env, HUB_CHAIN),
         message: Message::DeployInterchainToken(DeployInterchainToken {
-            token_id: token_id.clone(),
+            token_id,
             name: String::from_str(&env, "test"),
             symbol: String::from_str(&env, "TEST"),
             decimals: 18,
@@ -339,7 +339,7 @@ fn deploy_interchain_token_message_execute_fails_invalid_minter_address() {
     let msg_invalid_minter = HubMessage::ReceiveFromHub {
         source_chain: String::from_str(&env, HUB_CHAIN),
         message: Message::DeployInterchainToken(DeployInterchainToken {
-            token_id: token_id.clone(),
+            token_id,
             name: String::from_str(&env, "test"),
             symbol: String::from_str(&env, "TEST"),
             decimals: 18,
@@ -395,7 +395,7 @@ fn deploy_interchain_token_message_execute_fails_token_already_deployed() {
     let msg = HubMessage::ReceiveFromHub {
         source_chain: String::from_str(&env, HUB_CHAIN),
         message: Message::DeployInterchainToken(DeployInterchainToken {
-            token_id: token_id.clone(),
+            token_id,
             name: token_metadata.name.clone(),
             symbol: token_metadata.symbol.clone(),
             decimals: token_metadata.decimal as u8,
