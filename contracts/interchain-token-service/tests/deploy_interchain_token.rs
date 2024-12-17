@@ -30,11 +30,11 @@ fn deploy_interchain_token_with_initial_supply_no_minter() {
     let sender = Address::generate(&env);
     let minter: Option<Address> = None;
     let salt = BytesN::<32>::from_array(&env, &[1; 32]);
-    let token_meta_data = setup_token_metadata(&env, "name", "symbol", 6);
+    let token_metadata = setup_token_metadata(&env, "name", "symbol", 6);
     let initial_supply = 100;
 
     let token_id =
-        client.deploy_interchain_token(&sender, &salt, &token_meta_data, &initial_supply, &minter);
+        client.deploy_interchain_token(&sender, &salt, &token_metadata, &initial_supply, &minter);
     let token_address = client.token_address(&token_id);
     let token = InterchainTokenClient::new(&env, &token_address);
 
@@ -52,13 +52,13 @@ fn deploy_interchain_token_with_initial_supply_valid_minter() {
     let sender = Address::generate(&env);
     let minter = Address::generate(&env);
     let salt = BytesN::<32>::from_array(&env, &[1; 32]);
-    let token_meta_data = setup_token_metadata(&env, "name", "symbol", 6);
+    let token_metadata = setup_token_metadata(&env, "name", "symbol", 6);
     let initial_supply = 100;
 
     let token_id = client.deploy_interchain_token(
         &sender,
         &salt,
-        &token_meta_data,
+        &token_metadata,
         &initial_supply,
         &Some(minter.clone()),
     );
@@ -80,7 +80,7 @@ fn deploy_interchain_token_check_token_id_and_token_manager_type() {
     let sender = Address::generate(&env);
     let minter = Address::generate(&env);
     let salt = BytesN::<32>::from_array(&env, &[1; 32]);
-    let token_meta_data = setup_token_metadata(&env, "name", "symbol", 6);
+    let token_metadata = setup_token_metadata(&env, "name", "symbol", 6);
     let initial_supply = 100;
 
     let deploy_salt = client.interchain_token_deploy_salt(&sender, &salt);
@@ -89,7 +89,7 @@ fn deploy_interchain_token_check_token_id_and_token_manager_type() {
     let token_id = client.deploy_interchain_token(
         &sender,
         &salt,
-        &token_meta_data,
+        &token_metadata,
         &initial_supply,
         &Some(minter),
     );
@@ -109,13 +109,13 @@ fn deploy_interchain_token_zero_initial_supply_and_valid_minter() {
     let sender = Address::generate(&env);
     let minter = Address::generate(&env);
     let salt = BytesN::<32>::from_array(&env, &[1; 32]);
-    let token_meta_data = setup_token_metadata(&env, "name", "symbol", 6);
+    let token_metadata = setup_token_metadata(&env, "name", "symbol", 6);
     let initial_supply = 0;
 
     let token_id = client.deploy_interchain_token(
         &sender,
         &salt,
-        &token_meta_data,
+        &token_metadata,
         &initial_supply,
         &Some(minter.clone()),
     );
@@ -138,14 +138,14 @@ fn deploy_interchain_token_falis_zero_initial_supply_and_invalid_minter() {
     let sender = Address::generate(&env);
     let minter: Option<Address> = Some(client.address.clone());
     let salt = BytesN::<32>::from_array(&env, &[1; 32]);
-    let token_meta_data = setup_token_metadata(&env, "name", "symbol", 6);
+    let token_metadata = setup_token_metadata(&env, "name", "symbol", 6);
     let initial_supply = 0;
 
     assert_contract_err!(
         client.try_deploy_interchain_token(
             &sender,
             &salt,
-            &token_meta_data,
+            &token_metadata,
             &initial_supply,
             &minter
         ),
@@ -161,11 +161,11 @@ fn deploy_interchain_token_zero_initial_supply_no_minter() {
     let sender = Address::generate(&env);
     let minter: Option<Address> = None;
     let salt = BytesN::<32>::from_array(&env, &[1; 32]);
-    let token_meta_data = setup_token_metadata(&env, "name", "symbol", 6);
+    let token_metadata = setup_token_metadata(&env, "name", "symbol", 6);
     let initial_supply = 0;
 
     let token_id =
-        client.deploy_interchain_token(&sender, &salt, &token_meta_data, &initial_supply, &minter);
+        client.deploy_interchain_token(&sender, &salt, &token_metadata, &initial_supply, &minter);
 
     let token_address = client.token_address(&token_id);
     let token = InterchainTokenClient::new(&env, &token_address);
@@ -185,7 +185,7 @@ fn deploy_interchain_token_fails_with_invalid_auth() {
     let user = Address::generate(&env);
     let minter: Option<Address> = None;
     let salt = BytesN::<32>::from_array(&env, &[1; 32]);
-    let token_meta_data = setup_token_metadata(&env, "name", "symbol", 6);
+    let token_metadata = setup_token_metadata(&env, "name", "symbol", 6);
     let initial_supply = 100;
 
     assert_invoke_auth_err!(
@@ -193,7 +193,7 @@ fn deploy_interchain_token_fails_with_invalid_auth() {
         client.try_deploy_interchain_token(
             &sender,
             &salt,
-            &token_meta_data,
+            &token_metadata,
             &initial_supply,
             &minter,
         )

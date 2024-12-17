@@ -31,15 +31,15 @@ impl InterchainToken {
         owner: Address,
         minter: Option<Address>,
         token_id: BytesN<32>,
-        token_meta_data: TokenMetadata,
+        token_metadata: TokenMetadata,
     ) {
         interfaces::set_owner(&env, &owner);
 
-        if let Err(err) = Self::validate_token_metadata(token_meta_data.clone()) {
+        if let Err(err) = Self::validate_token_metadata(token_metadata.clone()) {
             panic_with_error!(env, err);
         }
 
-        Self::write_metadata(&env, token_meta_data);
+        Self::write_metadata(&env, token_metadata);
 
         env.storage().instance().set(&DataKey::TokenId, &token_id);
 
