@@ -24,12 +24,7 @@ fn deploy_remote_canonical_token_succeeds() {
         .with_address(sender.clone(), token_id.clone())
         .deploy_v2(
             client.interchain_token_wasm_hash(),
-            (
-                sender.clone(),
-                initial_minter,
-                token_id,
-                token_metadata,
-            ),
+            (sender.clone(), initial_minter, token_id, token_metadata),
         );
 
     let expected_deploy_salt = client.canonical_token_deploy_salt(&token_address);
