@@ -28,9 +28,12 @@ pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
 
     fn interchain_token_id(env: &Env, sender: Address, salt: BytesN<32>) -> BytesN<32>;
 
-    fn token_address(env: &Env, token_id: BytesN<32>) -> Address;
+    fn token_address(env: &Env, token_id: BytesN<32>) -> Result<Address, ContractError>;
 
-    fn token_manager_type(env: &Env, token_id: BytesN<32>) -> TokenManagerType;
+    fn token_manager_type(
+        env: &Env,
+        token_id: BytesN<32>,
+    ) -> Result<TokenManagerType, ContractError>;
 
     fn deploy_interchain_token(
         env: &Env,
