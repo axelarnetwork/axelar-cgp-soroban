@@ -27,8 +27,8 @@ fn deploy_remote_canonical_token_succeeds() {
             (
                 sender.clone(),
                 initial_minter,
-                token_id.clone(),
-                token_metadata.clone(),
+                token_id,
+                token_metadata,
             ),
         );
 
