@@ -1,11 +1,13 @@
 use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::{executable::AxelarExecutableInterface, AxelarGatewayMessagingClient};
+use axelar_soroban_std::assert_ok;
 use axelar_soroban_std::events::Event;
+use axelar_soroban_std::token::validate_token_metadata;
 use axelar_soroban_std::{
     address::AddressExt, ensure, interfaces, types::Token, Ownable, Upgradable,
 };
 use interchain_token::InterchainTokenClient;
-use soroban_sdk::token::StellarAssetClient;
+use soroban_sdk::token::{self, StellarAssetClient};
 use soroban_sdk::xdr::{FromXdr, ToXdr};
 use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Bytes, BytesN, Env, String};
 use soroban_token_sdk::metadata::TokenMetadata;
@@ -13,7 +15,9 @@ use soroban_token_sdk::metadata::TokenMetadata;
 use crate::abi::{get_message_type, MessageType as EncodedMessageType};
 use crate::error::ContractError;
 use crate::event::{
-    InterchainTokenDeployedEvent, InterchainTokenIdClaimedEvent, InterchainTransferReceivedEvent, InterchainTransferSentEvent, TrustedChainRemovedEvent, TrustedChainSetEvent
+    InterchainTokenDeployedEvent, InterchainTokenDeploymentStartedEvent,
+    InterchainTokenIdClaimedEvent, InterchainTransferReceivedEvent, InterchainTransferSentEvent,
+    TrustedChainRemovedEvent, TrustedChainSetEvent,
 };
 use crate::executable::InterchainTokenExecutableClient;
 use crate::interface::InterchainTokenServiceInterface;
@@ -206,6 +210,29 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         let token_id = Self::interchain_token_id(env, Address::zero(env), deploy_salt);
 
         let deployed_address = Self::deploy_interchain_token_contract(env, initial_minter, token_id.clone(), token_metadata);
+        
+        // let deployed_address = env
+        //     .deployer()
+        //     .with_address(env.current_contract_address(), token_id.clone())
+        //     .deploy_v2(
+        //         Self::interchain_token_wasm_hash(env),
+        //         (
+        //             env.current_contract_address(),
+        //             initial_minter.clone(),
+        //             token_id.clone(),
+        //             token_metadata.clone(),
+        //         ),
+        //     );
+
+        // InterchainTokenDeployedEvent {
+        //     token_id: token_id.clone(),
+        //     token_address: deployed_address.clone(),
+        //     name: token_metadata.name,
+        //     symbol: token_metadata.symbol,
+        //     decimals: token_metadata.decimal,
+        //     minter: initial_minter,
+        // }
+        // .emit(env);
 
         if initial_supply > 0 {
             StellarAssetClient::new(env, &deployed_address).mint(&caller, &initial_supply);
@@ -229,17 +256,74 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         Ok(token_id)
     }
 
+    /// Deploys an interchain token to a remote chain.
+    ///
+    /// This function initiates the deployment of an interchain token to a specified
+    /// destination chain. It validates the token metadata, emits a deployment event,
+    /// and triggers the necessary cross-chain call.
+    ///
+    /// # Arguments
+    /// - `env`: Reference to the contract environment.
+    /// - `caller`: Address of the caller initiating the deployment. The caller must authenticate.
+    /// - `salt`: A 32-byte unique salt used for token deployment.
+    /// - `destination_chain`: The name of the destination chain where the token will be deployed.
+    /// - `gas_token`: The token used to pay for the gas cost of the cross-chain call.
+    ///
+    /// # Returns
+    /// - `Result<BytesN<32>, ContractError>`: On success, returns the token ID (`BytesN<32>`).
+    ///   On failure, returns a `ContractError`.
+    ///
+    /// # Errors
+    /// - `ContractError::InvalidTokenId`: If the token ID does not exist in the persistent storage.
+    /// - Any error propagated from `pay_gas_and_call_contract`.
     fn deploy_remote_interchain_token(
-        _env: &Env,
-        _caller: Address,
-        _salt: BytesN<32>,
-        _minter: Option<Bytes>,
-        _destination_chain: String,
-        _gas_token: Token,
+        env: &Env,
+        caller: Address,
+        salt: BytesN<32>,
+        destination_chain: String,
+        gas_token: Token,
     ) -> Result<BytesN<32>, ContractError> {
-        // TODO: implementation
+        caller.require_auth();
 
-        todo!()
+        let deploy_salt = Self::interchain_token_deploy_salt(env, caller.clone(), salt);
+        let token_id = Self::interchain_token_id(env, Address::zero(env), deploy_salt);
+        let token_address = env
+            .storage()
+            .persistent()
+            .get::<_, TokenIdConfigValue>(&DataKey::TokenIdConfigKey(token_id.clone()))
+            .ok_or(ContractError::InvalidTokenId)?
+            .token_address;
+        let token = token::Client::new(env, &token_address);
+        let token_metadata = TokenMetadata {
+            name: token.name(),
+            decimal: token.decimals(),
+            symbol: token.symbol(),
+        };
+
+        assert_ok!(validate_token_metadata(token_metadata.clone()));
+
+        let message = Message::DeployInterchainToken(DeployInterchainToken {
+            token_id: token_id.clone(),
+            name: token_metadata.name.clone(),
+            symbol: token_metadata.symbol.clone(),
+            decimals: token_metadata.decimal as u8,
+            minter: None,
+        });
+
+        InterchainTokenDeploymentStartedEvent {
+            token_id: token_id.clone(),
+            token_address,
+            destination_chain: destination_chain.clone(),
+            name: token_metadata.name,
+            symbol: token_metadata.symbol,
+            decimals: token_metadata.decimal,
+            minter: None,
+        }
+        .emit(env);
+
+        Self::pay_gas_and_call_contract(env, caller, destination_chain, message, gas_token)?;
+
+        Ok(token_id)
     }
 
     fn interchain_transfer(
@@ -597,10 +681,10 @@ impl InterchainTokenService {
         InterchainTokenDeployedEvent {
             token_id,
             token_address: deployed_address.clone(),
-            minter,
             name: token_metadata.name,
             symbol: token_metadata.symbol,
             decimals: token_metadata.decimal,
+            minter,
         }
         .emit(env);
 

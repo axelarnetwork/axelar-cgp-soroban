@@ -1,3 +1,4 @@
+use axelar_soroban_std::token::validate_token_metadata;
 use axelar_soroban_std::ttl::{
     extend_instance_ttl, INSTANCE_TTL_EXTEND_TO, INSTANCE_TTL_THRESHOLD,
 };
@@ -35,7 +36,7 @@ impl InterchainToken {
     ) {
         interfaces::set_owner(&env, &owner);
 
-        if let Err(err) = Self::validate_token_metadata(token_metadata.clone()) {
+        if let Err(err) = validate_token_metadata(token_metadata.clone()) {
             panic_with_error!(env, err);
         }
 
@@ -232,19 +233,6 @@ impl InterchainToken {
 
     fn validate_amount(env: &Env, amount: i128) {
         assert_with_error!(env, amount >= 0, ContractError::InvalidAmount);
-    }
-
-    fn validate_token_metadata(
-        TokenMetadata {
-            decimal,
-            name,
-            symbol,
-        }: TokenMetadata,
-    ) -> Result<(), ContractError> {
-        ensure!(decimal <= u8::MAX.into(), ContractError::InvalidDecimal);
-        ensure!(!name.is_empty(), ContractError::InvalidTokenName);
-        ensure!(!symbol.is_empty(), ContractError::InvalidTokenSymbol);
-        Ok(())
     }
 
     fn extend_balance_ttl(env: &Env, key: &DataKey) {

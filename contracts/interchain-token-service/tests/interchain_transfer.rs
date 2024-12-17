@@ -14,7 +14,7 @@ use utils::{register_chains, setup_env, setup_gas_token, setup_its_token, HUB_CH
 
 #[test]
 fn interchain_transfer_send_succeeds() {
-    let (env, client, _, _) = setup_env();
+    let (env, client, _, _, _) = setup_env();
 
     let sender: Address = Address::generate(&env);
     let gas_token = setup_gas_token(&env, &sender);
@@ -47,7 +47,7 @@ fn interchain_transfer_send_succeeds() {
 #[test]
 #[should_panic(expected = "burn, Error(Contract, #9)")]
 fn interchain_transfer_send_fails_on_insufficient_balance() {
-    let (env, client, _, _) = setup_env();
+    let (env, client, _, _, _) = setup_env();
     register_chains(&env, &client);
 
     let sender: Address = Address::generate(&env);
@@ -72,7 +72,7 @@ fn interchain_transfer_send_fails_on_insufficient_balance() {
 
 #[test]
 fn interchain_transfer_receive_succeeds() {
-    let (env, client, gateway_client, signers) = setup_env();
+    let (env, client, gateway_client, _, signers) = setup_env();
     register_chains(&env, &client);
 
     let sender = Address::generate(&env).to_xdr(&env);

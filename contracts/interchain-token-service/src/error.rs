@@ -19,7 +19,9 @@ pub enum ContractError {
     InvalidDestinationAddress = 13,
     InvalidHubChain = 14,
     TokenAlreadyRegistered = 15,
-    TokenAlreadyDeployed = 16,
-    EmptyTokenName = 17,
-    EmptyTokenSymbol = 18,
+    InvalidTokenMetaData = 16,
+    InvalidTokenId = 17,
+    TokenAlreadyDeployed = 18,
+    EmptyTokenName = 19,
+    EmptyTokenSymbol = 20,
 }

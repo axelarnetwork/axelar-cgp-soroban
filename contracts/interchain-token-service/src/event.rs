@@ -14,6 +14,27 @@ pub struct TrustedChainRemovedEvent {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+pub struct InterchainTokenDeployedEvent {
+    pub token_id: BytesN<32>,
+    pub token_address: Address,
+    pub name: String,
+    pub symbol: String,
+    pub decimals: u32,
+    pub minter: Option<Address>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct InterchainTokenDeploymentStartedEvent {
+    pub token_id: BytesN<32>,
+    pub token_address: Address,
+    pub destination_chain: String,
+    pub name: String,
+    pub symbol: String,
+    pub decimals: u32,
+    pub minter: Option<Address>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub struct InterchainTokenIdClaimedEvent {
     pub token_id: BytesN<32>,
     pub deployer: Address,
@@ -40,16 +61,6 @@ pub struct InterchainTransferReceivedEvent {
     pub data: Option<Bytes>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct InterchainTokenDeployedEvent {
-    pub token_id: BytesN<32>,
-    pub token_address: Address,
-    pub minter: Option<Address>,
-    pub name: String,
-    pub symbol: String,
-    pub decimals: u32,
-}
-
 impl Event for TrustedChainSetEvent {
     fn topics(&self, env: &Env) -> impl Topics + Debug {
         (Symbol::new(env, "trusted_chain_set"), self.chain.to_val())
@@ -65,6 +76,43 @@ impl Event for TrustedChainRemovedEvent {
         (
             Symbol::new(env, "trusted_chain_removed"),
             self.chain.to_val(),
+        )
+    }
+
+    fn data(&self, env: &Env) -> impl IntoVal<Env, Val> + Debug {
+        Vec::<Val>::new(env)
+    }
+}
+
+impl Event for InterchainTokenDeployedEvent {
+    fn topics(&self, env: &Env) -> impl Topics + Debug {
+        (
+            Symbol::new(env, "interchain_token_deployed"),
+            self.token_id.to_val(),
+            self.token_address.to_val(),
+            self.name.to_val(),
+            self.symbol.to_val(),
+            self.decimals,
+            self.minter.clone(),
+        )
+    }
+
+    fn data(&self, env: &Env) -> impl IntoVal<Env, Val> + Debug {
+        Vec::<Val>::new(env)
+    }
+}
+
+impl Event for InterchainTokenDeploymentStartedEvent {
+    fn topics(&self, env: &Env) -> impl Topics + Debug {
+        (
+            Symbol::new(env, "token_deployment_started"),
+            self.token_id.to_val(),
+            self.token_address.to_val(),
+            self.destination_chain.to_val(),
+            self.name.to_val(),
+            self.symbol.to_val(),
+            self.decimals,
+            self.minter.clone(),
         )
     }
 
@@ -122,24 +170,6 @@ impl Event for InterchainTransferReceivedEvent {
     }
 }
 
-impl Event for InterchainTokenDeployedEvent {
-    fn topics(&self, env: &Env) -> impl Topics + Debug {
-        (
-            Symbol::new(env, "interchain_token_deployed"),
-            self.token_id.to_val(),
-            self.token_address.to_val(),
-            self.minter.clone(),
-            self.name.to_val(),
-            self.symbol.to_val(),
-            self.decimals
-        )
-    }
-
-    fn data(&self, env: &Env) -> impl IntoVal<Env, Val> + Debug {
-        Vec::<Val>::new(env)
-    }
-}
-
 #[cfg(any(test, feature = "testutils"))]
 use axelar_soroban_std::impl_event_testutils;
 
@@ -148,6 +178,37 @@ impl_event_testutils!(TrustedChainSetEvent, (Symbol, String), ());
 
 #[cfg(any(test, feature = "testutils"))]
 impl_event_testutils!(TrustedChainRemovedEvent, (Symbol, String), ());
+
+#[cfg(any(test, feature = "testutils"))]
+impl_event_testutils!(
+    InterchainTokenDeployedEvent,
+    (
+        Symbol,
+        BytesN<32>,
+        Address,
+        String,
+        String,
+        u32,
+        Option<Address>
+    ),
+    ()
+);
+
+#[cfg(any(test, feature = "testutils"))]
+impl_event_testutils!(
+    InterchainTokenDeploymentStartedEvent,
+    (
+        Symbol,
+        BytesN<32>,
+        Address,
+        String,
+        String,
+        String,
+        u32,
+        Option<Address>
+    ),
+    ()
+);
 
 #[cfg(any(test, feature = "testutils"))]
 impl_event_testutils!(
@@ -168,11 +229,4 @@ impl_event_testutils!(
     InterchainTransferReceivedEvent,
     (Symbol, String, BytesN<32>, Bytes, Address, i128),
     (Option<Bytes>)
-);
-
-#[cfg(any(test, feature = "testutils"))]
-impl_event_testutils!(
-    InterchainTokenDeployedEvent,
-    (Symbol, BytesN<32>, Address, Option<Address>, String, String, i32),
-    ()
 );

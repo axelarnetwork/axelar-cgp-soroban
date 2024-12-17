@@ -42,12 +42,11 @@ pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
     ) -> Result<BytesN<32>, ContractError>;
 
     fn deploy_remote_interchain_token(
-        _env: &Env,
+        env: &Env,
         caller: Address,
-        _salt: BytesN<32>,
-        _minter: Option<Bytes>,
-        _destination_chain: String,
-        _gas_token: Token,
+        salt: BytesN<32>,
+        destination_chain: String,
+        gas_token: Token,
     ) -> Result<BytesN<32>, ContractError>;
 
     fn interchain_transfer(
