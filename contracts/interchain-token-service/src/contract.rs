@@ -160,6 +160,13 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
             .into()
     }
 
+    fn canonical_token_deploy_salt(env: &Env, token_address: Address) -> BytesN<32> {
+        let chain_name_hash = Self::chain_name_hash(env);
+        env.crypto()
+            .keccak256(&(PREFIX_CANONICAL_TOKEN_SALT, chain_name_hash, token_address).to_xdr(env))
+            .into()
+    }
+
     /// Retrieves the address of the token associated with the specified token ID.
     ///
     /// # Arguments
@@ -281,45 +288,32 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         destination_chain: String,
         gas_token: Token,
     ) -> Result<BytesN<32>, ContractError> {
-        caller.require_auth();
-
         let deploy_salt = Self::interchain_token_deploy_salt(env, caller.clone(), salt);
-        let token_id = Self::interchain_token_id(env, Address::zero(env), deploy_salt);
-        let token_address = env
-            .storage()
-            .persistent()
-            .get::<_, TokenIdConfigValue>(&DataKey::TokenIdConfigKey(token_id.clone()))
-            .ok_or(ContractError::InvalidTokenId)?
-            .token_address;
-        let token = token::Client::new(env, &token_address);
-        let token_metadata = TokenMetadata {
-            name: token.name(),
-            decimal: token.decimals(),
-            symbol: token.symbol(),
-        };
+        Self::_deploy_remote_interchain_token(
+            env,
+            caller,
+            deploy_salt,
+            destination_chain,
+            gas_token,
+        )
+    }
 
-        assert_ok!(validate_token_metadata(token_metadata.clone()));
+    fn deploy_remote_canonical_token(
+        env: &Env,
+        caller: Address,
+        token_address: Address,
+        destination_chain: String,
+        gas_token: Token,
+    ) -> Result<BytesN<32>, ContractError> {
+        let deploy_salt = Self::canonical_token_deploy_salt(env, token_address);
 
-        let message = Message::DeployInterchainToken(DeployInterchainToken {
-            token_id: token_id.clone(),
-            name: token_metadata.name.clone(),
-            symbol: token_metadata.symbol.clone(),
-            decimals: token_metadata.decimal as u8,
-            minter: None,
-        });
-
-        InterchainTokenDeploymentStartedEvent {
-            token_id: token_id.clone(),
-            token_address,
-            destination_chain: destination_chain.clone(),
-            name: token_metadata.name,
-            symbol: token_metadata.symbol,
-            decimals: token_metadata.decimal,
-            minter: None,
-        }
-        .emit(env);
-
-        Self::pay_gas_and_call_contract(env, caller, destination_chain, message, gas_token)?;
+        let token_id = Self::_deploy_remote_interchain_token(
+            env,
+            caller,
+            deploy_salt,
+            destination_chain,
+            gas_token,
+        )?;
 
         Ok(token_id)
     }
@@ -600,10 +594,52 @@ impl InterchainTokenService {
         env.crypto().keccak256(&chain_name.to_xdr(env)).into()
     }
 
-    fn canonical_token_deploy_salt(env: &Env, token_address: Address) -> BytesN<32> {
-        let chain_name_hash = Self::chain_name_hash(env);
-        env.crypto()
-            .keccak256(&(PREFIX_CANONICAL_TOKEN_SALT, chain_name_hash, token_address).to_xdr(env))
-            .into()
+    fn _deploy_remote_interchain_token(
+        env: &Env,
+        caller: Address,
+        deploy_salt: BytesN<32>,
+        destination_chain: String,
+        gas_token: Token,
+    ) -> Result<BytesN<32>, ContractError> {
+        caller.require_auth();
+
+        let token_id = Self::interchain_token_id(env, Address::zero(env), deploy_salt);
+        let token_address = env
+            .storage()
+            .persistent()
+            .get::<_, TokenIdConfigValue>(&DataKey::TokenIdConfigKey(token_id.clone()))
+            .ok_or(ContractError::InvalidTokenId)?
+            .token_address;
+        let token = token::Client::new(env, &token_address);
+        let token_metadata = TokenMetadata {
+            name: token.name(),
+            decimal: token.decimals(),
+            symbol: token.symbol(),
+        };
+
+        assert_ok!(validate_token_metadata(token_metadata.clone()));
+
+        let message = Message::DeployInterchainToken(DeployInterchainToken {
+            token_id: token_id.clone(),
+            name: token_metadata.name.clone(),
+            symbol: token_metadata.symbol.clone(),
+            decimals: token_metadata.decimal as u8,
+            minter: None,
+        });
+
+        InterchainTokenDeploymentStartedEvent {
+            token_id: token_id.clone(),
+            token_address,
+            destination_chain: destination_chain.clone(),
+            name: token_metadata.name,
+            symbol: token_metadata.symbol,
+            decimals: token_metadata.decimal,
+            minter: None,
+        }
+        .emit(env);
+
+        Self::pay_gas_and_call_contract(env, caller, destination_chain, message, gas_token)?;
+
+        Ok(token_id)
     }
 }

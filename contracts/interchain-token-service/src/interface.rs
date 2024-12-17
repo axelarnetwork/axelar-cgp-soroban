@@ -28,6 +28,8 @@ pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
 
     fn interchain_token_id(env: &Env, sender: Address, salt: BytesN<32>) -> BytesN<32>;
 
+    fn canonical_token_deploy_salt(env: &Env, token_address: Address) -> BytesN<32>;
+
     fn token_address(env: &Env, token_id: BytesN<32>) -> Address;
 
     fn token_manager_type(env: &Env, token_id: BytesN<32>) -> TokenManagerType;
@@ -45,6 +47,14 @@ pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
         env: &Env,
         caller: Address,
         salt: BytesN<32>,
+        destination_chain: String,
+        gas_token: Token,
+    ) -> Result<BytesN<32>, ContractError>;
+
+    fn deploy_remote_canonical_token(
+        env: &Env,
+        caller: Address,
+        token_address: Address,
         destination_chain: String,
         gas_token: Token,
     ) -> Result<BytesN<32>, ContractError>;
