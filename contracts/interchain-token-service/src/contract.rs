@@ -209,30 +209,12 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         let deploy_salt = Self::interchain_token_deploy_salt(env, caller.clone(), salt);
         let token_id = Self::interchain_token_id(env, Address::zero(env), deploy_salt);
 
-        let deployed_address = Self::deploy_interchain_token_contract(env, initial_minter, token_id.clone(), token_metadata);
-        
-        // let deployed_address = env
-        //     .deployer()
-        //     .with_address(env.current_contract_address(), token_id.clone())
-        //     .deploy_v2(
-        //         Self::interchain_token_wasm_hash(env),
-        //         (
-        //             env.current_contract_address(),
-        //             initial_minter.clone(),
-        //             token_id.clone(),
-        //             token_metadata.clone(),
-        //         ),
-        //     );
-
-        // InterchainTokenDeployedEvent {
-        //     token_id: token_id.clone(),
-        //     token_address: deployed_address.clone(),
-        //     name: token_metadata.name,
-        //     symbol: token_metadata.symbol,
-        //     decimals: token_metadata.decimal,
-        //     minter: initial_minter,
-        // }
-        // .emit(env);
+        let deployed_address = Self::deploy_interchain_token_contract(
+            env,
+            initial_minter,
+            token_id.clone(),
+            token_metadata,
+        );
 
         if initial_supply > 0 {
             StellarAssetClient::new(env, &deployed_address).mint(&caller, &initial_supply);
@@ -548,15 +530,9 @@ impl InterchainTokenService {
                 decimals,
                 minter,
             }) => {
-                ensure!(
-                    name.len() > 0,
-                    ContractError::EmptyTokenName
-                );
+                ensure!(!name.is_empty(), ContractError::EmptyTokenName);
 
-                ensure!(
-                    symbol.len() > 0,
-                    ContractError::EmptyTokenSymbol
-                );
+                ensure!(!symbol.is_empty(), ContractError::EmptyTokenSymbol);
 
                 ensure!(
                     !env.storage()
@@ -566,14 +542,15 @@ impl InterchainTokenService {
                 );
 
                 let token_metadata = TokenMetadata {
-                    decimal: decimals as u32,
                     name,
                     symbol,
+                    decimal: decimals as u32,
                 };
 
                 let minter_address = if let Some(minter) = minter {
-                    let addr = Address::from_string_bytes(&minter);
-                    
+                    let addr = Address::from_xdr(env, &minter)
+                        .map_err(|_| ContractError::InvalidMinter)?;
+
                     ensure!(
                         addr != env.current_contract_address(),
                         ContractError::InvalidMinter
@@ -584,14 +561,19 @@ impl InterchainTokenService {
                     None
                 };
 
-                let deployed_address = Self::deploy_interchain_token_contract(env, minter_address, token_id.clone(), token_metadata);
+                let deployed_address = Self::deploy_interchain_token_contract(
+                    env,
+                    minter_address,
+                    token_id.clone(),
+                    token_metadata,
+                );
 
                 Self::set_token_id_config(
-                    env, 
-                    token_id, 
+                    env,
+                    token_id,
                     TokenIdConfigValue {
                         token_address: deployed_address,
-                        token_manager_type: TokenManagerType::NativeInterchainToken
+                        token_manager_type: TokenManagerType::NativeInterchainToken,
                     },
                 );
             }
@@ -666,7 +648,8 @@ impl InterchainTokenService {
         token_id: BytesN<32>,
         token_metadata: TokenMetadata,
     ) -> Address {
-        let deployed_address = env.deployer()
+        let deployed_address = env
+            .deployer()
             .with_address(env.current_contract_address(), token_id.clone())
             .deploy_v2(
                 Self::interchain_token_wasm_hash(env),
@@ -677,7 +660,7 @@ impl InterchainTokenService {
                     token_metadata.clone(),
                 ),
             );
-        
+
         InterchainTokenDeployedEvent {
             token_id,
             token_address: deployed_address.clone(),
