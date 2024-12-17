@@ -174,7 +174,9 @@ fn deploy_interchain_token_message_execute_succeeds() {
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #19)")] // ContractError::EmptyTokenName
+#[should_panic(
+    expected = "Error calling validate_token_metadata(token_metadata.clone()): InvalidTokenName"
+)]
 fn deploy_interchain_token_message_execute_fails_empty_token_name() {
     let (env, client, gateway_client, _, signers) = setup_env();
     register_chains(&env, &client);
@@ -222,7 +224,9 @@ fn deploy_interchain_token_message_execute_fails_empty_token_name() {
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #20)")] // ContractError::EmptyTokenSymbol
+#[should_panic(
+    expected = "Error calling validate_token_metadata(token_metadata.clone()): InvalidTokenSymbol"
+)]
 fn deploy_interchain_token_message_execute_fails_empty_token_symbol() {
     let (env, client, gateway_client, _, signers) = setup_env();
     register_chains(&env, &client);

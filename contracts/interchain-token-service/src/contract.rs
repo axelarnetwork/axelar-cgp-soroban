@@ -530,10 +530,6 @@ impl InterchainTokenService {
                 decimals,
                 minter,
             }) => {
-                ensure!(!name.is_empty(), ContractError::EmptyTokenName);
-
-                ensure!(!symbol.is_empty(), ContractError::EmptyTokenSymbol);
-
                 ensure!(
                     !env.storage()
                         .persistent()
@@ -546,6 +542,8 @@ impl InterchainTokenService {
                     symbol,
                     decimal: decimals as u32,
                 };
+
+                assert_ok!(validate_token_metadata(token_metadata.clone()));
 
                 let minter_address = if let Some(minter) = minter {
                     let addr = Address::from_xdr(env, &minter)
