@@ -1,0 +1,3 @@
+contract: Contract(CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5)
+topics: (Symbol(token_deployment_started), BytesN<32>(76, 179, 52, 238, 105, 245, 145, 189, 124, 67, 167, 187, 74, 130, 7, 253, 142, 105, 234, 72, 135, 10, 220, 6, 77, 95, 250, 1, 56, 82, 126, 165), Contract(CD2M6PPSH3SRJENCB2343AJLQD4HMFUE262YUBKPU4KMHKCJR24CYLKD), String(ethereum), String(name), String(symbol), 6, None)
+data: ()

@@ -1,7 +1,9 @@
 mod utils;
 
-use axelar_soroban_std::address::AddressExt;
-use interchain_token_service::types::TokenManagerType;
+use axelar_soroban_std::{address::AddressExt, events};
+use interchain_token_service::{
+    event::InterchainTokenDeploymentStartedEvent, types::TokenManagerType,
+};
 use soroban_sdk::{testutils::Address as _, Address, BytesN, String};
 use soroban_token_sdk::metadata::TokenMetadata;
 use utils::{setup_env, setup_gas_token, TokenMetadataExt};
@@ -53,6 +55,10 @@ fn deploy_remote_canonical_token_succeeds() {
         &gas_token,
     );
     assert_eq!(expected_id, deployed_token_id);
+
+    goldie::assert!(events::fmt_emitted_event_at_idx::<
+        InterchainTokenDeploymentStartedEvent,
+    >(&env, -4));
 }
 
 #[test]
