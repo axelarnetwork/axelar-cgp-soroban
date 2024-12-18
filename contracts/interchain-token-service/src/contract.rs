@@ -637,7 +637,7 @@ impl InterchainTokenService {
         caller.require_auth();
 
         let token_id = Self::interchain_token_id(env, Address::zero(env), deploy_salt);
-        let token_address = Self::token_address(env, token_id.clone());
+        let token_address = Self::token_id_config(env, token_id.clone())?.token_address;
         let token = token::Client::new(env, &token_address);
         let token_metadata = TokenMetadata {
             name: token.name(),
