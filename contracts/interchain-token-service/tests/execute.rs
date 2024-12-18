@@ -9,11 +9,12 @@ use interchain_token_service::event::{
 use interchain_token_service::types::{
     DeployInterchainToken, HubMessage, InterchainTransfer, Message, TokenManagerType,
 };
-use soroban_sdk::token;
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{testutils::Address as _, vec, Address, Bytes, BytesN, String};
 use soroban_token_sdk::metadata::TokenMetadata;
 use utils::{register_chains, setup_env, setup_its_token, HUB_CHAIN};
+
+use interchain_token::InterchainTokenClient;
 
 #[test]
 #[should_panic(expected = "Error(Contract, #1)")] // ExecutableError::NotApproved
@@ -118,7 +119,8 @@ fn deploy_interchain_token_message_execute_succeeds() {
     let (env, client, gateway_client, _, signers) = setup_env();
     register_chains(&env, &client);
 
-    let sender = Address::generate(&env).to_xdr(&env);
+    let sender = Address::generate(&env);
+    let sender_bytes = sender.clone().to_xdr(&env);
     let source_chain = client.its_hub_chain_name();
     let source_address = Address::generate(&env).to_string();
 
@@ -136,7 +138,7 @@ fn deploy_interchain_token_message_execute_succeeds() {
             name: token_metadata.name.clone(),
             symbol: token_metadata.symbol.clone(),
             decimals: token_metadata.decimal as u8,
-            minter: Some(sender),
+            minter: Some(sender_bytes),
         }),
     };
     let payload = msg.abi_encode(&env).unwrap();
@@ -163,7 +165,9 @@ fn deploy_interchain_token_message_execute_succeeds() {
 
     goldie::assert!(events::fmt_last_emitted_event::<InterchainTokenDeployedEvent>(&env));
 
-    let token = token::TokenClient::new(&env, &client.token_address(&token_id));
+    let token = InterchainTokenClient::new(&env, &client.token_address(&token_id));
+
+    assert!(token.is_minter(&sender));
     assert_eq!(token.name(), token_metadata.name);
     assert_eq!(token.symbol(), token_metadata.symbol);
     assert_eq!(token.decimals(), token_metadata.decimal);

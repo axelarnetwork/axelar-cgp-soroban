@@ -531,9 +531,10 @@ impl InterchainTokenService {
                 minter,
             }) => {
                 ensure!(
-                    !env.storage()
+                    env.storage()
                         .persistent()
-                        .has(&DataKey::TokenIdConfigKey(token_id.clone())),
+                        .get::<_, TokenIdConfigValue>(&DataKey::TokenIdConfigKey(token_id.clone()))
+                        .is_none(),
                     ContractError::TokenAlreadyDeployed
                 );
 
