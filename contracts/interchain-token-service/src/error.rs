@@ -21,4 +21,5 @@ pub enum ContractError {
     TokenAlreadyRegistered = 15,
     InvalidTokenMetaData = 16,
     InvalidTokenId = 17,
+    TokenAlreadyDeployed = 18,
 }
