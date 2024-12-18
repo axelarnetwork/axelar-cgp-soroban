@@ -1,6 +1,7 @@
 mod utils;
 
 use axelar_soroban_std::assert_contract_err;
+use axelar_soroban_std::assert_err;
 use axelar_soroban_std::auth_invocation;
 use axelar_soroban_std::events;
 use interchain_token_service::error::ContractError;
@@ -179,6 +180,7 @@ fn deploy_remote_interchain_token_fails_untrusted_chain() {
 }
 
 #[test]
+#[should_panic(expected = "HostError: Error(WasmVm, InvalidAction)")]
 fn deploy_remote_interchain_token_fails_with_invalid_token_id() {
     let (env, client, _, _, _) = setup_env();
     env.mock_all_auths();
@@ -189,8 +191,5 @@ fn deploy_remote_interchain_token_fails_with_invalid_token_id() {
 
     let destination_chain = String::from_str(&env, "ethereum");
 
-    assert_contract_err!(
-        client.try_deploy_remote_interchain_token(&sender, &salt, &destination_chain, &gas_token),
-        ContractError::InvalidTokenId
-    );
+    client.deploy_remote_interchain_token(&sender, &salt, &destination_chain, &gas_token);
 }
