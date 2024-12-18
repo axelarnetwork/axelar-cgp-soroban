@@ -1,6 +1,5 @@
 use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::{executable::AxelarExecutableInterface, AxelarGatewayMessagingClient};
-use axelar_soroban_std::assert_ok;
 use axelar_soroban_std::events::Event;
 use axelar_soroban_std::token::validate_token_metadata;
 use axelar_soroban_std::{
