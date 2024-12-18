@@ -301,19 +301,15 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     /// Returns `ContractError` if the deployment fails or if token metadata is invalid.
     fn deploy_remote_canonical_token(
         env: &Env,
+        sender: Address,
         token_address: Address,
         destination_chain: String,
         gas_token: Token,
     ) -> Result<BytesN<32>, ContractError> {
         let deploy_salt = Self::canonical_token_deploy_salt(env, token_address);
 
-        let token_id = Self::deploy_remote_token(
-            env,
-            env.current_contract_address(),
-            deploy_salt,
-            destination_chain,
-            gas_token,
-        )?;
+        let token_id =
+            Self::deploy_remote_token(env, sender, deploy_salt, destination_chain, gas_token)?;
 
         Ok(token_id)
     }
