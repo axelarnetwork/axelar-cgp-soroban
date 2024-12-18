@@ -180,7 +180,7 @@ fn deploy_remote_interchain_token_fails_untrusted_chain() {
 
 #[test]
 #[should_panic(expected = "HostError: Error(WasmVm, InvalidAction)")]
-fn deploy_remote_interchain_token_fails_with_invalid_token_id() {
+fn deploy_remote_interchain_token_fails_with_invalid_action() {
     let (env, client, _, _, _) = setup_env();
     env.mock_all_auths();
 
