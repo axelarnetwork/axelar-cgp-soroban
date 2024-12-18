@@ -279,27 +279,20 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         gas_token: Token,
     ) -> Result<BytesN<32>, ContractError> {
         let deploy_salt = Self::interchain_token_deploy_salt(env, caller.clone(), salt);
-        Self::_deploy_remote_interchain_token(
-            env,
-            caller,
-            deploy_salt,
-            destination_chain,
-            gas_token,
-        )
+        Self::deploy_remote_token(env, caller, deploy_salt, destination_chain, gas_token)
     }
 
     fn deploy_remote_canonical_token(
         env: &Env,
-        caller: Address,
         token_address: Address,
         destination_chain: String,
         gas_token: Token,
     ) -> Result<BytesN<32>, ContractError> {
         let deploy_salt = Self::canonical_token_deploy_salt(env, token_address);
 
-        let token_id = Self::_deploy_remote_interchain_token(
+        let token_id = Self::deploy_remote_token(
             env,
-            caller,
+            env.current_contract_address(),
             deploy_salt,
             destination_chain,
             gas_token,
@@ -598,7 +591,7 @@ impl InterchainTokenService {
         env.crypto().keccak256(&chain_name.to_xdr(env)).into()
     }
 
-    fn _deploy_remote_interchain_token(
+    fn deploy_remote_token(
         env: &Env,
         caller: Address,
         deploy_salt: BytesN<32>,
