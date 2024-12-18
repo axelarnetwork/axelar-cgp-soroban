@@ -651,7 +651,10 @@ impl InterchainTokenService {
             symbol: token.symbol(),
         };
 
-        assert_ok!(validate_token_metadata(token_metadata.clone()));
+        ensure!(
+            validate_token_metadata(token_metadata.clone()).is_ok(),
+            ContractError::InvalidTokenMetaData
+        );
 
         let message = Message::DeployInterchainToken(DeployInterchainToken {
             token_id: token_id.clone(),
