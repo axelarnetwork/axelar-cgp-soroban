@@ -7,26 +7,11 @@ use interchain_token_service::{
 use soroban_sdk::{testutils::Address as _, xdr::ToXdr, Address, BytesN};
 use utils::setup_env;
 
-const PREFIX_CANONICAL_TOKEN_SALT: &str = "canonical-token-salt";
-
 #[test]
 fn register_canonical_token_succeeds() {
     let (env, client, _, _, _) = setup_env();
     let token_address = Address::generate(&env);
-
-    let chain_name = client.chain_name();
-    let chain_name_hash: BytesN<32> = env.crypto().keccak256(&(chain_name).to_xdr(&env)).into();
-    let expected_deploy_salt = env
-        .crypto()
-        .keccak256(
-            &(
-                PREFIX_CANONICAL_TOKEN_SALT,
-                chain_name_hash,
-                token_address.clone(),
-            )
-                .to_xdr(&env),
-        )
-        .into();
+    let expected_deploy_salt = client.canonical_token_deploy_salt(&token_address);
     let expected_id = client.interchain_token_id(&Address::zero(&env), &expected_deploy_salt);
 
     assert_eq!(client.register_canonical_token(&token_address), expected_id);
@@ -63,18 +48,7 @@ fn canonical_token_id_derivation() {
 
     let chain_name = client.chain_name();
     let chain_name_hash: BytesN<32> = env.crypto().keccak256(&(chain_name).to_xdr(&env)).into();
-
-    let deploy_salt = env
-        .crypto()
-        .keccak256(
-            &(
-                PREFIX_CANONICAL_TOKEN_SALT,
-                chain_name_hash.clone(),
-                token_address,
-            )
-                .to_xdr(&env),
-        )
-        .into();
+    let deploy_salt = client.canonical_token_deploy_salt(&token_address);
 
     let token_id = client.interchain_token_id(&Address::zero(&env), &deploy_salt);
 
