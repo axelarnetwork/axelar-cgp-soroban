@@ -518,10 +518,7 @@ impl InterchainTokenService {
                 minter,
             }) => {
                 ensure!(
-                    env.storage()
-                        .persistent()
-                        .get::<_, TokenIdConfigValue>(&DataKey::TokenIdConfigKey(token_id.clone()))
-                        .is_none(),
+                    Self::token_id_config(env, token_id.clone()).is_err(),
                     ContractError::TokenAlreadyDeployed
                 );
 
@@ -531,11 +528,13 @@ impl InterchainTokenService {
                     decimal: decimals as u32,
                 };
 
-                assert_ok!(validate_token_metadata(token_metadata.clone()));
+                ensure!(
+                    validate_token_metadata(token_metadata.clone()).is_ok(),
+                    ContractError::InvalidTokenMetaData
+                );
 
                 let minter_address = if let Some(minter) = minter {
-                    let addr = Address::from_xdr(env, &minter)
-                        .map_err(|_| ContractError::InvalidMinter)?;
+                    let addr = Address::from_xdr(env, &minter).expect("address conversion failed");
 
                     ensure!(
                         addr != env.current_contract_address(),

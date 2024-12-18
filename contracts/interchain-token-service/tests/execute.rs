@@ -178,9 +178,7 @@ fn deploy_interchain_token_message_execute_succeeds() {
 }
 
 #[test]
-#[should_panic(
-    expected = "Error calling validate_token_metadata(token_metadata.clone()): InvalidTokenName"
-)]
+#[should_panic(expected = "Error(Contract, #16)")] // ContractError::InvalidTokenMetadata
 fn deploy_interchain_token_message_execute_fails_empty_token_name() {
     let (env, client, gateway_client, _, signers) = setup_env();
     register_chains(&env, &client);
@@ -228,9 +226,7 @@ fn deploy_interchain_token_message_execute_fails_empty_token_name() {
 }
 
 #[test]
-#[should_panic(
-    expected = "Error calling validate_token_metadata(token_metadata.clone()): InvalidTokenSymbol"
-)]
+#[should_panic(expected = "Error(Contract, #16)")] // ContractError::InvalidTokenMetadata
 fn deploy_interchain_token_message_execute_fails_empty_token_symbol() {
     let (env, client, gateway_client, _, signers) = setup_env();
     register_chains(&env, &client);
@@ -328,8 +324,7 @@ fn deploy_interchain_token_message_execute_fails_its_as_minter() {
 }
 
 #[test]
-// #[should_panic(expected = "Error(Contract, #12)")] // ContractError::InvalidMinter
-#[should_panic]
+#[should_panic(expected = "Error(Value, InvalidInput)")]
 fn deploy_interchain_token_message_execute_fails_invalid_minter_address() {
     let (env, client, gateway_client, _, signers) = setup_env();
     register_chains(&env, &client);
@@ -338,7 +333,7 @@ fn deploy_interchain_token_message_execute_fails_invalid_minter_address() {
     let source_address = Address::generate(&env).to_string();
     let token_id = BytesN::from_array(&env, &[1u8; 32]);
 
-    let invalid_minter = Bytes::from_array(&env, &[255u8; 32]);
+    let invalid_minter = Bytes::from_array(&env, &[1u8; 32]);
 
     let msg_invalid_minter = HubMessage::ReceiveFromHub {
         source_chain: String::from_str(&env, HUB_CHAIN),
