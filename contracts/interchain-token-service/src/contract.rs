@@ -282,6 +282,24 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         Self::deploy_remote_token(env, caller, deploy_salt, destination_chain, gas_token)
     }
 
+    /// Deploys a remote canonical token on a specified destination chain.
+    ///
+    /// This function computes a deployment salt and uses it to deploy a canonical
+    /// representation of a token on the remote chain. It retrieves the token metadata
+    /// from the token address and ensures the metadata is valid before initiating
+    /// the deployment.
+    ///
+    /// # Arguments
+    /// * `env` - Reference to the environment object.
+    /// * `token_address` - The address of the token to be deployed.
+    /// * `destination_chain` - The name of the destination chain where the token will be deployed.
+    /// * `gas_token` - The token used to pay for gas during the deployment.
+    ///
+    /// # Returns
+    /// Returns the token ID of the deployed token on the remote chain, or an error if the deployment fails.
+    ///
+    /// # Errors
+    /// Returns `ContractError` if the deployment fails or if token metadata is invalid.
     fn deploy_remote_canonical_token(
         env: &Env,
         token_address: Address,
@@ -591,6 +609,25 @@ impl InterchainTokenService {
         env.crypto().keccak256(&chain_name.to_xdr(env)).into()
     }
 
+    /// Deploys a remote token on a specified destination chain.
+    ///
+    /// This function authorizes the caller, retrieves the token's metadata,
+    /// validates the metadata, and emits an event indicating the start of the
+    /// token deployment process. It also constructs and sends the deployment
+    /// message to the remote chain.
+    ///
+    /// # Arguments
+    /// * `env` - Reference to the environment object.
+    /// * `caller` - Address of the caller initiating the deployment.
+    /// * `deploy_salt` - Unique salt used for token deployment.
+    /// * `destination_chain` - The name of the destination chain where the token will be deployed.
+    /// * `gas_token` - The token used to pay for gas during the deployment.
+    ///
+    /// # Returns
+    /// Returns the token ID of the deployed token on the remote chain, or an error if the deployment fails.
+    ///
+    /// # Errors
+    /// Returns `ContractError` if the deployment fails, the token ID is invalid, or token metadata is invalid.
     fn deploy_remote_token(
         env: &Env,
         caller: Address,
