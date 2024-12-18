@@ -11,14 +11,14 @@ use utils::{setup_env, setup_gas_token};
 fn deploy_remote_canonical_token_succeeds() {
     let (env, client, _, _, _) = setup_env();
 
-    let sender = Address::generate(&env);
-    let gas_token = setup_gas_token(&env, &sender);
+    let spender = Address::generate(&env);
+    let gas_token = setup_gas_token(&env, &spender);
     let asset = &env.register_stellar_asset_contract_v2(Address::generate(&env));
     let initial_amount = 1;
 
     StellarAssetClient::new(&env, &asset.address())
         .mock_all_auths()
-        .mint(&sender, &initial_amount);
+        .mint(&spender, &initial_amount);
 
     let token_address = asset.address();
     let expected_deploy_salt = client.canonical_token_deploy_salt(&token_address);
@@ -38,7 +38,7 @@ fn deploy_remote_canonical_token_succeeds() {
         .set_trusted_chain(&destination_chain);
 
     let deployed_token_id = client.mock_all_auths().deploy_remote_canonical_token(
-        &sender,
+        &spender,
         &token_address,
         &destination_chain,
         &gas_token,
@@ -55,8 +55,8 @@ fn deploy_remote_canonical_token_succeeds() {
 fn deploy_remote_canonical_token_fail_no_actual_token() {
     let (env, client, _, _, _) = setup_env();
 
-    let sender = Address::generate(&env);
-    let gas_token = setup_gas_token(&env, &client.address);
+    let spender = Address::generate(&env);
+    let gas_token = setup_gas_token(&env, &spender);
     let token_address = Address::generate(&env);
     let expected_deploy_salt = client.canonical_token_deploy_salt(&token_address);
     let expected_id = client.interchain_token_id(&Address::zero(&env), &expected_deploy_salt);
@@ -75,7 +75,7 @@ fn deploy_remote_canonical_token_fail_no_actual_token() {
         .set_trusted_chain(&destination_chain);
 
     client.mock_all_auths().deploy_remote_canonical_token(
-        &sender,
+        &spender,
         &token_address,
         &destination_chain,
         &gas_token,

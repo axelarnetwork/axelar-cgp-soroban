@@ -290,6 +290,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     ///
     /// # Arguments
     /// * `env` - Reference to the environment object.
+    /// * `spender` - Address of the spender.
     /// * `token_address` - The address of the token to be deployed.
     /// * `destination_chain` - The name of the destination chain where the token will be deployed.
     /// * `gas_token` - The token used to pay for gas during the deployment.
@@ -301,7 +302,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     /// Returns `ContractError` if the deployment fails or if token metadata is invalid.
     fn deploy_remote_canonical_token(
         env: &Env,
-        sender: Address,
+        spender: Address,
         token_address: Address,
         destination_chain: String,
         gas_token: Token,
@@ -309,7 +310,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         let deploy_salt = Self::canonical_token_deploy_salt(env, token_address);
 
         let token_id =
-            Self::deploy_remote_token(env, sender, deploy_salt, destination_chain, gas_token)?;
+            Self::deploy_remote_token(env, spender, deploy_salt, destination_chain, gas_token)?;
 
         Ok(token_id)
     }
