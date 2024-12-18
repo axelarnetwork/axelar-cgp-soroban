@@ -1,7 +1,6 @@
 mod utils;
 
 use axelar_soroban_std::assert_contract_err;
-use axelar_soroban_std::assert_err;
 use axelar_soroban_std::auth_invocation;
 use axelar_soroban_std::events;
 use interchain_token_service::error::ContractError;
