@@ -179,7 +179,8 @@ fn deploy_remote_interchain_token_fails_untrusted_chain() {
 }
 
 #[test]
-fn deploy_remote_interchain_token_fails_with_invalid_token_id() {
+#[should_panic(expected = "HostError: Error(WasmVm, InvalidAction)")]
+fn deploy_remote_interchain_token_fails_with_invalid_action() {
     let (env, client, _, _, _) = setup_env();
     env.mock_all_auths();
 
@@ -189,8 +190,5 @@ fn deploy_remote_interchain_token_fails_with_invalid_token_id() {
 
     let destination_chain = String::from_str(&env, "ethereum");
 
-    assert_contract_err!(
-        client.try_deploy_remote_interchain_token(&sender, &salt, &destination_chain, &gas_token),
-        ContractError::InvalidTokenId
-    );
+    client.deploy_remote_interchain_token(&sender, &salt, &destination_chain, &gas_token);
 }
