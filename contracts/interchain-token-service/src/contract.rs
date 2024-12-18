@@ -161,27 +161,17 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     }
 
     /// Retrieves the address of the token associated with the specified token ID.
-    ///
-    /// # Arguments
-    /// * `env` - A reference to the environment in which the function operates.
-    /// * `token_id` - A 32-byte identifier for the token.
-    ///
-    /// # Returns
-    /// * `Address` - The address of the token associated with the given token ID.
     fn token_address(env: &Env, token_id: BytesN<32>) -> Address {
-        Self::token_id_config(env, token_id).token_address
+        Self::token_id_config(env, token_id)
+            .expect("token id config not found")
+            .token_address
     }
 
     /// Retrieves the type of the token manager type associated with the specified token ID.
-    ///
-    /// # Arguments
-    /// * `env` - A reference to the environment in which the function operates.
-    /// * `token_id` - A 32-byte identifier for the token.
-    ///
-    /// # Returns
-    /// * `TokenManagerType` - The type of the token manager associated with the given token ID.
     fn token_manager_type(env: &Env, token_id: BytesN<32>) -> TokenManagerType {
-        Self::token_id_config(env, token_id).token_manager_type
+        Self::token_id_config(env, token_id)
+            .expect("token id config not found")
+            .token_manager_type
     }
 
     fn deploy_interchain_token(
@@ -269,12 +259,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
 
         let deploy_salt = Self::interchain_token_deploy_salt(env, caller.clone(), salt);
         let token_id = Self::interchain_token_id(env, Address::zero(env), deploy_salt);
-        let token_address = env
-            .storage()
-            .persistent()
-            .get::<_, TokenIdConfigValue>(&DataKey::TokenIdConfigKey(token_id.clone()))
-            .ok_or(ContractError::InvalidTokenId)?
-            .token_address;
+        let token_address = Self::token_address(env, token_id.clone());
         let token = token::Client::new(env, &token_address);
         let token_metadata = TokenMetadata {
             name: token.name(),
@@ -325,7 +310,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         token_handler::take_token(
             env,
             &caller,
-            Self::token_id_config(env, token_id.clone()),
+            Self::token_id_config(env, token_id.clone())?,
             amount,
         )?;
 
@@ -490,14 +475,14 @@ impl InterchainTokenService {
                 let destination_address = Address::from_xdr(env, &destination_address)
                     .map_err(|_| ContractError::InvalidDestinationAddress)?;
 
+                let token_config_value = Self::token_id_config(env, token_id.clone())?;
+
                 token_handler::give_token(
                     env,
                     &destination_address,
-                    Self::token_id_config(env, token_id.clone()),
+                    token_config_value.clone(),
                     amount,
                 )?;
-
-                let token_address = Self::token_address(env, token_id.clone());
 
                 InterchainTransferReceivedEvent {
                     source_chain: source_chain.clone(),
@@ -508,6 +493,8 @@ impl InterchainTokenService {
                     data: data.clone(),
                 }
                 .emit(env);
+
+                let token_address = token_config_value.token_address;
 
                 if let Some(payload) = data {
                     let executable =
@@ -622,11 +609,23 @@ impl InterchainTokenService {
             .set(&DataKey::TokenIdConfigKey(token_id), &token_data);
     }
 
-    fn token_id_config(env: &Env, token_id: BytesN<32>) -> TokenIdConfigValue {
+    /// Retrieves the configuration value for the specified token ID.
+    ///
+    /// # Arguments
+    /// - `env`: Reference to the environment.
+    /// - `token_id`: A 32-byte unique identifier for the token.
+    ///
+    /// # Returns
+    /// - `Ok(TokenIdConfigValue)`: The configuration value if it exists.
+    /// - `Err(ContractError::InvalidTokenId)`: If the token ID does not exist in storage.
+    fn token_id_config(
+        env: &Env,
+        token_id: BytesN<32>,
+    ) -> Result<TokenIdConfigValue, ContractError> {
         env.storage()
             .persistent()
-            .get(&DataKey::TokenIdConfigKey(token_id))
-            .expect("token id config not found")
+            .get::<_, TokenIdConfigValue>(&DataKey::TokenIdConfigKey(token_id))
+            .ok_or(ContractError::InvalidTokenId)
     }
 
     fn chain_name_hash(env: &Env) -> BytesN<32> {
