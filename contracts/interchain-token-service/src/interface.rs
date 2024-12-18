@@ -53,7 +53,7 @@ pub trait InterchainTokenServiceInterface: AxelarExecutableInterface {
 
     fn deploy_remote_canonical_token(
         env: &Env,
-        sender: Address,
+        spender: Address,
         token_address: Address,
         destination_chain: String,
         gas_token: Token,
