@@ -161,16 +161,17 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     }
 
     /// Retrieves the address of the token associated with the specified token ID.
-    fn token_address(env: &Env, token_id: BytesN<32>) -> Result<Address, ContractError> {
-        Self::token_id_config(env, token_id).map(|config| config.token_address)
+    fn token_address(env: &Env, token_id: BytesN<32>) -> Address {
+        Self::token_id_config(env, token_id)
+            .expect("token id config not found")
+            .token_address
     }
 
     /// Retrieves the type of the token manager type associated with the specified token ID.
-    fn token_manager_type(
-        env: &Env,
-        token_id: BytesN<32>,
-    ) -> Result<TokenManagerType, ContractError> {
-        Self::token_id_config(env, token_id).map(|config| config.token_manager_type)
+    fn token_manager_type(env: &Env, token_id: BytesN<32>) -> TokenManagerType {
+        Self::token_id_config(env, token_id)
+            .expect("token id config not found")
+            .token_manager_type
     }
 
     fn deploy_interchain_token(
@@ -274,7 +275,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
 
         let deploy_salt = Self::interchain_token_deploy_salt(env, caller.clone(), salt);
         let token_id = Self::interchain_token_id(env, Address::zero(env), deploy_salt);
-        let token_address = Self::token_address(env, token_id.clone())?;
+        let token_address = Self::token_address(env, token_id.clone());
         let token = token::Client::new(env, &token_address);
         let token_metadata = TokenMetadata {
             name: token.name(),
@@ -490,14 +491,14 @@ impl InterchainTokenService {
                 let destination_address = Address::from_xdr(env, &destination_address)
                     .map_err(|_| ContractError::InvalidDestinationAddress)?;
 
+                let token_config_value = Self::token_id_config(env, token_id.clone())?;
+
                 token_handler::give_token(
                     env,
                     &destination_address,
-                    Self::token_id_config(env, token_id.clone())?,
+                    token_config_value.clone(),
                     amount,
                 )?;
-
-                let token_address = Self::token_address(env, token_id.clone())?;
 
                 InterchainTransferReceivedEvent {
                     source_chain: source_chain.clone(),
@@ -508,6 +509,8 @@ impl InterchainTokenService {
                     data: data.clone(),
                 }
                 .emit(env);
+
+                let token_address = token_config_value.token_address;
 
                 if let Some(payload) = data {
                     let executable =
