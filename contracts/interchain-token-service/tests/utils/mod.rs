@@ -1,9 +1,9 @@
 use axelar_gas_service::{AxelarGasService, AxelarGasServiceClient};
-use axelar_gateway::testutils::{setup_gateway, TestSignerSet};
-use axelar_gateway::AxelarGatewayClient;
+use axelar_gateway::testutils::{generate_proof, get_approve_hash, setup_gateway, TestSignerSet};
+use axelar_gateway::{types::Message, AxelarGatewayClient};
 use axelar_soroban_std::types::Token;
 use interchain_token_service::{InterchainTokenService, InterchainTokenServiceClient};
-use soroban_sdk::{testutils::Address as _, token::StellarAssetClient, Address, Env, String};
+use soroban_sdk::{testutils::Address as _, token::StellarAssetClient, Address, Env, String, Vec};
 use soroban_sdk::{BytesN, IntoVal};
 use soroban_token_sdk::metadata::TokenMetadata;
 
@@ -112,6 +112,18 @@ pub fn setup_its_token(
 pub fn register_chains(env: &Env, client: &InterchainTokenServiceClient) {
     let chain = String::from_str(env, HUB_CHAIN);
     client.mock_all_auths().set_trusted_chain(&chain);
+}
+
+#[allow(dead_code)]
+pub fn approve_gateway_messages(
+    env: &Env,
+    gateway_client: AxelarGatewayClient,
+    signers: TestSignerSet,
+    messages: Vec<Message>,
+) {
+    let data_hash = get_approve_hash(&env, messages.clone());
+    let proof = generate_proof(&env, data_hash, signers);
+    gateway_client.approve_messages(&messages, &proof);
 }
 
 #[allow(dead_code)]

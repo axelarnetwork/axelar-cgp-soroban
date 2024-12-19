@@ -1,6 +1,5 @@
 mod utils;
 
-use axelar_gateway::testutils::{generate_proof, get_approve_hash};
 use axelar_gateway::types::Message as GatewayMessage;
 use axelar_soroban_std::events;
 use interchain_token_service::event::{
@@ -12,7 +11,7 @@ use interchain_token_service::types::{
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{testutils::Address as _, vec, Address, Bytes, BytesN, String};
 use soroban_token_sdk::metadata::TokenMetadata;
-use utils::{register_chains, setup_env, setup_its_token, HUB_CHAIN};
+use utils::{approve_gateway_messages, register_chains, setup_env, setup_its_token, HUB_CHAIN};
 
 use interchain_token::InterchainTokenClient;
 
@@ -51,9 +50,8 @@ fn execute_fails_with_invalid_message() {
             payload_hash,
         },
     ];
-    let data_hash = get_approve_hash(&env, messages.clone());
-    let proof = generate_proof(&env, data_hash, signers);
-    gateway_client.approve_messages(&messages, &proof);
+
+    approve_gateway_messages(&env, gateway_client, signers, messages);
 
     client.execute(
         &source_chain,
@@ -102,10 +100,8 @@ fn interchain_transfer_message_execute_succeeds() {
             payload_hash,
         },
     ];
-    let data_hash = get_approve_hash(&env, messages.clone());
-    let proof = generate_proof(&env, data_hash, signers);
 
-    gateway_client.approve_messages(&messages, &proof);
+    approve_gateway_messages(&env, gateway_client, signers, messages);
 
     client.execute(&source_chain, &message_id, &source_address, &payload);
 
@@ -156,10 +152,8 @@ fn deploy_interchain_token_message_execute_succeeds() {
             payload_hash,
         },
     ];
-    let data_hash = get_approve_hash(&env, messages.clone());
-    let proof = generate_proof(&env, data_hash, signers);
 
-    gateway_client.approve_messages(&messages, &proof);
+    approve_gateway_messages(&env, gateway_client, signers, messages);
 
     client.execute(&source_chain, &message_id, &source_address, &payload);
 
@@ -212,10 +206,8 @@ fn deploy_interchain_token_message_execute_fails_empty_token_name() {
             payload_hash: payload_hash_empty_name,
         },
     ];
-    let data_hash = get_approve_hash(&env, messages.clone());
-    let proof = generate_proof(&env, data_hash, signers);
 
-    gateway_client.approve_messages(&messages, &proof);
+    approve_gateway_messages(&env, gateway_client, signers, messages);
 
     client.execute(
         &source_chain,
@@ -261,10 +253,8 @@ fn deploy_interchain_token_message_execute_fails_empty_token_symbol() {
             payload_hash: payload_hash_empty_symbol,
         },
     ];
-    let data_hash = get_approve_hash(&env, messages.clone());
-    let proof = generate_proof(&env, data_hash, signers);
 
-    gateway_client.approve_messages(&messages, &proof);
+    approve_gateway_messages(&env, gateway_client, signers, messages);
 
     client.execute(
         &source_chain,
@@ -312,10 +302,8 @@ fn deploy_interchain_token_message_execute_fails_invalid_minter_address() {
             payload_hash: payload_hash_invalid_minter,
         },
     ];
-    let data_hash = get_approve_hash(&env, messages.clone());
-    let proof = generate_proof(&env, data_hash, signers);
 
-    gateway_client.approve_messages(&messages, &proof);
+    approve_gateway_messages(&env, gateway_client, signers, messages);
 
     client.execute(
         &source_chain,
@@ -375,10 +363,8 @@ fn deploy_interchain_token_message_execute_fails_token_already_deployed() {
             payload_hash,
         },
     ];
-    let data_hash = get_approve_hash(&env, messages.clone());
-    let proof = generate_proof(&env, data_hash, signers);
 
-    gateway_client.approve_messages(&messages, &proof);
+    approve_gateway_messages(&env, gateway_client, signers, messages);
 
     client.execute(&source_chain, &first_message_id, &source_address, &payload);
 
