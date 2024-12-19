@@ -200,28 +200,12 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         let deploy_salt = Self::interchain_token_deploy_salt(env, caller.clone(), salt);
         let token_id = Self::interchain_token_id(env, Address::zero(env), deploy_salt);
 
-        let deployed_address = env
-            .deployer()
-            .with_address(env.current_contract_address(), token_id.clone())
-            .deploy_v2(
-                Self::interchain_token_wasm_hash(env),
-                (
-                    env.current_contract_address(),
-                    initial_minter.clone(),
-                    token_id.clone(),
-                    token_metadata.clone(),
-                ),
-            );
-
-        InterchainTokenDeployedEvent {
-            token_id: token_id.clone(),
-            token_address: deployed_address.clone(),
-            name: token_metadata.name,
-            symbol: token_metadata.symbol,
-            decimals: token_metadata.decimal,
-            minter: initial_minter,
-        }
-        .emit(env);
+        let deployed_address = Self::deploy_interchain_token_contract(
+            env,
+            initial_minter,
+            token_id.clone(),
+            token_metadata,
+        );
 
         if initial_supply > 0 {
             StellarAssetClient::new(env, &deployed_address).mint(&caller, &initial_supply);
@@ -536,8 +520,50 @@ impl InterchainTokenService {
 
                 Self::extend_persistent_ttl(&env, &DataKey::TokenIdConfigKey(token_id));
             }
-            Message::DeployInterchainToken(_) => {
-                todo!()
+            Message::DeployInterchainToken(DeployInterchainToken {
+                token_id,
+                name,
+                symbol,
+                decimals,
+                minter,
+            }) => {
+                ensure!(
+                    Self::token_id_config(env, token_id.clone()).is_err(),
+                    ContractError::TokenAlreadyDeployed
+                );
+
+                let token_metadata = TokenMetadata {
+                    name,
+                    symbol,
+                    decimal: decimals as u32,
+                };
+
+                ensure!(
+                    validate_token_metadata(token_metadata.clone()).is_ok(),
+                    ContractError::InvalidTokenMetaData
+                );
+
+                // Note: attempt to convert a byte string which doesn't represent a valid Soroban address fails at the Host level
+                let minter = minter
+                    .map(|m| Address::from_xdr(env, &m))
+                    .transpose()
+                    .map_err(|_| ContractError::InvalidMinter)?;
+
+                let deployed_address = Self::deploy_interchain_token_contract(
+                    env,
+                    minter,
+                    token_id.clone(),
+                    token_metadata,
+                );
+
+                Self::set_token_id_config(
+                    env,
+                    token_id,
+                    TokenIdConfigValue {
+                        token_address: deployed_address,
+                        token_manager_type: TokenManagerType::NativeInterchainToken,
+                    },
+                );
             }
         };
 
@@ -622,5 +648,37 @@ impl InterchainTokenService {
         env.storage()
             .persistent()
             .extend_ttl(key, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
+    }
+
+    fn deploy_interchain_token_contract(
+        env: &Env,
+        minter: Option<Address>,
+        token_id: BytesN<32>,
+        token_metadata: TokenMetadata,
+    ) -> Address {
+        let deployed_address = env
+            .deployer()
+            .with_address(env.current_contract_address(), token_id.clone())
+            .deploy_v2(
+                Self::interchain_token_wasm_hash(env),
+                (
+                    env.current_contract_address(),
+                    minter.clone(),
+                    token_id.clone(),
+                    token_metadata.clone(),
+                ),
+            );
+
+        InterchainTokenDeployedEvent {
+            token_id,
+            token_address: deployed_address.clone(),
+            name: token_metadata.name,
+            symbol: token_metadata.symbol,
+            decimals: token_metadata.decimal,
+            minter,
+        }
+        .emit(env);
+
+        deployed_address
     }
 }
