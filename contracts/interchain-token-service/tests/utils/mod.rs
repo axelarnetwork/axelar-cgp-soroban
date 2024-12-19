@@ -121,8 +121,8 @@ pub fn approve_gateway_messages(
     signers: TestSignerSet,
     messages: Vec<Message>,
 ) {
-    let data_hash = get_approve_hash(&env, messages.clone());
-    let proof = generate_proof(&env, data_hash, signers);
+    let data_hash = get_approve_hash(env, messages.clone());
+    let proof = generate_proof(env, data_hash, signers);
     gateway_client.approve_messages(&messages, &proof);
 }
 
