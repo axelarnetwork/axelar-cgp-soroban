@@ -6,6 +6,7 @@ use axelar_soroban_std::token::validate_token_metadata;
 use axelar_soroban_std::{
     address::AddressExt, ensure, interfaces, types::Token, Ownable, Upgradable,
 };
+use axelar_soroban_std::ttl::{extend_instance_ttl, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO};
 use interchain_token::InterchainTokenClient;
 use soroban_sdk::token::{self, StellarAssetClient};
 use soroban_sdk::xdr::{FromXdr, ToXdr};
@@ -341,7 +342,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         .emit(env);
 
         let message = Message::InterchainTransfer(InterchainTransfer {
-            token_id,
+            token_id: token_id.clone(),
             source_address: caller.clone().to_xdr(env),
             destination_address,
             amount,
@@ -349,6 +350,8 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         });
 
         Self::pay_gas_and_call_contract(env, caller, destination_chain, message, gas_token)?;
+
+        Self::extend_persistent_ttl(&env, &DataKey::TokenIdConfigKey(token_id));
 
         Ok(())
     }
@@ -419,6 +422,8 @@ impl AxelarExecutableInterface for InterchainTokenService {
 
         Self::execute_message(&env, source_chain, message_id, source_address, payload)
             .unwrap_or_else(|err| panic_with_error!(env, err));
+
+        extend_instance_ttl(&env);
     }
 }
 
@@ -443,7 +448,7 @@ impl InterchainTokenService {
         let gas_service = AxelarGasServiceClient::new(env, &Self::gas_service(env));
 
         let payload = HubMessage::SendToHub {
-            destination_chain,
+            destination_chain: destination_chain.clone(),
             message,
         }
         .abi_encode(env)?;
@@ -467,6 +472,9 @@ impl InterchainTokenService {
             &hub_address,
             &payload,
         );
+
+        Self::extend_persistent_ttl(env, &DataKey::TrustedChain(destination_chain));
+        extend_instance_ttl(&env);
 
         Ok(())
     }
@@ -525,11 +533,15 @@ impl InterchainTokenService {
                         &amount,
                     );
                 }
+
+                Self::extend_persistent_ttl(&env, &DataKey::TokenIdConfigKey(token_id));
             }
             Message::DeployInterchainToken(_) => {
                 todo!()
             }
         };
+
+        Self::extend_persistent_ttl(env, &DataKey::TrustedChain(source_chain));
 
         Ok(())
     }
@@ -604,5 +616,11 @@ impl InterchainTokenService {
         env.crypto()
             .keccak256(&(PREFIX_CANONICAL_TOKEN_SALT, chain_name_hash, token_address).to_xdr(env))
             .into()
+    }
+
+    fn extend_persistent_ttl(env: &Env, key: &DataKey) {
+        env.storage()
+            .persistent()
+            .extend_ttl(key, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
     }
 }

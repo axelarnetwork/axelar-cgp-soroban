@@ -4,7 +4,8 @@ use crate::messaging_interface::AxelarGatewayMessagingInterface;
 use crate::storage_types::{DataKey, MessageApprovalKey, MessageApprovalValue};
 use crate::types::{CommandType, Message, Proof, WeightedSigners};
 use crate::{auth, event};
-use axelar_soroban_std::ttl::{INSTANCE_TTL_EXTEND_TO, INSTANCE_TTL_THRESHOLD};
+// use axelar_soroban_std::ttl::{INSTANCE_TTL_EXTEND_TO, INSTANCE_TTL_THRESHOLD};
+use axelar_soroban_std::ttl::extend_instance_ttl;
 use axelar_soroban_std::{ensure, interfaces, Operatable, Ownable, Upgradable};
 use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
@@ -124,7 +125,9 @@ impl AxelarGatewayMessagingInterface for AxelarGateway {
 
             return true;
         }
-
+        /////////////////////////
+        // extend persistent storage here??
+        ////////////////////////
         false
     }
 }
@@ -164,7 +167,8 @@ impl AxelarGatewayInterface for AxelarGateway {
             event::approve_message(&env, message);
         }
 
-        Self::extend_instance_ttl(&env);
+        // Self::extend_instance_ttl(&env);
+        extend_instance_ttl(&env);
 
         Ok(())
     }
@@ -240,11 +244,11 @@ impl AxelarGateway {
         MessageApprovalValue::Approved(env.crypto().keccak256(&message.to_xdr(env)).into())
     }
 
-    fn extend_instance_ttl(env: &Env) {
-        env.storage()
-            .instance()
-            .extend_ttl(INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
-    }
+    // fn extend_instance_ttl(env: &Env) {
+    //     env.storage()
+    //         .instance()
+    //         .extend_ttl(INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
+    // }
 
     // Modify this function to add migration logic
     const fn run_migration(_env: &Env, _migration_data: ()) {}
