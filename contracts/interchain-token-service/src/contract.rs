@@ -551,7 +551,7 @@ impl InterchainTokenService {
                 };
 
                 ensure!(
-                    validate_token_metadata(token_metadata.clone()).is_ok(),
+                    validate_token_metadata(&token_metadata).is_ok(),
                     ContractError::InvalidTokenMetaData
                 );
 
