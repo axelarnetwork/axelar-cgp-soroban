@@ -125,9 +125,7 @@ impl AxelarGatewayMessagingInterface for AxelarGateway {
 
             return true;
         }
-        /////////////////////////
-        // extend persistent storage here??
-        ////////////////////////
+
         false
     }
 }
@@ -167,7 +165,6 @@ impl AxelarGatewayInterface for AxelarGateway {
             event::approve_message(&env, message);
         }
 
-        // Self::extend_instance_ttl(&env);
         extend_instance_ttl(&env);
 
         Ok(())
@@ -243,12 +240,6 @@ impl AxelarGateway {
     fn message_approval_hash(env: &Env, message: Message) -> MessageApprovalValue {
         MessageApprovalValue::Approved(env.crypto().keccak256(&message.to_xdr(env)).into())
     }
-
-    // fn extend_instance_ttl(env: &Env) {
-    //     env.storage()
-    //         .instance()
-    //         .extend_ttl(INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
-    // }
 
     // Modify this function to add migration logic
     const fn run_migration(_env: &Env, _migration_data: ()) {}

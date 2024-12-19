@@ -109,9 +109,9 @@ impl InterchainTokenInterface for InterchainToken {
 
         Self::validate_amount(env, amount);
 
-        extend_instance_ttl(env);
-
         Self::receive_balance(env, to.clone(), amount);
+
+        extend_instance_ttl(env);
 
         TokenUtils::new(env).events().mint(minter, to, amount);
 
@@ -154,7 +154,6 @@ impl token::Interface for InterchainToken {
         from.require_auth();
 
         Self::validate_amount(&env, amount);
-        extend_instance_ttl(&env);
 
         Self::write_allowance(
             &env,
@@ -163,6 +162,8 @@ impl token::Interface for InterchainToken {
             amount,
             expiration_ledger,
         );
+
+        extend_instance_ttl(&env);
 
         TokenUtils::new(&env)
             .events()
@@ -177,10 +178,11 @@ impl token::Interface for InterchainToken {
     fn transfer(env: Env, from: Address, to: Address, amount: i128) {
         from.require_auth();
 
-        extend_instance_ttl(&env);
         Self::validate_amount(&env, amount);
         Self::spend_balance(&env, from.clone(), amount);
         Self::receive_balance(&env, to.clone(), amount);
+
+        extend_instance_ttl(&env);
 
         TokenUtils::new(&env).events().transfer(from, to, amount);
     }
@@ -188,11 +190,12 @@ impl token::Interface for InterchainToken {
     fn transfer_from(env: Env, spender: Address, from: Address, to: Address, amount: i128) {
         spender.require_auth();
 
-        extend_instance_ttl(&env);
         Self::validate_amount(&env, amount);
         Self::spend_allowance(&env, from.clone(), spender, amount);
         Self::spend_balance(&env, from.clone(), amount);
         Self::receive_balance(&env, to.clone(), amount);
+
+        extend_instance_ttl(&env);
 
         TokenUtils::new(&env).events().transfer(from, to, amount)
     }
@@ -200,9 +203,10 @@ impl token::Interface for InterchainToken {
     fn burn(env: Env, from: Address, amount: i128) {
         from.require_auth();
 
-        extend_instance_ttl(&env);
         Self::validate_amount(&env, amount);
         Self::spend_balance(&env, from.clone(), amount);
+
+        extend_instance_ttl(&env);
 
         TokenUtils::new(&env).events().burn(from, amount);
     }
@@ -210,10 +214,11 @@ impl token::Interface for InterchainToken {
     fn burn_from(env: Env, spender: Address, from: Address, amount: i128) {
         spender.require_auth();
 
-        extend_instance_ttl(&env);
         Self::validate_amount(&env, amount);
         Self::spend_allowance(&env, from.clone(), spender, amount);
         Self::spend_balance(&env, from.clone(), amount);
+
+        extend_instance_ttl(&env);
 
         TokenUtils::new(&env).events().burn(from, amount)
     }
@@ -359,7 +364,9 @@ impl InterchainToken {
 
     fn write_balance(env: &Env, addr: Address, amount: i128) {
         let key = DataKey::Balance(addr);
+
         env.storage().persistent().set(&key, &amount);
+
         Self::extend_balance_ttl(env, &key);
     }
 }

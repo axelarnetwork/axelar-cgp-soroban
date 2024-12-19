@@ -3,10 +3,12 @@ use axelar_gateway::{executable::AxelarExecutableInterface, AxelarGatewayMessagi
 use axelar_soroban_std::assert_ok;
 use axelar_soroban_std::events::Event;
 use axelar_soroban_std::token::validate_token_metadata;
+use axelar_soroban_std::ttl::{
+    extend_instance_ttl, INSTANCE_TTL_EXTEND_TO, INSTANCE_TTL_THRESHOLD,
+};
 use axelar_soroban_std::{
     address::AddressExt, ensure, interfaces, types::Token, Ownable, Upgradable,
 };
-use axelar_soroban_std::ttl::{extend_instance_ttl, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO};
 use interchain_token::InterchainTokenClient;
 use soroban_sdk::token::{self, StellarAssetClient};
 use soroban_sdk::xdr::{FromXdr, ToXdr};
@@ -333,9 +335,16 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
             data,
         });
 
-        Self::pay_gas_and_call_contract(env, caller, destination_chain, message, gas_token)?;
+        Self::pay_gas_and_call_contract(
+            env,
+            caller,
+            destination_chain.clone(),
+            message,
+            gas_token,
+        )?;
 
-        Self::extend_persistent_ttl(&env, &DataKey::TokenIdConfigKey(token_id));
+        Self::extend_persistent_ttl(env, &DataKey::TokenIdConfigKey(token_id));
+        Self::extend_persistent_ttl(env, &DataKey::TrustedChain(destination_chain));
 
         Ok(())
     }
@@ -406,8 +415,6 @@ impl AxelarExecutableInterface for InterchainTokenService {
 
         Self::execute_message(&env, source_chain, message_id, source_address, payload)
             .unwrap_or_else(|err| panic_with_error!(env, err));
-
-        extend_instance_ttl(&env);
     }
 }
 
@@ -458,7 +465,7 @@ impl InterchainTokenService {
         );
 
         Self::extend_persistent_ttl(env, &DataKey::TrustedChain(destination_chain));
-        extend_instance_ttl(&env);
+        extend_instance_ttl(env);
 
         Ok(())
     }
@@ -518,7 +525,7 @@ impl InterchainTokenService {
                     );
                 }
 
-                Self::extend_persistent_ttl(&env, &DataKey::TokenIdConfigKey(token_id));
+                Self::extend_persistent_ttl(env, &DataKey::TokenIdConfigKey(token_id));
             }
             Message::DeployInterchainToken(DeployInterchainToken {
                 token_id,
@@ -568,6 +575,7 @@ impl InterchainTokenService {
         };
 
         Self::extend_persistent_ttl(env, &DataKey::TrustedChain(source_chain));
+        extend_instance_ttl(env);
 
         Ok(())
     }
