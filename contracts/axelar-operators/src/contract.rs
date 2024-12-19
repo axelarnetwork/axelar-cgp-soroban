@@ -1,6 +1,7 @@
 use crate::error::ContractError;
 use crate::event;
 use crate::storage_types::DataKey;
+use axelar_soroban_std::ttl::extend_instance_ttl;
 use axelar_soroban_std::{ensure, interfaces, Ownable, Upgradable};
 use soroban_sdk::{contract, contractimpl, Address, Env, Symbol, Val, Vec};
 
@@ -35,6 +36,8 @@ impl AxelarOperators {
         );
 
         env.storage().instance().set(&key, &true);
+
+        extend_instance_ttl(&env);
 
         event::add_operator(&env, account);
         Ok(())
@@ -77,6 +80,8 @@ impl AxelarOperators {
         );
 
         let res: Val = env.invoke_contract(&contract, &func, args);
+
+        extend_instance_ttl(&env);
 
         Ok(res)
     }

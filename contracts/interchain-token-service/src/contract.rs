@@ -2,6 +2,9 @@ use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::{executable::AxelarExecutableInterface, AxelarGatewayMessagingClient};
 use axelar_soroban_std::events::Event;
 use axelar_soroban_std::token::validate_token_metadata;
+use axelar_soroban_std::ttl::{
+    extend_instance_ttl, INSTANCE_TTL_EXTEND_TO, INSTANCE_TTL_THRESHOLD,
+};
 use axelar_soroban_std::{
     address::AddressExt, ensure, interfaces, types::Token, Ownable, Upgradable,
 };
@@ -347,14 +350,23 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         .emit(env);
 
         let message = Message::InterchainTransfer(InterchainTransfer {
-            token_id,
+            token_id: token_id.clone(),
             source_address: caller.clone().to_xdr(env),
             destination_address,
             amount,
             data,
         });
 
-        Self::pay_gas_and_call_contract(env, caller, destination_chain, message, gas_token)?;
+        Self::pay_gas_and_call_contract(
+            env,
+            caller,
+            destination_chain.clone(),
+            message,
+            gas_token,
+        )?;
+
+        Self::extend_persistent_ttl(env, &DataKey::TokenIdConfigKey(token_id));
+        Self::extend_persistent_ttl(env, &DataKey::TrustedChain(destination_chain));
 
         Ok(())
     }
@@ -449,7 +461,7 @@ impl InterchainTokenService {
         let gas_service = AxelarGasServiceClient::new(env, &Self::gas_service(env));
 
         let payload = HubMessage::SendToHub {
-            destination_chain,
+            destination_chain: destination_chain.clone(),
             message,
         }
         .abi_encode(env)?;
@@ -473,6 +485,9 @@ impl InterchainTokenService {
             &hub_address,
             &payload,
         );
+
+        Self::extend_persistent_ttl(env, &DataKey::TrustedChain(destination_chain));
+        extend_instance_ttl(env);
 
         Ok(())
     }
@@ -531,6 +546,8 @@ impl InterchainTokenService {
                         &amount,
                     );
                 }
+
+                Self::extend_persistent_ttl(env, &DataKey::TokenIdConfigKey(token_id));
             }
             Message::DeployInterchainToken(DeployInterchainToken {
                 token_id,
@@ -578,6 +595,9 @@ impl InterchainTokenService {
                 );
             }
         };
+
+        Self::extend_persistent_ttl(env, &DataKey::TrustedChain(source_chain));
+        extend_instance_ttl(env);
 
         Ok(())
     }
@@ -709,6 +729,12 @@ impl InterchainTokenService {
         Self::pay_gas_and_call_contract(env, caller, destination_chain, message, gas_token)?;
 
         Ok(token_id)
+    }
+
+    fn extend_persistent_ttl(env: &Env, key: &DataKey) {
+        env.storage()
+            .persistent()
+            .extend_ttl(key, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
     }
 
     fn deploy_interchain_token_contract(

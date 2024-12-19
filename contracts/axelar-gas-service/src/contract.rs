@@ -4,6 +4,7 @@ use crate::error::ContractError;
 use crate::event;
 use crate::interface::AxelarGasServiceInterface;
 use crate::storage_types::DataKey;
+use axelar_soroban_std::ttl::extend_instance_ttl;
 use axelar_soroban_std::{ensure, interfaces, types::Token};
 use axelar_soroban_std::{Ownable, Upgradable};
 
@@ -102,6 +103,8 @@ impl AxelarGasServiceInterface for AxelarGasService {
         token_client.transfer(&env.current_contract_address(), &receiver, &token.amount);
 
         event::fee_collected(&env, gas_collector, token);
+
+        extend_instance_ttl(&env);
 
         Ok(())
     }
