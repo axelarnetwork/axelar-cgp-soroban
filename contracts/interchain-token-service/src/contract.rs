@@ -159,6 +159,19 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
             .into()
     }
 
+    /// Computes a 32-byte deployment salt for a canonical token using the provided token address.
+    ///
+    /// The salt is derived by hashing a combination of a prefix, the chain name hash,
+    /// and the token address. This ensures uniqueness and consistency for the deployment
+    /// of canonical tokens across chains.
+    ///
+    /// # Parameters
+    /// - `env`: A reference to the current environment, used for accessing chain-specific
+    ///   utilities such as cryptographic functions.
+    /// - `token_address`: The address of the token for which the deployment salt is being generated.
+    ///
+    /// # Returns
+    /// - A `BytesN<32>` value representing the computed deployment salt.
     fn canonical_token_deploy_salt(env: &Env, token_address: Address) -> BytesN<32> {
         let chain_name_hash = Self::chain_name_hash(env);
         env.crypto()
