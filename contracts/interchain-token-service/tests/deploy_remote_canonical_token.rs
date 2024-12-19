@@ -71,10 +71,7 @@ fn deploy_remote_canonical_token_fail_no_actual_token() {
         .mock_all_auths()
         .set_trusted_chain(&destination_chain);
 
-    client.mock_all_auths().deploy_remote_canonical_token(
-        &token_address,
-        &destination_chain,
-        &spender,
-        &gas_token,
-    );
+    client
+        .mock_all_auths_allowing_non_root_auth()
+        .deploy_remote_canonical_token(&token_address, &destination_chain, &spender, &gas_token);
 }
