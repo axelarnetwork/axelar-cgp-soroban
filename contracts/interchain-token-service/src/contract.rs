@@ -533,22 +533,14 @@ impl InterchainTokenService {
                     ContractError::InvalidTokenMetaData
                 );
 
-                let minter_address = if let Some(minter) = minter {
-                    let addr = Address::from_xdr(env, &minter).expect("address conversion failed");
-
-                    ensure!(
-                        addr != env.current_contract_address(),
-                        ContractError::InvalidMinter
-                    );
-
-                    Some(addr)
-                } else {
-                    None
-                };
+                // Note: attempt to convert a byte string which doesn't represent a valid Soroban address fails at the Host level
+                let minter = minter
+                    .map(|m| Address::from_xdr(env, &m).map_err(|_| ContractError::InvalidMinter))
+                    .transpose()?;
 
                 let deployed_address = Self::deploy_interchain_token_contract(
                     env,
-                    minter_address,
+                    minter,
                     token_id.clone(),
                     token_metadata,
                 );

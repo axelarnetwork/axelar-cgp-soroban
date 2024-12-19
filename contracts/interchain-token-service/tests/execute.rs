@@ -275,55 +275,6 @@ fn deploy_interchain_token_message_execute_fails_empty_token_symbol() {
 }
 
 #[test]
-#[should_panic(expected = "Error(Contract, #12)")] // ContractError::InvalidMinter
-fn deploy_interchain_token_message_execute_fails_its_as_minter() {
-    let (env, client, gateway_client, _, signers) = setup_env();
-    register_chains(&env, &client);
-
-    let source_chain = client.its_hub_chain_name();
-    let source_address = Address::generate(&env).to_string();
-    let token_id = BytesN::from_array(&env, &[1u8; 32]);
-
-    let msg_invalid_minter = HubMessage::ReceiveFromHub {
-        source_chain: String::from_str(&env, HUB_CHAIN),
-        message: Message::DeployInterchainToken(DeployInterchainToken {
-            token_id,
-            name: String::from_str(&env, "test"),
-            symbol: String::from_str(&env, "TEST"),
-            decimals: 18,
-            minter: Some(client.address.clone().to_xdr(&env)),
-        }),
-    };
-    let payload_invalid_minter = msg_invalid_minter.abi_encode(&env).unwrap();
-    let payload_hash_invalid_minter: BytesN<32> =
-        env.crypto().keccak256(&payload_invalid_minter).into();
-
-    let message_id_invalid_minter = String::from_str(&env, "its_as_minter");
-
-    let messages = vec![
-        &env,
-        GatewayMessage {
-            source_chain: source_chain.clone(),
-            message_id: message_id_invalid_minter.clone(),
-            source_address: source_address.clone(),
-            contract_address: client.address.clone(),
-            payload_hash: payload_hash_invalid_minter,
-        },
-    ];
-    let data_hash = get_approve_hash(&env, messages.clone());
-    let proof = generate_proof(&env, data_hash, signers);
-
-    gateway_client.approve_messages(&messages, &proof);
-
-    client.execute(
-        &source_chain,
-        &message_id_invalid_minter,
-        &source_address,
-        &payload_invalid_minter,
-    );
-}
-
-#[test]
 #[should_panic(expected = "Error(Value, InvalidInput)")]
 fn deploy_interchain_token_message_execute_fails_invalid_minter_address() {
     let (env, client, gateway_client, _, signers) = setup_env();
