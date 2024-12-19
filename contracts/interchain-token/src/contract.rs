@@ -125,7 +125,7 @@ impl InterchainTokenInterface for InterchainToken {
             .instance()
             .set(&DataKey::Minter(minter.clone()), &());
 
-        extend_instance_ttl(&env);
+        extend_instance_ttl(env);
 
         event::add_minter(env, minter);
     }
@@ -137,7 +137,7 @@ impl InterchainTokenInterface for InterchainToken {
             .instance()
             .remove(&DataKey::Minter(minter.clone()));
 
-        extend_instance_ttl(&env);
+        extend_instance_ttl(env);
 
         event::remove_minter(env, minter);
     }
