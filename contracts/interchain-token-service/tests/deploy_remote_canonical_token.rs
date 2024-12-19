@@ -37,12 +37,9 @@ fn deploy_remote_canonical_token_succeeds() {
         .mock_all_auths()
         .set_trusted_chain(&destination_chain);
 
-    let deployed_token_id = client.mock_all_auths().deploy_remote_canonical_token(
-        &spender,
-        &token_address,
-        &destination_chain,
-        &gas_token,
-    );
+    let deployed_token_id = client
+        .mock_all_auths_allowing_non_root_auth()
+        .deploy_remote_canonical_token(&token_address, &destination_chain, &spender, &gas_token);
     assert_eq!(expected_id, deployed_token_id);
 
     goldie::assert!(events::fmt_emitted_event_at_idx::<
@@ -75,9 +72,9 @@ fn deploy_remote_canonical_token_fail_no_actual_token() {
         .set_trusted_chain(&destination_chain);
 
     client.mock_all_auths().deploy_remote_canonical_token(
-        &spender,
         &token_address,
         &destination_chain,
+        &spender,
         &gas_token,
     );
 }

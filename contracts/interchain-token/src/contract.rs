@@ -36,7 +36,7 @@ impl InterchainToken {
     ) {
         interfaces::set_owner(&env, &owner);
 
-        if let Err(err) = validate_token_metadata(token_metadata.clone()) {
+        if let Err(err) = validate_token_metadata(&token_metadata) {
             panic_with_error!(env, err);
         }
 

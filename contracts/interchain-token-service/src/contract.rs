@@ -277,7 +277,10 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         destination_chain: String,
         gas_token: Token,
     ) -> Result<BytesN<32>, ContractError> {
+        caller.require_auth();
+
         let deploy_salt = Self::interchain_token_deploy_salt(env, caller.clone(), salt);
+
         Self::deploy_remote_token(env, caller, deploy_salt, destination_chain, gas_token)
     }
 
@@ -290,9 +293,9 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     ///
     /// # Arguments
     /// * `env` - Reference to the environment object.
-    /// * `spender` - Address of the spender.
     /// * `token_address` - The address of the token to be deployed.
     /// * `destination_chain` - The name of the destination chain where the token will be deployed.
+    /// * `spender` - The spender of the cross-chain gas.
     /// * `gas_token` - The token used to pay for gas during the deployment.
     ///
     /// # Returns
@@ -302,9 +305,9 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
     /// Returns `ContractError` if the deployment fails or if token metadata is invalid.
     fn deploy_remote_canonical_token(
         env: &Env,
-        spender: Address,
         token_address: Address,
         destination_chain: String,
+        spender: Address,
         gas_token: Token,
     ) -> Result<BytesN<32>, ContractError> {
         let deploy_salt = Self::canonical_token_deploy_salt(env, token_address);
@@ -631,8 +634,6 @@ impl InterchainTokenService {
         destination_chain: String,
         gas_token: Token,
     ) -> Result<BytesN<32>, ContractError> {
-        caller.require_auth();
-
         let token_id = Self::interchain_token_id(env, Address::zero(env), deploy_salt);
         let token_address = Self::token_id_config(env, token_id.clone())?.token_address;
         let token = token::Client::new(env, &token_address);
@@ -643,7 +644,7 @@ impl InterchainTokenService {
         };
 
         ensure!(
-            validate_token_metadata(token_metadata.clone()).is_ok(),
+            validate_token_metadata(&token_metadata).is_ok(),
             ContractError::InvalidTokenMetaData
         );
 
