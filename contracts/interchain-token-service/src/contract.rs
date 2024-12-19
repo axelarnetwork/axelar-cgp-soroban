@@ -1,6 +1,5 @@
 use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::{executable::AxelarExecutableInterface, AxelarGatewayMessagingClient};
-use axelar_soroban_std::assert_ok;
 use axelar_soroban_std::events::Event;
 use axelar_soroban_std::token::validate_token_metadata;
 use axelar_soroban_std::{
@@ -160,6 +159,26 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
             .into()
     }
 
+    /// Computes a 32-byte deployment salt for a canonical token using the provided token address.
+    ///
+    /// The salt is derived by hashing a combination of a prefix, the chain name hash,
+    /// and the token address. This ensures uniqueness and consistency for the deployment
+    /// of canonical tokens across chains.
+    ///
+    /// # Parameters
+    /// - `env`: A reference to the current environment, used for accessing chain-specific
+    ///   utilities such as cryptographic functions.
+    /// - `token_address`: The address of the token for which the deployment salt is being generated.
+    ///
+    /// # Returns
+    /// - A `BytesN<32>` value representing the computed deployment salt.
+    fn canonical_token_deploy_salt(env: &Env, token_address: Address) -> BytesN<32> {
+        let chain_name_hash = Self::chain_name_hash(env);
+        env.crypto()
+            .keccak256(&(PREFIX_CANONICAL_TOKEN_SALT, chain_name_hash, token_address).to_xdr(env))
+            .into()
+    }
+
     /// Retrieves the address of the token associated with the specified token ID.
     fn token_address(env: &Env, token_id: BytesN<32>) -> Address {
         Self::token_id_config(env, token_id)
@@ -258,37 +277,40 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         caller.require_auth();
 
         let deploy_salt = Self::interchain_token_deploy_salt(env, caller.clone(), salt);
-        let token_id = Self::interchain_token_id(env, Address::zero(env), deploy_salt);
-        let token_address = Self::token_address(env, token_id.clone());
-        let token = token::Client::new(env, &token_address);
-        let token_metadata = TokenMetadata {
-            name: token.name(),
-            decimal: token.decimals(),
-            symbol: token.symbol(),
-        };
 
-        assert_ok!(validate_token_metadata(token_metadata.clone()));
+        Self::deploy_remote_token(env, caller, deploy_salt, destination_chain, gas_token)
+    }
 
-        let message = Message::DeployInterchainToken(DeployInterchainToken {
-            token_id: token_id.clone(),
-            name: token_metadata.name.clone(),
-            symbol: token_metadata.symbol.clone(),
-            decimals: token_metadata.decimal as u8,
-            minter: None,
-        });
+    /// Deploys a remote canonical token on a specified destination chain.
+    ///
+    /// This function computes a deployment salt and uses it to deploy a canonical
+    /// representation of a token on the remote chain. It retrieves the token metadata
+    /// from the token address and ensures the metadata is valid before initiating
+    /// the deployment.
+    ///
+    /// # Arguments
+    /// * `env` - Reference to the environment object.
+    /// * `token_address` - The address of the token to be deployed.
+    /// * `destination_chain` - The name of the destination chain where the token will be deployed.
+    /// * `spender` - The spender of the cross-chain gas.
+    /// * `gas_token` - The token used to pay for gas during the deployment.
+    ///
+    /// # Returns
+    /// Returns the token ID of the deployed token on the remote chain, or an error if the deployment fails.
+    ///
+    /// # Errors
+    /// Returns `ContractError` if the deployment fails or if token metadata is invalid.
+    fn deploy_remote_canonical_token(
+        env: &Env,
+        token_address: Address,
+        destination_chain: String,
+        spender: Address,
+        gas_token: Token,
+    ) -> Result<BytesN<32>, ContractError> {
+        let deploy_salt = Self::canonical_token_deploy_salt(env, token_address);
 
-        InterchainTokenDeploymentStartedEvent {
-            token_id: token_id.clone(),
-            token_address,
-            destination_chain: destination_chain.clone(),
-            name: token_metadata.name,
-            symbol: token_metadata.symbol,
-            decimals: token_metadata.decimal,
-            minter: None,
-        }
-        .emit(env);
-
-        Self::pay_gas_and_call_contract(env, caller, destination_chain, message, gas_token)?;
+        let token_id =
+            Self::deploy_remote_token(env, spender, deploy_salt, destination_chain, gas_token)?;
 
         Ok(token_id)
     }
@@ -529,7 +551,7 @@ impl InterchainTokenService {
                 };
 
                 ensure!(
-                    validate_token_metadata(token_metadata.clone()).is_ok(),
+                    validate_token_metadata(&token_metadata).is_ok(),
                     ContractError::InvalidTokenMetaData
                 );
 
@@ -625,11 +647,68 @@ impl InterchainTokenService {
         env.crypto().keccak256(&chain_name.to_xdr(env)).into()
     }
 
-    fn canonical_token_deploy_salt(env: &Env, token_address: Address) -> BytesN<32> {
-        let chain_name_hash = Self::chain_name_hash(env);
-        env.crypto()
-            .keccak256(&(PREFIX_CANONICAL_TOKEN_SALT, chain_name_hash, token_address).to_xdr(env))
-            .into()
+    /// Deploys a remote token on a specified destination chain.
+    ///
+    /// This function authorizes the caller, retrieves the token's metadata,
+    /// validates the metadata, and emits an event indicating the start of the
+    /// token deployment process. It also constructs and sends the deployment
+    /// message to the remote chain.
+    ///
+    /// # Arguments
+    /// * `env` - Reference to the environment object.
+    /// * `caller` - Address of the caller initiating the deployment.
+    /// * `deploy_salt` - Unique salt used for token deployment.
+    /// * `destination_chain` - The name of the destination chain where the token will be deployed.
+    /// * `gas_token` - The token used to pay for gas during the deployment.
+    ///
+    /// # Returns
+    /// Returns the token ID of the deployed token on the remote chain, or an error if the deployment fails.
+    ///
+    /// # Errors
+    /// Returns `ContractError` if the deployment fails, the token ID is invalid, or token metadata is invalid.
+    fn deploy_remote_token(
+        env: &Env,
+        caller: Address,
+        deploy_salt: BytesN<32>,
+        destination_chain: String,
+        gas_token: Token,
+    ) -> Result<BytesN<32>, ContractError> {
+        let token_id = Self::interchain_token_id(env, Address::zero(env), deploy_salt);
+        let token_address = Self::token_id_config(env, token_id.clone())?.token_address;
+        let token = token::Client::new(env, &token_address);
+        let token_metadata = TokenMetadata {
+            name: token.name(),
+            decimal: token.decimals(),
+            symbol: token.symbol(),
+        };
+
+        ensure!(
+            validate_token_metadata(&token_metadata).is_ok(),
+            ContractError::InvalidTokenMetaData
+        );
+
+        let message = Message::DeployInterchainToken(DeployInterchainToken {
+            token_id: token_id.clone(),
+            name: token_metadata.name.clone(),
+            symbol: token_metadata.symbol.clone(),
+            decimals: token_metadata.decimal as u8,
+            minter: None,
+        });
+
+        InterchainTokenDeploymentStartedEvent {
+            token_id: token_id.clone(),
+            token_address,
+            destination_chain: destination_chain.clone(),
+            name: token_metadata.name,
+            symbol: token_metadata.symbol,
+            decimals: token_metadata.decimal,
+            minter: None,
+        }
+        .emit(env);
+
+        Self::pay_gas_and_call_contract(env, caller, destination_chain, message, gas_token)?;
+
+        Ok(token_id)
     }
 
     fn deploy_interchain_token_contract(

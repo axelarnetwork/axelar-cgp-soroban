@@ -11,7 +11,7 @@ pub enum TokenError {
     InvalidTokenSymbol = 2,
 }
 
-pub fn validate_token_metadata(token_metadata: TokenMetadata) -> Result<(), TokenError> {
+pub fn validate_token_metadata(token_metadata: &TokenMetadata) -> Result<(), TokenError> {
     ensure!(
         token_metadata.decimal <= u8::MAX.into(),
         TokenError::InvalidDecimal
