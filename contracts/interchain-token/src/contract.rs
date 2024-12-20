@@ -1,7 +1,5 @@
 use axelar_soroban_std::token::validate_token_metadata;
-use axelar_soroban_std::ttl::{
-    extend_instance_ttl, INSTANCE_TTL_EXTEND_TO, INSTANCE_TTL_THRESHOLD,
-};
+use axelar_soroban_std::ttl::{extend_instance_ttl, extend_persistent_ttl};
 use soroban_token_sdk::metadata::TokenMetadata;
 use soroban_token_sdk::TokenUtils;
 
@@ -244,12 +242,6 @@ impl InterchainToken {
         assert_with_error!(env, amount >= 0, ContractError::InvalidAmount);
     }
 
-    fn extend_balance_ttl(env: &Env, key: &DataKey) {
-        env.storage()
-            .persistent()
-            .extend_ttl(key, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
-    }
-
     fn read_allowance(env: &Env, from: Address, spender: Address) -> AllowanceValue {
         let key = DataKey::Allowance(AllowanceDataKey { from, spender });
         env.storage()
@@ -335,7 +327,7 @@ impl InterchainToken {
             .get::<_, i128>(&key)
             .inspect(|_| {
                 // Extend the TTL of the balance entry when the balance is successfully retrieved.
-                Self::extend_balance_ttl(env, &key);
+                extend_persistent_ttl(env, &key);
             })
             .unwrap_or_default()
     }
@@ -367,7 +359,7 @@ impl InterchainToken {
 
         env.storage().persistent().set(&key, &amount);
 
-        Self::extend_balance_ttl(env, &key);
+        extend_persistent_ttl(env, &key);
     }
 }
 

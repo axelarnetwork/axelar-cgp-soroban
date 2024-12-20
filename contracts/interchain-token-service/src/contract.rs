@@ -3,9 +3,7 @@ use axelar_gateway::{executable::AxelarExecutableInterface, AxelarGatewayMessagi
 use axelar_soroban_std::assert_ok;
 use axelar_soroban_std::events::Event;
 use axelar_soroban_std::token::validate_token_metadata;
-use axelar_soroban_std::ttl::{
-    extend_instance_ttl, INSTANCE_TTL_EXTEND_TO, INSTANCE_TTL_THRESHOLD,
-};
+use axelar_soroban_std::ttl::{extend_instance_ttl, extend_persistent_ttl};
 use axelar_soroban_std::{
     address::AddressExt, ensure, interfaces, types::Token, Ownable, Upgradable,
 };
@@ -313,7 +311,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         token_handler::take_token(
             env,
             &caller,
-            Self::token_id_config(env, token_id.clone())?,
+            Self::token_id_config_with_extended_ttl(env, token_id.clone())?,
             amount,
         )?;
 
@@ -328,23 +326,14 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         .emit(env);
 
         let message = Message::InterchainTransfer(InterchainTransfer {
-            token_id: token_id.clone(),
+            token_id,
             source_address: caller.clone().to_xdr(env),
             destination_address,
             amount,
             data,
         });
 
-        Self::pay_gas_and_call_contract(
-            env,
-            caller,
-            destination_chain.clone(),
-            message,
-            gas_token,
-        )?;
-
-        Self::extend_persistent_ttl(env, &DataKey::TokenIdConfigKey(token_id));
-        Self::extend_persistent_ttl(env, &DataKey::TrustedChain(destination_chain));
+        Self::pay_gas_and_call_contract(env, caller, destination_chain, message, gas_token)?;
 
         Ok(())
     }
@@ -464,7 +453,7 @@ impl InterchainTokenService {
             &payload,
         );
 
-        Self::extend_persistent_ttl(env, &DataKey::TrustedChain(destination_chain));
+        extend_persistent_ttl(env, &DataKey::TrustedChain(destination_chain));
         extend_instance_ttl(env);
 
         Ok(())
@@ -490,7 +479,8 @@ impl InterchainTokenService {
                 let destination_address = Address::from_xdr(env, &destination_address)
                     .map_err(|_| ContractError::InvalidDestinationAddress)?;
 
-                let token_config_value = Self::token_id_config(env, token_id.clone())?;
+                let token_config_value =
+                    Self::token_id_config_with_extended_ttl(env, token_id.clone())?;
 
                 token_handler::give_token(
                     env,
@@ -524,8 +514,6 @@ impl InterchainTokenService {
                         &amount,
                     );
                 }
-
-                Self::extend_persistent_ttl(env, &DataKey::TokenIdConfigKey(token_id));
             }
             Message::DeployInterchainToken(DeployInterchainToken {
                 token_id,
@@ -574,7 +562,7 @@ impl InterchainTokenService {
             }
         };
 
-        Self::extend_persistent_ttl(env, &DataKey::TrustedChain(source_chain));
+        extend_persistent_ttl(env, &DataKey::TrustedChain(source_chain));
         extend_instance_ttl(env);
 
         Ok(())
@@ -640,6 +628,24 @@ impl InterchainTokenService {
             .ok_or(ContractError::InvalidTokenId)
     }
 
+    /// Retrieves the configuration value for the specified token ID and extends its TTL.
+    ///
+    /// # Arguments
+    /// - `env`: Reference to the environment.
+    /// - `token_id`: A 32-byte unique identifier for the token.
+    ///
+    /// # Returns
+    /// - `Ok(TokenIdConfigValue)`: The configuration value if it exists.
+    /// - `Err(ContractError::InvalidTokenId)`: If the token ID does not exist in storage.
+    fn token_id_config_with_extended_ttl(
+        env: &Env,
+        token_id: BytesN<32>,
+    ) -> Result<TokenIdConfigValue, ContractError> {
+        let config = Self::token_id_config(env, token_id.clone())?;
+        extend_persistent_ttl(env, &DataKey::TokenIdConfigKey(token_id));
+        Ok(config)
+    }
+
     fn chain_name_hash(env: &Env) -> BytesN<32> {
         let chain_name = Self::chain_name(env);
         env.crypto().keccak256(&chain_name.to_xdr(env)).into()
@@ -650,12 +656,6 @@ impl InterchainTokenService {
         env.crypto()
             .keccak256(&(PREFIX_CANONICAL_TOKEN_SALT, chain_name_hash, token_address).to_xdr(env))
             .into()
-    }
-
-    fn extend_persistent_ttl(env: &Env, key: &DataKey) {
-        env.storage()
-            .persistent()
-            .extend_ttl(key, INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_EXTEND_TO);
     }
 
     fn deploy_interchain_token_contract(
