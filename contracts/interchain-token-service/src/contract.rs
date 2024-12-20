@@ -2,6 +2,7 @@ use axelar_gas_service::AxelarGasServiceClient;
 use axelar_gateway::{executable::AxelarExecutableInterface, AxelarGatewayMessagingClient};
 use axelar_soroban_std::events::Event;
 use axelar_soroban_std::token::validate_token_metadata;
+use axelar_soroban_std::ttl::{extend_instance_ttl, extend_persistent_ttl};
 use axelar_soroban_std::{
     address::AddressExt, ensure, interfaces, types::Token, Ownable, Upgradable,
 };
@@ -332,7 +333,7 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         token_handler::take_token(
             env,
             &caller,
-            Self::token_id_config(env, token_id.clone())?,
+            Self::token_id_config_with_extended_ttl(env, token_id.clone())?,
             amount,
         )?;
 
@@ -449,7 +450,7 @@ impl InterchainTokenService {
         let gas_service = AxelarGasServiceClient::new(env, &Self::gas_service(env));
 
         let payload = HubMessage::SendToHub {
-            destination_chain,
+            destination_chain: destination_chain.clone(),
             message,
         }
         .abi_encode(env)?;
@@ -474,6 +475,9 @@ impl InterchainTokenService {
             &payload,
         );
 
+        extend_persistent_ttl(env, &DataKey::TrustedChain(destination_chain));
+        extend_instance_ttl(env);
+
         Ok(())
     }
 
@@ -497,7 +501,8 @@ impl InterchainTokenService {
                 let destination_address = Address::from_xdr(env, &destination_address)
                     .map_err(|_| ContractError::InvalidDestinationAddress)?;
 
-                let token_config_value = Self::token_id_config(env, token_id.clone())?;
+                let token_config_value =
+                    Self::token_id_config_with_extended_ttl(env, token_id.clone())?;
 
                 token_handler::give_token(
                     env,
@@ -579,6 +584,9 @@ impl InterchainTokenService {
             }
         };
 
+        extend_persistent_ttl(env, &DataKey::TrustedChain(source_chain));
+        extend_instance_ttl(env);
+
         Ok(())
     }
 
@@ -640,6 +648,24 @@ impl InterchainTokenService {
             .persistent()
             .get::<_, TokenIdConfigValue>(&DataKey::TokenIdConfigKey(token_id))
             .ok_or(ContractError::InvalidTokenId)
+    }
+
+    /// Retrieves the configuration value for the specified token ID and extends its TTL.
+    ///
+    /// # Arguments
+    /// - `env`: Reference to the environment.
+    /// - `token_id`: A 32-byte unique identifier for the token.
+    ///
+    /// # Returns
+    /// - `Ok(TokenIdConfigValue)`: The configuration value if it exists.
+    /// - `Err(ContractError::InvalidTokenId)`: If the token ID does not exist in storage.
+    fn token_id_config_with_extended_ttl(
+        env: &Env,
+        token_id: BytesN<32>,
+    ) -> Result<TokenIdConfigValue, ContractError> {
+        let config = Self::token_id_config(env, token_id.clone())?;
+        extend_persistent_ttl(env, &DataKey::TokenIdConfigKey(token_id));
+        Ok(config)
     }
 
     fn chain_name_hash(env: &Env) -> BytesN<32> {
