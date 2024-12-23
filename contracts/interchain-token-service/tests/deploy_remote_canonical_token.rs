@@ -85,12 +85,12 @@ fn deploy_remote_canonical_token_succeeds() {
         &env,
         spender,
         gas_service.pay_gas(
-            client.address.clone(),
+            client.address,
             its_hub_chain,
             its_hub_address,
             payload,
-            spender.clone(),
-            gas_token.clone(),
+            spender,
+            gas_token,
             Bytes::new(&env)
         ),
         transfer_auth
