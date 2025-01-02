@@ -23,10 +23,12 @@ impl AxelarExecutableInterface for Example {
         message_id: String,
         source_address: String,
         payload: Bytes,
-    ) {
+    ) -> Result<(), soroban_sdk::Error> {
         let _ = Self::validate_message(&env, &source_chain, &message_id, &source_address, &payload);
 
         event::executed(&env, source_chain, message_id, source_address, payload);
+
+        Ok(())
     }
 }
 
