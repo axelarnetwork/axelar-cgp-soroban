@@ -24,7 +24,7 @@ pub trait AxelarExecutableInterface {
         message_id: String,
         source_address: String,
         payload: Bytes,
-    );
+    ) -> Result<(), soroban_sdk::Error>;
 
     /// Validate if a gateway has approved a message.
     /// This should be called from an implementation of `execute` before executing custom app logic.
