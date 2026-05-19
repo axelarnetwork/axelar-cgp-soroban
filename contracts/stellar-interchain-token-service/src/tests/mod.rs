@@ -8,6 +8,7 @@ mod flow_limit;
 mod interchain_transfer;
 mod link_token;
 mod message_routing;
+mod migration;
 mod pause;
 mod register_canonical_token;
 mod register_custom_token;
