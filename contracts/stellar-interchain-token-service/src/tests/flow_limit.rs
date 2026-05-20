@@ -66,9 +66,11 @@ fn setup<'a>() -> (
     let deployer = Address::generate(&env);
     let (token_id, _) = setup_its_token(&env, &client, &deployer, supply);
 
-    client
-        .mock_all_auths()
-        .set_flow_limit(&token_id, &Some(dummy_flow_limit()));
+    client.mock_all_auths().set_flow_limit(
+        &client.operator(),
+        &token_id,
+        &Some(dummy_flow_limit()),
+    );
 
     (
         env,
@@ -190,9 +192,11 @@ fn execute_test_case(
 ) {
     println!("Executing test case: {:?}", test_case);
 
-    client
-        .mock_all_auths()
-        .set_flow_limit(&token.id, &Some(test_case.flow_limit));
+    client.mock_all_auths().set_flow_limit(
+        &client.operator(),
+        &token.id,
+        &Some(test_case.flow_limit),
+    );
 
     let (destination_chain, destination_address, data) = dummy_transfer_params(env);
     let token_address = client.registered_token_address(&token.id);
@@ -269,9 +273,11 @@ fn set_flow_limit_succeeds() {
 
     assert_eq!(client.flow_limit(&token_id), None);
 
+    let operator = client.operator();
+
     assert_auth!(
-        client.operator(),
-        client.set_flow_limit(&token_id, &Some(dummy_flow_limit()))
+        &operator,
+        client.set_flow_limit(&operator, &token_id, &Some(dummy_flow_limit()))
     );
     goldie::assert!(events::fmt_last_emitted_event::<FlowLimitSetEvent>(&env));
 
@@ -284,9 +290,11 @@ fn set_flow_limit_to_none_succeeds() {
 
     assert_eq!(client.flow_limit(&token.id), Some(dummy_flow_limit()));
 
+    let operator = client.operator();
+
     assert_auth!(
-        client.operator(),
-        client.set_flow_limit(&token.id, &None::<i128>)
+        &operator,
+        client.set_flow_limit(&operator, &token.id, &None::<i128>)
     );
     goldie::assert!(events::fmt_last_emitted_event::<FlowLimitSetEvent>(&env));
 
@@ -303,8 +311,22 @@ fn set_flow_limit_fails_on_negative_limit() {
     assert_contract_err!(
         client
             .mock_all_auths()
-            .try_set_flow_limit(&token_id, &invalid_limit),
+            .try_set_flow_limit(&client.operator(), &token_id, &invalid_limit),
         ContractError::InvalidFlowLimit
+    );
+}
+
+#[test]
+fn set_flow_limit_fails_if_caller_not_authorized() {
+    let (env, client, _, _, _) = setup_env();
+    let token_id = BytesN::from_array(&env, &[1; 32]);
+    let stranger = Address::generate(&env);
+
+    assert_contract_err!(
+        client
+            .mock_all_auths()
+            .try_set_flow_limit(&stranger, &token_id, &Some(dummy_flow_limit())),
+        ContractError::NotApprovedFlowLimiter
     );
 }
 

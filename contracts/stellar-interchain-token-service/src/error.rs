@@ -40,4 +40,7 @@ pub enum ContractError {
     FlowAmountExceededLimit = 34,
     InvalidTokenManagerType = 35,
     InvalidDestinationTokenAddress = 36,
+    FlowLimiterAlreadySet = 37,
+    FlowLimiterNotSet = 38,
+    NotApprovedFlowLimiter = 39,
 }

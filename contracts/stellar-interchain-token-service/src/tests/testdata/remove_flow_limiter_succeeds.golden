@@ -1,0 +1,11 @@
+FlowLimiterRemovedEvent {
+    token_id: BytesN<32>(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+    flow_limiter: Contract(CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXI7N),
+}
+
+Contract(CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVAX5)
+
+flow_limiter_removed {
+    #[topic] token_id: BytesN < 32 >,
+    #[topic] flow_limiter: Address,
+}

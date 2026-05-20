@@ -22,6 +22,18 @@ pub struct FlowLimitSetEvent {
 }
 
 #[derive(Debug, PartialEq, Eq, IntoEvent)]
+pub struct FlowLimiterAddedEvent {
+    pub token_id: BytesN<32>,
+    pub flow_limiter: Address,
+}
+
+#[derive(Debug, PartialEq, Eq, IntoEvent)]
+pub struct FlowLimiterRemovedEvent {
+    pub token_id: BytesN<32>,
+    pub flow_limiter: Address,
+}
+
+#[derive(Debug, PartialEq, Eq, IntoEvent)]
 pub struct InterchainTokenDeployedEvent {
     pub token_id: BytesN<32>,
     pub token_address: Address,
