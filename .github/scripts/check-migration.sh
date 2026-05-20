@@ -21,8 +21,38 @@ main() {
             continue
         fi
 
+        # Purely-additive schema changes (e.g. a new enum variant appended) leave
+        # all existing ledger keys untouched and cannot be migrated. Skip the
+        # migration requirement only when no existing lines were removed or
+        # modified. Any rename, field change, deletion, or formatting edit
+        # produces a '-' line in the diff and falls through to the strict check.
+        if is_additive_only "$1" "$2" "$file"; then
+            echo "✓ $file change is purely additive; migration not required"
+            continue
+        fi
+
         check_migration_file "$file"
     done <<< "$CHANGED_FILES"
+}
+
+# Returns 0 if the unified diff for $file between $base and $head contains no
+# removal lines, 1 otherwise. Pure additions (new lines only) cannot break
+# existing storage and so do not need a migration.
+is_additive_only() {
+    local base="$1"
+    local head="$2"
+    local file="$3"
+
+    # Unified diff lines we care about:
+    #   '--- a/path' — file header (start of diff for this file) — ignore
+    #   '-content'   — removed line — disqualifies an additive-only change
+    #   '+content'   — added line — fine
+    #   ' content'   — context line — fine
+    # Match any '-' prefixed line and exclude the '---' file header.
+    local removed_lines
+    removed_lines=$(git diff --no-ext-diff "$base" "$head" -- "$file" | grep -E '^-' | grep -vE '^---' || true)
+
+    [ -z "$removed_lines" ]
 }
 
 check_migration_file() {

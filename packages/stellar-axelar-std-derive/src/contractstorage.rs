@@ -481,7 +481,7 @@ fn contract_storage_tests(r#enum: &Ident, enum_input: &DeriveInput) -> TokenStre
     );
 
     let enum_file: syn::File = syn::parse2(quote! { #enum_input }).unwrap();
-    let formatted_enum = unparse(&enum_file)
+    let formatted_enum = collapse_struct_variants(&unparse(&enum_file))
         .replace("    #[instance]", "\n    #[instance]")
         .replace("    #[persistent]", "\n    #[persistent]")
         .replace("    #[temporary]", "\n    #[temporary]");
@@ -497,6 +497,65 @@ fn contract_storage_tests(r#enum: &Ident, enum_input: &DeriveInput) -> TokenStre
             }
         }
     }
+}
+
+/// Collapses multi-line struct variants emitted by `prettyplease::unparse` into a
+/// single line per variant.
+///
+/// `prettyplease` wraps an enum variant's struct body onto multiple lines when the
+/// inline form exceeds its width limit. Without normalization, the
+/// `ensure_*_storage_schema_is_unchanged.golden` file would contain a mix of inline
+/// and multi-line variants, making purely-additive diff detection (used by
+/// `.github/scripts/check-migration.sh`) unreliable: adding a field to an existing
+/// multi-line variant would appear as a pure addition rather than a structural change.
+///
+/// Pre-conditions: assumes the input is the output of `prettyplease::unparse` on a
+/// single enum definition. A variant opener is recognized as a line indented by four
+/// spaces that ends with ` {`. Field lines have no nested braces (current storage
+/// enums never use const-generic or nested struct types inside variant fields).
+fn collapse_struct_variants(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    let mut lines = input.lines();
+
+    while let Some(line) = lines.next() {
+        let is_variant_opener = line.starts_with("    ")
+            && line.trim_end().ends_with(" {")
+            && !line.trim_start().starts_with("enum ");
+
+        if !is_variant_opener {
+            out.push_str(line);
+            out.push('\n');
+            continue;
+        }
+
+        let mut collapsed = line.trim_end().to_string();
+        let mut fields: Vec<String> = Vec::new();
+
+        for inner in lines.by_ref() {
+            let trimmed = inner.trim();
+            if trimmed == "}" || trimmed == "}," {
+                if !fields.is_empty() {
+                    // `prettyplease` emits a trailing comma after each field in the
+                    // multi-line form; the inline form omits it on the last field.
+                    if let Some(last) = fields.last_mut() {
+                        if let Some(stripped) = last.strip_suffix(',') {
+                            *last = stripped.to_string();
+                        }
+                    }
+                    collapsed.push(' ');
+                    collapsed.push_str(&fields.join(" "));
+                }
+                collapsed.push(' ');
+                collapsed.push_str(trimmed);
+                break;
+            }
+            fields.push(trimmed.to_string());
+        }
+
+        out.push_str(&collapsed);
+        out.push('\n');
+    }
+    out
 }
 
 /// Tests the storage schema generation for a storage enum.
@@ -569,6 +628,32 @@ mod tests {
         };
 
         crate::contractstorage::contract_storage(&input);
+    }
+
+    #[test]
+    fn collapse_struct_variants_inlines_multiline_variant() {
+        let input = "enum DataKey {\n    Foo {\n        a: A,\n        b: B,\n    },\n}\n";
+        let expected = "enum DataKey {\n    Foo { a: A, b: B },\n}\n";
+        assert_eq!(super::collapse_struct_variants(input), expected);
+    }
+
+    #[test]
+    fn collapse_struct_variants_preserves_inline_variants() {
+        let input = "enum DataKey {\n    Foo { a: A, b: B },\n    Bar,\n}\n";
+        assert_eq!(super::collapse_struct_variants(input), input);
+    }
+
+    #[test]
+    fn collapse_struct_variants_handles_mixed_variants() {
+        let input = "enum DataKey {\n    Unit,\n    InlineStruct { x: u32 },\n    Multi {\n        long_field_a: VeryLongTypeName,\n        long_field_b: AnotherLongType,\n    },\n}\n";
+        let expected = "enum DataKey {\n    Unit,\n    InlineStruct { x: u32 },\n    Multi { long_field_a: VeryLongTypeName, long_field_b: AnotherLongType },\n}\n";
+        assert_eq!(super::collapse_struct_variants(input), expected);
+    }
+
+    #[test]
+    fn collapse_struct_variants_does_not_touch_enum_opener() {
+        let input = "enum DataKey {\n    Unit,\n}\n";
+        assert_eq!(super::collapse_struct_variants(input), input);
     }
 
     #[test]
