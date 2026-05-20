@@ -4,6 +4,7 @@ use stellar_axelar_gateway::executable::{AxelarExecutableInterface, CustomAxelar
 use stellar_axelar_gateway::AxelarGatewayMessagingClient;
 use stellar_axelar_std::address::AddressExt;
 use stellar_axelar_std::events::Event;
+use stellar_axelar_std::interfaces::CustomMigratableInterface;
 use stellar_axelar_std::token::StellarAssetClient;
 use stellar_axelar_std::types::Token;
 use stellar_axelar_std::xdr::ToXdr;
@@ -37,6 +38,7 @@ const EXECUTE_WITH_INTERCHAIN_TOKEN: &str = "execute_with_interchain_token";
 
 #[contract]
 #[derive(Operatable, Ownable, Pausable, Upgradable, AxelarExecutable)]
+#[migratable]
 pub struct InterchainTokenService;
 
 #[contractimpl]
@@ -852,6 +854,31 @@ impl InterchainTokenService {
         );
 
         Ok(token_address)
+    }
+}
+
+/// Remove the erroneously linked XRP token config on Stellar.
+/// XRP (token_id ba5a21ca...) was linked to a third-party custom token on Stellar
+/// via LinkToken. This must be removed because the lockUnlock/mintBurnFrom asymmetry
+/// would allow the custom token owner to drain the XRPL multisig.
+impl CustomMigratableInterface for InterchainTokenService {
+    type MigrationData = ();
+    type Error = ContractError;
+
+    fn __migrate(env: &Env, _migration_data: ()) -> Result<(), Self::Error> {
+        let token_id = BytesN::from_array(
+            env,
+            &[
+                0xba, 0x5a, 0x21, 0xca, 0x88, 0xef, 0x6b, 0xba, 0x2b, 0xff, 0xf5, 0x08, 0x89, 0x94,
+                0xf9, 0x0e, 0x10, 0x77, 0xe2, 0xa1, 0xcc, 0x3d, 0xcc, 0x38, 0xbd, 0x26, 0x1f, 0x00,
+                0xfc, 0xe2, 0x82, 0x4f,
+            ],
+        );
+
+        storage::remove_token_id_config(env, token_id.clone());
+        storage::remove_flow_limit(env, token_id);
+
+        Ok(())
     }
 }
 
