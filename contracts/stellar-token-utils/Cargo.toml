@@ -1,6 +1,6 @@
 [package]
 name = "stellar-token-utils"
-version = "1.0.1"
+version = "1.0.2"
 edition = { workspace = true }
 description = "Token utilities contract for Stellar asset contract address resolution."
 license = { workspace = true }
