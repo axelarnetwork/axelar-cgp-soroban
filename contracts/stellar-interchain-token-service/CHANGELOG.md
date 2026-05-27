@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0](https://github.com/axelarnetwork/axelar-amplifier-stellar/compare/stellar-interchain-token-service-v2.0.0...stellar-interchain-token-service-v2.1.0)
+
+### ⛰️ Features
+
+- Add flow limiter role to its ([#381](https://github.com/axelarnetwork/axelar-amplifier-stellar/pull/381)) - ([e181c89](https://github.com/axelarnetwork/axelar-amplifier-stellar/commit/e181c8980f2fe259e56269d8bca3c99ee167c835))
+
+### Contributors
+
+* @rista404
+
 ### ⛰️ Features
 
 - [**breaking**] *(interchain-token-service)* Add per-token flow limiter role. The contract operator can `add_flow_limiter`, `remove_flow_limiter`, and `transfer_flow_limiter` per `token_id`. Approved flow limiters can call `set_flow_limit` for their token in addition to the operator. `set_flow_limit` signature now takes a leading `caller: Address` parameter; callers must update their call sites accordingly.

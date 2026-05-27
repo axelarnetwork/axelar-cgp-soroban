@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.4](https://github.com/axelarnetwork/axelar-amplifier-stellar/compare/stellar-axelar-operators-v1.1.3...stellar-axelar-operators-v1.1.4)
+
+### ⚙️ Miscellaneous Tasks
+
+- Updated the following local packages: stellar-axelar-std, stellar-axelar-std - ([0000000](https://github.com/axelarnetwork/axelar-amplifier-stellar/commit/0000000))
+
 ## [1.1.3](https://github.com/axelarnetwork/axelar-amplifier-stellar/compare/stellar-axelar-operators-v1.1.2...stellar-axelar-operators-v1.1.3)
 
 ### ⚙️ Miscellaneous Tasks

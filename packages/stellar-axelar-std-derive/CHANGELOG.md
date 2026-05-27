@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0](https://github.com/axelarnetwork/axelar-amplifier-stellar/compare/stellar-axelar-std-derive-v2.0.0...stellar-axelar-std-derive-v2.1.0)
+
+### ⛰️ Features
+
+- Add flow limiter role to its ([#381](https://github.com/axelarnetwork/axelar-amplifier-stellar/pull/381)) - ([e181c89](https://github.com/axelarnetwork/axelar-amplifier-stellar/commit/e181c8980f2fe259e56269d8bca3c99ee167c835))
+
+### Contributors
+
+* @rista404
+
 ## [2.0.0](https://github.com/axelarnetwork/axelar-amplifier-stellar/compare/stellar-axelar-std-derive-v1.1.2...stellar-axelar-std-derive-v2.0.0)
 
 ### ⛰️ Features
