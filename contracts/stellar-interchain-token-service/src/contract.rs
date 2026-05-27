@@ -4,6 +4,7 @@ use stellar_axelar_gateway::executable::{AxelarExecutableInterface, CustomAxelar
 use stellar_axelar_gateway::AxelarGatewayMessagingClient;
 use stellar_axelar_std::address::AddressExt;
 use stellar_axelar_std::events::Event;
+use stellar_axelar_std::interfaces::{CustomMigratableInterface, UpgradableClient};
 use stellar_axelar_std::token::StellarAssetClient;
 use stellar_axelar_std::types::Token;
 use stellar_axelar_std::xdr::ToXdr;
@@ -945,6 +946,130 @@ impl InterchainTokenService {
         Ok(token_address)
     }
 }
+
+/// Reconstruct the canonical wXRP state on Stellar.
+///
+/// The previous migration (v2.0.0) removed the orphan `TokenIdConfig{ba5a21ca…}` left over
+/// from the third-party "ultratoken.xyz" P2P registration. That cleared the storage record
+/// but did not — and could not — remove the orphan TokenManager Soroban contract still
+/// occupying the deterministic address derived from this ITS + the XRP token-id salt.
+/// A fresh canonical deploy from XRPL collides at `deploy_v2` with `Storage, ExistingValue`.
+///
+/// Soroban has no `delete contract` primitive, but the orphan TokenManager's
+/// `Interfaces_Owner` is this ITS itself, so we can upgrade its wasm in-place.
+///
+/// This migration reconstructs the state as if a canonical XRPL → Stellar deploy had
+/// just succeeded:
+///   1. Upgrade the orphan TokenManager at the deterministic address to the canonical
+///      `stellar-token-manager` wasm + run its (no-op) migrate to clear the migrating flag.
+///   2. Deploy the canonical InterchainToken at its deterministic address with the
+///      "Wrapped XRP" / "wXRP" / 6-decimals metadata, owned by this ITS.
+///   3. Persist `TokenIdConfig{ba5a21ca…} = { token_address: <new IT>,
+///      token_manager: <orphan addr>, type: NativeInterchainToken }` and run the
+///      post-deploy hook that adds the TokenManager as a minter on the InterchainToken.
+///   4. Consume the corresponding approved-but-unexecuted DeployInterchainToken GMP on
+///      the Stellar gateway via `validate_message`, so it doesn't sit as a permanently
+///      stuck approval.
+impl CustomMigratableInterface for InterchainTokenService {
+    type MigrationData = ();
+    type Error = ContractError;
+
+    fn __migrate(env: &Env, _migration_data: ()) -> Result<(), Self::Error> {
+        let token_id = BytesN::from_array(env, &XRP_TOKEN_ID);
+
+        // 1. Repurpose the orphan TokenManager: swap its wasm to canonical and finalize the
+        //    upgrade by running migrate (default no-op `__migrate` on stellar-token-manager,
+        //    needed to clear the `interfaces_migrating` flag set by `upgrade`).
+        let token_manager_address = deployer::token_manager_address(env, token_id.clone());
+        let canonical_token_manager_wasm = storage::token_manager_wasm_hash(env);
+        let token_manager_upgradable_client =
+            UpgradableClient::new(env, &token_manager_address);
+        token_manager_upgradable_client.upgrade(&canonical_token_manager_wasm);
+        // `Upgradable` derive generates `migrate` as a contract entrypoint but it isn't
+        // exposed on the auto-generated `TokenManagerClient` (the trait has generic
+        // associated types, so the contractclient skips it). Invoke it by name to clear
+        // the `interfaces_migrating` flag set by `upgrade`. The canonical TokenManager's
+        // `MigrationData` is `()` and its `__migrate` is the default no-op.
+        let _: Val = env.invoke_contract(
+            &token_manager_address,
+            &Symbol::new(env, "migrate"),
+            vec![env, ().into_val(env)],
+        );
+
+        // 2. Deploy the canonical InterchainToken at its (currently empty) deterministic
+        //    address. `ensure_token_not_registered` succeeds because v2.0.0 already removed
+        //    the orphan TokenIdConfig entry.
+        let unregistered_token_id = token_id::ensure_token_not_registered(env, token_id.clone())?;
+        let token_metadata = TokenMetadata::new(
+            String::from_str(env, "Wrapped XRP"),
+            String::from_str(env, "wXRP"),
+            6,
+        )?;
+        let token_address = deployer::deploy_interchain_token(
+            env,
+            storage::interchain_token_wasm_hash(env),
+            None,
+            unregistered_token_id,
+            token_metadata,
+        );
+
+        // 3. Persist the TokenIdConfig record and grant the TokenManager mint authority on
+        //    the freshly-deployed InterchainToken (canonical NativeInterchainToken setup).
+        let token_id_config = TokenIdConfigValue {
+            token_address: token_address.clone(),
+            token_manager: token_manager_address.clone(),
+            token_manager_type: TokenManagerType::NativeInterchainToken,
+        };
+        storage::set_token_id_config(env, token_id, &token_id_config);
+        token_handler::post_token_manager_deploy(
+            env,
+            TokenManagerType::NativeInterchainToken,
+            token_manager_address,
+            token_address,
+        );
+
+        // 4. Consume the pending DeployInterchainToken GMP that was already approved on
+        //    the Stellar gateway (from the canonical XRPL → Stellar deploy attempt that
+        //    triggered this whole recovery). Marking it Executed prevents anyone from
+        //    re-trying it forever — and the work it would have done is already done here.
+        //    The return value is ignored: if the message isn't present (e.g. on testnet
+        //    or a chain where the deploy wasn't attempted) we no-op silently.
+        let gateway = AxelarGatewayMessagingClient::new(env, &storage::gateway(env));
+        let _ = gateway.try_validate_message(
+            &env.current_contract_address(),
+            &String::from_str(env, "axelar"),
+            &String::from_str(env, PENDING_DEPLOY_MESSAGE_ID),
+            &String::from_str(env, ITS_HUB_AXELAR_ADDRESS),
+            &BytesN::from_array(env, &PENDING_DEPLOY_PAYLOAD_HASH),
+        );
+
+        Ok(())
+    }
+}
+
+/// Canonical XRP ITS token id (`0xba5a21ca…2824f`). Identical on testnet and mainnet —
+/// derived deterministically from the XRPL gateway's instantiation parameters.
+const XRP_TOKEN_ID: [u8; 32] = [
+    0xba, 0x5a, 0x21, 0xca, 0x88, 0xef, 0x6b, 0xba, 0x2b, 0xff, 0xf5, 0x08, 0x89, 0x94, 0xf9, 0x0e,
+    0x10, 0x77, 0xe2, 0xa1, 0xcc, 0x3d, 0xcc, 0x38, 0xbd, 0x26, 0x1f, 0x00, 0xfc, 0xe2, 0x82, 0x4f,
+];
+
+/// Source-chain message id of the in-flight DeployInterchainToken GMP that the canonical
+/// XRPL → Stellar deploy emitted from the ITS Hub. Approved on the Stellar mainnet
+/// gateway but unexecuted (the original `execute` reverted at the deterministic-address
+/// collision before this migration reconstructed state).
+const PENDING_DEPLOY_MESSAGE_ID: &str =
+    "0xaea4fb72e8a30dc031c0844ced529a928f35f7339d3a0c39096838d3d70bf61d-5903134";
+
+/// ITS Hub cosmwasm address — same on testnet and mainnet.
+const ITS_HUB_AXELAR_ADDRESS: &str =
+    "axelar1aqcj54lzz0rk22gvqgcn8fr5tx4rzwdv5wv5j9dmnacgefvd7wzsy2j2mr";
+
+/// keccak256 of the pending DeployInterchainToken payload.
+const PENDING_DEPLOY_PAYLOAD_HASH: [u8; 32] = [
+    0x4d, 0xd1, 0x0f, 0x3b, 0x86, 0x4a, 0xb1, 0xeb, 0x0a, 0x2f, 0x4f, 0x7c, 0x5d, 0x56, 0x5f, 0xcc,
+    0x3a, 0x4d, 0x9f, 0x55, 0x30, 0x83, 0x5c, 0x0b, 0x02, 0xb0, 0xac, 0x96, 0xfe, 0x9e, 0x17, 0x12,
+];
 
 impl CustomAxelarExecutable for InterchainTokenService {
     type Error = ContractError;
