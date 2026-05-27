@@ -44,6 +44,13 @@ enum DataKey {
     #[value(i128)]
     FlowLimit { token_id: BytesN<32> },
 
+    #[persistent]
+    #[status]
+    FlowLimiter {
+        token_id: BytesN<32>,
+        flow_limiter: Address,
+    },
+
     #[temporary]
     #[value(i128)]
     FlowOut { token_id: BytesN<32>, epoch: u64 },

@@ -5,6 +5,7 @@ mod deployer;
 mod executable;
 mod execute;
 mod flow_limit;
+mod flow_limiter;
 mod interchain_transfer;
 mod link_token;
 mod message_routing;

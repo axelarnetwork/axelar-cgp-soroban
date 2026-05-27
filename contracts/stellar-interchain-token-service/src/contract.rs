@@ -17,9 +17,10 @@ use token_id::UnregisteredTokenId;
 
 use crate::error::ContractError;
 use crate::event::{
-    InterchainTokenDeploymentStartedEvent, InterchainTransferReceivedEvent,
-    InterchainTransferSentEvent, LinkTokenReceivedEvent, LinkTokenStartedEvent,
-    TokenMetadataRegisteredEvent, TrustedChainRemovedEvent, TrustedChainSetEvent,
+    FlowLimiterAddedEvent, FlowLimiterRemovedEvent, InterchainTokenDeploymentStartedEvent,
+    InterchainTransferReceivedEvent, InterchainTransferSentEvent, LinkTokenReceivedEvent,
+    LinkTokenStartedEvent, TokenMetadataRegisteredEvent, TrustedChainRemovedEvent,
+    TrustedChainSetEvent,
 };
 use crate::flow_limit::FlowDirection;
 use crate::interface::InterchainTokenServiceInterface;
@@ -171,13 +172,103 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
         flow_limit::flow_in_amount(env, token_id)
     }
 
-    #[only_operator]
+    fn is_flow_limiter(env: &Env, token_id: BytesN<32>, flow_limiter: Address) -> bool {
+        storage::is_flow_limiter(env, token_id, flow_limiter)
+    }
+
     fn set_flow_limit(
         env: &Env,
+        caller: Address,
         token_id: BytesN<32>,
         flow_limit: Option<i128>,
     ) -> Result<(), ContractError> {
+        caller.require_auth();
+
+        ensure!(
+            caller == Self::operator(env)
+                || storage::is_flow_limiter(env, token_id.clone(), caller),
+            ContractError::NotApprovedFlowLimiter
+        );
+
         flow_limit::set_flow_limit(env, token_id, flow_limit)
+    }
+
+    #[only_operator]
+    fn add_flow_limiter(
+        env: &Env,
+        token_id: BytesN<32>,
+        flow_limiter: Address,
+    ) -> Result<(), ContractError> {
+        ensure!(
+            !storage::is_flow_limiter(env, token_id.clone(), flow_limiter.clone()),
+            ContractError::FlowLimiterAlreadySet
+        );
+
+        storage::set_flow_limiter_status(env, token_id.clone(), flow_limiter.clone());
+
+        FlowLimiterAddedEvent {
+            token_id,
+            flow_limiter,
+        }
+        .emit(env);
+
+        Ok(())
+    }
+
+    #[only_operator]
+    fn remove_flow_limiter(
+        env: &Env,
+        token_id: BytesN<32>,
+        flow_limiter: Address,
+    ) -> Result<(), ContractError> {
+        ensure!(
+            storage::is_flow_limiter(env, token_id.clone(), flow_limiter.clone()),
+            ContractError::FlowLimiterNotSet
+        );
+
+        storage::remove_flow_limiter_status(env, token_id.clone(), flow_limiter.clone());
+
+        FlowLimiterRemovedEvent {
+            token_id,
+            flow_limiter,
+        }
+        .emit(env);
+
+        Ok(())
+    }
+
+    #[only_operator]
+    fn transfer_flow_limiter(
+        env: &Env,
+        token_id: BytesN<32>,
+        from: Address,
+        to: Address,
+    ) -> Result<(), ContractError> {
+        ensure!(
+            storage::is_flow_limiter(env, token_id.clone(), from.clone()),
+            ContractError::FlowLimiterNotSet
+        );
+        ensure!(
+            !storage::is_flow_limiter(env, token_id.clone(), to.clone()),
+            ContractError::FlowLimiterAlreadySet
+        );
+
+        storage::remove_flow_limiter_status(env, token_id.clone(), from.clone());
+        storage::set_flow_limiter_status(env, token_id.clone(), to.clone());
+
+        FlowLimiterRemovedEvent {
+            token_id: token_id.clone(),
+            flow_limiter: from,
+        }
+        .emit(env);
+
+        FlowLimiterAddedEvent {
+            token_id,
+            flow_limiter: to,
+        }
+        .emit(env);
+
+        Ok(())
     }
 
     #[when_not_paused]

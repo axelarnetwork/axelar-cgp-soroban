@@ -122,6 +122,9 @@ pub trait InterchainTokenServiceInterface:
     /// for the token associated with the specified token ID.
     fn flow_in_amount(env: &Env, token_id: BytesN<32>) -> i128;
 
+    /// Returns whether the given address is an approved flow limiter for the specified token.
+    fn is_flow_limiter(env: &Env, token_id: BytesN<32>, flow_limiter: Address) -> bool;
+
     /// Sets or updates the flow limit for a token.
     ///
     /// Flow limit controls how many tokens can flow in/out during a single epoch.
@@ -129,18 +132,70 @@ pub trait InterchainTokenServiceInterface:
     /// Setting the limit to 0 effectively freezes the token by preventing any flow.
     ///
     /// # Arguments
+    /// - `caller`: The address invoking the call. Must be either the contract operator or an
+    ///   approved flow limiter for the specified `token_id`.
     /// - `token_id`: Unique identifier of the token.
     /// - `flow_limit`: The new flow limit value. Must be positive if Some.
     ///
     /// # Errors
     /// - [`ContractError::InvalidFlowLimit`]: If the provided flow limit is not positive.
+    /// - [`ContractError::NotApprovedFlowLimiter`]: If `caller` is neither the operator nor an
+    ///   approved flow limiter for the token.
+    ///
+    /// # Authorization
+    /// - `caller` must authorize.
+    fn set_flow_limit(
+        env: &Env,
+        caller: Address,
+        token_id: BytesN<32>,
+        flow_limit: Option<i128>,
+    ) -> Result<(), ContractError>;
+
+    /// Adds an approved flow limiter for the specified token.
+    ///
+    /// Approved flow limiters can call [`Self::set_flow_limit`] for that token, in addition to
+    /// the contract operator.
+    ///
+    /// # Errors
+    /// - [`ContractError::FlowLimiterAlreadySet`]: If the address is already an approved flow
+    ///   limiter for the token.
     ///
     /// # Authorization
     /// - [`OperatableInterface::operator`] must authorize.
-    fn set_flow_limit(
+    fn add_flow_limiter(
         env: &Env,
         token_id: BytesN<32>,
-        flow_limit: Option<i128>,
+        flow_limiter: Address,
+    ) -> Result<(), ContractError>;
+
+    /// Removes an approved flow limiter for the specified token.
+    ///
+    /// # Errors
+    /// - [`ContractError::FlowLimiterNotSet`]: If the address is not an approved flow limiter
+    ///   for the token.
+    ///
+    /// # Authorization
+    /// - [`OperatableInterface::operator`] must authorize.
+    fn remove_flow_limiter(
+        env: &Env,
+        token_id: BytesN<32>,
+        flow_limiter: Address,
+    ) -> Result<(), ContractError>;
+
+    /// Atomically transfers the approved flow limiter role from `from` to `to` for the
+    /// specified token.
+    ///
+    /// # Errors
+    /// - [`ContractError::FlowLimiterNotSet`]: If `from` is not an approved flow limiter.
+    /// - [`ContractError::FlowLimiterAlreadySet`]: If `to` is already an approved flow limiter.
+    ///
+    /// # Authorization
+    /// - [`OperatableInterface::operator`] must authorize.
+    fn transfer_flow_limiter(
+        env: &Env,
+        token_id: BytesN<32>,
+        from: Address,
+        to: Address,
     ) -> Result<(), ContractError>;
 
     /// Deploys a new interchain token on the current chain with specified metadata and optional
