@@ -3,9 +3,8 @@ use stellar_axelar_std::xdr::ToXdr;
 use stellar_axelar_std::{Address, BytesN, Env, String};
 
 use super::utils::setup_env;
-use crate::storage;
 use crate::types::TokenManagerType;
-use crate::{deployer, InterchainTokenService, RecoveryMigrationData};
+use crate::{deployer, storage, InterchainTokenService, RecoveryMigrationData};
 
 /// Canonical XRP ITS token id (`0xba5a21ca…2824f`) — the mainnet wXRP repro case.
 const XRP_TOKEN_ID: [u8; 32] = [
