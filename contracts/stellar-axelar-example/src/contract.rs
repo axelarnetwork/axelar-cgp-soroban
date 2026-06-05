@@ -16,6 +16,7 @@ use crate::storage;
 
 #[contract]
 #[derive(InterchainTokenExecutable, AxelarExecutable)]
+#[axelar_executable(error = AxelarExampleError)]
 pub struct AxelarExample;
 
 #[contracterror]

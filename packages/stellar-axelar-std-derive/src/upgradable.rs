@@ -1,32 +1,16 @@
-use itertools::Itertools;
 use proc_macro2::{Ident, TokenStream as TokenStream2};
 use quote::quote;
-use syn::DeriveInput;
+use syn::{DeriveInput, Error, Type};
 
-use crate::{ensure_no_args, MapTranspose};
-
-pub fn upgradable(input: &DeriveInput) -> TokenStream2 {
+pub fn upgradable(input: &DeriveInput) -> syn::Result<TokenStream2> {
     let name = &input.ident;
+    let migration_data_type = migration_data_type(input)?;
+    let (custom_migration_impl, migration_data_type) = migration_data_type.map_or_else(
+        || (default_custom_migration(name), quote! { () }),
+        |migration_data_type| (quote! {}, quote! { #migration_data_type }),
+    );
 
-    let migration_kind = input
-        .attrs
-        .iter()
-        .filter(|attr| attr.path().is_ident("migratable"))
-        .at_most_one()
-        .expect("migratable attribute can only be applied once")
-        .map_transpose(ensure_no_args)
-        .expect("migratable attribute cannot have arguments")
-        .map(|_| MigrationKind::Custom)
-        .unwrap_or_default();
-
-    let custom_migration_impl = match migration_kind {
-        MigrationKind::Default => default_custom_migration(name),
-        MigrationKind::Custom => quote! {},
-    };
-
-    let migration_data_alias = Ident::new(&format!("__{}MigrationData", name), name.span());
-
-    quote! {
+    Ok(quote! {
         use stellar_axelar_std::interfaces::{UpgradableInterface as _, MigratableInterface as _};
 
         #[stellar_axelar_std::contractimpl]
@@ -49,15 +33,12 @@ pub fn upgradable(input: &DeriveInput) -> TokenStream2 {
             }
         }
 
-        #[allow(non_camel_case_types)]
-        type #migration_data_alias = <#name as stellar_axelar_std::interfaces::CustomMigratableInterface>::MigrationData;
-
         #[stellar_axelar_std::contractimpl]
         impl stellar_axelar_std::interfaces::MigratableInterface for #name {
             type Error = ContractError;
 
             #[allow_during_migration]
-            fn migrate(env: &Env, migration_data: #migration_data_alias) -> Result<(), ContractError> {
+            fn migrate(env: &Env, migration_data: #migration_data_type) -> Result<(), ContractError> {
                 stellar_axelar_std::interfaces::migrate::<Self>(env, migration_data)
                     .map_err(|err| match err {
                         stellar_axelar_std::interfaces::MigrationError::NotAllowed => ContractError::MigrationNotAllowed,
@@ -68,7 +49,7 @@ pub fn upgradable(input: &DeriveInput) -> TokenStream2 {
         }
 
         #custom_migration_impl
-    }
+    })
 }
 
 fn default_custom_migration(name: &Ident) -> TokenStream2 {
@@ -84,11 +65,52 @@ fn default_custom_migration(name: &Ident) -> TokenStream2 {
     }
 }
 
-#[derive(Default)]
-pub enum MigrationKind {
-    #[default]
-    Default,
-    Custom,
+fn migration_data_type(input: &DeriveInput) -> syn::Result<Option<Type>> {
+    let mut migration_data_type = None;
+    let mut has_migratable_attr = false;
+
+    for attr in input
+        .attrs
+        .iter()
+        .filter(|attr| attr.path().is_ident("migratable"))
+    {
+        if has_migratable_attr {
+            return Err(Error::new_spanned(
+                attr,
+                "migratable attribute can only be specified once",
+            ));
+        }
+
+        has_migratable_attr = true;
+
+        if attr.meta.require_path_only().is_ok() {
+            continue;
+        }
+
+        attr.parse_nested_meta(|meta| {
+            if !meta.path.is_ident("data") {
+                return Err(meta.error("unsupported migratable attribute"));
+            }
+
+            if migration_data_type.is_some() {
+                return Err(Error::new_spanned(
+                    &meta.path,
+                    "migration data type can only be specified once",
+                ));
+            }
+
+            let value = meta.value()?;
+            migration_data_type = Some(value.parse()?);
+            Ok(())
+        })?;
+    }
+
+    Ok(match (has_migratable_attr, migration_data_type) {
+        (false, None) => None,
+        (false, Some(_)) => unreachable!("migration data type requires a migratable attribute"),
+        (true, None) => Some(syn::parse_quote! { () }),
+        (true, Some(migration_data_type)) => Some(migration_data_type),
+    })
 }
 
 /// Tests the upgradable impl generation for a contract.
@@ -100,12 +122,49 @@ mod tests {
         let contract_input: syn::DeriveInput = syn::parse_quote! {
             #[contract]
             #[derive(Ownable, Upgradable)]
+            #[migratable(data = MigrationData)]
+            pub struct Contract;
+        };
+
+        let upgradable_impl: proc_macro2::TokenStream =
+            crate::upgradable::upgradable(&contract_input).unwrap();
+        let upgradable_impl_file: syn::File = syn::parse2(upgradable_impl).unwrap();
+        let formatted_upgradable_impl = prettyplease::unparse(&upgradable_impl_file)
+            .replace("pub fn ", "\npub fn ")
+            .replace("#[cfg(test)]", "\n#[cfg(test)]");
+
+        goldie::assert!(formatted_upgradable_impl);
+    }
+
+    #[test]
+    fn default_upgradable_impl_generation_uses_unit_migration_data() {
+        let contract_input: syn::DeriveInput = syn::parse_quote! {
+            #[contract]
+            #[derive(Ownable, Upgradable)]
+            pub struct Contract;
+        };
+
+        let upgradable_impl: proc_macro2::TokenStream =
+            crate::upgradable::upgradable(&contract_input).unwrap();
+        let upgradable_impl_file: syn::File = syn::parse2(upgradable_impl).unwrap();
+        let formatted_upgradable_impl = prettyplease::unparse(&upgradable_impl_file)
+            .replace("pub fn ", "\npub fn ")
+            .replace("#[cfg(test)]", "\n#[cfg(test)]");
+
+        goldie::assert!(formatted_upgradable_impl);
+    }
+
+    #[test]
+    fn custom_upgradable_impl_generation_defaults_to_unit_migration_data() {
+        let contract_input: syn::DeriveInput = syn::parse_quote! {
+            #[contract]
+            #[derive(Ownable, Upgradable)]
             #[migratable]
             pub struct Contract;
         };
 
         let upgradable_impl: proc_macro2::TokenStream =
-            crate::upgradable::upgradable(&contract_input);
+            crate::upgradable::upgradable(&contract_input).unwrap();
         let upgradable_impl_file: syn::File = syn::parse2(upgradable_impl).unwrap();
         let formatted_upgradable_impl = prettyplease::unparse(&upgradable_impl_file)
             .replace("pub fn ", "\npub fn ")

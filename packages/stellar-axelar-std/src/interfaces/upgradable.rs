@@ -31,7 +31,10 @@ pub trait MigratableInterface: UpgradableInterface + CustomMigratableInterface {
 }
 
 /// This trait is used to implement custom migration logic for a contract.
+///
 /// It is automatically implemented for the contract if the `#[migratable]` attribute is applied to the contract struct.
+/// Bare `#[migratable]` uses unit migration data; use `#[migratable(data = MigrationData)]`
+/// for a custom input type.
 ///
 /// Do NOT add the implementation of [`CustomMigratableInterface`] to the public interface of the contract, i.e. do not annotate the `impl` block with `#[contractimpl]`
 pub trait CustomMigratableInterface: UpgradableInterface {
