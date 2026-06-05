@@ -13,14 +13,14 @@ crate-type = ["rlib"]
 goldie = { workspace = true, optional = true }
 hex = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
-soroban-sdk = { version = "25.3.0" }
+soroban-sdk = { version = "25.3.1" }
 stellar-axelar-std-derive = { workspace = true, optional = true }
 
 [dev-dependencies]
 goldie = { workspace = true }
 hex = { workspace = true }
 paste = { workspace = true }
-soroban-sdk = { version = "25.3.0", features = ["testutils"] }
+soroban-sdk = { version = "25.3.1", features = ["testutils"] }
 stellar-axelar-std-derive = { workspace = true }
 
 [features]

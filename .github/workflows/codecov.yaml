@@ -23,7 +23,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.89.0
+          toolchain: 1.93.0
 
       - name: Install libclang-dev
         run: sudo apt-get install libclang-dev
