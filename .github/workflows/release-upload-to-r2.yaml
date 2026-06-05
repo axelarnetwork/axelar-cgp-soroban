@@ -88,6 +88,7 @@ jobs:
       attestations: write
     with:
       commit-hash: ${{ needs.prepare-release.outputs.commit_hash }}
+      attest: false
 
   upload:
     needs: [prepare-release, build]

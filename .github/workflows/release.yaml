@@ -80,6 +80,7 @@ jobs:
       attestations: write
     with:
       commit-hash: ${{ needs.publish-release.outputs.commit_hash }}
+      attest: true
 
   upload:
     needs: [publish-release, build]

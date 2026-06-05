@@ -46,6 +46,7 @@ jobs:
       attestations: write
     with:
       commit-hash: ${{ needs.stellar-contract-names.outputs.commit_hash }}
+      attest: false
 
   upload:
     needs: [stellar-contract-names, build]

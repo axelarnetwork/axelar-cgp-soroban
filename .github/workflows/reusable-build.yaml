@@ -7,6 +7,11 @@ on:
         description: "The commit hash to build from"
         type: string
         required: true
+      attest:
+        description: "Whether to create GitHub build provenance attestations for the WASM artifacts"
+        type: boolean
+        default: false
+        required: false
     outputs:
       artifact-name:
         description: "Name of the uploaded artifact containing all builds"
@@ -31,6 +36,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Verify build ref matches workflow ref
+        if: inputs.attest
         run: |
           build_commit=$(git rev-parse "${{ inputs.commit-hash }}")
           workflow_commit=$(git rev-parse "${{ github.sha }}")
@@ -72,6 +78,7 @@ jobs:
           find . -maxdepth 1 -type f ! -name "*.wasm" -delete
 
       - name: Attest WASM artifacts
+        if: inputs.attest
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: target/wasm32v1-none/release/*.wasm
