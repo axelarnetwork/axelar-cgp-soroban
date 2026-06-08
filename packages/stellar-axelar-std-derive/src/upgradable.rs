@@ -105,12 +105,13 @@ fn migration_data_type(input: &DeriveInput) -> syn::Result<Option<Type>> {
         })?;
     }
 
-    Ok(match (has_migratable_attr, migration_data_type) {
-        (false, None) => None,
-        (false, Some(_)) => unreachable!("migration data type requires a migratable attribute"),
-        (true, None) => Some(syn::parse_quote! { () }),
-        (true, Some(migration_data_type)) => Some(migration_data_type),
-    })
+    if !has_migratable_attr {
+        return Ok(None);
+    }
+
+    Ok(Some(
+        migration_data_type.unwrap_or_else(|| syn::parse_quote! { () }),
+    ))
 }
 
 /// Tests the upgradable impl generation for a contract.
@@ -171,5 +172,54 @@ mod tests {
             .replace("#[cfg(test)]", "\n#[cfg(test)]");
 
         goldie::assert!(formatted_upgradable_impl);
+    }
+
+    #[test]
+    fn upgradable_impl_generation_rejects_duplicate_migratable_attribute() {
+        let contract_input: syn::DeriveInput = syn::parse_quote! {
+            #[contract]
+            #[derive(Ownable, Upgradable)]
+            #[migratable]
+            #[migratable]
+            pub struct Contract;
+        };
+
+        let err = crate::upgradable::upgradable(&contract_input).unwrap_err();
+
+        assert_eq!(
+            err.to_string(),
+            "migratable attribute can only be specified once"
+        );
+    }
+
+    #[test]
+    fn upgradable_impl_generation_rejects_unsupported_migratable_attribute() {
+        let contract_input: syn::DeriveInput = syn::parse_quote! {
+            #[contract]
+            #[derive(Ownable, Upgradable)]
+            #[migratable(unsupported = Foo)]
+            pub struct Contract;
+        };
+
+        let err = crate::upgradable::upgradable(&contract_input).unwrap_err();
+
+        assert_eq!(err.to_string(), "unsupported migratable attribute");
+    }
+
+    #[test]
+    fn upgradable_impl_generation_rejects_duplicate_migration_data_type() {
+        let contract_input: syn::DeriveInput = syn::parse_quote! {
+            #[contract]
+            #[derive(Ownable, Upgradable)]
+            #[migratable(data = MigrationData, data = OtherData)]
+            pub struct Contract;
+        };
+
+        let err = crate::upgradable::upgradable(&contract_input).unwrap_err();
+
+        assert_eq!(
+            err.to_string(),
+            "migration data type can only be specified once"
+        );
     }
 }

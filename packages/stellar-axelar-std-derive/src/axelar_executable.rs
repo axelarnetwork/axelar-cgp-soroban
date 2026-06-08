@@ -108,4 +108,35 @@ mod tests {
             "AxelarExecutable requires #[axelar_executable(error = ContractError)]"
         );
     }
+
+    #[test]
+    fn axelar_executable_impl_generation_rejects_unsupported_attribute() {
+        let contract_input: syn::DeriveInput = syn::parse_quote! {
+            #[contract]
+            #[derive(AxelarExecutable)]
+            #[axelar_executable(unsupported = Foo)]
+            pub struct Contract;
+        };
+
+        let err = crate::axelar_executable::axelar_executable(&contract_input).unwrap_err();
+
+        assert_eq!(err.to_string(), "unsupported axelar_executable attribute");
+    }
+
+    #[test]
+    fn axelar_executable_impl_generation_rejects_duplicate_error_type() {
+        let contract_input: syn::DeriveInput = syn::parse_quote! {
+            #[contract]
+            #[derive(AxelarExecutable)]
+            #[axelar_executable(error = ContractError, error = OtherError)]
+            pub struct Contract;
+        };
+
+        let err = crate::axelar_executable::axelar_executable(&contract_input).unwrap_err();
+
+        assert_eq!(
+            err.to_string(),
+            "axelar_executable error type can only be specified once"
+        );
+    }
 }
