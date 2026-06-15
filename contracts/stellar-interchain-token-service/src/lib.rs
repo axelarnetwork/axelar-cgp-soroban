@@ -29,7 +29,9 @@ cfg_if::cfg_if! {
         mod contract;
         mod flow_limit;
 
-        pub use contract::{InterchainTokenService, InterchainTokenServiceClient};
+        pub use contract::{
+            InterchainTokenService, InterchainTokenServiceClient, RecoveryMigrationData,
+        };
         pub use interface::InterchainTokenServiceInterface;
     }
 }
