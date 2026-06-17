@@ -4,14 +4,13 @@ use stellar_axelar_gateway::executable::{AxelarExecutableInterface, CustomAxelar
 use stellar_axelar_gateway::AxelarGatewayMessagingClient;
 use stellar_axelar_std::address::AddressExt;
 use stellar_axelar_std::events::Event;
-use stellar_axelar_std::interfaces::{CustomMigratableInterface, UpgradableClient};
 use stellar_axelar_std::token::StellarAssetClient;
 use stellar_axelar_std::types::Token;
 use stellar_axelar_std::xdr::ToXdr;
 use stellar_axelar_std::{
-    contract, contractimpl, contracttype, ensure, interfaces, only_operator, only_owner,
-    soroban_sdk, vec, when_not_paused, Address, AxelarExecutable, Bytes, BytesN, Env, IntoVal,
-    Operatable, Ownable, Pausable, String, Symbol, Upgradable, Val,
+    contract, contractimpl, ensure, interfaces, only_operator, only_owner, soroban_sdk, vec,
+    when_not_paused, Address, AxelarExecutable, Bytes, BytesN, Env, IntoVal, Operatable, Ownable,
+    Pausable, String, Symbol, Upgradable, Val,
 };
 use stellar_token_manager::TokenManagerClient;
 use token_id::UnregisteredTokenId;
@@ -39,7 +38,6 @@ const EXECUTE_WITH_INTERCHAIN_TOKEN: &str = "execute_with_interchain_token";
 
 #[contract]
 #[derive(Operatable, Ownable, Pausable, Upgradable, AxelarExecutable)]
-#[migratable]
 pub struct InterchainTokenService;
 
 #[contractimpl]
@@ -946,113 +944,6 @@ impl InterchainTokenService {
 
         Ok(token_address)
     }
-}
-
-/// Reconstruct canonical interchain-token state for a token whose `TokenIdConfig`
-/// was wiped by a prior cleanup migration but whose deterministically-addressed
-/// TokenManager Soroban contract still occupies its slot.
-///
-/// Context (wXRP, the original trigger): the v2.0.0 migration removed the orphan
-/// `TokenIdConfig{ba5a21ca…}` left over from a third-party P2P registration, but
-/// Soroban has no `delete contract` primitive — the TokenManager at the canonical
-/// deterministic address stays put, so a fresh canonical deploy hits
-/// `Storage, ExistingValue` at `deploy_v2`. The orphan TokenManager's
-/// `Interfaces_Owner` is this ITS itself, so we can upgrade its wasm in-place.
-///
-/// This migration reconstructs the state as if a canonical deploy had just
-/// succeeded for the supplied `token_id` / metadata:
-///   1. Upgrade the orphan TokenManager at the deterministic address to the
-///      canonical `stellar-token-manager` wasm + run its (no-op) migrate to clear
-///      the migrating flag.
-///   2. Deploy the canonical InterchainToken at its deterministic address with the
-///      supplied metadata, owned by this ITS.
-///   3. Persist `TokenIdConfig{token_id} = { token_address, token_manager,
-///      type: NativeInterchainToken }` and run the post-deploy hook that adds the
-///      TokenManager as a minter on the InterchainToken.
-///
-/// Any `MessageApproved` GMP that was previously approved on the gateway for this
-/// same `token_id` (e.g. the original wXRP deploy on mainnet) is deliberately
-/// **left dangling**. After this migration `TokenIdConfig{token_id}` is populated,
-/// so any future `execute` attempt routes through ITS's `DeployInterchainToken`
-/// handling and reverts at `ensure_token_not_registered` — no replay risk, no
-/// state corruption, just a cosmetic "Approved, not executed" entry on axelarscan.
-impl CustomMigratableInterface for InterchainTokenService {
-    type MigrationData = RecoveryMigrationData;
-    type Error = ContractError;
-
-    fn __migrate(env: &Env, migration_data: RecoveryMigrationData) -> Result<(), Self::Error> {
-        let RecoveryMigrationData {
-            token_decimals,
-            token_id,
-            token_name,
-            token_symbol,
-        } = migration_data;
-
-        // 1. Repurpose the orphan TokenManager: swap its wasm to canonical and finalize the
-        //    upgrade by running migrate (default no-op `__migrate` on stellar-token-manager,
-        //    needed to clear the `interfaces_migrating` flag set by `upgrade`).
-        let token_manager_address = deployer::token_manager_address(env, token_id.clone());
-        let canonical_token_manager_wasm = storage::token_manager_wasm_hash(env);
-        let token_manager_upgradable_client = UpgradableClient::new(env, &token_manager_address);
-        token_manager_upgradable_client.upgrade(&canonical_token_manager_wasm);
-        // `Upgradable` derive generates `migrate` as a contract entrypoint but it isn't
-        // exposed on the auto-generated `TokenManagerClient` (the trait has generic
-        // associated types, so the contractclient skips it). Invoke it by name to clear
-        // the `interfaces_migrating` flag set by `upgrade`. The canonical TokenManager's
-        // `MigrationData` is `()` and its `__migrate` is the default no-op.
-        let _: Val = env.invoke_contract(
-            &token_manager_address,
-            &Symbol::new(env, "migrate"),
-            vec![env, ().into_val(env)],
-        );
-
-        // 2. Deploy the canonical InterchainToken at its (currently empty) deterministic
-        //    address. `ensure_token_not_registered` succeeds because the prior cleanup
-        //    migration already removed the orphan TokenIdConfig entry.
-        let unregistered_token_id = token_id::ensure_token_not_registered(env, token_id.clone())?;
-        let token_metadata = TokenMetadata::new(token_name, token_symbol, token_decimals)?;
-        let token_address = deployer::deploy_interchain_token(
-            env,
-            storage::interchain_token_wasm_hash(env),
-            None,
-            unregistered_token_id,
-            token_metadata,
-        );
-
-        // 3. Persist the TokenIdConfig record and grant the TokenManager mint authority on
-        //    the freshly-deployed InterchainToken (canonical NativeInterchainToken setup).
-        let token_id_config = TokenIdConfigValue {
-            token_address: token_address.clone(),
-            token_manager: token_manager_address.clone(),
-            token_manager_type: TokenManagerType::NativeInterchainToken,
-        };
-        storage::set_token_id_config(env, token_id, &token_id_config);
-        token_handler::post_token_manager_deploy(
-            env,
-            TokenManagerType::NativeInterchainToken,
-            token_manager_address,
-            token_address,
-        );
-
-        Ok(())
-    }
-}
-
-/// Input to the recovery `__migrate` above. Carries the token-specific values
-/// that would otherwise have to be hardcoded per-network, letting the same
-/// migration body run on devnet/testnet (with a fabricated repro token) and
-/// mainnet (with wXRP: token_id `0xba5a21ca…2824f`, "Wrapped XRP" / "wXRP" / 6).
-///
-/// Fields are kept alphabetically ordered because `#[contracttype]` serializes
-/// structs as ScVal maps with sorted keys — keeping the source order matched
-/// makes the encoding deterministic and easier to inspect.
-#[contracttype]
-#[derive(Clone, Debug)]
-pub struct RecoveryMigrationData {
-    pub token_decimals: u32,
-    pub token_id: BytesN<32>,
-    pub token_name: String,
-    pub token_symbol: String,
 }
 
 impl CustomAxelarExecutable for InterchainTokenService {
