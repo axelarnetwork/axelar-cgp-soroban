@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.1](https://github.com/axelarnetwork/axelar-amplifier-stellar/compare/stellar-interchain-token-service-v2.1.0...stellar-interchain-token-service-v2.1.1)
+
+### ⚙️ Miscellaneous Tasks
+
+- *(its)* Reconstruct canonical wXRP state on Stellar after v2.0.0 … ([#384](https://github.com/axelarnetwork/axelar-amplifier-stellar/pull/384)) - ([6321e0d](https://github.com/axelarnetwork/axelar-amplifier-stellar/commit/6321e0d6e6d7b2fc1018bd205908b26bbf605241))
+
+### Contributors
+
+* @MakisChristou
+
 ## [2.1.0](https://github.com/axelarnetwork/axelar-amplifier-stellar/compare/stellar-interchain-token-service-v2.0.0...stellar-interchain-token-service-v2.1.0)
 
 ### ⛰️ Features
