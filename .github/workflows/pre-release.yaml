@@ -40,8 +40,13 @@ jobs:
   build:
     needs: stellar-contract-names
     uses: ./.github/workflows/reusable-build.yaml
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     with:
       commit-hash: ${{ needs.stellar-contract-names.outputs.commit_hash }}
+      attest: false
 
   upload:
     needs: [stellar-contract-names, build]

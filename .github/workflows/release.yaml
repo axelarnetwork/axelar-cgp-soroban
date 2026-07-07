@@ -74,8 +74,13 @@ jobs:
   build:
     needs: publish-release
     uses: ./.github/workflows/reusable-build.yaml
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     with:
       commit-hash: ${{ needs.publish-release.outputs.commit_hash }}
+      attest: true
 
   upload:
     needs: [publish-release, build]
