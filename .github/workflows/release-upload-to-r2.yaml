@@ -82,8 +82,13 @@ jobs:
   build:
     needs: prepare-release
     uses: ./.github/workflows/reusable-build.yaml
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     with:
       commit-hash: ${{ needs.prepare-release.outputs.commit_hash }}
+      attest: false
 
   upload:
     needs: [prepare-release, build]

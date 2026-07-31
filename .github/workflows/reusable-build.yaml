@@ -7,6 +7,11 @@ on:
         description: "The commit hash to build from"
         type: string
         required: true
+      attest:
+        description: "Whether to create GitHub build provenance attestations for the WASM artifacts"
+        type: boolean
+        default: false
+        required: false
     outputs:
       artifact-name:
         description: "Name of the uploaded artifact containing all builds"
@@ -18,6 +23,10 @@ on:
 jobs:
   build:
     runs-on: blacksmith-8vcpu-ubuntu-2204
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     outputs:
       artifact-name: ${{ steps.set-artifact-name.outputs.name }}
       artifact-path: ${{ steps.set-artifact-name.outputs.path }}
@@ -26,8 +35,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Verify build ref matches workflow ref
+        if: inputs.attest
+        run: |
+          build_commit=$(git rev-parse "${{ inputs.commit-hash }}")
+          workflow_commit=$(git rev-parse "${{ github.sha }}")
+
+          if [ "$build_commit" != "$workflow_commit" ]; then
+            echo "Build commit $build_commit does not match workflow commit $workflow_commit."
+            echo "Run this workflow from the same ref that is being built so provenance matches the WASM source."
+            exit 1
+          fi
+
       - name: Checkout specific commit
-        run: git checkout ${{ inputs.commit-hash }}
+        run: git checkout "$(git rev-parse "${{ inputs.commit-hash }}")"
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
@@ -48,13 +69,19 @@ jobs:
       - name: Build all contracts
         run: |
           # Build and optimize all contracts
-          stellar contract build --optimize
+          stellar contract build --optimize --meta source_repo=github:${{ github.repository }}
 
           # Process in the release directory
           cd target/wasm32v1-none/release
 
           # Remove non-wasm files
           find . -maxdepth 1 -type f ! -name "*.wasm" -delete
+
+      - name: Attest WASM artifacts
+        if: inputs.attest
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: target/wasm32v1-none/release/*.wasm
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
