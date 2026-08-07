@@ -9,7 +9,7 @@ use crate::interfaces::testdata::contract_trivial_migration::DataKey;
 use crate::interfaces::{operatable, ownable, CustomMigratableInterface};
 
 #[derive(Upgradable, Ownable)]
-#[migratable]
+#[migratable(data = MigrationData)]
 #[contract]
 pub struct ContractNonTrivial;
 

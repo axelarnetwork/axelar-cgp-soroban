@@ -20,7 +20,7 @@ impl stellar_axelar_std::interfaces::UpgradableInterface for Contract {
 impl stellar_axelar_std::interfaces::MigratableInterface for Contract {
     type Error = ContractError;
     #[allow_during_migration]
-    fn migrate(env: &Env, migration_data: MigrationData) -> Result<(), ContractError> {
+    fn migrate(env: &Env, migration_data: ()) -> Result<(), ContractError> {
         stellar_axelar_std::interfaces::migrate::<Self>(env, migration_data)
             .map_err(|err| match err {
                 stellar_axelar_std::interfaces::MigrationError::NotAllowed => {
@@ -30,5 +30,15 @@ impl stellar_axelar_std::interfaces::MigratableInterface for Contract {
                     err.into()
                 }
             })
+    }
+}
+impl stellar_axelar_std::interfaces::CustomMigratableInterface for Contract {
+    type MigrationData = ();
+    type Error = ContractError;
+    fn __migrate(
+        _env: &Env,
+        _migration_data: Self::MigrationData,
+    ) -> Result<(), Self::Error> {
+        Ok(())
     }
 }

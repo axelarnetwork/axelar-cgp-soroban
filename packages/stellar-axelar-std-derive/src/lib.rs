@@ -14,7 +14,7 @@ mod upgradable;
 mod utils;
 
 use proc_macro::TokenStream;
-use syn::{parse_macro_input, Attribute, DeriveInput, ItemFn, ItemImpl, Path};
+use syn::{parse_macro_input, DeriveInput, ItemFn, ItemImpl};
 
 /// Designates functions in an `impl` block as contract entrypoints.
 ///
@@ -188,6 +188,8 @@ pub fn when_not_paused(_attr: TokenStream, item: TokenStream) -> TokenStream {
 /// A `ContractError` error type must be defined in scope, and have a `MigrationNotAllowed` variant.
 /// A default migration implementation is automatically provided. If custom migration code is required,
 /// the `#[migratable]` attribute can be applied to the contract struct.
+/// It defaults to unit migration data. Use `#[migratable(data = MigrationData)]`
+/// if the migration needs a custom input type.
 /// In that case, the contract must implement the `CustomMigratableInterface` trait. The associated `Error` type
 /// must implement the `Into<ContractError>` trait. The `ContractError` type itself implements it implicitly,
 /// so that is an easy way to use it.
@@ -206,7 +208,7 @@ pub fn when_not_paused(_attr: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// #[contract]
 /// #[derive(Ownable, Upgradable)]
-/// #[migratable]
+/// #[migratable(data = Address)]
 /// pub struct Contract;
 ///
 /// #[contractimpl]
@@ -231,11 +233,9 @@ pub fn when_not_paused(_attr: TokenStream, item: TokenStream) -> TokenStream {
 pub fn derive_upgradable(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
-    upgradable::upgradable(&input).into()
-}
-
-fn ensure_no_args(attr: &Attribute) -> syn::Result<&Path> {
-    attr.meta.require_path_only()
+    upgradable::upgradable(&input)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into()
 }
 
 /// Implements the Event trait for a Stellar contract event.
@@ -295,12 +295,57 @@ pub fn derive_its_executable(input: TokenStream) -> TokenStream {
     its_executable::its_executable(name).into()
 }
 
-#[proc_macro_derive(AxelarExecutable)]
+/// Implements the Axelar Executable interface for a Soroban contract.
+///
+/// The concrete error type must be specified with `#[axelar_executable(error = ...)]`.
+/// It must match the contract's `CustomAxelarExecutable::Error` associated type and
+/// define a `NotApproved` variant used when the gateway has not approved the message.
+///
+/// # Example
+/// ```rust,ignore
+/// # mod test {
+/// # use stellar_axelar_std::{contract, contracterror, Address, Bytes, Env, String};
+/// use stellar_axelar_std_derive::AxelarExecutable;
+/// use stellar_axelar_gateway::executable::CustomAxelarExecutable;
+///
+/// #[contracterror]
+/// #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+/// #[repr(u32)]
+/// pub enum ContractError {
+///     NotApproved = 1,
+/// }
+///
+/// #[contract]
+/// #[derive(AxelarExecutable)]
+/// #[axelar_executable(error = ContractError)]
+/// pub struct Contract;
+///
+/// impl CustomAxelarExecutable for Contract {
+///     type Error = ContractError;
+///
+///     fn __gateway(env: &Env) -> Address {
+///         todo!()
+///     }
+///
+///     fn __execute(
+///         env: &Env,
+///         source_chain: String,
+///         message_id: String,
+///         source_address: String,
+///         payload: Bytes,
+///     ) -> Result<(), Self::Error> {
+///         Ok(())
+///     }
+/// }
+/// # }
+/// ```
+#[proc_macro_derive(AxelarExecutable, attributes(axelar_executable))]
 pub fn derive_axelar_executable(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let name = &input.ident;
 
-    axelar_executable::axelar_executable(name).into()
+    axelar_executable::axelar_executable(&input)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into()
 }
 
 /// Ensures that only a contract's owner can execute the attributed function.
@@ -431,14 +476,4 @@ pub fn contractstorage(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as DeriveInput);
 
     contractstorage::contract_storage(&input).into()
-}
-
-trait MapTranspose<T> {
-    fn map_transpose<U, E, F: FnOnce(T) -> Result<U, E>>(self, f: F) -> Result<Option<U>, E>;
-}
-
-impl<T> MapTranspose<T> for Option<T> {
-    fn map_transpose<U, E, F: FnOnce(T) -> Result<U, E>>(self, f: F) -> Result<Option<U>, E> {
-        self.map(f).transpose()
-    }
 }

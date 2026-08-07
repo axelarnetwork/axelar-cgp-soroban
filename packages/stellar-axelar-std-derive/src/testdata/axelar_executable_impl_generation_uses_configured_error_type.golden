@@ -1,0 +1,26 @@
+use stellar_axelar_gateway::executable::AxelarExecutableInterface as _;
+impl stellar_axelar_gateway::executable::DeriveOnly for Contract {}
+#[stellar_axelar_std::contractimpl]
+impl AxelarExecutableInterface for Contract {
+    #[allow_during_migration]
+    fn gateway(env: &Env) -> Address {
+        Self::__gateway(env)
+    }
+    fn execute(
+        env: &Env,
+        source_chain: String,
+        message_id: String,
+        source_address: String,
+        payload: Bytes,
+    ) -> Result<(), ContractError> {
+        stellar_axelar_gateway::executable::validate_message::<
+            Self,
+        >(env, &source_chain, &message_id, &source_address, &payload)
+            .map_err(|err| match err {
+                stellar_axelar_gateway::executable::ValidationError::NotApproved => {
+                    ContractError::NotApproved
+                }
+            })?;
+        Self::__execute(env, source_chain, message_id, source_address, payload)
+    }
+}
