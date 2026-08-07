@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.2](https://github.com/axelarnetwork/axelar-amplifier-stellar/compare/stellar-interchain-token-service-v2.1.1...stellar-interchain-token-service-v2.1.2)
+
+### 🐛 Bug Fixes
+
+- *(axelar-std-derive)* Avoid internal aliases in contract specs ([#387](https://github.com/axelarnetwork/axelar-amplifier-stellar/pull/387)) - ([1c9026f](https://github.com/axelarnetwork/axelar-amplifier-stellar/commit/1c9026f47a823cd5937b92a04cf3e5b5e06f1238))
+
+### ◀️ Revert
+
+- Migration from #384 ([#389](https://github.com/axelarnetwork/axelar-amplifier-stellar/pull/389)) - ([29c1962](https://github.com/axelarnetwork/axelar-amplifier-stellar/commit/29c1962daeb218947064f017d1dcc11dcafe6006))
+
+### Contributors
+
+* @rista404
+* @MakisChristou
+
 ## [2.1.1](https://github.com/axelarnetwork/axelar-amplifier-stellar/compare/stellar-interchain-token-service-v2.1.0...stellar-interchain-token-service-v2.1.1)
 
 ### ⚙️ Miscellaneous Tasks

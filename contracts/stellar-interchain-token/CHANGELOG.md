@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.2](https://github.com/axelarnetwork/axelar-amplifier-stellar/compare/stellar-interchain-token-v2.0.1...stellar-interchain-token-v2.0.2)
+
+### ⚙️ Miscellaneous Tasks
+
+- Update Cargo.toml dependencies - ([0000000](https://github.com/axelarnetwork/axelar-amplifier-stellar/commit/0000000))
+
 ## [2.0.1](https://github.com/axelarnetwork/axelar-amplifier-stellar/compare/stellar-interchain-token-v2.0.0...stellar-interchain-token-v2.0.1)
 
 ### ⚙️ Miscellaneous Tasks

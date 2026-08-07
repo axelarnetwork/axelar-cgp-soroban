@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.11](https://github.com/axelarnetwork/axelar-amplifier-stellar/compare/stellar-axelar-example-v1.0.10...stellar-axelar-example-v1.0.11)
+
+### 🐛 Bug Fixes
+
+- *(axelar-std-derive)* Avoid internal aliases in contract specs ([#387](https://github.com/axelarnetwork/axelar-amplifier-stellar/pull/387)) - ([1c9026f](https://github.com/axelarnetwork/axelar-amplifier-stellar/commit/1c9026f47a823cd5937b92a04cf3e5b5e06f1238))
+
+### Contributors
+
+* @rista404
+
 ## [1.0.10](https://github.com/axelarnetwork/axelar-amplifier-stellar/compare/stellar-axelar-example-v1.0.9...stellar-axelar-example-v1.0.10)
 
 ### ⚙️ Miscellaneous Tasks
