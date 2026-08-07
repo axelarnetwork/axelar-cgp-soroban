@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.2](https://github.com/axelarnetwork/axelar-amplifier-stellar/compare/stellar-axelar-std-v2.0.1...stellar-axelar-std-v2.0.2)
+
+### 🐛 Bug Fixes
+
+- *(axelar-std-derive)* Avoid internal aliases in contract specs ([#387](https://github.com/axelarnetwork/axelar-amplifier-stellar/pull/387)) - ([1c9026f](https://github.com/axelarnetwork/axelar-amplifier-stellar/commit/1c9026f47a823cd5937b92a04cf3e5b5e06f1238))
+
+### ⚙️ Miscellaneous Tasks
+
+- Bump rust toolchain to 1.93 ([#386](https://github.com/axelarnetwork/axelar-amplifier-stellar/pull/386)) - ([8af0fd7](https://github.com/axelarnetwork/axelar-amplifier-stellar/commit/8af0fd7a700486040c41cb09db0f134be0caab3e))
+
+### Contributors
+
+* @rista404
+
 ## [2.0.1](https://github.com/axelarnetwork/axelar-amplifier-stellar/compare/stellar-axelar-std-v2.0.0...stellar-axelar-std-v2.0.1)
 
 ### ⚙️ Miscellaneous Tasks

@@ -1,6 +1,6 @@
 [package]
 name = "stellar-multicall"
-version = "1.0.4"
+version = "1.0.5"
 edition = { workspace = true }
 description = "Multicall contract, responsible for executing multiple contract calls in a single transaction."
 license = { workspace = true }
