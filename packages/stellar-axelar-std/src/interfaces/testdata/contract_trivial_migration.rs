@@ -1,6 +1,5 @@
 use core::convert::Infallible;
 
-use stellar_axelar_std::testutils::arbitrary::std;
 use stellar_axelar_std::{
     contract, contracterror, contracttype, vec, Address, BytesN, Env, String, Vec,
 };
