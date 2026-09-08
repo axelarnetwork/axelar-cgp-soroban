@@ -12,6 +12,7 @@ use stellar_axelar_std::{
     when_not_paused, Address, AxelarExecutable, Bytes, BytesN, Env, IntoVal, Operatable, Ownable,
     Pausable, String, Symbol, Upgradable, Val,
 };
+use stellar_interchain_token::InterchainTokenClient;
 use stellar_token_manager::TokenManagerClient;
 use token_id::UnregisteredTokenId;
 
@@ -914,12 +915,23 @@ impl InterchainTokenService {
             },
         );
 
-        token_handler::post_token_manager_deploy(
-            env,
-            token_manager_type,
-            token_manager.clone(),
-            token_address,
-        );
+        // A native interchain token is the only type that needs post-deployment setup: the token
+        // manager has to be added as an additional minter so it can mint on inbound transfers.
+        //
+        // The other types need none, because:
+        // - MintBurnFrom: the user adds the token manager as a minter on their own token.
+        // - LockUnlock: Stellar's account abstraction lets the token manager transfer directly,
+        //   so no ERC20-like approval is required.
+        // - MintBurn: the user grants mint permission themselves — setting the token manager as
+        //   admin for a Stellar Classic Asset, or adding it as a minter for a custom token.
+        if token_manager_type == TokenManagerType::NativeInterchainToken {
+            let interchain_token_client = InterchainTokenClient::new(env, &token_address);
+            // The caller can pass the deterministic token manager address as the token's `minter`,
+            // in which case the constructor already added it. Check first to avoid MinterAlreadyExists.
+            if !interchain_token_client.is_minter(&token_manager) {
+                interchain_token_client.add_minter(&token_manager);
+            }
+        }
 
         token_manager
     }
