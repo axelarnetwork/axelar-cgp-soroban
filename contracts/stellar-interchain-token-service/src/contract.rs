@@ -853,6 +853,14 @@ impl InterchainTokenService {
             params,
         }: LinkToken,
     ) -> Result<(), ContractError> {
+        // Custom token managers can't be deployed with native interchain token type, which is reserved for interchain tokens.
+        // This mirrors the guard in `link_token`; the ABI decode already rejects the native type,
+        // so this makes the invariant hold locally regardless of the decode layer.
+        ensure!(
+            token_manager_type != TokenManagerType::NativeInterchainToken,
+            ContractError::InvalidTokenManagerType
+        );
+
         let token_address = Address::from_string_bytes(&destination_token_address);
 
         // Validates the token address and its associated token metadata
