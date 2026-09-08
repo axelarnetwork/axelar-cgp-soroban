@@ -41,4 +41,6 @@ pub enum ContractError {
     NotApprovedFlowLimiter = 39,
     AlreadyPaused = 40,
     NotPaused = 41,
+    NotMinter = 42,
+    MinterAlreadyExists = 43,
 }

@@ -14,6 +14,7 @@ mod register_canonical_token;
 mod register_custom_token;
 mod register_token_metadata;
 mod token_id;
+mod transfer_mintership;
 mod transfer_token_admin;
 mod trusted_chain;
 mod utils;

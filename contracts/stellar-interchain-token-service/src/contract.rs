@@ -555,6 +555,46 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
 
         Ok(())
     }
+
+    #[when_not_paused]
+    fn transfer_mintership(
+        env: &Env,
+        token_id: BytesN<32>,
+        minter: Address,
+        new_minter: Address,
+    ) -> Result<(), ContractError> {
+        minter.require_auth();
+
+        let TokenIdConfigValue {
+            token_address,
+            token_manager_type,
+            ..
+        } = Self::token_id_config(env, token_id)?;
+
+        // Only tokens deployed by this contract are owned by it, so they are the only ones whose
+        // minters it can manage. Other types are owned externally.
+        ensure!(
+            token_manager_type == TokenManagerType::NativeInterchainToken,
+            ContractError::InvalidTokenManagerType
+        );
+
+        let token = InterchainTokenClient::new(env, &token_address);
+
+        // `minter.require_auth()` above proves the caller controls `minter`, not that `minter`
+        // holds the minter role. That is checked here.
+        ensure!(token.is_minter(&minter), ContractError::NotMinter);
+        ensure!(
+            !token.is_minter(&new_minter),
+            ContractError::MinterAlreadyExists
+        );
+
+        // Both token entrypoints are owner-gated, and this contract is the owner, so its
+        // authorization is satisfied as the direct invoker.
+        token.remove_minter(&minter);
+        token.add_minter(&new_minter);
+
+        Ok(())
+    }
 }
 
 impl InterchainTokenService {

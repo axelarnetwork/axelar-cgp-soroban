@@ -455,4 +455,32 @@ pub trait InterchainTokenServiceInterface:
         token_id: BytesN<32>,
         new_admin: Address,
     ) -> Result<(), ContractError>;
+
+    /// Transfers the minter role of the native interchain token registered under the `token_id`
+    /// from `minter` to `new_minter`.
+    ///
+    /// Only applies to tokens deployed by this contract: it is the owner of those tokens and so
+    /// the only address that can manage their minters. Tokens registered as canonical, linked or
+    /// custom are owned externally and must have their minters managed directly on the token.
+    ///
+    /// # Arguments
+    /// - `token_id`: The unique identifier of the registered token.
+    /// - `minter`: The current minter, giving up the role.
+    /// - `new_minter`: The address that will become the new minter.
+    ///
+    /// # Errors
+    /// - [`ContractError::InvalidTokenId`]: If no token is registered under `token_id`.
+    /// - [`ContractError::InvalidTokenManagerType`]: If the registered token was not deployed by
+    ///   this contract, i.e. its token manager type is not `NativeInterchainToken`.
+    /// - [`ContractError::NotMinter`]: If `minter` does not currently hold the minter role.
+    /// - [`ContractError::MinterAlreadyExists`]: If `new_minter` already holds the minter role.
+    ///
+    /// # Authorization
+    /// - The `minter` must authorize.
+    fn transfer_mintership(
+        env: &Env,
+        token_id: BytesN<32>,
+        minter: Address,
+        new_minter: Address,
+    ) -> Result<(), ContractError>;
 }
