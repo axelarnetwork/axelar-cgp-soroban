@@ -69,6 +69,36 @@ fn linked_token_deploy_salt(
         .into()
 }
 
+/// Computes the token ID of a linked (custom) token.
+///
+/// # Deviation from other chains
+///
+/// This derivation applies one hashing layer more than it should. After building the custom
+/// deploy salt, it routes that salt through [`interchain_token_id`], which re-hashes it with the
+/// `interchain-token-salt` prefix reserved for ITS-deployed interchain tokens, instead of hashing
+/// it directly into the final token ID via `token_id`:
+///
+/// ```text
+/// // Stellar:
+/// deploy_salt      = keccak256("custom-token-salt", chain_name_hash, deployer, salt)
+/// interchain_salt  = keccak256("interchain-token-salt", chain_name_hash, 0x0, deploy_salt) // extra layer
+/// linked_token_id  = keccak256("its-interchain-token-id", 0x0, interchain_salt)
+///
+/// // EVM, Solana, and `canonical_interchain_token_id` below:
+/// deploy_salt      = keccak256("custom-token-salt", chain_name_hash, deployer, salt)
+/// linked_token_id  = keccak256("its-interchain-token-id", 0x0, deploy_salt)
+/// ```
+///
+/// The extra wrapping was originally a mistake. It has no security impact: the derivation is
+/// internally consistent (all Stellar-originated links go through this function, and inbound links
+/// take the token ID from the message rather than recomputing it), and the resulting ID cannot
+/// clash with a native interchain token, since a collision would require `deployer ==
+/// Address::zero` at the `interchain-token-salt` layer and no caller can authenticate as the zero
+/// address.
+///
+/// It is intentionally kept for backward compatibility: the token ID is both a persistent storage
+/// key and a cross-chain identifier, and Stellar ITS is already live on mainnet, so changing it
+/// would orphan already-registered tokens and break counterparty chains and the ITS Hub.
 pub fn linked_token_id(
     env: &Env,
     chain_name_hash: BytesN<32>,
