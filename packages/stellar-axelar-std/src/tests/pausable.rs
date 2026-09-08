@@ -1,9 +1,17 @@
 use stellar_axelar_std::interfaces::PausableClient;
 use stellar_axelar_std::testutils::Address as _;
-use stellar_axelar_std::{assert_auth, contract, Address, Env};
+use stellar_axelar_std::{assert_auth, contract, contracterror, Address, Env};
 use stellar_axelar_std_derive::{contractimpl, Ownable, Pausable};
 
 use crate as stellar_axelar_std;
+
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(u32)]
+pub enum ContractError {
+    AlreadyPaused = 1,
+    NotPaused = 2,
+}
 
 #[contract]
 #[derive(Ownable, Pausable)]

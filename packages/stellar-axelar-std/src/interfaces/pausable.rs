@@ -1,6 +1,6 @@
 use core::fmt::Debug;
 
-use soroban_sdk::{contractclient, Env};
+use soroban_sdk::{assert_with_error, contractclient, Env};
 
 use crate as stellar_axelar_std;
 use crate::events::Event;
@@ -25,8 +25,14 @@ pub fn paused(env: &Env) -> bool {
 }
 
 /// Default implementation of the [`PausableInterface`] trait.
-pub fn pause<T: PausableInterface>(env: &Env) {
+///
+/// Panics with `already_paused` if the contract is already paused, so that a redundant call
+/// surfaces the likely configuration mistake instead of re-emitting a [`PausedEvent`] that
+/// reflects no state change.
+pub fn pause<T: PausableInterface, E: Into<soroban_sdk::Error>>(env: &Env, already_paused: E) {
     T::owner(env).require_auth();
+
+    assert_with_error!(env, !paused(env), already_paused);
 
     storage::pausable::set_interfaces_paused_status(env);
 
@@ -34,8 +40,14 @@ pub fn pause<T: PausableInterface>(env: &Env) {
 }
 
 /// Default implementation of the [`PausableInterface`] trait.
-pub fn unpause<T: PausableInterface>(env: &Env) {
+///
+/// Panics with `not_paused` if the contract is not currently paused, so that a redundant call
+/// surfaces the likely configuration mistake instead of re-emitting an [`UnpausedEvent`] that
+/// reflects no state change.
+pub fn unpause<T: PausableInterface, E: Into<soroban_sdk::Error>>(env: &Env, not_paused: E) {
     T::owner(env).require_auth();
+
+    assert_with_error!(env, paused(env), not_paused);
 
     storage::pausable::remove_interfaces_paused_status(env);
 
@@ -50,6 +62,7 @@ pub struct UnpausedEvent {}
 
 #[cfg(test)]
 mod test {
+    use soroban_sdk::Error;
     use stellar_axelar_std::testutils::Address as _;
     use stellar_axelar_std::{contract, contracterror, Address, Env};
     use stellar_axelar_std_derive::contractimpl;
@@ -65,6 +78,8 @@ mod test {
     pub enum ContractError {
         ContractPaused = 1,
         MigrationInProgress = 2,
+        AlreadyPaused = 3,
+        NotPaused = 4,
     }
 
     #[contract]
@@ -84,11 +99,11 @@ mod test {
         }
 
         fn pause(env: &Env) {
-            super::pause::<Self>(env)
+            super::pause::<Self, _>(env, ContractError::AlreadyPaused)
         }
 
         fn unpause(env: &Env) {
-            super::unpause::<Self>(env)
+            super::unpause::<Self, _>(env, ContractError::NotPaused)
         }
     }
 
@@ -138,11 +153,16 @@ mod test {
     }
 
     #[test]
-    fn pause_succeeds_when_already_paused() {
+    fn pause_fails_when_already_paused() {
         let (_, client) = setup();
 
         assert_auth!(client.owner(), client.pause());
-        assert_auth!(client.owner(), client.pause());
+        assert!(client.paused());
+
+        assert_contract_err!(
+            client.mock_all_auths().try_pause(),
+            Error::from(ContractError::AlreadyPaused)
+        );
         assert!(client.paused());
     }
 
@@ -170,7 +190,12 @@ mod test {
     fn unpause_fails_when_not_paused() {
         let (_, client) = setup();
 
-        assert_auth!(client.owner(), client.unpause());
+        assert!(!client.paused());
+
+        assert_contract_err!(
+            client.mock_all_auths().try_unpause(),
+            Error::from(ContractError::NotPaused)
+        );
         assert!(!client.paused());
     }
 
