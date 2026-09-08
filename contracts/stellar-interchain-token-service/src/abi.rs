@@ -144,7 +144,7 @@ impl Message {
                         env,
                         decoded.destinationAddress.as_ref(),
                     ),
-                    amount: to_i128(decoded.amount)?,
+                    amount: try_to_i128(decoded.amount)?,
                     data: from_vec(env, decoded.data.as_ref()),
                 }))
             }
@@ -277,7 +277,13 @@ fn to_std_string(soroban_string: String) -> Result<StdString, ContractError> {
     StdString::from_utf8(bytes).map_err(|_| ContractError::InvalidUtf8)
 }
 
-fn to_i128(value: Uint<256, 4>) -> Result<i128, ContractError> {
+/// Checked conversion of an ABI `uint256` to `i128`, erroring if the value exceeds `i128::MAX`.
+///
+/// The input is unsigned, so it can never be negative. The `i128_value >= 0` check below is
+/// therefore an overflow guard, not a sign check: together with the upper-128-bits check it
+/// enforces `0 <= value <= i128::MAX`. A value whose low 128 bits look negative when read as an
+/// `i128` is really a value in `[2^127, 2^128)`, i.e. too large rather than negative.
+fn try_to_i128(value: Uint<256, 4>) -> Result<i128, ContractError> {
     let slice = value.as_le_slice();
 
     let mut bytes_to_remove = [0; 16];
@@ -402,15 +408,15 @@ mod tests {
     fn uint256_to_i128() {
         let uint_i128_max: Uint<256, 4> = i128::MAX.try_into().unwrap();
 
-        assert_eq!(to_i128(uint_i128_max).unwrap(), i128::MAX);
+        assert_eq!(try_to_i128(uint_i128_max).unwrap(), i128::MAX);
 
         let uint_min: Uint<256, 4> = Uint::MIN;
 
-        assert_eq!(to_i128(uint_min).unwrap(), 0);
+        assert_eq!(try_to_i128(uint_min).unwrap(), 0);
     }
 
     #[test]
-    fn to_i128_fails_dirty_bytes() {
+    fn try_to_i128_fails_dirty_bytes() {
         let uint_min: Uint<256, 4> = Uint::from(1);
         let bytes: [u8; 32] = uint_min.to_le_bytes();
         assert_eq!(
@@ -427,19 +433,19 @@ mod tests {
         ];
         let bad_uint = U256::from_le_bytes(bad_bytes);
 
-        let result = to_i128(bad_uint);
+        let result = try_to_i128(bad_uint);
 
         assert!(matches!(result, Err(ContractError::InvalidAmount)));
     }
 
     #[test]
-    fn to_i128_fails_overflow() {
+    fn try_to_i128_fails_overflow() {
         let overflow: Uint<256, 4> = Uint::from(i128::MAX) + Uint::from(1);
-        let result = to_i128(overflow);
+        let result = try_to_i128(overflow);
         assert!(matches!(result, Err(ContractError::InvalidAmount)));
 
         let overflow: Uint<256, 4> = Uint::from(u128::MAX);
-        let result = to_i128(overflow);
+        let result = try_to_i128(overflow);
         assert!(matches!(result, Err(ContractError::InvalidAmount)));
     }
 
