@@ -89,6 +89,15 @@ pub trait InterchainTokenServiceInterface:
 
     /// Returns the predicted address of the native interchain token associated with the specified token ID.
     ///
+    /// This is a pure, view-only address derivation: it reads no storage and does not check
+    /// whether a token is deployed at the returned address, or of which type the registered token
+    /// is. It is therefore only meaningful for tokens deployed by this contract.
+    ///
+    /// For a token that ITS did not deploy (a canonical, linked or custom token), the returned
+    /// address is **not** the token's address — it is the address at which ITS *would* have
+    /// deployed a native interchain token for this token ID. The real token exists independently
+    /// of ITS; use [`Self::registered_token_address`] to read the actual registered address.
+    ///
     /// # Arguments
     /// - `token_id`: The token ID for the interchain token.
     ///
