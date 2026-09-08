@@ -7,10 +7,8 @@ use stellar_axelar_std::interfaces::OwnershipTransferredEvent;
 use stellar_axelar_std::testutils::{Address as _, BytesN as _, Ledger};
 use stellar_axelar_std::{assert_auth, assert_auth_err, Address, BytesN, Env, IntoVal as _};
 
-use crate::event::{
-    ApproveEvent, BurnEvent, MintEvent, MinterAddedEvent, MinterRemovedEvent, SetAdminEvent,
-    TransferEvent,
-};
+use crate::event::{MinterAddedEvent, MinterRemovedEvent, SetAdminEvent};
+use crate::tests::event::{ApproveEvent, BurnEvent, MintEvent, TransferEvent};
 use crate::{InterchainToken, InterchainTokenClient};
 
 fn setup_token_metadata(env: &Env, name: &str, symbol: &str, decimal: u32) -> TokenMetadata {
