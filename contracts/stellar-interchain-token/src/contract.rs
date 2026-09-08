@@ -61,7 +61,10 @@ impl OwnableInterface for InterchainToken {
     }
 }
 
-// Note: Some methods below are intentionally unimplemented as they are not supported by this token
+// Note: Some methods below are intentionally unimplemented as they are not supported by this token.
+// Those are the admin mutations `set_authorized` and `clawback` — freezing an account and
+// confiscating a balance are capabilities this token deliberately does not have, so panicking
+// correctly signals "not supported". Read-only queries do not panic: they have a truthful answer.
 #[contractimpl]
 impl StellarAssetInterface for InterchainToken {
     fn allowance(env: Env, from: Address, spender: Address) -> i128 {
@@ -164,8 +167,13 @@ impl StellarAssetInterface for InterchainToken {
         unimplemented!()
     }
 
+    /// This token has no authorization mechanism — there is no `set_authorized` and no
+    /// `clawback`, so every holder is always authorized and `true` is the truthful answer for any
+    /// address. Returning it instead of panicking lets a contract integrating this token treat it
+    /// like a Stellar Asset Contract and check `authorized` before interacting, the same way it
+    /// would for native XLM or any SAC without the `AUTH_REQUIRED` flag.
     fn authorized(_env: Env, _id: Address) -> bool {
-        unimplemented!()
+        true
     }
 
     fn mint(env: Env, to: Address, amount: i128) {
