@@ -61,7 +61,12 @@ pub fn token_metadata(
         .map_err(|_| ContractError::TokenInvocationError)?;
 
     if token_address == native_token_address {
-        // Stellar's native token sets the name and symbol to 'native'. Override it to make it more readable
+        // Stellar's native token SAC reports both its name and symbol as the literal 'native',
+        // which is ambiguous in a cross-chain context where it could refer to any chain's native
+        // asset. Override them so the token has an unambiguous identity when represented on
+        // remote chains. This is a deliberate divergence from the SAC's on-chain metadata; only
+        // `decimals` is read from the SAC. Returning early also avoids the `name()`/`symbol()`
+        // cross-contract calls below, whose results would be discarded anyway.
         let name = String::from_str(env, NATIVE_TOKEN_NAME);
         let symbol = String::from_str(env, NATIVE_TOKEN_SYMBOL);
 
