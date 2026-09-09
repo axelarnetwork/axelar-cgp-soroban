@@ -545,6 +545,81 @@ fn execute_fails_with_invalid_amount() {
 }
 
 #[test]
+fn deploy_interchain_token_message_execute_normalizes_token_metadata() {
+    // Metadata that a remote chain can legitimately produce but Stellar used to reject outright,
+    // making the token permanently un-onboardable. Each case must now deploy, with the name and
+    // symbol normalized to the expected value.
+    let long_name = "A".repeat(40);
+    let long_symbol = "S".repeat(40);
+    let multi_byte_name = "界".repeat(11); // 33 bytes: one byte over the 32-byte limit
+
+    let cases = [
+        // over-long ASCII: truncated to 32 bytes
+        (
+            long_name.as_str(),
+            long_symbol.as_str(),
+            "A".repeat(32),
+            "S".repeat(32),
+        ),
+        // non-ASCII within the limit: preserved exactly
+        ("世界コイン", "世界", "世界コイン".into(), "世界".into()),
+        // over-long multi-byte: cut at a character boundary, so 10 chars / 30 bytes
+        (
+            multi_byte_name.as_str(),
+            "TST",
+            "界".repeat(10),
+            "TST".into(),
+        ),
+    ];
+
+    for (i, (name, symbol, expected_name, expected_symbol)) in cases.into_iter().enumerate() {
+        let (env, client, gateway_client, _, signers) = setup_env();
+
+        let source_chain = client.its_hub_chain_name();
+        let source_address = client.its_hub_address();
+        let original_source_chain = String::from_str(&env, "ethereum");
+        let message_id = String::from_str(&env, "message_id");
+
+        client
+            .mock_all_auths()
+            .set_trusted_chain(&original_source_chain);
+
+        let token_id = BytesN::from_array(&env, &[i as u8; 32]);
+        let msg = HubMessage::ReceiveFromHub {
+            source_chain: original_source_chain.clone(),
+            message: Message::DeployInterchainToken(DeployInterchainToken {
+                token_id: token_id.clone(),
+                name: String::from_str(&env, name),
+                symbol: String::from_str(&env, symbol),
+                decimals: 6,
+                minter: None,
+            }),
+        };
+        let payload = msg.abi_encode(&env).unwrap();
+        let payload_hash: BytesN<32> = env.crypto().keccak256(&payload).into();
+
+        let messages = vec![
+            &env,
+            GatewayMessage {
+                source_chain: source_chain.clone(),
+                message_id: message_id.clone(),
+                source_address: source_address.clone(),
+                contract_address: client.address.clone(),
+                payload_hash: payload_hash.clone(),
+            },
+        ];
+
+        approve_gateway_messages(&env, &gateway_client, signers, messages);
+
+        client.execute(&source_chain, &message_id, &source_address, &payload);
+
+        let token = TokenClient::new(&env, &client.registered_token_address(&token_id));
+        assert_eq!(token.name(), String::from_str(&env, &expected_name));
+        assert_eq!(token.symbol(), String::from_str(&env, &expected_symbol));
+    }
+}
+
+#[test]
 fn deploy_interchain_token_message_execute_fails_invalid_token_metadata() {
     let env = Env::default();
 
@@ -554,15 +629,7 @@ fn deploy_interchain_token_message_execute_fails_invalid_token_metadata() {
             ContractError::InvalidTokenName,
         ),
         (
-            TokenMetadata::new(&env, "A".repeat(33).as_str(), "symbol", 6),
-            ContractError::InvalidTokenName,
-        ),
-        (
             TokenMetadata::new(&env, "name", "", 6),
-            ContractError::InvalidTokenSymbol,
-        ),
-        (
-            TokenMetadata::new(&env, "name", "A".repeat(33).as_str(), 6),
             ContractError::InvalidTokenSymbol,
         ),
     ];

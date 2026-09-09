@@ -152,11 +152,21 @@ struct EventFields<'a> {
 
 impl<'a> EventFields<'a> {
     fn add_field(&mut self, ident: &'a Ident, ty: &'a Type, field: &syn::Field) {
-        match field
+        let mut markers = field
             .attrs
             .iter()
-            .find(|attr| attr.path().is_ident("data") || attr.path().is_ident("datum"))
-        {
+            .filter(|attr| attr.path().is_ident("data") || attr.path().is_ident("datum"));
+
+        let marker = markers.next();
+
+        if markers.next().is_some() {
+            panic!(
+                "field `{ident}` carries more than one #[data]/#[datum] attribute; \
+                 only the first would be honored"
+            );
+        }
+
+        match marker {
             /* datum */
             Some(attr) if attr.path().is_ident("datum") => {
                 if self.has_datum {
@@ -185,6 +195,10 @@ fn event_struct_fields(input: &DeriveInput) -> EventFields<'_> {
         panic!("IntoEvent can only be derived for structs");
     };
 
+    if matches!(data_struct.fields, syn::Fields::Unnamed(_)) {
+        panic!("IntoEvent requires named fields; tuple struct fields cannot be emitted");
+    }
+
     let mut fields = EventFields {
         topics: (Vec::new(), Vec::new()),
         data: (Vec::new(), Vec::new()),
@@ -192,10 +206,89 @@ fn event_struct_fields(input: &DeriveInput) -> EventFields<'_> {
     };
 
     for field in data_struct.fields.iter() {
-        if let Some(ident) = field.ident.as_ref() {
-            fields.add_field(ident, &field.ty, field);
-        }
+        let ident = field
+            .ident
+            .as_ref()
+            .expect("named fields are enforced above");
+        fields.add_field(ident, &field.ty, field);
+    }
+
+    // `emit` publishes only `data.get(0)` when a #[datum] is present, so any other data field
+    // would be silently dropped from the event.
+    if fields.has_datum && fields.data.0.len() > 1 {
+        panic!(
+            "#[datum] cannot be combined with other #[data] fields; use #[data] for all of them"
+        );
     }
 
     fields
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    #[should_panic(expected = "IntoEvent can only be derived for structs")]
+    fn non_struct_fails() {
+        let input: syn::DeriveInput = syn::parse_quote! {
+            enum NotAStructEvent {
+                Variant,
+            }
+        };
+
+        crate::into_event::into_event(&input);
+    }
+
+    #[test]
+    #[should_panic(expected = "IntoEvent requires named fields")]
+    fn tuple_struct_fails() {
+        let input: syn::DeriveInput = syn::parse_quote! {
+            struct TupleEvent(u32, u32);
+        };
+
+        crate::into_event::into_event(&input);
+    }
+
+    #[test]
+    #[should_panic(expected = "carries more than one #[data]/#[datum] attribute")]
+    fn field_with_both_data_and_datum_fails() {
+        let input: syn::DeriveInput = syn::parse_quote! {
+            struct AmbiguousEvent {
+                #[data]
+                #[datum]
+                amount: i128,
+            }
+        };
+
+        crate::into_event::into_event(&input);
+    }
+
+    #[test]
+    #[should_panic(expected = "Only one field can have the #[datum] attribute")]
+    fn multiple_datum_fields_fail() {
+        let input: syn::DeriveInput = syn::parse_quote! {
+            struct TwoDatumEvent {
+                #[datum]
+                amount: i128,
+                #[datum]
+                fee: i128,
+            }
+        };
+
+        crate::into_event::into_event(&input);
+    }
+
+    #[test]
+    #[should_panic(expected = "#[datum] cannot be combined with other #[data] fields")]
+    fn datum_combined_with_data_fails() {
+        let input: syn::DeriveInput = syn::parse_quote! {
+            struct MixedEvent {
+                #[datum]
+                amount: i128,
+                #[data]
+                fee: i128,
+            }
+        };
+
+        crate::into_event::into_event(&input);
+    }
 }

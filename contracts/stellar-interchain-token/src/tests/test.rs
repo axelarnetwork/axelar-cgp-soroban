@@ -7,10 +7,8 @@ use stellar_axelar_std::interfaces::OwnershipTransferredEvent;
 use stellar_axelar_std::testutils::{Address as _, BytesN as _, Ledger};
 use stellar_axelar_std::{assert_auth, assert_auth_err, Address, BytesN, Env, IntoVal as _};
 
-use crate::event::{
-    ApproveEvent, BurnEvent, MintEvent, MinterAddedEvent, MinterRemovedEvent, SetAdminEvent,
-    TransferEvent,
-};
+use crate::event::{MinterAddedEvent, MinterRemovedEvent, SetAdminEvent};
+use crate::tests::event::{ApproveEvent, BurnEvent, MintEvent, TransferEvent};
 use crate::{InterchainToken, InterchainTokenClient};
 
 fn setup_token_metadata(env: &Env, name: &str, symbol: &str, decimal: u32) -> TokenMetadata {
@@ -617,13 +615,14 @@ fn set_authorized_fails() {
 }
 
 #[test]
-#[should_panic(expected = "not implemented")]
-fn authorized_fails() {
+fn authorized_returns_true_for_any_address() {
     let env = Env::default();
+    let (token, minter) = setup_token(&env);
 
-    let (token, _) = setup_token(&env);
-
-    token.authorized(&token.owner());
+    // The token has no authorization mechanism, so every address is authorized — including one
+    // that holds no balance and has never interacted with the token.
+    assert!(token.authorized(&minter));
+    assert!(token.authorized(&Address::generate(&env)));
 }
 
 #[test]

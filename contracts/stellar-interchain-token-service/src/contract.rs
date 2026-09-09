@@ -12,6 +12,7 @@ use stellar_axelar_std::{
     when_not_paused, Address, AxelarExecutable, Bytes, BytesN, Env, IntoVal, Operatable, Ownable,
     Pausable, String, Symbol, Upgradable, Val,
 };
+use stellar_interchain_token::InterchainTokenClient;
 use stellar_token_manager::TokenManagerClient;
 use token_id::UnregisteredTokenId;
 
@@ -554,6 +555,46 @@ impl InterchainTokenServiceInterface for InterchainTokenService {
 
         Ok(())
     }
+
+    #[when_not_paused]
+    fn transfer_mintership(
+        env: &Env,
+        token_id: BytesN<32>,
+        minter: Address,
+        new_minter: Address,
+    ) -> Result<(), ContractError> {
+        minter.require_auth();
+
+        let TokenIdConfigValue {
+            token_address,
+            token_manager_type,
+            ..
+        } = Self::token_id_config(env, token_id)?;
+
+        // Only tokens deployed by this contract are owned by it, so they are the only ones whose
+        // minters it can manage. Other types are owned externally.
+        ensure!(
+            token_manager_type == TokenManagerType::NativeInterchainToken,
+            ContractError::InvalidTokenManagerType
+        );
+
+        let token = InterchainTokenClient::new(env, &token_address);
+
+        // `minter.require_auth()` above proves the caller controls `minter`, not that `minter`
+        // holds the minter role. That is checked here.
+        ensure!(token.is_minter(&minter), ContractError::NotMinter);
+        ensure!(
+            !token.is_minter(&new_minter),
+            ContractError::MinterAlreadyExists
+        );
+
+        // Both token entrypoints are owner-gated, and this contract is the owner, so its
+        // authorization is satisfied as the direct invoker.
+        token.remove_minter(&minter);
+        token.add_minter(&new_minter);
+
+        Ok(())
+    }
 }
 
 impl InterchainTokenService {
@@ -831,7 +872,7 @@ impl InterchainTokenService {
             minter,
         }: DeployInterchainToken,
     ) -> Result<(), ContractError> {
-        let token_metadata = TokenMetadata::new(name, symbol, decimals as u32)?;
+        let token_metadata = TokenMetadata::new_normalized(env, name, symbol, decimals as u32)?;
 
         // Note: attempt to convert a byte string which doesn't represent a valid Soroban address fails at the Host level
         let minter = minter.map(|m| Address::from_string_bytes(&m));
@@ -853,6 +894,14 @@ impl InterchainTokenService {
             params,
         }: LinkToken,
     ) -> Result<(), ContractError> {
+        // Custom token managers can't be deployed with native interchain token type, which is reserved for interchain tokens.
+        // This mirrors the guard in `link_token`; the ABI decode already rejects the native type,
+        // so this makes the invariant hold locally regardless of the decode layer.
+        ensure!(
+            token_manager_type != TokenManagerType::NativeInterchainToken,
+            ContractError::InvalidTokenManagerType
+        );
+
         let token_address = Address::from_string_bytes(&destination_token_address);
 
         // Validates the token address and its associated token metadata
@@ -906,12 +955,23 @@ impl InterchainTokenService {
             },
         );
 
-        token_handler::post_token_manager_deploy(
-            env,
-            token_manager_type,
-            token_manager.clone(),
-            token_address,
-        );
+        // A native interchain token is the only type that needs post-deployment setup: the token
+        // manager has to be added as an additional minter so it can mint on inbound transfers.
+        //
+        // The other types need none, because:
+        // - MintBurnFrom: the user adds the token manager as a minter on their own token.
+        // - LockUnlock: Stellar's account abstraction lets the token manager transfer directly,
+        //   so no ERC20-like approval is required.
+        // - MintBurn: the user grants mint permission themselves — setting the token manager as
+        //   admin for a Stellar Classic Asset, or adding it as a minter for a custom token.
+        if token_manager_type == TokenManagerType::NativeInterchainToken {
+            let interchain_token_client = InterchainTokenClient::new(env, &token_address);
+            // The caller can pass the deterministic token manager address as the token's `minter`,
+            // in which case the constructor already added it. Check first to avoid MinterAlreadyExists.
+            if !interchain_token_client.is_minter(&token_manager) {
+                interchain_token_client.add_minter(&token_manager);
+            }
+        }
 
         token_manager
     }

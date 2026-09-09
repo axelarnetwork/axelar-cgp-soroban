@@ -243,6 +243,16 @@ pub fn derive_upgradable(input: TokenStream) -> TokenStream {
 /// Fields without a `#[data]` attribute are used as topics, while fields with `#[data]` are used as event data.
 /// The event name can be specified with `#[event_name(...)]` or will default to the struct name in snake_case (minus "Event" suffix).
 ///
+/// # Data payload encoding
+///
+/// `#[data]` publishes the data payload as a `Vec<Val>`, even when there is only one such field.
+/// `#[datum]` publishes a single field as a bare `Val` instead of a one-element `Vec`. Pick one
+/// encoding per event; the derive rejects at compile time:
+/// - a tuple struct, since unnamed fields cannot be emitted;
+/// - a field carrying more than one `#[data]`/`#[datum]` attribute;
+/// - more than one `#[datum]` field, or a `#[datum]` combined with any `#[data]` field, since only
+///   the first data field would be published.
+///
 /// # Example
 /// ```rust,ignore
 /// # mod test {

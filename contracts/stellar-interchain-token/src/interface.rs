@@ -43,10 +43,10 @@ pub trait InterchainTokenInterface:
     /// - [`OwnableInterface::owner`] must authorize.
     fn add_minter(env: &Env, minter: Address);
 
-    /// Removes a new minter from the Interchain Token contract.
+    /// Removes an existing minter from the Interchain Token contract.
     ///
     /// # Arguments
-    /// * `minter` - The address to be added as a minter.
+    /// * `minter` - The address to be removed as a minter.
     ///
     /// # Authorization
     /// - [`OwnableInterface::owner`] must authorize.

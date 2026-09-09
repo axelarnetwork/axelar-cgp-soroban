@@ -347,6 +347,26 @@ fn flow_limit_resets_after_epoch() {
 }
 
 #[test]
+fn flow_persists_within_epoch_past_default_temporary_ttl() {
+    let (env, client, gateway, token) = setup();
+
+    let amount = dummy_flow_limit();
+
+    execute_its_transfer(&env, &client, &gateway, &token.id, amount);
+
+    assert_eq!(client.flow_in_amount(&token.id), amount);
+
+    // Advance far past the network's default minimum temporary-storage TTL while staying inside
+    // the same epoch. Without an explicit TTL on the flow entry it would be evicted here and read
+    // back as 0, resetting the accumulated flow mid-epoch.
+    let ttl_default = env.ledger().get().min_temp_entry_ttl;
+    env.ledger()
+        .set_sequence_number(env.ledger().sequence() + ttl_default + 1);
+
+    assert_eq!(client.flow_in_amount(&token.id), amount);
+}
+
+#[test]
 fn add_flow_succeeds() {
     let test_cases = std::vec![
         TestCase {

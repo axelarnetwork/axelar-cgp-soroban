@@ -19,13 +19,13 @@ pub fn contractimpl(impl_block: &mut ItemImpl) -> Result<proc_macro2::TokenStrea
         .filter_map(any_stateful_endpoints)
         .chunk_by(is_allowed_during_migration)
         .into_iter()
-        .try_for_each(|(is_allowed, mut method)| {
+        .try_for_each(|(is_allowed, mut methods)| {
             if is_allowed {
-                // if this the attribute is not removed, the compiler will try to resolve it,
+                // if the attribute is not removed, the compiler will try to resolve it,
                 // and it will need to be defined as a standalone attribute macro
-                method.for_each(remove_allow_during_migration_attribute);
+                methods.for_each(remove_allow_during_migration_attribute);
             } else {
-                method.try_for_each(block_during_migration)?
+                methods.try_for_each(block_during_migration)?
             }
             Ok::<_, syn::Error>(())
         })?;

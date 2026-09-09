@@ -247,7 +247,7 @@ fn interchain_transfer_send_fails_when_paused() {
 }
 
 #[test]
-#[should_panic(expected = "burn, Error(Contract, #6)")] // InvalidPayload
+#[should_panic(expected = "burn, Error(Contract, #6)")] // InterchainToken InsufficientBalance
 fn interchain_transfer_send_fails_on_insufficient_balance() {
     let (env, client, _, _, _) = setup_env();
     client

@@ -68,22 +68,35 @@ pub trait InterchainTokenServiceInterface:
     /// The salt is derived uniquely from the chain name hash and token address.
     ///
     /// # Parameters
-    /// - `token_address`: The address of the token for which the deployment salt is being generated.
+    /// - `token_address`: The address of the token for which the token id is being computed.
     ///
     /// # Returns
-    /// - A `BytesN<32>` value representing the computed deployment salt.
+    /// - A `BytesN<32>` value representing the token's unique ID.
     fn canonical_interchain_token_id(env: &Env, token_address: Address) -> BytesN<32>;
 
     /// Computes a 32-byte token id for a linked token.
     ///
-    /// The salt is derived uniquely from the chain name hash and token address.
+    /// The salt is derived uniquely from the chain name hash, the deployer's address and the
+    /// provided salt. It does not depend on the linked token's address.
     ///
     /// # Parameters
     /// - `deployer`: The address of the token deployer.
     /// - `salt`: A unique value used to generate the token ID.
+    ///
+    /// # Returns
+    /// - A `BytesN<32>` value representing the token's unique ID.
     fn linked_token_id(env: &Env, deployer: Address, salt: BytesN<32>) -> BytesN<32>;
 
     /// Returns the predicted address of the native interchain token associated with the specified token ID.
+    ///
+    /// This is a pure, view-only address derivation: it reads no storage and does not check
+    /// whether a token is deployed at the returned address, or of which type the registered token
+    /// is. It is therefore only meaningful for tokens deployed by this contract.
+    ///
+    /// For a token that ITS did not deploy (a canonical, linked or custom token), the returned
+    /// address is **not** the token's address — it is the address at which ITS *would* have
+    /// deployed a native interchain token for this token ID. The real token exists independently
+    /// of ITS; use [`Self::registered_token_address`] to read the actual registered address.
     ///
     /// # Arguments
     /// - `token_id`: The token ID for the interchain token.
@@ -213,7 +226,14 @@ pub trait InterchainTokenServiceInterface:
     /// - `Ok(BytesN<32>)`: Returns the token ID.
     ///
     /// # Errors
-    /// - [`ContractError::InvalidMinter`]: If the minter address is invalid.
+    /// - [`ContractError::InvalidInitialSupply`]: If `initial_supply` is negative.
+    /// - [`ContractError::InvalidTokenConfig`]: If `initial_supply` is 0 and no `minter` is set,
+    ///   which would leave the token permanently unmintable.
+    /// - [`ContractError::InvalidTokenDecimals`]: If the metadata decimals exceed the maximum.
+    /// - [`ContractError::InvalidTokenName`]: If the metadata name is empty, too long or non-ASCII.
+    /// - [`ContractError::InvalidTokenSymbol`]: If the metadata symbol is empty, too long or non-ASCII.
+    /// - [`ContractError::TokenAlreadyRegistered`]: If a token is already registered for the
+    ///   derived token ID.
     ///
     /// # Authorization
     /// - The `deployer` must authorize.
@@ -434,5 +454,33 @@ pub trait InterchainTokenServiceInterface:
         env: &Env,
         token_id: BytesN<32>,
         new_admin: Address,
+    ) -> Result<(), ContractError>;
+
+    /// Transfers the minter role of the native interchain token registered under the `token_id`
+    /// from `minter` to `new_minter`.
+    ///
+    /// Only applies to tokens deployed by this contract: it is the owner of those tokens and so
+    /// the only address that can manage their minters. Tokens registered as canonical, linked or
+    /// custom are owned externally and must have their minters managed directly on the token.
+    ///
+    /// # Arguments
+    /// - `token_id`: The unique identifier of the registered token.
+    /// - `minter`: The current minter, giving up the role.
+    /// - `new_minter`: The address that will become the new minter.
+    ///
+    /// # Errors
+    /// - [`ContractError::InvalidTokenId`]: If no token is registered under `token_id`.
+    /// - [`ContractError::InvalidTokenManagerType`]: If the registered token was not deployed by
+    ///   this contract, i.e. its token manager type is not `NativeInterchainToken`.
+    /// - [`ContractError::NotMinter`]: If `minter` does not currently hold the minter role.
+    /// - [`ContractError::MinterAlreadyExists`]: If `new_minter` already holds the minter role.
+    ///
+    /// # Authorization
+    /// - The `minter` must authorize.
+    fn transfer_mintership(
+        env: &Env,
+        token_id: BytesN<32>,
+        minter: Address,
+        new_minter: Address,
     ) -> Result<(), ContractError>;
 }

@@ -15,11 +15,11 @@ pub fn pausable(name: &Ident) -> TokenStream2 {
             }
 
             fn pause(env: &Env) {
-                stellar_axelar_std::interfaces::pause::<Self>(env);
+                stellar_axelar_std::interfaces::pause::<Self, _>(env, ContractError::AlreadyPaused);
             }
 
             fn unpause(env: &Env) {
-                stellar_axelar_std::interfaces::unpause::<Self>(env);
+                stellar_axelar_std::interfaces::unpause::<Self, _>(env, ContractError::NotPaused);
             }
         }
     }
