@@ -1,3 +1,5 @@
+extern crate alloc;
+
 use soroban_token_sdk::metadata::TokenMetadata;
 use stellar_axelar_std::string::StringExt;
 use stellar_axelar_std::{ensure, token, Address, Env, String};
@@ -13,6 +15,13 @@ const MAX_SYMBOL_LENGTH: u32 = 32;
 pub trait TokenMetadataExt: Sized {
     fn new(name: String, symbol: String, decimals: u32) -> Result<Self, ContractError>;
 
+    fn new_normalized(
+        env: &Env,
+        name: String,
+        symbol: String,
+        decimals: u32,
+    ) -> Result<Self, ContractError>;
+
     fn validate(&self) -> Result<(), ContractError>;
 }
 
@@ -25,6 +34,51 @@ impl TokenMetadataExt for TokenMetadata {
         };
 
         token_metadata.validate()?;
+
+        Ok(token_metadata)
+    }
+
+    /// Builds token metadata from an inbound cross-chain deployment, normalizing it instead of
+    /// rejecting it where possible.
+    ///
+    /// Remote chains follow different naming rules, and the metadata of an inbound deployment is
+    /// fixed in an already-approved cross-chain message: it cannot be corrected and retried, and
+    /// once the ITS Hub has routed a remote deployment it forbids further ones for that token. So
+    /// rejecting metadata here makes the token permanently un-onboardable to Stellar.
+    ///
+    /// Accordingly, an over-long name or symbol is truncated rather than rejected, and non-ASCII
+    /// is accepted: the ABI decodes both fields from a Solidity `string` into a Rust `String`, so
+    /// they are already valid UTF-8 by construction. Contrast [`Self::new`], used for local
+    /// deployments, where the caller supplies a Soroban `String` that carries no encoding
+    /// guarantee at all and can be corrected and resubmitted.
+    ///
+    /// An empty name or symbol is still rejected — there is nothing to normalize it to, and
+    /// substituting a placeholder would mean inventing metadata that matches nothing on the
+    /// source chain.
+    fn new_normalized(
+        env: &Env,
+        name: String,
+        symbol: String,
+        decimals: u32,
+    ) -> Result<Self, ContractError> {
+        let token_metadata = Self {
+            name: truncate_utf8(env, name, MAX_NAME_LENGTH),
+            symbol: truncate_utf8(env, symbol, MAX_SYMBOL_LENGTH),
+            decimal: decimals,
+        };
+
+        ensure!(
+            token_metadata.decimal <= MAX_DECIMALS,
+            ContractError::InvalidTokenDecimals
+        );
+        ensure!(
+            !token_metadata.name.is_empty(),
+            ContractError::InvalidTokenName
+        );
+        ensure!(
+            !token_metadata.symbol.is_empty(),
+            ContractError::InvalidTokenSymbol
+        );
 
         Ok(token_metadata)
     }
@@ -47,6 +101,26 @@ impl TokenMetadataExt for TokenMetadata {
 
         Ok(())
     }
+}
+
+/// Truncates `s` to at most `max_bytes`, cutting at a UTF-8 character boundary so a multi-byte
+/// character is never split. Mirrors Solana ITS's `truncate_utf8`.
+fn truncate_utf8(env: &Env, s: String, max_bytes: u32) -> String {
+    if s.len() <= max_bytes {
+        return s;
+    }
+
+    let mut bytes = alloc::vec![0u8; s.len() as usize];
+    s.copy_into_slice(&mut bytes);
+
+    // A UTF-8 continuation byte matches 0b10xxxxxx. Step back off any continuation byte so the
+    // cut lands on the start of a character.
+    let mut cut = max_bytes as usize;
+    while cut > 0 && (bytes[cut] & 0xC0) == 0x80 {
+        cut -= 1;
+    }
+
+    String::from_bytes(env, &bytes[..cut])
 }
 
 pub fn token_metadata(
@@ -205,5 +279,121 @@ mod tests {
         let decimals = MAX_DECIMALS;
 
         assert_ok!(TokenMetadata::new(name, symbol, decimals));
+    }
+}
+
+#[cfg(test)]
+mod normalized_tests {
+    use stellar_axelar_std::assert_ok;
+
+    use super::*;
+
+    fn long_ascii(len: usize) -> alloc::string::String {
+        core::iter::repeat_n('a', len).collect()
+    }
+
+    #[test]
+    fn new_normalized_keeps_valid_metadata_unchanged() {
+        let env = Env::default();
+
+        let metadata = assert_ok!(TokenMetadata::new_normalized(
+            &env,
+            String::from_str(&env, "Test Token"),
+            String::from_str(&env, "TST"),
+            18,
+        ));
+
+        assert_eq!(metadata.name, String::from_str(&env, "Test Token"));
+        assert_eq!(metadata.symbol, String::from_str(&env, "TST"));
+        assert_eq!(metadata.decimal, 18);
+    }
+
+    #[test]
+    fn new_normalized_accepts_non_ascii() {
+        let env = Env::default();
+
+        let name = String::from_str(&env, "世界コイン");
+        let symbol = String::from_str(&env, "世界");
+
+        let metadata = assert_ok!(TokenMetadata::new_normalized(
+            &env,
+            name.clone(),
+            symbol.clone(),
+            7,
+        ));
+
+        assert_eq!(metadata.name, name);
+        assert_eq!(metadata.symbol, symbol);
+    }
+
+    #[test]
+    fn new_normalized_truncates_over_long_name_and_symbol() {
+        let env = Env::default();
+
+        let metadata = assert_ok!(TokenMetadata::new_normalized(
+            &env,
+            String::from_str(&env, &long_ascii(MAX_NAME_LENGTH as usize + 8)),
+            String::from_str(&env, &long_ascii(MAX_SYMBOL_LENGTH as usize + 8)),
+            7,
+        ));
+
+        assert_eq!(metadata.name.len(), MAX_NAME_LENGTH);
+        assert_eq!(metadata.symbol.len(), MAX_SYMBOL_LENGTH);
+    }
+
+    #[test]
+    fn new_normalized_truncates_multi_byte_name_on_char_boundary() {
+        let env = Env::default();
+
+        // '界' is 3 bytes, so 11 of them is 33 bytes: one byte over the limit. Cutting at 32
+        // would split the last character, so the whole character must be dropped.
+        let name: alloc::string::String = core::iter::repeat_n('界', 11).collect();
+        assert_eq!(name.len(), 33);
+
+        let metadata = assert_ok!(TokenMetadata::new_normalized(
+            &env,
+            String::from_str(&env, &name),
+            String::from_str(&env, "TST"),
+            7,
+        ));
+
+        // 10 characters, 30 bytes — the largest character boundary at or below 32.
+        assert_eq!(metadata.name.len(), 30);
+        assert_eq!(
+            metadata.name,
+            String::from_str(&env, &long_multi_byte_prefix(10))
+        );
+    }
+
+    fn long_multi_byte_prefix(chars: usize) -> alloc::string::String {
+        core::iter::repeat_n('界', chars).collect()
+    }
+
+    #[test]
+    fn new_normalized_fails_with_empty_name() {
+        let env = Env::default();
+
+        let result = TokenMetadata::new_normalized(
+            &env,
+            String::from_str(&env, ""),
+            String::from_str(&env, "TST"),
+            7,
+        );
+
+        assert!(matches!(result, Err(ContractError::InvalidTokenName)));
+    }
+
+    #[test]
+    fn new_normalized_fails_with_empty_symbol() {
+        let env = Env::default();
+
+        let result = TokenMetadata::new_normalized(
+            &env,
+            String::from_str(&env, "Test Token"),
+            String::from_str(&env, ""),
+            7,
+        );
+
+        assert!(matches!(result, Err(ContractError::InvalidTokenSymbol)));
     }
 }
